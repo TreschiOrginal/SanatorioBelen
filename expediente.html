@@ -64,7 +64,7 @@
         <aside class="w-full md:w-72 lg:w-80 glass-panel border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col md:overflow-y-auto custom-scrollbar shrink-0">
             <div class="text-center mb-6 mt-2 md:mt-0">
                 <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-slate-100 mx-auto mb-3 flex items-center justify-center text-xl md:text-2xl text-cyan-700 font-extrabold shadow-sm border border-slate-200">SVR</div>
-                <h3 class="text-base md:text-lg font-extrabold text-slate-900 leading-tight">Simona Vargas Rubio</h3>
+                <h3 id="paciente-nombre" class="text-base md:text-lg font-extrabold text-slate-900 leading-tight">Simona Vargas Rubio</h3>
                 <p class="text-xs text-slate-500 font-medium" id="paciente-genero">Femenino • 87 Años</p>
                 <p class="text-xs text-slate-500 mt-2"><i class="fas fa-ring text-cyan-500 mr-1"></i> Estado Civil: <span id="ui-civil" class="font-bold">Sin capturar</span></p>
                 <div id="badge-cama" class="hidden mt-3 inline-flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-200">
@@ -75,10 +75,10 @@
             <div class="bg-white/60 rounded-xl p-3 shadow-sm border border-slate-200 mb-4">
                 <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i class="fas fa-heartbeat text-cyan-500"></i> Signos Vitales (Triage)</h4>
                 <div class="grid grid-cols-4 md:grid-cols-2 gap-2 text-center">
-                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">TA</p><p class="text-xs font-bold text-slate-800">140/86</p></div>
-                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">FR</p><p class="text-xs font-bold text-slate-800">19</p></div>
-                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">Temp</p><p class="text-xs font-bold text-slate-800">36.2</p></div>
-                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">SpO2</p><p class="text-xs font-bold text-slate-800">98%</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">TA</p><p id="sv-ta" class="text-xs font-bold text-slate-800">140/86</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">FR</p><p id="sv-fr" class="text-xs font-bold text-slate-800">19</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">Temp</p><p id="sv-temp" class="text-xs font-bold text-slate-800">36.2</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">SpO2</p><p id="sv-spo2" class="text-xs font-bold text-slate-800">98%</p></div>
                 </div>
             </div>
 
@@ -94,6 +94,7 @@
                     <button type="button" onclick="cambiarPestana('nota')" id="btn-nota" class="tab-activa px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-stethoscope"></i> Nota Médica</button>
                     <button type="button" onclick="cambiarPestana('ingreso')" id="btn-ingreso" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-procedures"></i> Hoja Frontal</button>
                     <button type="button" onclick="cambiarPestana('consentimientos')" id="btn-consentimientos" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-file-signature"></i> Consentimientos</button>
+                    <button type="button" onclick="cambiarPestana('indicaciones')" id="btn-indicaciones" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-clipboard-list"></i> Indicaciones</button>
                 </div>
                 <button type="button" id="btn-imprimir-todo" onclick="imprimirTodoElPaquete()" class="mb-3 bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-lg shadow hover:bg-slate-800 transition flex items-center gap-2 min-w-max">
                     <i class="fas fa-print"></i> Imprimir Expediente Completo
@@ -390,6 +391,117 @@
                     <div class="text-right"><button type="button" onclick="imprimirDesdePestanas('consentimiento')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Solo Consentimiento</button></div>
                 </div>
 
+                <div id="vista-indicaciones" class="hidden fade-in max-w-4xl mx-auto space-y-5 pb-20">
+                    <div class="flex items-center gap-3 px-1">
+                        <div class="w-10 h-10 rounded-xl bg-cyan-700 text-white flex items-center justify-center shadow-md"><i class="fas fa-clipboard-list"></i></div>
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-900 leading-tight">Indicaciones de Piso</h3>
+                            <p class="text-xs text-slate-500">Órdenes médicas para el paciente hospitalizado.</p>
+                        </div>
+                    </div>
+
+                    <!-- 1. DIETA -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-utensils text-cyan-500 mr-2"></i>Dieta</h3>
+                        <label for="ind-dieta" class="text-xs font-bold text-slate-500 uppercase block mb-1">Tipo de Dieta</label>
+                        <select id="ind-dieta" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 focus:border-cyan-500 outline-none">
+                            <option value="">Seleccione...</option>
+                            <option value="AYUNO">Ayuno</option>
+                            <option value="LIQUIDA">Dieta Líquida</option>
+                            <option value="BLANDA">Dieta Blanda</option>
+                            <option value="NORMAL">Dieta Normal</option>
+                            <option value="DIABETICO">Dieta para Diabético</option>
+                        </select>
+                    </div>
+
+                    <!-- 2. SOLUCIONES PARENTERALES -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-droplet text-cyan-500 mr-2"></i>Soluciones Parenterales (Sueros)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="md:col-span-2">
+                                <label for="ind-solucion" class="text-xs font-bold text-slate-500 uppercase block mb-1">Solución</label>
+                                <input type="text" id="ind-solucion" placeholder="Ej. Solución Salina 0.9% 1000ml" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                            </div>
+                            <div>
+                                <label for="ind-velocidad" class="text-xs font-bold text-slate-500 uppercase block mb-1">Velocidad</label>
+                                <input type="text" id="ind-velocidad" placeholder="Ej. Para 24 hrs" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. MEDICAMENTOS (dinámico) -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-pills text-cyan-500 mr-2"></i>Medicamentos</h3>
+                            <span class="text-[10px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-100 px-2 py-1 rounded-full"><span id="contador-medicamentos">0</span> indicados</span>
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-12 gap-3 items-end bg-slate-50 border border-slate-200 rounded-xl p-3 md:p-4">
+                            <div class="col-span-2 md:col-span-4">
+                                <label for="ind-med-nombre" class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Medicamento</label>
+                                <input type="text" id="ind-med-nombre" placeholder="Ej. Paracetamol 500 mg" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:border-cyan-500 outline-none">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="ind-med-dosis" class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Dosis</label>
+                                <input type="text" id="ind-med-dosis" placeholder="Ej. 1 tableta" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:border-cyan-500 outline-none">
+                            </div>
+                            <div class="md:col-span-2">
+                                <label for="ind-med-via" class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Vía</label>
+                                <select id="ind-med-via" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:border-cyan-500 outline-none">
+                                    <option value="IV">IV</option><option value="VO">VO</option><option value="IM">IM</option><option value="SC">SC</option>
+                                </select>
+                            </div>
+                            <div class="col-span-2 md:col-span-4">
+                                <label for="ind-med-frecuencia" class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Frecuencia</label>
+                                <input type="text" id="ind-med-frecuencia" list="frecuencias-list" placeholder="Ej. Cada 8 hrs" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:border-cyan-500 outline-none">
+                                <datalist id="frecuencias-list">
+                                    <option value="Cada 4 hrs"><option value="Cada 6 hrs"><option value="Cada 8 hrs"><option value="Cada 12 hrs"><option value="Cada 24 hrs"><option value="Dosis única"><option value="PRN (por razón necesaria)">
+                                </datalist>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-right">
+                            <button type="button" onclick="agregarMedicamento()" class="bg-cyan-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-cyan-700 transition inline-flex items-center gap-2"><i class="fas fa-plus"></i> Agregar Medicamento</button>
+                        </div>
+                        <ul id="lista-medicamentos" class="space-y-2 mt-4">
+                            <li class="text-xs text-slate-400 italic text-center py-4 border border-dashed border-slate-200 rounded-xl">Sin medicamentos agregados.</li>
+                        </ul>
+                    </div>
+
+                    <!-- 4. MEDIDAS GENERALES -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-clipboard-check text-cyan-500 mr-2"></i>Medidas Generales</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <label class="relative block cursor-pointer">
+                                <input type="checkbox" id="ind-signos-turno" data-medida-general="SIGNOS_VITALES_TURNO" data-descripcion="Signos vitales por turno" class="peer sr-only">
+                                <div class="flex items-center gap-3 p-4 pr-12 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-600 font-bold text-sm transition select-none hover:border-cyan-300 peer-checked:border-emerald-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-cyan-300">
+                                    <i class="fas fa-heart-pulse text-lg w-6 text-center"></i><span>Signos vitales por turno</span>
+                                </div>
+                                <div class="absolute top-1/2 -translate-y-1/2 right-4 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-transparent transition peer-checked:bg-emerald-500 peer-checked:border-emerald-500 peer-checked:text-white"><i class="fas fa-check text-[10px]"></i></div>
+                            </label>
+                            <label class="relative block cursor-pointer">
+                                <input type="checkbox" id="ind-control-liquidos" data-medida-general="CONTROL_LIQUIDOS" data-descripcion="Control de líquidos" class="peer sr-only">
+                                <div class="flex items-center gap-3 p-4 pr-12 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-600 font-bold text-sm transition select-none hover:border-cyan-300 peer-checked:border-emerald-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-cyan-300">
+                                    <i class="fas fa-glass-water text-lg w-6 text-center"></i><span>Control de líquidos</span>
+                                </div>
+                                <div class="absolute top-1/2 -translate-y-1/2 right-4 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-transparent transition peer-checked:bg-emerald-500 peer-checked:border-emerald-500 peer-checked:text-white"><i class="fas fa-check text-[10px]"></i></div>
+                            </label>
+                            <label class="relative block cursor-pointer">
+                                <input type="checkbox" id="ind-reposo-absoluto" data-medida-general="REPOSO_ABSOLUTO" data-descripcion="Reposo absoluto" class="peer sr-only">
+                                <div class="flex items-center gap-3 p-4 pr-12 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-600 font-bold text-sm transition select-none hover:border-cyan-300 peer-checked:border-emerald-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-cyan-300">
+                                    <i class="fas fa-bed text-lg w-6 text-center"></i><span>Reposo absoluto</span>
+                                </div>
+                                <div class="absolute top-1/2 -translate-y-1/2 right-4 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-transparent transition peer-checked:bg-emerald-500 peer-checked:border-emerald-500 peer-checked:text-white"><i class="fas fa-check text-[10px]"></i></div>
+                            </label>
+                            <label class="relative block cursor-pointer">
+                                <input type="checkbox" id="ind-cabecera-30" data-medida-general="CABECERA_30_GRADOS" data-descripcion="Cabecera a 30 grados" class="peer sr-only">
+                                <div class="flex items-center gap-3 p-4 pr-12 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-600 font-bold text-sm transition select-none hover:border-cyan-300 peer-checked:border-emerald-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-cyan-300">
+                                    <i class="fas fa-angle-up text-lg w-6 text-center"></i><span>Cabecera a 30 grados</span>
+                                </div>
+                                <div class="absolute top-1/2 -translate-y-1/2 right-4 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-transparent transition peer-checked:bg-emerald-500 peer-checked:border-emerald-500 peer-checked:text-white"><i class="fas fa-check text-[10px]"></i></div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </section>
     </main>
@@ -516,6 +628,7 @@
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
+        let medicamentosIndicados = [];
         const PARENTESCO_OPCIONES = '<option>Hijo(a)</option><option>Esposo(a)</option><option>Hermano(a)</option><option>Padre/Madre</option><option>Mismo Paciente</option><option>Otro</option>';
 
         function initApp() {
@@ -692,8 +805,8 @@
         }
 
         function cambiarPestana(idDestino) {
-            ['vista-nota', 'vista-ingreso', 'vista-consentimientos'].forEach(v => document.getElementById(v).classList.add('hidden'));
-            ['btn-nota', 'btn-ingreso', 'btn-consentimientos'].forEach(b => {
+            ['vista-nota', 'vista-ingreso', 'vista-consentimientos', 'vista-indicaciones'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            ['btn-nota', 'btn-ingreso', 'btn-consentimientos', 'btn-indicaciones'].forEach(b => {
                 const btn = document.getElementById(b);
                 if(btn) { btn.classList.remove('tab-activa'); btn.classList.add('tab-inactiva'); }
             });
@@ -933,6 +1046,306 @@
             } else {
                 cambiarPestana('consentimientos');
             }
+        }
+
+        // ============================================================
+        // RECOLECCIÓN DE DATOS PARA BACKEND (preparación SQL)
+        // ------------------------------------------------------------
+        // Extrae TODO el estado del expediente desde el DOM y lo devuelve
+        // como un objeto JSON plano. No modifica el DOM ni la impresión.
+        // Mapeo sugerido a tablas relacionales:
+        //   paciente / signos_vitales ........ 1 fila c/u
+        //   consulta ......................... 1 fila (FK paciente)
+        //   antecedentes.* ................... tablas hijas (FK consulta)
+        //   diagnosticos[], cirugias[],
+        //   exploracion_fisica[], medicamentos[],
+        //   soluciones_parenterales[],
+        //   medidas_generales[] .............. N filas por consulta
+        //   ingreso / consentimientos ........ 1 fila c/u (FK consulta)
+        // Los catálogos (dieta, vía, medidas) viajan como `codigo` estable
+        // + `descripcion`, listos para ser FK a tablas de catálogo.
+        // ============================================================
+        function recolectarExpediente() {
+            const el = id => document.getElementById(id);
+            const textoDOM = id => { const n = el(id); return n ? n.innerText.trim() : ''; };
+            const texto = id => { const n = el(id); return n ? String(n.value).trim() : ''; };
+            const textoONull = id => texto(id) || null;
+            const marcado = id => { const n = el(id); return n ? n.checked : false; };
+            const numeroONull = id => {
+                const n = parseFloat(texto(id).replace(',', '.'));
+                return Number.isFinite(n) ? n : null;
+            };
+            const enteroONull = valor => { const n = parseInt(valor, 10); return Number.isFinite(n) ? n : null; };
+            // Valor del input, o null si su checkbox "Omitir" está activo
+            const omitibleONull = (chkId, inputId) => marcado(chkId) ? null : textoONull(inputId);
+            // datetime-local viene en hora local; se normaliza a ISO-8601 UTC (TIMESTAMP)
+            const aISO = valor => {
+                if (!valor) return null;
+                const f = new Date(valor);
+                return isNaN(f.getTime()) ? null : f.toISOString();
+            };
+
+            // ---------- PACIENTE ----------
+            const generoTxt = textoDOM('paciente-genero'); // Ej. "Femenino • 87 Años"
+            const sexo = /femenino/i.test(generoTxt) ? 'F' : (/masculino/i.test(generoTxt) ? 'M' : null);
+            const edadMatch = generoTxt.match(/(\d+)\s*a[ñn]os/i);
+            const ta = textoDOM('sv-ta').split('/');
+
+            const paciente = {
+                nombre_completo: textoDOM('paciente-nombre') || null,
+                sexo: sexo,
+                edad_anios: edadMatch ? parseInt(edadMatch[1], 10) : null,
+                fecha_nacimiento: textoONull('comp-fn'),
+                estado_civil: textoONull('comp-civil'),
+                telefono: omitibleONull('chk-tel', 'comp-tel'),
+                ocupacion: omitibleONull('chk-ocu', 'comp-ocu'),
+                direccion: omitibleONull('chk-dir', 'comp-dir'),
+                grupo_sanguineo: omitibleONull('chk-sangre-omitir', 'val-sangre'),
+                signos_vitales: {
+                    ta_sistolica: enteroONull(ta[0]),
+                    ta_diastolica: enteroONull(ta[1]),
+                    frecuencia_respiratoria: enteroONull(textoDOM('sv-fr')),
+                    temperatura_c: (v => Number.isFinite(v) ? v : null)(parseFloat(textoDOM('sv-temp'))),
+                    spo2_porcentaje: enteroONull(textoDOM('sv-spo2'))
+                }
+            };
+
+            // ---------- DIAGNÓSTICOS (array dinámico) ----------
+            const diagnosticos = diagnósticosAgregados.map((dx, i) => {
+                const m = dx.match(/^([A-Z]\d{2}(?:\.[0-9A-Z]{1,4})?)\s+(.+)$/i);
+                return {
+                    orden: i + 1,
+                    es_principal: i === 0,
+                    cie10_codigo: m ? m[1].toUpperCase() : null,
+                    descripcion: m ? m[2].trim() : dx
+                };
+            });
+
+            // ---------- ANTECEDENTES ----------
+            const appNegado = marcado('chk-app-neg');
+
+            const cronico = id => {
+                const presente = marcado(`chk-${id}`) && !appNegado;
+                return {
+                    presente: presente,
+                    tiempo_evolucion: presente ? textoONull(`${id}-tiempo`) : null,
+                    tratamiento: presente ? textoONull(`${id}-meds`) : null,
+                    apego: presente ? textoONull(`${id}-apego`) : null
+                };
+            };
+
+            const alergiasPresente = marcado('chk-alergias') && !appNegado;
+            const alergiasTxt = alergiasPresente ? textoONull('val-alergias') : null;
+
+            const transfusionesPresente = marcado('chk-hemo') && !appNegado;
+
+            // Cirugías previas: lee cada fila dinámica por su id (Date.now())
+            const cirugias = (marcado('chk-qx') && !appNegado)
+                ? cirugiasAgregadas
+                    .map(id => ({
+                        procedimiento: texto(`qx-nombre-${id}`),
+                        fecha_texto: textoONull(`qx-fecha-${id}`), // texto libre: "2019" / "hace 3 años"
+                        complicaciones: textoONull(`qx-comp-${id}`)
+                    }))
+                    .filter(c => c.procedimiento)
+                    .map((c, i) => Object.assign({ orden: i + 1 }, c))
+                : [];
+
+            // Gineco-obstétricos: solo aplica a sexo F y si no se omitió
+            const agoAplica = sexo === 'F' && !marcado('chk-ago-omitir');
+            const detalleGestas = [];
+            if (agoAplica) {
+                [['PARTO', 'parto', 'ago-p'], ['CESAREA', 'cesarea', 'ago-c'], ['ABORTO', 'aborto', 'ago-a']]
+                    .forEach(([tipo, prefijo, idConteo]) => {
+                        const total = parseInt(texto(idConteo), 10) || 0;
+                        for (let i = 1; i <= total; i++) {
+                            if (!el(`det-${prefijo}-${i}`)) continue; // filas aún no generadas
+                            detalleGestas.push({
+                                tipo: tipo,
+                                numero: i,
+                                detalle: textoONull(`det-${prefijo}-${i}`),
+                                omitir: marcado(`omitir-${prefijo}-${i}`)
+                            });
+                        }
+                    });
+            }
+
+            const antecedentes = {
+                heredofamiliares: { negado: marcado('chk-ahf-neg'), detalle: marcado('chk-ahf-neg') ? null : textoONull('val-ahf') },
+                no_patologicos: { negado: marcado('chk-apnp-neg'), detalle: marcado('chk-apnp-neg') ? null : textoONull('val-apnp') },
+                personales_patologicos: {
+                    negado_todo: appNegado,
+                    hipertension: cronico('hta'),
+                    diabetes_mellitus_2: cronico('dm2'),
+                    alergias: {
+                        presente: alergiasPresente,
+                        descripcion: alergiasTxt,
+                        sustancias: alergiasTxt ? alergiasTxt.split(/[,;]+/).map(s => s.trim()).filter(Boolean) : []
+                    },
+                    transfusiones: {
+                        presente: transfusionesPresente,
+                        detalle: transfusionesPresente ? textoONull('hemo-tipo') : null,
+                        complicaciones: transfusionesPresente ? textoONull('hemo-comp') : null
+                    },
+                    cirugias_previas: cirugias,
+                    otras_enfermedades: appNegado ? null : textoONull('val-otras-app')
+                },
+                gineco_obstetricos: agoAplica ? {
+                    fum: textoONull('ago-fum'),
+                    ritmo_menstrual: textoONull('ago-ritmo'),
+                    metodo_planificacion: textoONull('ago-mpf'),
+                    gestas: parseInt(texto('ago-g'), 10) || 0,
+                    partos: parseInt(texto('ago-p'), 10) || 0,
+                    cesareas: parseInt(texto('ago-c'), 10) || 0,
+                    abortos: parseInt(texto('ago-a'), 10) || 0,
+                    solo_formula: marcado('chk-ago-solo-formula'),
+                    detalle_gestas: detalleGestas
+                } : null
+            };
+
+            // ---------- EXPLORACIÓN FÍSICA (1 fila por sistema) ----------
+            const SISTEMAS_EF = [
+                ['neuro', 'Neurológico'], ['cabeza', 'Cabeza y Cuello'], ['cardio', 'Cardiopulmonar'],
+                ['abdomen', 'Abdomen'], ['rectal', 'Tacto Rectal / GU'], ['ext', 'Extremidades']
+            ];
+            const exploracionFisica = SISTEMAS_EF.map(([id, nombre]) => {
+                const alterado = texto(`estatus-${id}`) === 'alterado';
+                return {
+                    sistema_codigo: id,
+                    sistema: nombre,
+                    estatus: alterado ? 'ALTERADO' : 'NORMAL',
+                    hallazgo: alterado ? textoONull(`text-${id}`) : null
+                };
+            });
+
+            // ---------- CONSULTA ----------
+            const consulta = {
+                fecha_hora: aISO(texto('input-fecha')),
+                destino: sessionStorage.getItem('belen_destino'), // Alta | Observacion | Hospitalizacion | null
+                medico_tratante: textoONull('val-medico'),
+                motivo_consulta: textoONull('val-motivo'),
+                padecimiento_actual: textoONull('val-padecimiento'),
+                estudios_auxiliares: marcado('chk-omitir-estudios') ? null : textoONull('val-estudios'),
+                analisis_clinico: textoONull('val-analisis'),
+                plan_tratamiento: textoONull('val-plan'),
+                signos_alarma_explicados: marcado('chk-omitir-alarma') ? null : textoONull('val-alarma'),
+                pronostico: textoONull('val-pronostico')
+            };
+
+            // ---------- INGRESO (Hoja Frontal) ----------
+            const ingreso = {
+                tipo_ingreso: textoONull('val-tipo-ingreso'),
+                cama: textoONull('val-cama'),
+                responsable_legal: {
+                    mismo_paciente: marcado('chk-mismo-paciente'),
+                    nombre_completo: textoONull('val-responsable'),
+                    parentesco: textoONull('val-parentesco'),
+                    telefono: textoONull('val-tel-resp'),
+                    direccion: textoONull('val-dir-resp'),
+                    misma_direccion_paciente: marcado('chk-misma-dir')
+                }
+            };
+
+            // ---------- CONSENTIMIENTOS ----------
+            const consentimientos = {
+                formato_seleccionado: el('selector-formato') ? el('selector-formato').value : null, // gral | esp
+                peso_kg: numeroONull('val-peso'),
+                talla_m: numeroONull('val-talla'),
+                procedimiento: textoONull('val-procedimiento'),
+                riesgos_objetivos: textoONull('val-riesgos')
+            };
+
+            // ---------- INDICACIONES DE PISO ----------
+            const selDieta = el('ind-dieta');
+            const dietaCodigo = selDieta && selDieta.value ? selDieta.value : null;
+            const solucion = textoONull('ind-solucion');
+
+            const indicaciones = {
+                dieta: {
+                    codigo: dietaCodigo,
+                    descripcion: dietaCodigo ? selDieta.options[selDieta.selectedIndex].text : null
+                },
+                soluciones_parenterales: solucion
+                    ? [{ orden: 1, solucion: solucion, velocidad: textoONull('ind-velocidad') }]
+                    : [],
+                medicamentos: medicamentosIndicados.map((m, i) => ({
+                    orden: i + 1,
+                    nombre: m.nombre,
+                    dosis: m.dosis,
+                    via: m.via,
+                    frecuencia: m.frecuencia
+                })),
+                medidas_generales: Array.from(document.querySelectorAll('[data-medida-general]:checked'))
+                    .map(c => ({ codigo: c.dataset.medidaGeneral, descripcion: c.dataset.descripcion || null }))
+            };
+
+            // ---------- OBJETO FINAL ----------
+            const pacienteData = {
+                meta: {
+                    esquema_version: '1.0',
+                    generado_en: new Date().toISOString(),
+                    origen: 'expediente.html',
+                    usuario_rol: sessionStorage.getItem('belen_rol_usuario')
+                },
+                paciente: paciente,
+                consulta: consulta,
+                antecedentes: antecedentes,
+                exploracion_fisica: exploracionFisica,
+                diagnosticos: diagnosticos,
+                ingreso: ingreso,
+                consentimientos: consentimientos,
+                indicaciones: indicaciones
+            };
+
+            console.log(pacienteData);
+            return pacienteData;
+        }
+
+        // ============================================================
+        // INDICACIONES DE PISO (vista-indicaciones)
+        // ============================================================
+        function escaparHTML(t) {
+            return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function agregarMedicamento() {
+            const nombre = document.getElementById('ind-med-nombre').value.trim();
+            const dosis = document.getElementById('ind-med-dosis').value.trim();
+            const via = document.getElementById('ind-med-via').value;
+            const frecuencia = document.getElementById('ind-med-frecuencia').value.trim();
+
+            if (!nombre) return alert('Ingrese el nombre del medicamento.');
+            if (!dosis) return alert('Ingrese la dosis del medicamento.');
+            if (!frecuencia) return alert('Ingrese la frecuencia de administración.');
+
+            medicamentosIndicados.push({ id: Date.now(), nombre: nombre, dosis: dosis, via: via, frecuencia: frecuencia });
+
+            ['ind-med-nombre', 'ind-med-dosis', 'ind-med-frecuencia'].forEach(id => { document.getElementById(id).value = ''; });
+            document.getElementById('ind-med-via').selectedIndex = 0;
+            renderizarListaMedicamentos();
+            document.getElementById('ind-med-nombre').focus();
+        }
+
+        function borrarMedicamento(id) {
+            medicamentosIndicados = medicamentosIndicados.filter(m => m.id !== id);
+            renderizarListaMedicamentos();
+        }
+
+        function renderizarListaMedicamentos() {
+            const lista = document.getElementById('lista-medicamentos');
+            document.getElementById('contador-medicamentos').innerText = medicamentosIndicados.length;
+            if (medicamentosIndicados.length === 0) {
+                lista.innerHTML = '<li class="text-xs text-slate-400 italic text-center py-4 border border-dashed border-slate-200 rounded-xl">Sin medicamentos agregados.</li>';
+                return;
+            }
+            lista.innerHTML = medicamentosIndicados.map((m, idx) => `
+                <li class="flex items-center justify-between gap-3 bg-cyan-50 border border-cyan-100 rounded-xl px-4 py-3">
+                    <div class="min-w-0">
+                        <p class="text-sm font-bold text-cyan-900 truncate">${idx + 1}. ${escaparHTML(m.nombre)}</p>
+                        <p class="text-xs text-slate-600 mt-0.5">${escaparHTML(m.dosis)} <span class="mx-1 text-slate-300">•</span> <span class="font-bold text-cyan-700 bg-white border border-cyan-200 rounded px-1.5 py-0.5">${escaparHTML(m.via)}</span> <span class="mx-1 text-slate-300">•</span> ${escaparHTML(m.frecuencia)}</p>
+                    </div>
+                    <button type="button" onclick="borrarMedicamento(${m.id})" class="text-red-400 hover:text-red-600 p-2 shrink-0" title="Quitar medicamento"><i class="fas fa-trash"></i></button>
+                </li>`).join('');
         }
 
         document.addEventListener('DOMContentLoaded', () => { initApp(); });
