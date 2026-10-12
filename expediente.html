@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expediente Clínico | Belén OS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 12s infinite alternate ease-in-out; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(16px); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        .tab-activa { border-bottom: 3px solid #0891b2; color: #164e63; font-weight: bold; background-color: #f0fdfa; }
+        .tab-inactiva { color: #64748b; font-weight: 500; }
+        .tab-inactiva:hover { background-color: #f8fafc; color: #334155; }
+        .cama-activa { border-color: #0891b2 !important; background-color: #cffafe !important; color: #164e63 !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .hoja-titulo { text-align: center; font-size: 16px; font-weight: bold; text-decoration: underline; margin-bottom: 20px; }
+        .cuadro-datos { border: 1px solid #000; padding: 10px; margin-bottom: 15px; }
+        .fila { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dotted #ccc; padding-bottom: 2px; }
+
+        @media print {
+            .zona-impresion {
+                position: absolute; left: 0; top: 0; width: 100%;
+                background: white; padding-top: 4cm; padding-left: 2cm; padding-right: 2cm; padding-bottom: 2cm;
+                font-family: Arial, sans-serif; font-size: 11px; line-height: 1.5; color: black !important;
+            }
+            .linea-input { border-bottom: 1px solid black; display: inline-block; padding: 0 5px; font-weight: bold; }
+            .firma-box { text-align: center; width: 220px; border-top: 1px solid black; padding-top: 5px; font-size: 10px; margin-left: auto; margin-right: auto; }
+            .salto-pagina { page-break-after: always; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 flex flex-col md:h-screen md:overflow-hidden relative print:bg-white print:h-auto print:overflow-visible min-h-screen">
+
+    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 fixed print:hidden">
+        <div class="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-cyan-200/40 rounded-full mix-blend-multiply filter blur-[100px] animate-blob"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[35rem] h-[35rem] bg-teal-200/40 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-2000"></div>
+    </div>
+
+    <header class="h-16 glass-panel border-b border-slate-200 flex items-center justify-between px-4 md:px-6 shrink-0 z-20 shadow-sm print:hidden">
+        <div class="flex items-center gap-3 md:gap-4">
+            <a href="dashboard.html" class="w-8 h-8 rounded-full bg-slate-200 hover:bg-cyan-100 hover:text-cyan-700 flex items-center justify-center transition text-slate-600"><i class="fas fa-arrow-left"></i></a>
+            <h2 class="font-bold tracking-wide text-slate-800 text-sm md:text-base">Expediente Clínico</h2>
+        </div>
+        <div class="flex items-center gap-2 md:gap-3">
+            <span id="nombre-doctor" class="text-xs md:text-sm font-bold text-slate-600 hidden sm:block">Dr. Brandon Arguelles</span>
+            <div class="w-8 h-8 rounded-full bg-cyan-700 text-white flex items-center justify-center shadow-md"><i class="fas fa-user-md"></i></div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden z-10 relative print:hidden">
+        <aside class="w-full md:w-72 lg:w-80 glass-panel border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col md:overflow-y-auto custom-scrollbar shrink-0">
+            <div class="text-center mb-6 mt-2 md:mt-0">
+                <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-slate-100 mx-auto mb-3 flex items-center justify-center text-xl md:text-2xl text-cyan-700 font-extrabold shadow-sm border border-slate-200">SVR</div>
+                <h3 class="text-base md:text-lg font-extrabold text-slate-900 leading-tight">Simona Vargas Rubio</h3>
+                <p class="text-xs text-slate-500 font-medium" id="paciente-genero">Femenino • 87 Años</p>
+                <p class="text-xs text-slate-500 mt-2"><i class="fas fa-ring text-cyan-500 mr-1"></i> Estado Civil: <span id="ui-civil" class="font-bold">Sin capturar</span></p>
+                <div id="badge-cama" class="hidden mt-3 inline-flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-200">
+                    <i class="fas fa-bed"></i> <span id="ui-cama">CAMA PENDIENTE</span>
+                </div>
+            </div>
+
+            <div class="bg-white/60 rounded-xl p-3 shadow-sm border border-slate-200 mb-4">
+                <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i class="fas fa-heartbeat text-cyan-500"></i> Signos Vitales (Triage)</h4>
+                <div class="grid grid-cols-4 md:grid-cols-2 gap-2 text-center">
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">TA</p><p class="text-xs font-bold text-slate-800">140/86</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">FR</p><p class="text-xs font-bold text-slate-800">19</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">Temp</p><p class="text-xs font-bold text-slate-800">36.2</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">SpO2</p><p class="text-xs font-bold text-slate-800">98%</p></div>
+                </div>
+            </div>
+
+            <div id="panel-dx-ingreso" class="hidden bg-white/60 rounded-xl p-4 shadow-sm border border-slate-200">
+                <h4 class="text-xs font-bold text-slate-800 uppercase mb-2">Diagnóstico de Ingreso</h4>
+                <p id="ui-dx-ingreso" class="text-sm text-cyan-700 font-bold bg-cyan-50 p-2 rounded border border-cyan-100">Pendiente</p>
+            </div>
+        </aside>
+
+        <section class="flex-1 flex flex-col relative overflow-hidden bg-slate-50">
+            <div id="header-pestanas" class="bg-white border-b border-slate-200 pt-4 px-6 shrink-0 shadow-sm flex justify-between items-end overflow-x-auto hidden">
+                <div class="flex space-x-1 min-w-max">
+                    <button type="button" onclick="cambiarPestana('nota')" id="btn-nota" class="tab-activa px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-stethoscope"></i> Nota Médica</button>
+                    <button type="button" onclick="cambiarPestana('ingreso')" id="btn-ingreso" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-procedures"></i> Hoja Frontal</button>
+                    <button type="button" onclick="cambiarPestana('consentimientos')" id="btn-consentimientos" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-file-signature"></i> Consentimientos</button>
+                </div>
+                <button type="button" id="btn-imprimir-todo" onclick="imprimirTodoElPaquete()" class="mb-3 bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-lg shadow hover:bg-slate-800 transition flex items-center gap-2 min-w-max">
+                    <i class="fas fa-print"></i> Imprimir Expediente Completo
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar relative">
+
+                <div id="vista-nota" class="max-w-4xl w-full mx-auto flex flex-col h-full space-y-5 pb-20 fade-in block">
+                    <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 border-b border-slate-100 pb-2 gap-2">
+                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-user-edit text-cyan-500 mr-1"></i> Datos Complementarios y Fecha</h3>
+                            <input type="datetime-local" id="input-fecha" class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-cyan-500">
+                        </div>
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">F. Nacimiento</label></div>
+                                <input type="date" id="comp-fn" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Estado Civil</label></div>
+                                <select id="comp-civil" onchange="sincronizarCivil()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                                    <option value="">Seleccione...</option><option>Soltero(a)</option><option>Casado(a)</option><option>Unión Libre</option><option>Divorciado(a)</option><option>Viudo(a)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Teléfono</label><label class="text-[9px] cursor-pointer"><input type="checkbox" onchange="toggleComp('tel')" id="chk-tel"> Omitir</label></div>
+                                <input type="text" id="comp-tel" placeholder="Ej. 322 123..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Ocupación</label><label class="text-[9px] cursor-pointer"><input type="checkbox" onchange="toggleComp('ocu')" id="chk-ocu"> Omitir</label></div>
+                                <input type="text" id="comp-ocu" placeholder="Ej. Ama de casa" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                            </div>
+                            <div class="col-span-2 md:col-span-1">
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Dirección</label><label class="text-[9px] cursor-pointer"><input type="checkbox" onchange="toggleComp('dir')" id="chk-dir"> Omitir</label></div>
+                                <input type="text" id="comp-dir" placeholder="Ej. Calle 123..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-history text-cyan-500 mr-1"></i> Antecedentes (APP, AHF, APNP)</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Heredofamiliares (AHF)</label><label class="flex items-center gap-1 text-[10px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ahf-neg" checked onchange="toggleAntecedente('ahf')" class="text-cyan-600"> Preguntado y Negado</label></div>
+                                <input type="text" id="val-ahf" placeholder="Especifique..." disabled class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500 outline-none opacity-50 cursor-not-allowed">
+                            </div>
+                            <div>
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">No Patológicos (APNP)</label><label class="flex items-center gap-1 text-[10px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-apnp-neg" checked onchange="toggleAntecedente('apnp')" class="text-cyan-600"> Preguntado y Negado</label></div>
+                                <input type="text" id="val-apnp" placeholder="Tabaquismo, alcoholismo, etc." disabled class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500 outline-none opacity-50 cursor-not-allowed">
+                            </div>
+                        </div>
+                        <div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                            <label class="text-[10px] font-bold text-slate-500 uppercase">Grupo y Rh:</label>
+                            <div class="flex items-center gap-3">
+                                <select id="val-sangre" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option value="">Seleccione...</option><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select>
+                                <label class="flex items-center gap-1 text-[10px] text-slate-600 cursor-pointer"><input type="checkbox" id="chk-sangre-omitir" onchange="document.getElementById('val-sangre').disabled = this.checked"> Desconoce / Omitir</label>
+                            </div>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 md:p-4 mb-4">
+                            <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-3 gap-2">
+                                <label class="text-xs font-bold text-slate-700 uppercase">Personales Patológicos (APP)</label>
+                                <label class="flex items-center gap-1 text-[11px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-app-neg" onchange="toggleAPP()" class="text-cyan-600"> Todo Preguntado y Negado</label>
+                            </div>
+                            <div id="contenedor-app" class="space-y-4">
+                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center bg-white p-2 rounded-lg border border-red-100">
+                                    <label class="w-full sm:w-32 flex items-center gap-2 text-xs font-bold text-red-600 cursor-pointer"><input type="checkbox" id="chk-alergias" onchange="toggleSubAPP('alergias')" class="text-red-600"> Alergias</label>
+                                    <div id="div-alergias" class="hidden flex-1"><input type="text" id="val-alergias" placeholder="Especifique a qué es alérgico..." class="w-full bg-slate-50 border border-red-200 rounded p-2 text-xs text-red-700 font-bold focus:border-red-500"></div>
+                                </div>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                    <div class="bg-white p-2 rounded border border-slate-200">
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-hta" onchange="toggleSubAPP('hta')" class="text-cyan-600"> Hipertensión (HTA)</label>
+                                        <div id="div-hta" class="hidden grid grid-cols-1 gap-2"><input type="text" id="hta-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="hta-meds" placeholder="Medicamento y Dosis" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="hta-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
+                                    </div>
+                                    <div class="bg-white p-2 rounded border border-slate-200">
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-dm2" onchange="toggleSubAPP('dm2')" class="text-cyan-600"> Diabetes (DM2)</label>
+                                        <div id="div-dm2" class="hidden grid grid-cols-1 gap-2"><input type="text" id="dm2-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="dm2-meds" placeholder="Medicamento/Insulina" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="dm2-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Otras Enfermedades (Asma, Tiroides, etc.)</label>
+                                    <input type="text" id="val-otras-app" placeholder="Especifique..." class="w-full bg-white border border-slate-200 rounded p-2 text-xs focus:border-cyan-500">
+                                </div>
+                                <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-qx" onchange="toggleSubAPP('qx')" class="text-cyan-600"> Antecedentes Quirúrgicos</label>
+                                        <button type="button" id="btn-add-qx" onclick="agregarCirugiaDOM()" class="hidden text-[10px] bg-cyan-100 text-cyan-700 font-bold px-2 py-1 rounded shadow-sm hover:bg-cyan-200">+ Agregar Cirugía</button>
+                                    </div>
+                                    <div id="div-qx" class="hidden space-y-2"><div id="qx-container"></div></div>
+                                </div>
+                                <div class="bg-white p-2 rounded-lg border border-slate-200">
+                                    <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-hemo" onchange="toggleSubAPP('hemo')" class="text-cyan-600"> Transfusiones (Hemoderivados)</label>
+                                    <div id="div-hemo" class="hidden mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        <input type="text" id="hemo-tipo" placeholder="¿Cuántos y de qué tipo? (Ej. 2 CE)" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs">
+                                        <input type="text" id="hemo-comp" placeholder="Complicaciones (o Ninguna)" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="seccion-ago" class="bg-pink-50 border border-pink-100 rounded-xl p-3 md:p-4">
+                            <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-3 gap-2">
+                                <label class="text-[11px] font-bold text-pink-800 uppercase"><i class="fas fa-venus mr-1"></i> Gineco-Obstétricos (AGO)</label>
+                                <label class="flex items-center gap-1 text-[10px] text-pink-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-omitir" onchange="toggleAGO()" class="text-pink-600"> Omitir en nota / N/A</label>
+                            </div>
+                            <div id="contenedor-ago" class="space-y-3">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                                    <div class="sm:col-span-2"><label class="text-[9px] uppercase text-pink-700">FUM (Día/Mes/Año)</label><input type="text" id="ago-fum" placeholder="O indicar Menopausia" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"></div>
+                                    <div><label class="text-[9px] uppercase text-pink-700">Ritmo</label><select id="ago-ritmo" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"><option>Regular</option><option>Irregular</option><option>N/A</option></select></div>
+                                    <div><label class="text-[9px] uppercase text-pink-700">Anticonceptivos</label><input type="text" id="ago-mpf" placeholder="Ninguno, DIU, etc." class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"></div>
+                                </div>
+                                <div class="bg-white p-3 rounded-lg border border-pink-200 overflow-x-auto">
+                                    <div class="flex flex-wrap items-center gap-3 mb-3 min-w-max">
+                                        <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">G:</label><input type="number" id="ago-g" value="0" min="0" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
+                                        <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">P:</label><input type="number" id="ago-p" value="0" min="0" onchange="generarFilasAGO()" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
+                                        <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">C:</label><input type="number" id="ago-c" value="0" min="0" onchange="generarFilasAGO()" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
+                                        <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">A:</label><input type="number" id="ago-a" value="0" min="0" onchange="generarFilasAGO()" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
+                                        <label class="ml-auto flex items-center gap-1 text-[10px] text-pink-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-solo-formula" class="text-pink-600" onchange="toggleDetallesAGO()"> Solo imprimir fórmula</label>
+                                    </div>
+                                    <div id="gestas-container" class="space-y-2 hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                        <div class="lg:col-span-1 bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Motivo de Consulta</label>
+                            <textarea id="val-motivo" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-32 md:h-40 resize-none" placeholder="Síntoma principal..."></textarea>
+                        </div>
+                        <div class="lg:col-span-2 bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Padecimiento Actual</label>
+                            <textarea id="val-padecimiento" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-40 resize-none leading-relaxed" placeholder="Evolución clínica detallada del padecimiento..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-1 block">Exploración Física</label>
+                        <p class="text-xs text-slate-500 mb-4">Toque la tarjeta si encuentra alguna alteración en el sistema.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div class="flex flex-col gap-2"><div id="btn-neuro" data-label="Neurológico Normal" onclick="toggleTarjetaEF('neuro')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Neurológico Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-neuro" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-neuro" value="normal"></div>
+                            <div class="flex flex-col gap-2"><div id="btn-cabeza" data-label="Cabeza y Cuello Normal" onclick="toggleTarjetaEF('cabeza')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Cabeza y Cuello Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-cabeza" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-cabeza" value="normal"></div>
+                            <div class="flex flex-col gap-2"><div id="btn-cardio" data-label="Cardiopulmonar Normal" onclick="toggleTarjetaEF('cardio')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Cardiopulmonar Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-cardio" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa hallazgos..."></textarea><input type="hidden" id="estatus-cardio" value="normal"></div>
+                            <div class="flex flex-col gap-2"><div id="btn-abdomen" data-label="Abdomen Normal" onclick="toggleTarjetaEF('abdomen')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Abdomen Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-abdomen" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-abdomen" value="normal"></div>
+                            <div class="flex flex-col gap-2"><div id="btn-rectal" data-label="Tacto Rectal / GU Normal" onclick="toggleTarjetaEF('rectal')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Tacto Rectal / GU Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-rectal" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-rectal" value="normal"></div>
+                            <div class="flex flex-col gap-2"><div id="btn-ext" data-label="Extremidades Normales" onclick="toggleTarjetaEF('ext')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Extremidades Normales</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-ext" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-ext" value="normal"></div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="text-sm font-bold text-slate-800 uppercase tracking-wide block">Estudios Auxiliares</label>
+                                <label class="flex items-center gap-1 text-[10px] bg-slate-100 p-1 rounded cursor-pointer font-bold text-slate-600"><input type="checkbox" id="chk-omitir-estudios" onchange="toggleOmitir('estudios')" class="text-cyan-600"> No hay / Omitir</label>
+                            </div>
+                            <textarea id="val-estudios" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-24" placeholder="Ej. Rx Abdomen..."></textarea>
+                        </div>
+                        <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">IDX (Diagnósticos)</label>
+                            <div class="flex gap-2 mb-3">
+                                <input list="cie10-list" id="input-dx" placeholder="Buscar CIE-10 o libre..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm focus:border-cyan-500 outline-none">
+                                <datalist id="cie10-list"><option value="J03.9 Amigdalitis aguda"><option value="E11.9 Diabetes mellitus 2"><option value="K56.4 Impactación fecal"><option value="R14.X Distensión abdominal"></datalist>
+                                <button type="button" onclick="agregarDx()" class="bg-cyan-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-cyan-700 transition"><i class="fas fa-plus"></i></button>
+                            </div>
+                            <ul id="lista-dx" class="space-y-1"></ul>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Análisis Clínico</label>
+                        <textarea id="val-analisis" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Análisis del caso, integración diagnóstica..."></textarea>
+                        <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Plan y Tratamiento</label>
+                        <textarea id="val-plan" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Ej. Desimpactación manual, Paracetamol..."></textarea>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                            <div>
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="text-xs font-bold text-slate-800 uppercase tracking-wide">Signos de Alarma Explicados</label>
+                                    <label class="flex items-center gap-1 text-[10px] bg-slate-100 p-1 rounded cursor-pointer font-bold text-slate-600"><input type="checkbox" id="chk-omitir-alarma" onchange="toggleOmitir('alarma')" class="text-cyan-600"> Omitir</label>
+                                </div>
+                                <textarea id="val-alarma" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-16" placeholder="Ej. Fiebre, dolor intenso..."></textarea>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2 block">Pronóstico Médico Final</label>
+                                <input list="pronosticos-list" id="val-pronostico" placeholder="Seleccione o escriba..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none font-bold text-slate-700 h-16">
+                                <datalist id="pronosticos-list">
+                                    <option value="Favorable con tratamiento oportuno">
+                                    <option value="Reservado a evolución clínica">
+                                    <option value="Reservado a evolución quirúrgica">
+                                    <option value="Reservado a procedimiento">
+                                    <option value="Malo para la vida y la función">
+                                </datalist>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-right pb-10">
+                        <button type="button" onclick="validarYGuardar()" class="w-full md:w-auto bg-slate-900 text-white px-10 py-4 md:py-5 rounded-xl text-base md:text-lg font-bold shadow-xl hover:bg-slate-800 hover:-translate-y-1 transition-all inline-flex justify-center items-center gap-3">
+                            <i class="fas fa-save"></i> Guardar e Imprimir Nota
+                        </button>
+                    </div>
+                </div>
+
+                <div id="vista-ingreso" class="hidden fade-in max-w-4xl mx-auto space-y-5 pb-20">
+                    <div class="bg-cyan-50 p-6 rounded-2xl shadow-sm border border-cyan-200 text-center">
+                        <i class="fas fa-check-circle text-4xl text-cyan-500 mb-2"></i>
+                        <h3 class="font-bold text-cyan-800 text-lg">Modo Ingreso Activado</h3>
+                        <p class="text-sm text-cyan-700">Completa estos datos administrativos para generar la Hoja Frontal.</p>
+                    </div>
+
+                    <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 border-b border-slate-100 pb-2 gap-2">
+                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-users text-cyan-500 mr-2"></i>Responsable Legal</h3>
+                            <label class="flex items-center gap-2 text-xs font-bold text-cyan-700 cursor-pointer bg-cyan-50 px-3 py-1.5 rounded-lg border border-cyan-100 hover:bg-cyan-100 transition w-max">
+                                <input type="checkbox" id="chk-mismo-paciente" onchange="toggleMismoPaciente()" class="text-cyan-600">
+                                El paciente firma por sí mismo
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="text-xs font-bold text-slate-500 uppercase block mb-1">Nombre Completo del Responsable</label>
+                                <input type="text" id="val-responsable" placeholder="Ej. Juan Pérez Vargas" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase block mb-1">Parentesco</label>
+                                <select id="val-parentesco" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                                    <option>Hijo(a)</option><option>Esposo(a)</option><option>Hermano(a)</option><option>Padre/Madre</option><option>Mismo Paciente</option><option>Otro</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase block mb-1">Teléfono</label>
+                                <input type="text" id="val-tel-resp" placeholder="10 dígitos" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                            </div>
+                            <div class="md:col-span-2">
+                                <div class="flex justify-between items-center mb-1">
+                                    <label class="text-xs font-bold text-slate-500 uppercase block">Dirección</label>
+                                    <label class="text-[10px] text-slate-600 font-bold cursor-pointer flex items-center"><input type="checkbox" id="chk-misma-dir" onchange="toggleMismaDireccion()" class="mr-1">Misma que paciente</label>
+                                </div>
+                                <input type="text" id="val-dir-resp" placeholder="Calle, número, colonia..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-stethoscope text-cyan-500 mr-2"></i>Detalles de Internamiento</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase block mb-1">Tipo de Ingreso</label>
+                                <input type="text" id="val-tipo-ingreso" disabled class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-sm font-bold text-cyan-700 outline-none">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase block mb-1">Médico Tratante</label>
+                                <input type="text" id="val-medico" value="Dr. Brandon Arguelles" disabled class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-4 md:p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-bed text-cyan-500 mr-2"></i>Asignación de Cama</h3>
+                        <input type="hidden" id="val-cama" value="">
+                        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3" id="camas-hosp">
+                            <div onclick="seleccionarCama(this, 'Cama 1')" class="border-2 border-emerald-400 bg-emerald-50 text-emerald-700 p-3 rounded-xl cursor-pointer text-center font-bold hover:shadow-md transition text-sm">Cama 1</div>
+                            <div class="border-2 border-red-200 bg-red-50 text-red-400 p-3 rounded-xl cursor-not-allowed text-center font-bold opacity-70 text-sm">Cama 2 <br><span class="text-[9px] font-normal">Ocupada</span></div>
+                            <div onclick="seleccionarCama(this, 'Cama 3')" class="border-2 border-emerald-400 bg-emerald-50 text-emerald-700 p-3 rounded-xl cursor-pointer text-center font-bold hover:shadow-md transition text-sm">Cama 3</div>
+                            <div onclick="seleccionarCama(this, 'Aislado')" class="border-2 border-emerald-400 bg-emerald-50 text-emerald-700 p-3 rounded-xl cursor-pointer text-center font-bold hover:shadow-md transition text-sm">Aislado</div>
+                            <div onclick="seleccionarCama(this, 'Observación')" class="border-2 border-amber-400 bg-amber-50 text-amber-700 p-3 rounded-xl cursor-pointer text-center font-bold hover:shadow-md transition text-sm">Obs.</div>
+                            <div onclick="seleccionarCama(this, 'Urgencias')" class="border-2 border-amber-400 bg-amber-50 text-amber-700 p-3 rounded-xl cursor-pointer text-center font-bold hover:shadow-md transition text-sm">Urgencias</div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-end gap-3 pb-10">
+                        <button type="button" onclick="imprimirDesdePestanas('ingreso')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Solo Hoja Frontal</button>
+                        <button type="button" onclick="generarIngreso(false)" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-slate-800"><i class="fas fa-procedures"></i> Generar Hoja e Internar</button>
+                        <button type="button" onclick="generarIngreso(true)" class="bg-white text-slate-800 border border-slate-200 px-6 py-3 rounded-xl font-bold shadow hover:bg-slate-50">Internar y volver al Dashboard</button>
+                    </div>
+                </div>
+
+                <div id="vista-consentimientos" class="hidden fade-in max-w-4xl mx-auto space-y-5 pb-20">
+                    <div class="bg-cyan-50 rounded-xl p-4 border border-cyan-200">
+                        <h4 class="text-xs font-bold text-cyan-800 uppercase mb-2">Formato a Generar</h4>
+                        <select id="selector-formato" onchange="cambiarFormatoConsentimiento()" class="w-full bg-white border border-cyan-300 rounded-lg p-2 text-sm font-bold text-cyan-900 outline-none">
+                            <option value="gral">1. Consentimiento de Ingreso y Tratamiento Médico (Obligatorio)</option>
+                            <option value="esp">2. Procedimiento Quirúrgico / Especial</option>
+                        </select>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <div id="form-cons-gral" class="grid grid-cols-2 gap-4">
+                            <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">Peso (kg)</label><input type="text" id="val-peso" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm"></div>
+                            <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">Talla (m)</label><input type="text" id="val-talla" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm"></div>
+                        </div>
+                        <div id="form-cons-esp" class="hidden grid grid-cols-1 gap-4">
+                            <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">Procedimiento o Cirugía</label><input type="text" id="val-procedimiento" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm"></div>
+                            <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">Riesgos y Objetivos</label><textarea id="val-riesgos" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm h-16"></textarea></div>
+                        </div>
+                    </div>
+                    <div class="text-right"><button type="button" onclick="imprimirDesdePestanas('consentimiento')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Solo Consentimiento</button></div>
+                </div>
+
+            </div>
+        </section>
+    </main>
+
+    <div id="modal-destino" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 pointer-events-none print:hidden p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6 text-center transform scale-95 transition-transform" id="modal-content">
+            <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 text-2xl mx-auto mb-4"><i class="fas fa-database"></i></div>
+            <h3 class="text-xl font-extrabold text-slate-900 mb-1">Nota Guardada en Expediente Digital</h3>
+            <p class="text-sm text-slate-500 mb-6">Seleccione el destino del paciente para generar la impresión:</p>
+            <div class="space-y-3">
+                <button type="button" onclick="finalizarProceso('Alta')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-3 rounded-xl transition flex justify-between px-6 items-center">
+                    <span><i class="fas fa-door-open mr-2"></i> Alta Médica (Imprimir Nota)</span> <i class="fas fa-print text-slate-400"></i>
+                </button>
+                <button type="button" onclick="finalizarProceso('Observacion')" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold py-3 rounded-xl transition flex justify-between px-6 items-center border border-amber-200">
+                    <span><i class="fas fa-bed mr-2"></i> Internar en Observación</span> <i class="fas fa-unlock text-amber-500"></i>
+                </button>
+                <button type="button" onclick="finalizarProceso('Hospitalizacion')" class="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 font-bold py-3 rounded-xl transition flex justify-between px-6 items-center border border-cyan-200">
+                    <span><i class="fas fa-hospital mr-2"></i> Ingresar a Hospitalización</span> <i class="fas fa-unlock text-cyan-500"></i>
+                </button>
+            </div>
+            <button type="button" onclick="document.getElementById('modal-destino').classList.add('opacity-0', 'pointer-events-none')" class="mt-6 text-xs text-slate-400 hover:text-slate-600 font-bold uppercase w-full">Cancelar y volver</button>
+        </div>
+    </div>
+
+    <div id="print-nota" class="zona-impresion hidden">
+        <div style="text-align: right; margin-bottom: 5px;">
+            <p id="titulo-impresion-nota" style="margin: 0; font-size: 14px; font-weight: bold; text-decoration: underline;">NOTA DE CONSULTA MÉDICA</p>
+            <p style="margin: 0;">Fecha y Hora: <span id="print-fecha" class="put-fecha"></span></p>
+        </div>
+        <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+            <p style="margin: 2px 0;"><strong>NOMBRE:</strong> Simona Vargas Rubio &nbsp;&nbsp; <strong>EDAD:</strong> 87 años &nbsp;&nbsp; <strong>SEXO:</strong> Femenino</p>
+            <p style="margin: 2px 0;" id="print-complementos"></p>
+        </div>
+        <div style="line-height: 1.4; text-align: justify;">
+            <div id="print-antecedentes" style="margin-bottom: 10px;"></div>
+            <p><strong>MOTIVO DE CONSULTA:</strong> <span id="print-motivo"></span></p>
+            <p><strong>PADECIMIENTO ACTUAL:</strong> <span id="print-padecimiento"></span></p>
+            <p style="margin-bottom: 2px;"><strong>EXPLORACIÓN FÍSICA:</strong> TA: 140/86 | FR: 19 | Temp: 36.2°C | SpO2: 98%</p>
+            <div style="margin-left: 10px; margin-bottom: 10px;" id="print-ef-dinamica"></div>
+            <div id="bloque-print-estudios" style="margin-bottom: 10px;"><strong>ESTUDIOS AUXILIARES:</strong> <span id="print-estudios"></span></div>
+            <p style="margin-bottom: 2px;"><strong>IDX (DIAGNÓSTICOS):</strong></p>
+            <ul id="print-idx-list" style="margin-top: 0; margin-bottom: 10px;"></ul>
+            <p style="margin-bottom: 10px;"><strong>ANÁLISIS CLÍNICO:</strong> <span id="print-analisis"></span></p>
+            <p style="margin-bottom: 10px;"><strong>PLAN Y TRATAMIENTO:</strong> <span id="print-plan"></span></p>
+            <div id="bloque-print-alarma" style="margin-bottom: 10px;"><strong>SIGNOS DE ALARMA EXPLICADOS:</strong> <span id="print-alarma"></span></div>
+            <p><strong>PRONÓSTICO:</strong> <span id="print-pron"></span></p>
+        </div>
+        <div class="firma-box" style="margin-top: 60px;">
+            <p style="margin: 0; font-weight: bold; font-size: 12px;" id="print-doctor-firma"></p>
+            <p style="margin: 0; font-size: 10px;">Cédula Prof: 87654321</p>
+            <p style="margin: 0; font-size: 10px;">Médico Tratante</p>
+        </div>
+    </div>
+
+    <div id="print-ingreso" class="zona-impresion hidden">
+        <div class="hoja-titulo">HOJA FRONTAL DE INGRESO HOSPITALARIO</div>
+        <div style="text-align: right; margin-bottom: 15px;"><strong>Fecha y Hora de Ingreso:</strong> <span class="put-fecha"></span></div>
+        <div class="cuadro-datos">
+            <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">I. DATOS DEL PACIENTE</h4>
+            <div class="fila"><span><strong>Nombre:</strong> Simona Vargas Rubio</span> <span><strong>Edad:</strong> 87 Años</span> <span><strong>Sexo:</strong> Femenino</span></div>
+            <div class="fila"><span><strong>Estado Civil:</strong> <span class="out-civil" id="print-civil"></span></span> <span><strong>Grupo y Rh:</strong> <span id="print-grupo-rh"></span></span></div>
+            <p style="margin:2px 0;"><strong>Dirección:</strong> <span class="out-dir"></span> &nbsp;&nbsp; <strong>Alergias:</strong> <span id="print-alergias-ingreso">Difenidol</span></p>
+        </div>
+        <div class="cuadro-datos">
+            <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">II. DATOS DE INTERNAMIENTO</h4>
+            <div class="fila"><span><strong>Médico Tratante:</strong> <span id="print-medico">Dr. Brandon Arguelles</span></span> <span><strong>Cama Asignada:</strong> <span class="out-cama" id="print-cama"></span></span></div>
+            <div class="fila"><span><strong>Tipo de Ingreso:</strong> <span id="print-tipo"></span></span></div>
+            <div style="margin-top: 8px;"><strong>Diagnóstico Presuncional:</strong> <span class="out-dx-prin"></span></div>
+        </div>
+        <div class="cuadro-datos">
+            <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">III. DATOS DEL RESPONSABLE LEGAL</h4>
+            <div class="fila"><span><strong>Nombre:</strong> <span class="out-resp" id="print-resp-nombre"></span></span> <span><strong>Parentesco:</strong> <span class="out-parentesco" id="print-resp-parentesco"></span></span></div>
+            <div class="fila"><span><strong>Teléfono:</strong> <span id="print-resp-tel"></span></span></div>
+            <div style="margin-top: 8px;"><strong>Dirección:</strong> <span id="print-resp-dir"></span></div>
+        </div>
+        <div style="margin-top: 20px; font-size: 10px; text-align: justify; line-height: 1.2;">
+            <strong>DECLARACIÓN:</strong> El que suscribe autoriza el internamiento en el Sanatorio Belén. Acepto tener conocimiento de que la atención médica, honorarios y procedimientos generarán cargos a mi cuenta que me comprometo a liquidar. Acepto que se me ha brindado información clara sobre el estado de salud.
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 40px;">
+            <div class="firma-box" style="margin-left:0;">
+                <p style="margin:0; font-weight:bold;" id="print-firma-medico">Dr. Brandon Arguelles</p>
+                <p style="margin:0;">Médico que Ingresa</p>
+            </div>
+            <div class="firma-box" style="margin-right:0;">
+                <p style="margin:0; font-weight:bold;" class="out-resp" id="print-firma-resp"></p>
+                <p style="margin:0;" id="print-firma-leyenda">Firma del Responsable Legal</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="print-cons-gral" class="zona-impresion hidden">
+        <div style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px;">CONSENTIMIENTO PARA EL TRATAMIENTO E INTERVENCIÓN MÉDICA</div>
+        <div style="line-height: 1.8; margin-bottom: 15px;">
+            <strong>Paciente:</strong> <span class="linea-input" style="width:250px;">Simona Vargas Rubio</span> &nbsp;&nbsp; <strong>Cama:</strong> <span class="linea-input out-cama" style="width:80px;"></span><br>
+            <strong>Fecha de Ingreso:</strong> <span class="linea-input put-fecha" style="width:150px;"></span> &nbsp;&nbsp; <strong>Peso:</strong> <span class="linea-input out-peso" style="width:50px;"></span> &nbsp;&nbsp; <strong>Talla:</strong> <span class="linea-input out-talla" style="width:50px;"></span><br>
+            <strong>Familiar Responsable:</strong> <span class="linea-input out-resp" style="width:250px;"></span>
+        </div>
+        <p style="text-align: justify; margin-bottom: 10px;">Por medio de este documento autorizo al personal de salud de Sanatorio Belén para que efectúen la atención médica necesaria...</p>
+        <p><strong>Diagnóstico al Ingreso:</strong> <span class="linea-input out-dx-prin"></span></p>
+        <ol style="margin-top:10px; padding-left:20px; text-align: justify; margin-bottom: 30px;">
+            <li>Autorizo que se me administren vía intramuscular o intravenosa sueros, medicamentos y vacunas.</li>
+            <li>Acepto ser hospitalizado de manera ambulatoria o indefinida bajo la indicación de mi médico.</li>
+        </ol>
+        <div style="display: flex; justify-content: space-between; margin-top: 50px;">
+            <div class="firma-box" style="margin-left:0;">FIRMA DEL PACIENTE</div>
+            <div class="firma-box" style="margin-right:0;">FIRMA DEL MÉDICO</div>
+        </div>
+    </div>
+
+    <div id="print-cons-esp" class="zona-impresion hidden">
+        <div style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px;">CONSENTIMIENTO INFORMADO (PROCEDIMIENTO)</div>
+        <div style="line-height: 1.8; margin-bottom: 15px;">
+            <strong>Paciente:</strong> <span class="linea-input" style="width:250px;">Simona Vargas Rubio</span> &nbsp;&nbsp; <strong>Cama:</strong> <span class="linea-input out-cama" style="width:80px;"></span><br>
+            <strong>Procedimiento:</strong> <span class="linea-input out-procedimiento" style="width: 100%;"></span><br>
+            <strong>Riesgos y Objetivos:</strong> <span class="linea-input out-riesgos" style="width: 100%; height: 30px;"></span>
+        </div>
+        <p style="text-align: justify; margin-bottom: 30px;">Yo, Simona Vargas Rubio, confirmo que se me informó en qué consiste la práctica, sus beneficios y riesgos detalladamente. Entiendo que tengo derecho a no aceptar el procedimiento propuesto.</p>
+        <div style="display: flex; justify-content: space-between; margin-top: 50px;">
+            <div class="firma-box" style="margin-left:0;">Nombre y firma del paciente</div>
+            <div class="firma-box" style="margin-right:0;">Nombre y firma del familiar</div>
+        </div>
+    </div>
+
+    <script>
+        let diagnósticosAgregados = [];
+        let cirugiasAgregadas = [];
+        const PARENTESCO_OPCIONES = '<option>Hijo(a)</option><option>Esposo(a)</option><option>Hermano(a)</option><option>Padre/Madre</option><option>Mismo Paciente</option><option>Otro</option>';
+
+        function initApp() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.getElementById('input-fecha').value = now.toISOString().slice(0, 16);
+            if(!document.getElementById('paciente-genero').innerText.includes('Femenino')) {
+                document.getElementById('seccion-ago').style.display = 'none';
+            }
+
+            const civilGuardado = sessionStorage.getItem('belen_paciente_civil');
+            if (civilGuardado) {
+                document.getElementById('comp-civil').value = civilGuardado;
+            }
+            sincronizarCivil();
+
+            const dirGuardada = sessionStorage.getItem('belen_paciente_dir');
+            if (dirGuardada && !document.getElementById('comp-dir').value) {
+                document.getElementById('comp-dir').value = dirGuardada;
+            }
+
+            aplicarTipoIngreso(sessionStorage.getItem('belen_destino'));
+
+            const params = new URLSearchParams(window.location.search);
+            const tab = params.get('tab');
+            const destinosInternamiento = ['Observacion', 'Hospitalizacion'];
+            if (tab === 'ingreso' || destinosInternamiento.includes(sessionStorage.getItem('belen_destino'))) {
+                desbloquearModoIngreso();
+                if (tab === 'ingreso') cambiarPestana('ingreso');
+            }
+        }
+
+        function sincronizarCivil() {
+            const civil = document.getElementById('comp-civil').value || 'Sin capturar';
+            document.getElementById('ui-civil').innerText = civil === 'Seleccione...' || !document.getElementById('comp-civil').value ? 'Sin capturar' : civil;
+        }
+
+        function aplicarTipoIngreso(destino) {
+            const inputTipo = document.getElementById('val-tipo-ingreso');
+            if (destino === 'Observacion') inputTipo.value = 'Ingreso a Observación Médica';
+            else if (destino === 'Hospitalizacion') inputTipo.value = 'Ingreso a Hospitalización';
+            else inputTipo.value = 'Ingreso General';
+        }
+
+        function desbloquearModoIngreso() {
+            document.getElementById('header-pestanas').classList.remove('hidden');
+            document.getElementById('btn-ingreso').classList.remove('hidden');
+            document.getElementById('btn-consentimientos').classList.remove('hidden');
+            document.getElementById('btn-imprimir-todo').classList.remove('hidden');
+            document.getElementById('panel-dx-ingreso').classList.remove('hidden');
+            document.getElementById('ui-dx-ingreso').innerText = diagnósticosAgregados[0] || 'Impactación Fecal (K56.4)';
+        }
+
+        function persistirDatosNota() {
+            sessionStorage.setItem('belen_paciente_dir', document.getElementById('comp-dir').value);
+            sessionStorage.setItem('belen_paciente_civil', document.getElementById('comp-civil').value);
+        }
+
+        function toggleComp(id) {
+            const omitir = document.getElementById(`chk-${id}`).checked;
+            document.getElementById(`comp-${id}`).disabled = omitir;
+            document.getElementById(`comp-${id}`).classList.toggle('opacity-50');
+        }
+        function toggleAntecedente(tipo) {
+            const isNegado = document.getElementById(`chk-${tipo}-neg`).checked;
+            const input = document.getElementById(`val-${tipo}`);
+            input.disabled = isNegado;
+            if(isNegado) { input.value = ''; input.classList.add('opacity-50', 'bg-slate-100'); input.classList.remove('bg-white'); }
+            else { input.classList.remove('opacity-50', 'bg-slate-100'); input.classList.add('bg-white'); input.focus(); }
+        }
+        function toggleOmitir(id) {
+            const omitir = document.getElementById(`chk-omitir-${id}`).checked;
+            document.getElementById(`val-${id}`).disabled = omitir;
+            document.getElementById(`val-${id}`).classList.toggle('opacity-50');
+        }
+        function toggleAPP() {
+            const isNegado = document.getElementById('chk-app-neg').checked;
+            const contenedor = document.getElementById('contenedor-app');
+            if(isNegado) {
+                contenedor.classList.add('opacity-50', 'pointer-events-none');
+                ['hta', 'dm2', 'qx', 'alergias', 'hemo'].forEach(id => {
+                    document.getElementById(`chk-${id}`).checked = false;
+                    document.getElementById(`div-${id}`).style.display = 'none';
+                });
+            } else { contenedor.classList.remove('opacity-50', 'pointer-events-none'); }
+        }
+        function toggleSubAPP(id) {
+            const checked = document.getElementById(`chk-${id}`).checked;
+            document.getElementById(`div-${id}`).style.display = checked ? (id==='alergias'?'block':'grid') : 'none';
+            if(id === 'qx') document.getElementById('btn-add-qx').style.display = checked ? 'block' : 'none';
+        }
+        function agregarCirugiaDOM() {
+            const id = Date.now();
+            cirugiasAgregadas.push(id);
+            const container = document.getElementById('qx-container');
+            const html = `
+                <div id="qx-row-${id}" class="grid grid-cols-1 md:grid-cols-12 gap-2 items-center bg-slate-50 border border-slate-200 p-3 rounded relative mt-2">
+                    <div class="col-span-1 md:col-span-4"><input type="text" id="qx-nombre-${id}" placeholder="Nombre de Cirugía" class="w-full bg-white border border-slate-200 rounded p-1.5 text-xs"></div>
+                    <div class="col-span-1 md:col-span-3"><input type="text" id="qx-fecha-${id}" placeholder="Fecha / Hace cuánto" class="w-full bg-white border border-slate-200 rounded p-1.5 text-xs"></div>
+                    <div class="col-span-1 md:col-span-4"><input type="text" id="qx-comp-${id}" placeholder="Complicaciones (o ninguna)" class="w-full bg-white border border-slate-200 rounded p-1.5 text-xs"></div>
+                    <div class="col-span-1 md:col-span-1 text-center"><button type="button" onclick="borrarCirugia(${id})" class="text-red-500 hover:text-red-700 p-2"><i class="fas fa-trash"></i></button></div>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+        }
+        function borrarCirugia(id) {
+            cirugiasAgregadas = cirugiasAgregadas.filter(x => x !== id);
+            document.getElementById(`qx-row-${id}`).remove();
+        }
+        function toggleAGO() {
+            const omitir = document.getElementById('chk-ago-omitir').checked;
+            const contenedor = document.getElementById('contenedor-ago');
+            if(omitir) {
+                contenedor.classList.add('opacity-50', 'pointer-events-none');
+                document.getElementById('ago-g').value = 0; document.getElementById('ago-p').value = 0;
+                document.getElementById('ago-c').value = 0; document.getElementById('ago-a').value = 0;
+                document.getElementById('gestas-container').innerHTML = '';
+            } else { contenedor.classList.remove('opacity-50', 'pointer-events-none'); }
+        }
+        function generarFilasAGO() {
+            const p = parseInt(document.getElementById('ago-p').value) || 0;
+            const c = parseInt(document.getElementById('ago-c').value) || 0;
+            const a = parseInt(document.getElementById('ago-a').value) || 0;
+            const gInput = document.getElementById('ago-g');
+            if(parseInt(gInput.value) < (p+c+a)) gInput.value = p+c+a;
+            const container = document.getElementById('gestas-container');
+            container.innerHTML = '';
+            const generarFila = (tipo, max) => {
+                for(let i=1; i<=max; i++) {
+                    container.innerHTML += `
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-2 bg-pink-50/50 p-2 border border-pink-100 rounded">
+                            <span class="text-xs font-bold text-pink-700 sm:w-16">${tipo} ${i}</span>
+                            <input type="text" id="det-${tipo.toLowerCase()}-${i}" placeholder="Detalles, año o complicaciones..." class="flex-1 bg-white border border-pink-200 rounded p-1 text-xs">
+                            <label class="flex items-center gap-1 text-[9px] text-slate-500 cursor-pointer"><input type="checkbox" id="omitir-${tipo.toLowerCase()}-${i}" class="text-pink-600"> Omitir</label>
+                        </div>`;
+                }
+            };
+            generarFila('Parto', p); generarFila('Cesarea', c); generarFila('Aborto', a);
+            if((p+c+a) > 0 && !document.getElementById('chk-ago-solo-formula').checked) { container.classList.remove('hidden'); }
+            else { container.classList.add('hidden'); }
+        }
+        function toggleDetallesAGO() {
+            const soloFormula = document.getElementById('chk-ago-solo-formula').checked;
+            const container = document.getElementById('gestas-container');
+            if(soloFormula) container.classList.add('hidden');
+            else if (container.innerHTML.trim() !== '') container.classList.remove('hidden');
+        }
+        function toggleTarjetaEF(id) {
+            const btn = document.getElementById(`btn-${id}`);
+            const text = document.getElementById(`text-${id}`);
+            const estatus = document.getElementById(`estatus-${id}`);
+            const labelNormal = btn.getAttribute('data-label') || 'Normal';
+            if(estatus.value === 'normal') {
+                estatus.value = 'alterado';
+                btn.className = "bg-red-50 text-red-700 border border-red-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm text-sm md:text-base";
+                btn.innerHTML = `<span>Alteración Encontrada</span><i class="fas fa-times-circle text-lg md:text-xl"></i>`;
+                text.style.display = 'block'; text.focus();
+            } else {
+                estatus.value = 'normal';
+                btn.className = "bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base";
+                btn.innerHTML = `<span>${labelNormal}</span><i class="fas fa-check-circle text-lg md:text-xl"></i>`;
+                text.style.display = 'none'; text.value = '';
+            }
+        }
+        function agregarDx() {
+            const input = document.getElementById('input-dx');
+            if(input.value.trim()) { diagnósticosAgregados.push(input.value.trim()); input.value = ''; renderizarListaDx(); }
+        }
+        function borrarDx(idx) { diagnósticosAgregados.splice(idx, 1); renderizarListaDx(); }
+        function renderizarListaDx() {
+            document.getElementById('lista-dx').innerHTML = diagnósticosAgregados.map((dx, idx) =>
+                `<li class="flex justify-between bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-100"><span class="text-sm font-medium text-cyan-800">${idx+1}. ${dx}</span><button type="button" onclick="borrarDx(${idx})" class="text-red-400 p-1"><i class="fas fa-times"></i></button></li>`
+            ).join('');
+            if (diagnósticosAgregados[0]) document.getElementById('ui-dx-ingreso').innerText = diagnósticosAgregados[0];
+        }
+
+        function cambiarPestana(idDestino) {
+            ['vista-nota', 'vista-ingreso', 'vista-consentimientos'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            ['btn-nota', 'btn-ingreso', 'btn-consentimientos'].forEach(b => {
+                const btn = document.getElementById(b);
+                if(btn) { btn.classList.remove('tab-activa'); btn.classList.add('tab-inactiva'); }
+            });
+            document.getElementById(`vista-${idDestino}`).classList.remove('hidden');
+            const btnActivo = document.getElementById(`btn-${idDestino}`);
+            if(btnActivo) { btnActivo.classList.remove('tab-inactiva'); btnActivo.classList.add('tab-activa'); }
+        }
+        function cambiarFormatoConsentimiento() {
+            const formato = document.getElementById('selector-formato').value;
+            document.getElementById('form-cons-gral').classList.toggle('hidden', formato !== 'gral');
+            document.getElementById('form-cons-esp').classList.toggle('hidden', formato !== 'esp');
+        }
+        function seleccionarCama(elemento, nombreCama) {
+            Array.from(document.getElementById('camas-hosp').children).forEach(c => {
+                if(c.classList.contains('cursor-pointer')) c.classList.remove('cama-activa', 'border-cyan-500');
+            });
+            elemento.classList.add('cama-activa', 'border-cyan-500');
+            document.getElementById('val-cama').value = nombreCama;
+            document.getElementById('ui-cama').innerText = nombreCama;
+            document.getElementById('badge-cama').classList.remove('hidden');
+        }
+        function toggleMismoPaciente() {
+            const isChecked = document.getElementById('chk-mismo-paciente').checked;
+            const nombre = document.getElementById('val-responsable');
+            const parentesco = document.getElementById('val-parentesco');
+            if(isChecked) {
+                nombre.value = 'Simona Vargas Rubio';
+                nombre.disabled = true; nombre.classList.add('bg-cyan-50');
+                parentesco.innerHTML = '<option>Mismo Paciente</option>';
+                parentesco.disabled = true; parentesco.classList.add('bg-cyan-50');
+                document.getElementById('print-firma-leyenda').innerText = 'Nombre y Firma del Paciente';
+                if (!document.getElementById('val-tel-resp').value && document.getElementById('comp-tel').value) {
+                    document.getElementById('val-tel-resp').value = document.getElementById('comp-tel').value;
+                }
+            } else {
+                nombre.value = ''; nombre.disabled = false; nombre.classList.remove('bg-cyan-50');
+                parentesco.innerHTML = PARENTESCO_OPCIONES;
+                parentesco.disabled = false; parentesco.classList.remove('bg-cyan-50');
+                document.getElementById('print-firma-leyenda').innerText = 'Firma del Responsable Legal';
+            }
+        }
+        function toggleMismaDireccion() {
+            const isChecked = document.getElementById('chk-misma-dir').checked;
+            const dir = document.getElementById('val-dir-resp');
+            if(isChecked) {
+                dir.value = document.getElementById('comp-dir').value || sessionStorage.getItem('belen_paciente_dir') || 'Domicilio Conocido';
+                dir.readOnly = true; dir.classList.add('bg-slate-100');
+            } else {
+                dir.value = ''; dir.readOnly = false; dir.classList.remove('bg-slate-100');
+            }
+        }
+
+        function validarYGuardar() {
+            if(diagnósticosAgregados.length === 0) return alert('Agregue al menos un diagnóstico.');
+            if(!document.getElementById('val-motivo').value) return alert('Falta el Motivo de Consulta.');
+            document.getElementById('modal-destino').classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('modal-content').classList.remove('scale-95');
+        }
+
+        function compilarDatosNota() {
+            const d = new Date(document.getElementById('input-fecha').value);
+            const fechaTxt = d.toLocaleDateString('es-MX') + ' ' + d.toLocaleTimeString('es-MX', {hour: '2-digit', minute:'2-digit'});
+            document.querySelectorAll('.put-fecha').forEach(el => el.innerText = fechaTxt);
+
+            let comp = [];
+            if(!document.getElementById('chk-tel').checked && document.getElementById('comp-tel').value) comp.push('Tel: ' + document.getElementById('comp-tel').value);
+            if(document.getElementById('comp-fn').value) comp.push('F. Nac: ' + document.getElementById('comp-fn').value);
+            if(document.getElementById('comp-civil').value) comp.push('E. Civil: ' + document.getElementById('comp-civil').value);
+            if(!document.getElementById('chk-dir').checked && document.getElementById('comp-dir').value) comp.push('Dir: ' + document.getElementById('comp-dir').value);
+            if(!document.getElementById('chk-ocu').checked && document.getElementById('comp-ocu').value) comp.push('Ocupación: ' + document.getElementById('comp-ocu').value);
+            document.getElementById('print-complementos').innerText = comp.join(' | ');
+
+            let htmlAnt = `<strong>AHF:</strong> ${document.getElementById('chk-ahf-neg').checked ? 'Preguntados y negados.' : document.getElementById('val-ahf').value} | `;
+            htmlAnt += `<strong>APNP:</strong> ${document.getElementById('chk-apnp-neg').checked ? 'Preguntados y negados.' : document.getElementById('val-apnp').value} <br>`;
+            if(!document.getElementById('chk-sangre-omitir').checked && document.getElementById('val-sangre').value) {
+                htmlAnt += `<strong>Grupo y Rh:</strong> ${document.getElementById('val-sangre').value}. `;
+            }
+            if(document.getElementById('chk-app-neg').checked) {
+                htmlAnt += `<strong>APP:</strong> Preguntados y negados. `;
+            } else {
+                htmlAnt += `<strong>APP:</strong> `;
+                if(document.getElementById('chk-hta').checked) htmlAnt += `HTA (${document.getElementById('hta-tiempo').value}, Tx: ${document.getElementById('hta-meds').value}, Apego: ${document.getElementById('hta-apego').value}). `;
+                if(document.getElementById('chk-dm2').checked) htmlAnt += `DM2 (${document.getElementById('dm2-tiempo').value}, Tx: ${document.getElementById('dm2-meds').value}, Apego: ${document.getElementById('dm2-apego').value}). `;
+                if(document.getElementById('chk-alergias').checked) htmlAnt += `<strong>Alergias:</strong> ${document.getElementById('val-alergias').value}. `;
+                if(document.getElementById('chk-hemo').checked) htmlAnt += `<strong>Transfusiones:</strong> ${document.getElementById('hemo-tipo').value} (Comp: ${document.getElementById('hemo-comp').value}). `;
+                if(document.getElementById('chk-qx').checked && cirugiasAgregadas.length > 0) {
+                    htmlAnt += `<strong>Qx:</strong> `;
+                    cirugiasAgregadas.forEach(id => {
+                        htmlAnt += `${document.getElementById('qx-nombre-'+id).value} (${document.getElementById('qx-fecha-'+id).value}, Comp: ${document.getElementById('qx-comp-'+id).value}). `;
+                    });
+                }
+                const otras = document.getElementById('val-otras-app').value;
+                if(otras) htmlAnt += `<strong>Otros:</strong> ${otras}. `;
+            }
+            if(document.getElementById('paciente-genero').innerText.includes('Femenino') && !document.getElementById('chk-ago-omitir').checked) {
+                const g = document.getElementById('ago-g').value || 0; const p = document.getElementById('ago-p').value || 0;
+                const c = document.getElementById('ago-c').value || 0; const a = document.getElementById('ago-a').value || 0;
+                htmlAnt += `<br><strong>AGO:</strong> G:${g} P:${p} C:${c} A:${a}. FUM: ${document.getElementById('ago-fum').value || 'No ref'}. Ritmo: ${document.getElementById('ago-ritmo').value}. MPF: ${document.getElementById('ago-mpf').value || 'Ninguno'}. `;
+                if(!document.getElementById('chk-ago-solo-formula').checked) {
+                    let descGestas = [];
+                    const recolectar = (tipo, max) => {
+                        for(let i=1; i<=max; i++) {
+                            if(!document.getElementById(`omitir-${tipo.toLowerCase()}-${i}`).checked) {
+                                const val = document.getElementById(`det-${tipo.toLowerCase()}-${i}`).value;
+                                if(val) descGestas.push(`${tipo} ${i}: ${val}`);
+                            }
+                        }
+                    };
+                    recolectar('Parto', p); recolectar('Cesarea', c); recolectar('Aborto', a);
+                    if(descGestas.length > 0) htmlAnt += `(Detalles: ${descGestas.join(' | ')}).`;
+                }
+            }
+            document.getElementById('print-antecedentes').innerHTML = htmlAnt;
+            document.getElementById('print-motivo').innerText = document.getElementById('val-motivo').value;
+            document.getElementById('print-padecimiento').innerText = document.getElementById('val-padecimiento').value;
+
+            let htmlEF = '';
+            const org = [
+                {id: 'neuro', nombre: 'Neurológico', normal: 'Orientada en sus tres esferas. Fuerza y sensibilidad conservadas.'},
+                {id: 'cabeza', nombre: 'Cabeza y Cuello', normal: 'Cráneo normocéfalo. Cavidad oral hidratada, faringe sin hiperemia. Cuello sin adenomegalias.'},
+                {id: 'cardio', nombre: 'Cardiopulmonar', normal: 'Tórax simétrico. Murmullo vesicular presente. Ruidos cardíacos rítmicos, sin soplos.'},
+                {id: 'abdomen', nombre: 'Abdomen', normal: 'Blando, depresible, no doloroso, sin datos de irritación peritoneal. Peristalsis presente.'},
+                {id: 'rectal', nombre: 'Tacto Rectal / GU', normal: 'Acorde a edad y sexo, sin alteraciones aparentes.'},
+                {id: 'ext', nombre: 'Extremidades', normal: 'Íntegras, simétricas, eutróficas, sin edema. Llenado capilar 2 seg.'}
+            ];
+            org.forEach(sis => {
+                if(document.getElementById(`estatus-${sis.id}`).value === 'normal') { htmlEF += `<p style="margin: 0;"><strong>${sis.nombre}:</strong> ${sis.normal}</p>`; }
+                else { htmlEF += `<p style="margin: 0; color: #b91c1c;"><strong>${sis.nombre}:</strong> ${document.getElementById(`text-${sis.id}`).value}</p>`; }
+            });
+            document.getElementById('print-ef-dinamica').innerHTML = htmlEF;
+
+            if(document.getElementById('chk-omitir-estudios').checked) { document.getElementById('bloque-print-estudios').style.display = 'none'; }
+            else { document.getElementById('bloque-print-estudios').style.display = 'block'; document.getElementById('print-estudios').innerText = document.getElementById('val-estudios').value || 'No se solicitan.'; }
+
+            document.getElementById('print-idx-list').innerHTML = diagnósticosAgregados.map(d => `<li>${d}</li>`).join('');
+            document.getElementById('print-analisis').innerText = document.getElementById('val-analisis').value || '-';
+            document.getElementById('print-plan').innerText = document.getElementById('val-plan').value || '-';
+            document.getElementById('print-pron').innerText = document.getElementById('val-pronostico').value || '-';
+
+            if(document.getElementById('chk-omitir-alarma').checked) { document.getElementById('bloque-print-alarma').style.display = 'none'; }
+            else { document.getElementById('bloque-print-alarma').style.display = 'block'; document.getElementById('print-alarma').innerText = document.getElementById('val-alarma').value; }
+
+            document.getElementById('print-doctor-firma').innerText = sessionStorage.getItem('belen_rol_usuario') === 'admin' ? 'Médico Base' : 'Dr. Brandon Arguelles';
+
+            const dxPrin = diagnósticosAgregados[0] || 'Impactación Fecal (K56.4)';
+            const grupoRh = (!document.getElementById('chk-sangre-omitir').checked && document.getElementById('val-sangre').value) ? document.getElementById('val-sangre').value : 'Desconoce';
+            const alergiasTxt = document.getElementById('chk-alergias').checked && document.getElementById('val-alergias').value ? document.getElementById('val-alergias').value : 'Difenidol';
+            document.getElementById('print-grupo-rh').innerText = grupoRh;
+            document.getElementById('print-alergias-ingreso').innerText = alergiasTxt;
+            document.getElementById('print-tipo').innerText = document.getElementById('val-tipo-ingreso').value;
+            document.getElementById('print-medico').innerText = document.getElementById('val-medico').value;
+            document.getElementById('print-firma-medico').innerText = document.getElementById('val-medico').value;
+            document.getElementById('print-resp-tel').innerText = document.getElementById('val-tel-resp').value || 'No proporcionado';
+            document.getElementById('print-resp-dir').innerText = document.getElementById('val-dir-resp').value || 'No proporcionada';
+
+            document.querySelectorAll('.out-civil').forEach(el => el.innerText = document.getElementById('comp-civil').value || 'No especificado');
+            document.querySelectorAll('.out-dir').forEach(el => el.innerText = document.getElementById('comp-dir').value || 'Domicilio Conocido');
+            document.querySelectorAll('.out-dx-prin').forEach(el => el.innerText = dxPrin);
+            document.querySelectorAll('.out-resp').forEach(el => el.innerText = document.getElementById('val-responsable').value);
+            document.querySelectorAll('.out-parentesco').forEach(el => el.innerText = document.getElementById('val-parentesco').value);
+            document.querySelectorAll('.out-cama').forEach(el => el.innerText = document.getElementById('val-cama').value || 'Pendiente');
+            document.querySelectorAll('.out-peso').forEach(el => el.innerText = document.getElementById('val-peso').value ? document.getElementById('val-peso').value + ' kg' : '');
+            document.querySelectorAll('.out-talla').forEach(el => el.innerText = document.getElementById('val-talla').value ? document.getElementById('val-talla').value + ' m' : '');
+            document.querySelectorAll('.out-procedimiento').forEach(el => el.innerText = document.getElementById('val-procedimiento').value);
+            document.querySelectorAll('.out-riesgos').forEach(el => el.innerText = document.getElementById('val-riesgos').value);
+        }
+
+        function ocultarTodosLosPrints() {
+            document.querySelectorAll('.zona-impresion').forEach(el => {
+                el.classList.add('hidden');
+                el.classList.remove('salto-pagina');
+            });
+        }
+
+        function finalizarProceso(destino) {
+            document.getElementById('modal-destino').classList.add('opacity-0', 'pointer-events-none');
+            sessionStorage.setItem('belen_destino', destino);
+            persistirDatosNota();
+            sincronizarCivil();
+            aplicarTipoIngreso(destino);
+            compilarDatosNota();
+            ocultarTodosLosPrints();
+
+            const pNota = document.getElementById('print-nota');
+            const tituloPDF = document.getElementById('titulo-impresion-nota');
+
+            if(destino === 'Alta') {
+                tituloPDF.innerText = 'NOTA DE CONSULTA MÉDICA';
+                pNota.classList.remove('hidden');
+                window.print();
+                setTimeout(() => window.location.href = 'dashboard.html', 1000);
+            } else {
+                tituloPDF.innerText = 'NOTA DE INGRESO HOSPITALARIO';
+                pNota.classList.remove('hidden');
+                window.print();
+                desbloquearModoIngreso();
+                cambiarPestana('ingreso');
+            }
+        }
+
+        function imprimirDesdePestanas(documentoUnico) {
+            persistirDatosNota();
+            compilarDatosNota();
+            ocultarTodosLosPrints();
+            if(documentoUnico === 'ingreso') document.getElementById('print-ingreso').classList.remove('hidden');
+            if(documentoUnico === 'consentimiento') {
+                const formato = document.getElementById('selector-formato').value;
+                document.getElementById(formato === 'gral' ? 'print-cons-gral' : 'print-cons-esp').classList.remove('hidden');
+            }
+            window.print();
+        }
+
+        function imprimirTodoElPaquete() {
+            persistirDatosNota();
+            compilarDatosNota();
+            ocultarTodosLosPrints();
+            const pNota = document.getElementById('print-nota');
+            const pIngreso = document.getElementById('print-ingreso');
+            const pConsGral = document.getElementById('print-cons-gral');
+            pNota.classList.remove('hidden'); pNota.classList.add('salto-pagina');
+            pIngreso.classList.remove('hidden'); pIngreso.classList.add('salto-pagina');
+            const formatoCons = document.getElementById('selector-formato').value;
+            if(formatoCons === 'gral') { pConsGral.classList.remove('hidden'); }
+            else { document.getElementById('print-cons-esp').classList.remove('hidden'); }
+            window.print();
+        }
+
+        function generarIngreso(volverDashboard) {
+            const responsable = document.getElementById('val-responsable').value;
+            const cama = document.getElementById('val-cama').value;
+            if(!responsable) return alert('Ingrese el nombre del Responsable.');
+            if(!cama) return alert('Debe asignar una cama.');
+            persistirDatosNota();
+            imprimirDesdePestanas('ingreso');
+            if (volverDashboard) {
+                setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
+            } else {
+                cambiarPestana('consentimientos');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => { initApp(); });
+    </script>
+</body>
+</html>
