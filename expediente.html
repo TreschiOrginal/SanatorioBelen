@@ -229,6 +229,79 @@
                                     </div>
                                     <div id="gestas-container" class="space-y-2 hidden"></div>
                                 </div>
+
+                                <div class="bg-white p-3 rounded-lg border border-pink-200">
+                                    <p class="text-[10px] font-bold text-pink-800 uppercase mb-3"><i class="fas fa-notes-medical mr-1"></i> Historia ginecológica y sexual</p>
+                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <div>
+                                            <div class="flex justify-between items-center mb-1">
+                                                <label for="ago-ivus" class="text-[9px] uppercase text-pink-700">IVUS (infecciones urinarias)</label>
+                                                <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-ivus-nr" data-targets="ago-ivus" onchange="toggleNoReferido(this)" class="text-pink-600"> No referidas</label>
+                                            </div>
+                                            <input type="text" id="ago-ivus" placeholder="Ej. 2 en el último año" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between items-center mb-1">
+                                                <label for="ago-ets" class="text-[9px] uppercase text-pink-700">ETS (enf. de transmisión sexual)</label>
+                                                <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-ets-nr" data-targets="ago-ets" onchange="toggleNoReferido(this)" class="text-pink-600"> No referidas</label>
+                                            </div>
+                                            <input type="text" id="ago-ets" placeholder="Ej. VPH 2015, tratado" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between items-center mb-1">
+                                                <label for="ago-parejas" class="text-[9px] uppercase text-pink-700">No. de parejas sexuales</label>
+                                                <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-parejas-nr" data-targets="ago-parejas" onchange="toggleNoReferido(this)" class="text-pink-600"> No referido</label>
+                                            </div>
+                                            <input type="number" id="ago-parejas" min="0" placeholder="0" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between items-center mb-1">
+                                                <label for="ago-higiene-tipo" class="text-[9px] uppercase text-pink-700">Toallas / tampones</label>
+                                                <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-higiene-nr" data-targets="ago-higiene-tipo,ago-higiene-cant" onchange="toggleNoReferido(this)" class="text-pink-600"> No referido</label>
+                                            </div>
+                                            <div class="grid grid-cols-2 gap-2">
+                                                <select id="ago-higiene-tipo" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"><option value="">Seleccione...</option><option value="TOALLAS">Toallas sanitarias</option><option value="TAMPONES">Tampones</option><option value="AMBOS">Ambos</option><option value="COPA">Copa menstrual</option></select>
+                                                <input type="text" id="ago-higiene-cant" placeholder="Ej. 3 al día" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-white p-3 rounded-lg border border-pink-200">
+                                    <label class="flex items-center gap-2 text-xs font-bold text-pink-800 cursor-pointer"><input type="checkbox" id="chk-embarazo" onchange="toggleEmbarazo()" class="text-pink-600"> <i class="fas fa-baby-carriage"></i> ¿Embarazo Actual?</label>
+                                    <div id="div-embarazo" class="hidden mt-3 space-y-3">
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+                                            <div>
+                                                <label for="emb-metodo" class="text-[9px] uppercase text-pink-700 block mb-1">SDG calculadas por</label>
+                                                <select id="emb-metodo" onchange="actualizarEmbarazo()" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs font-bold focus:border-pink-400 outline-none"><option value="FUM">FUM</option><option value="USG">USG</option></select>
+                                            </div>
+                                            <div>
+                                                <label for="emb-sdg" class="text-[9px] uppercase text-pink-700 block mb-1">Semanas (SDG) <span class="text-red-500">*</span></label>
+                                                <input type="number" id="emb-sdg" min="1" max="42" placeholder="Ej. 24" oninput="actualizarEmbarazo()" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs font-bold focus:border-pink-400 outline-none">
+                                            </div>
+                                            <div>
+                                                <button type="button" id="btn-calc-fum" onclick="calcularSDGporFUM()" class="w-full bg-pink-100 text-pink-700 border border-pink-200 text-[10px] font-bold px-2 py-2 rounded hover:bg-pink-200 transition"><i class="fas fa-calculator mr-1"></i> Calcular por FUM</button>
+                                            </div>
+                                            <div class="text-center">
+                                                <span id="emb-trimestre" class="inline-block bg-pink-50 text-pink-700 border border-pink-200 text-[10px] font-bold px-3 py-2 rounded-full w-full">—</span>
+                                            </div>
+                                        </div>
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div><label for="emb-consultas" class="text-[9px] uppercase text-pink-700 block mb-1">Consultas prenatales</label><input type="number" id="emb-consultas" min="0" placeholder="0" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                            <div><label for="emb-usg" class="text-[9px] uppercase text-pink-700 block mb-1">Ultrasonidos</label><input type="number" id="emb-usg" min="0" placeholder="0" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                        </div>
+                                        <div>
+                                            <p class="text-[9px] uppercase text-pink-700 mb-1">Vacunas aplicadas</p>
+                                            <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                                <label class="flex items-center gap-1 text-[11px] text-slate-600 font-medium cursor-pointer"><input type="checkbox" data-vacuna-emb="Tdpa" class="text-pink-600"> Tdpa</label>
+                                                <label class="flex items-center gap-1 text-[11px] text-slate-600 font-medium cursor-pointer"><input type="checkbox" data-vacuna-emb="Influenza" class="text-pink-600"> Influenza</label>
+                                                <label class="flex items-center gap-1 text-[11px] text-slate-600 font-medium cursor-pointer"><input type="checkbox" data-vacuna-emb="Td" class="text-pink-600"> Td</label>
+                                                <label class="flex items-center gap-1 text-[11px] text-slate-600 font-medium cursor-pointer"><input type="checkbox" data-vacuna-emb="COVID-19" class="text-pink-600"> COVID-19</label>
+                                                <input type="text" id="emb-vacunas-otras" placeholder="Otras (separe con coma)" class="flex-1 min-w-[160px] bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -251,7 +324,15 @@
                             <div class="flex flex-col gap-2"><div id="btn-neuro" data-label="Neurológico Normal" onclick="toggleTarjetaEF('neuro')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Neurológico Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-neuro" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-neuro" value="normal"></div>
                             <div class="flex flex-col gap-2"><div id="btn-cabeza" data-label="Cabeza y Cuello Normal" onclick="toggleTarjetaEF('cabeza')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Cabeza y Cuello Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-cabeza" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-cabeza" value="normal"></div>
                             <div class="flex flex-col gap-2"><div id="btn-cardio" data-label="Cardiopulmonar Normal" onclick="toggleTarjetaEF('cardio')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Cardiopulmonar Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-cardio" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa hallazgos..."></textarea><input type="hidden" id="estatus-cardio" value="normal"></div>
-                            <div class="flex flex-col gap-2"><div id="btn-abdomen" data-label="Abdomen Normal" onclick="toggleTarjetaEF('abdomen')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Abdomen Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-abdomen" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-abdomen" value="normal"></div>
+                            <div class="flex flex-col gap-2"><div id="btn-abdomen" data-label="Abdomen Normal" onclick="toggleTarjetaEF('abdomen')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Abdomen Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-abdomen" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-abdomen" value="normal">
+                                <div id="bloque-fcf" class="hidden bg-pink-50 border border-pink-200 rounded-xl p-3">
+                                    <label for="exp-fcf" class="text-[10px] font-bold text-pink-800 uppercase block mb-1"><i class="fas fa-heart-pulse mr-1"></i> Frecuencia Cardíaca Fetal (FCF) <span class="text-red-500">*</span></label>
+                                    <div class="flex items-center gap-2">
+                                        <input type="number" id="exp-fcf" min="60" max="220" placeholder="Ej. 142" class="w-28 bg-white border border-pink-200 rounded-lg p-2 text-sm font-bold focus:border-pink-400 outline-none">
+                                        <span class="text-xs font-bold text-pink-700">lpm</span>
+                                        <span class="text-[10px] text-slate-500 ml-2">Obligatoria con embarazo ≥ 20 SDG</span>
+                                    </div>
+                                </div></div>
                             <div class="flex flex-col gap-2"><div id="btn-rectal" data-label="Tacto Rectal / GU Normal" onclick="toggleTarjetaEF('rectal')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Tacto Rectal / GU Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-rectal" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-rectal" value="normal"></div>
                             <div class="flex flex-col gap-2"><div id="btn-ext" data-label="Extremidades Normales" onclick="toggleTarjetaEF('ext')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Extremidades Normales</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-ext" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-ext" value="normal"></div>
                         </div>
@@ -762,7 +843,11 @@
 
         // Devuelve [{id, nombre}] de los campos obligatorios aún vacíos, en orden de aparición
         function obtenerCamposPendientes() {
-            return CAMPOS_OBLIGATORIOS_NOTA.filter(c => !valorCampo(c.id));
+            const pendientes = CAMPOS_OBLIGATORIOS_NOTA.filter(c => !valorCampo(c.id));
+            // Condicionales de embarazo: SDG si hay embarazo; FCF si SDG >= 20
+            if (embarazoActivo() && !valorCampo('emb-sdg')) pendientes.push({ id: 'emb-sdg', nombre: 'SDG (Embarazo)' });
+            if (fcfObligatorio() && !valorCampo('exp-fcf')) pendientes.push({ id: 'exp-fcf', nombre: 'FCF (Abdomen)' });
+            return pendientes;
         }
 
         function marcarCamposPendientes(pendientes) {
@@ -802,6 +887,153 @@
             if (destino === 'Observacion') return 'NOTA DE INGRESO A OBSERVACIÓN';
             if (destino === 'Hospitalizacion') return 'NOTA DE INGRESO HOSPITALARIO';
             return 'NOTA DE CONSULTA MÉDICA';
+        }
+
+        // ============================================================
+        // AGO EXTENDIDO, EMBARAZO ACTUAL Y FCF
+        // ============================================================
+        function toggleNoReferido(chk) {
+            (chk.dataset.targets || '').split(',').forEach(id => {
+                const n = document.getElementById(id.trim());
+                if (!n) return;
+                n.disabled = chk.checked;
+                if (chk.checked) n.value = '';
+                n.classList.toggle('opacity-50', chk.checked);
+            });
+        }
+
+        // true solo si: paciente femenina + AGO no omitido + "¿Embarazo Actual?" marcado
+        function embarazoActivo() {
+            const chk = document.getElementById('chk-embarazo');
+            return !!chk && chk.checked
+                && !document.getElementById('chk-ago-omitir').checked
+                && document.getElementById('paciente-genero').innerText.includes('Femenino');
+        }
+
+        function obtenerSDG() {
+            const n = parseInt(document.getElementById('emb-sdg').value, 10);
+            return Number.isFinite(n) && n > 0 ? n : null;
+        }
+
+        // 1er trimestre: hasta 13 SDG · 2do: 14 a 27 · 3er: 28 en adelante
+        function trimestreDeSDG(sdg) {
+            if (sdg == null) return null;
+            return sdg < 14 ? 1 : (sdg < 28 ? 2 : 3);
+        }
+
+        function fcfObligatorio() {
+            return embarazoActivo() && (obtenerSDG() || 0) >= 20;
+        }
+
+        function toggleEmbarazo() {
+            const marcado = document.getElementById('chk-embarazo').checked;
+            document.getElementById('div-embarazo').classList.toggle('hidden', !marcado);
+            actualizarEmbarazo();
+        }
+
+        function actualizarEmbarazo() {
+            const sdg = obtenerSDG();
+            const tri = trimestreDeSDG(sdg);
+            document.getElementById('emb-trimestre').innerText = tri ? `${['1er', '2do', '3er'][tri - 1]} trimestre` : '—';
+            document.getElementById('btn-calc-fum').classList.toggle('hidden', document.getElementById('emb-metodo').value !== 'FUM');
+
+            // FCF: aparece (y es obligatoria) solo con embarazo y SDG >= 20
+            const mostrarFCF = fcfObligatorio();
+            document.getElementById('bloque-fcf').classList.toggle('hidden', !mostrarFCF);
+            if (!mostrarFCF) document.getElementById('exp-fcf').value = '';
+
+            // El "Normal" del abdomen se enfoca en el embarazo
+            const activo = embarazoActivo();
+            const etiqueta = activo ? 'Abdomen Gravídico Normal' : 'Abdomen Normal';
+            const btn = document.getElementById('btn-abdomen');
+            btn.setAttribute('data-label', etiqueta);
+            if (document.getElementById('estatus-abdomen').value === 'normal') btn.querySelector('span').innerText = etiqueta;
+            document.getElementById('text-abdomen').placeholder = activo
+                ? 'Describa alteraciones (altura de fondo uterino, actividad uterina, presentación...)'
+                : 'Describa alteraciones...';
+            actualizarIndicadorPendientes();
+        }
+
+        // Acepta DD/MM/AAAA, DD-MM-AAAA o AAAA-MM-DD. Devuelve Date válido o null.
+        function parsearFechaFlexible(txt) {
+            const t = String(txt || '').trim();
+            let d, m, y;
+            let match = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+            if (match) { d = +match[1]; m = +match[2]; y = +match[3]; if (match[3].length === 2) y += 2000; }
+            else if ((match = t.match(/^(\d{4})-(\d{2})-(\d{2})$/))) { y = +match[1]; m = +match[2]; d = +match[3]; }
+            else return null;
+            const f = new Date(y, m - 1, d);
+            return (f.getFullYear() === y && f.getMonth() === m - 1 && f.getDate() === d) ? f : null;
+        }
+
+        function calcularSDGporFUM() {
+            const fum = parsearFechaFlexible(document.getElementById('ago-fum').value);
+            if (!fum) return alert('Capture la FUM como DD/MM/AAAA en el campo "FUM" para calcular las semanas de gestación.');
+            const refInput = new Date(document.getElementById('input-fecha').value);
+            const ref = isNaN(refInput.getTime()) ? new Date() : refInput;
+            const dias = Math.floor((ref - fum) / 86400000);
+            if (dias < 7 || dias > 301) return alert('La FUM capturada da un resultado fuera de rango (1 a 42 semanas). Verifique la fecha.');
+            document.getElementById('emb-sdg').value = Math.floor(dias / 7);
+            actualizarEmbarazo();
+        }
+
+        // Catálogo de sistemas de la exploración física, con su texto "Normal".
+        // El abdomen cambia cuando hay embarazo actual.
+        function obtenerSistemasEF() {
+            let abdomenNormal = 'Blando, depresible, no doloroso, sin datos de irritación peritoneal. Peristalsis presente.';
+            if (embarazoActivo()) {
+                const sdg = obtenerSDG();
+                abdomenNormal = `Blando, depresible, útero gestante${sdg ? ' de ' + sdg + ' SDG' : ''}, sin datos de actividad uterina ni de irritación peritoneal. Peristalsis presente.`;
+                if (fcfObligatorio()) abdomenNormal += ` Producto único vivo, FCF ${valorCampo('exp-fcf') || 'sin capturar'} lpm.`;
+            }
+            return [
+                {id: 'neuro', nombre: 'Neurológico', normal: 'Orientada en sus tres esferas. Fuerza y sensibilidad conservadas.'},
+                {id: 'cabeza', nombre: 'Cabeza y Cuello', normal: 'Cráneo normocéfalo. Cavidad oral hidratada, faringe sin hiperemia. Cuello sin adenomegalias.'},
+                {id: 'cardio', nombre: 'Cardiopulmonar', normal: 'Tórax simétrico. Murmullo vesicular presente. Ruidos cardíacos rítmicos, sin soplos.'},
+                {id: 'abdomen', nombre: 'Abdomen', normal: abdomenNormal},
+                {id: 'rectal', nombre: 'Tacto Rectal / GU', normal: 'Acorde a edad y sexo, sin alteraciones aparentes.'},
+                {id: 'ext', nombre: 'Extremidades', normal: 'Íntegras, simétricas, eutróficas, sin edema. Llenado capilar 2 seg.'}
+            ];
+        }
+
+        // Si el abdomen está marcado como alterado, la FCF igual debe imprimirse
+        function sufijoFCF(textoPrevio) {
+            if (!(fcfObligatorio() && valorCampo('exp-fcf'))) return '';
+            const separador = /[.!?]\s*$/.test(String(textoPrevio || '')) ? ' ' : '. ';
+            return `${separador}FCF: ${valorCampo('exp-fcf')} lpm.`;
+        }
+
+        // Texto de impresión para los campos nuevos del AGO y el embarazo actual
+        function textoAGOExtendido() {
+            const nr = id => document.getElementById(id).checked;
+            let t = '';
+            if (nr('chk-ago-ivus-nr')) t += 'IVUS: No referidas. ';
+            else if (valorCampo('ago-ivus')) t += `IVUS: ${escaparHTML(valorCampo('ago-ivus'))}. `;
+            if (nr('chk-ago-ets-nr')) t += 'ETS: No referidas. ';
+            else if (valorCampo('ago-ets')) t += `ETS: ${escaparHTML(valorCampo('ago-ets'))}. `;
+            if (nr('chk-ago-parejas-nr')) t += 'Parejas sexuales: No referido. ';
+            else if (valorCampo('ago-parejas') !== '') t += `Parejas sexuales: ${escaparHTML(valorCampo('ago-parejas'))}. `;
+            if (nr('chk-ago-higiene-nr')) t += 'Toallas/tampones: No referido. ';
+            else if (valorCampo('ago-higiene-tipo')) {
+                const sel = document.getElementById('ago-higiene-tipo');
+                t += `Higiene menstrual: ${escaparHTML(sel.options[sel.selectedIndex].text)}${valorCampo('ago-higiene-cant') ? ' (' + escaparHTML(valorCampo('ago-higiene-cant')) + ')' : ''}. `;
+            }
+            if (embarazoActivo()) {
+                const sdg = obtenerSDG();
+                const tri = trimestreDeSDG(sdg);
+                const vacunas = obtenerVacunasEmbarazo();
+                t += `<strong>Embarazo actual:</strong> ${sdg ? sdg + ' SDG' : 'SDG sin capturar'} por ${document.getElementById('emb-metodo').value}${tri ? ' (' + ['1er', '2do', '3er'][tri - 1] + ' trimestre)' : ''}. `;
+                if (valorCampo('emb-consultas') !== '') t += `Consultas prenatales: ${escaparHTML(valorCampo('emb-consultas'))}. `;
+                if (valorCampo('emb-usg') !== '') t += `Ultrasonidos: ${escaparHTML(valorCampo('emb-usg'))}. `;
+                t += `Vacunas: ${vacunas.length ? escaparHTML(vacunas.join(', ')) : 'ninguna referida'}. `;
+            }
+            return t;
+        }
+
+        function obtenerVacunasEmbarazo() {
+            const marcadas = Array.from(document.querySelectorAll('[data-vacuna-emb]:checked')).map(c => c.dataset.vacunaEmb);
+            const otras = valorCampo('emb-vacunas-otras').split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+            return marcadas.concat(otras);
         }
 
         function toggleAntecedente(tipo) {
@@ -857,6 +1089,9 @@
                 document.getElementById('ago-g').value = 0; document.getElementById('ago-p').value = 0;
                 document.getElementById('ago-c').value = 0; document.getElementById('ago-a').value = 0;
                 document.getElementById('gestas-container').innerHTML = '';
+                // Si se omite el AGO, también se descarta un embarazo capturado
+                document.getElementById('chk-embarazo').checked = false;
+                toggleEmbarazo();
             } else { contenedor.classList.remove('opacity-50', 'pointer-events-none'); }
         }
         function generarFilasAGO() {
@@ -1025,6 +1260,7 @@
                 const g = document.getElementById('ago-g').value || 0; const p = document.getElementById('ago-p').value || 0;
                 const c = document.getElementById('ago-c').value || 0; const a = document.getElementById('ago-a').value || 0;
                 htmlAnt += `<br><strong>AGO:</strong> G:${g} P:${p} C:${c} A:${a}. FUM: ${document.getElementById('ago-fum').value || 'No ref'}. Ritmo: ${document.getElementById('ago-ritmo').value}. MPF: ${document.getElementById('ago-mpf').value || 'Ninguno'}. `;
+                htmlAnt += textoAGOExtendido();
                 if(!document.getElementById('chk-ago-solo-formula').checked) {
                     let descGestas = [];
                     const recolectar = (tipo, max) => {
@@ -1044,17 +1280,11 @@
             document.getElementById('print-padecimiento').innerText = document.getElementById('val-padecimiento').value;
 
             let htmlEF = '';
-            const org = [
-                {id: 'neuro', nombre: 'Neurológico', normal: 'Orientada en sus tres esferas. Fuerza y sensibilidad conservadas.'},
-                {id: 'cabeza', nombre: 'Cabeza y Cuello', normal: 'Cráneo normocéfalo. Cavidad oral hidratada, faringe sin hiperemia. Cuello sin adenomegalias.'},
-                {id: 'cardio', nombre: 'Cardiopulmonar', normal: 'Tórax simétrico. Murmullo vesicular presente. Ruidos cardíacos rítmicos, sin soplos.'},
-                {id: 'abdomen', nombre: 'Abdomen', normal: 'Blando, depresible, no doloroso, sin datos de irritación peritoneal. Peristalsis presente.'},
-                {id: 'rectal', nombre: 'Tacto Rectal / GU', normal: 'Acorde a edad y sexo, sin alteraciones aparentes.'},
-                {id: 'ext', nombre: 'Extremidades', normal: 'Íntegras, simétricas, eutróficas, sin edema. Llenado capilar 2 seg.'}
-            ];
+            // Catálogo de sistemas (movido a obtenerSistemasEF(): el abdomen "normal" cambia con el embarazo)
+            const org = obtenerSistemasEF();
             org.forEach(sis => {
                 if(document.getElementById(`estatus-${sis.id}`).value === 'normal') { htmlEF += `<p style="margin: 0;"><strong>${sis.nombre}:</strong> ${sis.normal}</p>`; }
-                else { htmlEF += `<p style="margin: 0; color: #b91c1c;"><strong>${sis.nombre}:</strong> ${document.getElementById(`text-${sis.id}`).value}</p>`; }
+                else { htmlEF += `<p style="margin: 0; color: #b91c1c;"><strong>${sis.nombre}:</strong> ${document.getElementById(`text-${sis.id}`).value}${sis.id === 'abdomen' ? sufijoFCF(document.getElementById('text-abdomen').value) : ''}</p>`; }
             });
             document.getElementById('print-ef-dinamica').innerHTML = htmlEF;
 
@@ -1363,7 +1593,27 @@
                     cesareas: parseInt(texto('ago-c'), 10) || 0,
                     abortos: parseInt(texto('ago-a'), 10) || 0,
                     solo_formula: marcado('chk-ago-solo-formula'),
-                    detalle_gestas: detalleGestas
+                    detalle_gestas: detalleGestas,
+                    ivus: { no_referido: marcado('chk-ago-ivus-nr'), detalle: marcado('chk-ago-ivus-nr') ? null : textoONull('ago-ivus') },
+                    ets: { no_referido: marcado('chk-ago-ets-nr'), detalle: marcado('chk-ago-ets-nr') ? null : textoONull('ago-ets') },
+                    numero_parejas_sexuales: { no_referido: marcado('chk-ago-parejas-nr'), valor: marcado('chk-ago-parejas-nr') ? null : enteroONull(texto('ago-parejas')) },
+                    higiene_menstrual: {
+                        no_referido: marcado('chk-ago-higiene-nr'),
+                        tipo: marcado('chk-ago-higiene-nr') ? null : textoONull('ago-higiene-tipo'), // TOALLAS | TAMPONES | AMBOS | COPA
+                        cantidad: marcado('chk-ago-higiene-nr') ? null : textoONull('ago-higiene-cant')
+                    },
+                    embarazo_actual: embarazoActivo() ? {
+                        presente: true,
+                        metodo_calculo_sdg: texto('emb-metodo'), // FUM | USG
+                        sdg: obtenerSDG(),
+                        trimestre: trimestreDeSDG(obtenerSDG()), // 1 | 2 | 3
+                        consultas_prenatales: enteroONull(texto('emb-consultas')),
+                        ultrasonidos: enteroONull(texto('emb-usg')),
+                        vacunas: obtenerVacunasEmbarazo()
+                    } : {
+                        presente: false, metodo_calculo_sdg: null, sdg: null, trimestre: null,
+                        consultas_prenatales: null, ultrasonidos: null, vacunas: []
+                    }
                 } : null
             };
 
@@ -1378,7 +1628,9 @@
                     sistema_codigo: id,
                     sistema: nombre,
                     estatus: alterado ? 'ALTERADO' : 'NORMAL',
-                    hallazgo: alterado ? textoONull(`text-${id}`) : null
+                    hallazgo: alterado ? textoONull(`text-${id}`) : null,
+                    // FCF solo aplica al abdomen y solo se captura con embarazo >= 20 SDG
+                    fcf_lpm: (id === 'abdomen' && fcfObligatorio()) ? enteroONull(texto('exp-fcf')) : null
                 };
             });
 
