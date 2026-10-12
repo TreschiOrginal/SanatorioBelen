@@ -47,6 +47,9 @@
             body.modo-paquete .zona-impresion { position: static; }
         }
 
+        /* Campos obligatorios sin capturar (se marcan al intentar guardar o al pulsar el indicador) */
+        .campo-pendiente { border-color: #f87171 !important; background-color: #fef2f2 !important; box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.25); }
+
         /* Las zonas de impresión JAMÁS deben verse en pantalla (solo al imprimir) */
         @media screen {
             .zona-impresion { display: none !important; }
@@ -122,25 +125,25 @@
                         </div>
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
                             <div>
-                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">F. Nacimiento</label></div>
+                                <div class="flex justify-between items-center mb-1"><label for="comp-fn" class="text-[10px] font-bold text-slate-500 uppercase">F. Nacimiento <span class="text-red-500">*</span></label></div>
                                 <input type="date" id="comp-fn" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
                             </div>
                             <div>
-                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Estado Civil</label></div>
+                                <div class="flex justify-between items-center mb-1"><label for="comp-civil" class="text-[10px] font-bold text-slate-500 uppercase">Estado Civil <span class="text-red-500">*</span></label></div>
                                 <select id="comp-civil" onchange="sincronizarCivil()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
                                     <option value="">Seleccione...</option><option>Soltero(a)</option><option>Casado(a)</option><option>Unión Libre</option><option>Divorciado(a)</option><option>Viudo(a)</option>
                                 </select>
                             </div>
                             <div>
-                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Teléfono</label><label class="text-[9px] cursor-pointer"><input type="checkbox" onchange="toggleComp('tel')" id="chk-tel"> Omitir</label></div>
+                                <div class="flex justify-between items-center mb-1"><label for="comp-tel" class="text-[10px] font-bold text-slate-500 uppercase">Teléfono <span class="text-red-500">*</span></label></div>
                                 <input type="text" id="comp-tel" placeholder="Ej. 322 123..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
                             </div>
                             <div>
-                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Ocupación</label><label class="text-[9px] cursor-pointer"><input type="checkbox" onchange="toggleComp('ocu')" id="chk-ocu"> Omitir</label></div>
+                                <div class="flex justify-between items-center mb-1"><label for="comp-ocu" class="text-[10px] font-bold text-slate-500 uppercase">Ocupación <span class="text-red-500">*</span></label></div>
                                 <input type="text" id="comp-ocu" placeholder="Ej. Ama de casa" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
                             </div>
                             <div class="col-span-2 md:col-span-1">
-                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Dirección</label><label class="text-[9px] cursor-pointer"><input type="checkbox" onchange="toggleComp('dir')" id="chk-dir"> Omitir</label></div>
+                                <div class="flex justify-between items-center mb-1"><label for="comp-dir" class="text-[10px] font-bold text-slate-500 uppercase">Dirección <span class="text-red-500">*</span></label></div>
                                 <input type="text" id="comp-dir" placeholder="Ej. Calle 123..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
                             </div>
                         </div>
@@ -519,6 +522,13 @@
         </section>
     </main>
 
+    <!-- Indicador flotante de campos obligatorios pendientes -->
+    <button type="button" id="indicador-pendientes" onclick="irAlPrimerPendiente()" class="hidden fixed bottom-6 right-6 z-40 print:hidden items-center gap-2 bg-amber-50 text-amber-800 border border-amber-300 shadow-lg rounded-full px-4 py-2.5 text-xs font-bold hover:bg-amber-100 hover:-translate-y-0.5 transition-all">
+        <i class="fas fa-exclamation-circle text-amber-500"></i>
+        <span id="texto-pendientes">Faltan campos obligatorios</span>
+        <i class="fas fa-arrow-down text-[10px] text-amber-500"></i>
+    </button>
+
     <div id="modal-destino" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 pointer-events-none print:hidden p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6 text-center transform scale-95 transition-transform" id="modal-content">
             <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 text-2xl mx-auto mb-4"><i class="fas fa-database"></i></div>
@@ -701,6 +711,11 @@
                 desbloquearModoIngreso();
                 if (tab === 'ingreso') cambiarPestana('ingreso');
             }
+
+            // Indicador de pendientes: se recalcula ante cualquier cambio en el formulario
+            document.addEventListener('input', actualizarIndicadorPendientes);
+            document.addEventListener('change', actualizarIndicadorPendientes);
+            actualizarIndicadorPendientes();
         }
 
         function sincronizarCivil() {
@@ -729,11 +744,66 @@
             sessionStorage.setItem('belen_paciente_civil', document.getElementById('comp-civil').value);
         }
 
-        function toggleComp(id) {
-            const omitir = document.getElementById(`chk-${id}`).checked;
-            document.getElementById(`comp-${id}`).disabled = omitir;
-            document.getElementById(`comp-${id}`).classList.toggle('opacity-50');
+        // ============================================================
+        // CAMPOS OBLIGATORIOS E INDICADOR FLOTANTE DE PENDIENTES
+        // ============================================================
+        const CAMPOS_OBLIGATORIOS_NOTA = [
+            { id: 'comp-fn', nombre: 'F. Nacimiento' },
+            { id: 'comp-civil', nombre: 'Estado Civil' },
+            { id: 'comp-tel', nombre: 'Teléfono' },
+            { id: 'comp-ocu', nombre: 'Ocupación' },
+            { id: 'comp-dir', nombre: 'Dirección' }
+        ];
+
+        function valorCampo(id) {
+            const n = document.getElementById(id);
+            return n ? String(n.value || '').trim() : '';
         }
+
+        // Devuelve [{id, nombre}] de los campos obligatorios aún vacíos, en orden de aparición
+        function obtenerCamposPendientes() {
+            return CAMPOS_OBLIGATORIOS_NOTA.filter(c => !valorCampo(c.id));
+        }
+
+        function marcarCamposPendientes(pendientes) {
+            pendientes.forEach(c => { const n = document.getElementById(c.id); if (n) n.classList.add('campo-pendiente'); });
+        }
+
+        function actualizarIndicadorPendientes() {
+            const btn = document.getElementById('indicador-pendientes');
+            if (!btn) return;
+            const pendientes = obtenerCamposPendientes();
+            // Quita la marca roja de los campos que ya se llenaron
+            document.querySelectorAll('.campo-pendiente').forEach(n => { if (valorCampo(n.id)) n.classList.remove('campo-pendiente'); });
+
+            if (pendientes.length === 0 || document.body.classList.contains('solo-lectura')) {
+                btn.classList.add('hidden'); btn.classList.remove('flex');
+                return;
+            }
+            document.getElementById('texto-pendientes').innerText = pendientes.length === 1
+                ? 'Falta 1 campo obligatorio'
+                : `Faltan ${pendientes.length} campos obligatorios`;
+            btn.title = 'Pendientes: ' + pendientes.map(c => c.nombre).join(', ');
+            btn.classList.remove('hidden'); btn.classList.add('flex');
+        }
+
+        function irAlPrimerPendiente() {
+            const pendientes = obtenerCamposPendientes();
+            if (pendientes.length === 0) return;
+            cambiarPestana('nota');
+            marcarCamposPendientes(pendientes);
+            const el = document.getElementById(pendientes[0].id);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => el.focus({ preventScroll: true }), 400);
+        }
+
+        function tituloNotaSegunDestino(destino) {
+            if (destino === 'Observacion') return 'NOTA DE INGRESO A OBSERVACIÓN';
+            if (destino === 'Hospitalizacion') return 'NOTA DE INGRESO HOSPITALARIO';
+            return 'NOTA DE CONSULTA MÉDICA';
+        }
+
         function toggleAntecedente(tipo) {
             const isNegado = document.getElementById(`chk-${tipo}-neg`).checked;
             const input = document.getElementById(`val-${tipo}`);
@@ -902,6 +972,11 @@
         }
 
         function validarYGuardar() {
+            const pendientes = obtenerCamposPendientes();
+            if (pendientes.length > 0) {
+                irAlPrimerPendiente();
+                return alert('Faltan campos obligatorios: ' + pendientes.map(c => c.nombre).join(', ') + '.');
+            }
             if(diagnósticosAgregados.length === 0) return alert('Agregue al menos un diagnóstico.');
             if(!document.getElementById('val-motivo').value) return alert('Falta el Motivo de Consulta.');
             document.getElementById('modal-destino').classList.remove('opacity-0', 'pointer-events-none');
@@ -914,12 +989,15 @@
             document.querySelectorAll('.put-fecha').forEach(el => el.innerText = fechaTxt);
 
             let comp = [];
-            if(!document.getElementById('chk-tel').checked && document.getElementById('comp-tel').value) comp.push('Tel: ' + document.getElementById('comp-tel').value);
+            if(document.getElementById('comp-tel').value) comp.push('Tel: ' + document.getElementById('comp-tel').value);
             if(document.getElementById('comp-fn').value) comp.push('F. Nac: ' + document.getElementById('comp-fn').value);
             if(document.getElementById('comp-civil').value) comp.push('E. Civil: ' + document.getElementById('comp-civil').value);
-            if(!document.getElementById('chk-dir').checked && document.getElementById('comp-dir').value) comp.push('Dir: ' + document.getElementById('comp-dir').value);
-            if(!document.getElementById('chk-ocu').checked && document.getElementById('comp-ocu').value) comp.push('Ocupación: ' + document.getElementById('comp-ocu').value);
+            if(document.getElementById('comp-dir').value) comp.push('Dir: ' + document.getElementById('comp-dir').value);
+            if(document.getElementById('comp-ocu').value) comp.push('Ocupación: ' + document.getElementById('comp-ocu').value);
             document.getElementById('print-complementos').innerText = comp.join(' | ');
+
+            // Título dinámico según el destino elegido en el modal
+            document.getElementById('titulo-impresion-nota').innerText = tituloNotaSegunDestino(sessionStorage.getItem('belen_destino'));
 
             let htmlAnt = `<strong>AHF:</strong> ${document.getElementById('chk-ahf-neg').checked ? 'Preguntados y negados.' : document.getElementById('val-ahf').value} | `;
             htmlAnt += `<strong>APNP:</strong> ${document.getElementById('chk-apnp-neg').checked ? 'Preguntados y negados.' : document.getElementById('val-apnp').value} <br>`;
@@ -1059,7 +1137,7 @@
             const tituloPDF = document.getElementById('titulo-impresion-nota');
 
             if(destino === 'Alta') {
-                tituloPDF.innerText = 'NOTA DE CONSULTA MÉDICA';
+                tituloPDF.innerText = tituloNotaSegunDestino(destino);
                 pNota.classList.remove('hidden');
                 window.print();
                 ocultarTodosLosPrints();
@@ -1070,7 +1148,7 @@
 
                 setTimeout(() => window.location.href = 'dashboard.html', 1000);
             } else {
-                tituloPDF.innerText = 'NOTA DE INGRESO HOSPITALARIO';
+                tituloPDF.innerText = tituloNotaSegunDestino(destino);
                 pNota.classList.remove('hidden');
                 window.print();
                 ocultarTodosLosPrints();
@@ -1183,9 +1261,9 @@
                 edad_anios: edadMatch ? parseInt(edadMatch[1], 10) : null,
                 fecha_nacimiento: textoONull('comp-fn'),
                 estado_civil: textoONull('comp-civil'),
-                telefono: omitibleONull('chk-tel', 'comp-tel'),
-                ocupacion: omitibleONull('chk-ocu', 'comp-ocu'),
-                direccion: omitibleONull('chk-dir', 'comp-dir'),
+                telefono: textoONull('comp-tel'),
+                ocupacion: textoONull('comp-ocu'),
+                direccion: textoONull('comp-dir'),
                 grupo_sanguineo: omitibleONull('chk-sangre-omitir', 'val-sangre'),
                 signos_vitales: {
                     ta_sistolica: enteroONull(ta[0]),
