@@ -551,91 +551,43 @@
                         </select>
                     </div>
 
-                    <!-- 2. SOLUCIONES PARENTERALES -->
+                    <!-- SOLUCIONES PARENTERALES (texto libre + machotes) -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-droplet text-cyan-500 mr-2"></i>Soluciones Parenterales (Sueros)</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="md:col-span-2">
-                                <label for="ind-solucion" class="text-xs font-bold text-slate-500 uppercase block mb-1">Solución</label>
-                                <input type="text" id="ind-solucion" placeholder="Ej. Solución Salina 0.9% 1000ml" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
-                            </div>
-                            <div>
-                                <label for="ind-velocidad" class="text-xs font-bold text-slate-500 uppercase block mb-1">Velocidad</label>
-                                <input type="text" id="ind-velocidad" placeholder="Ej. Para 24 hrs" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
-                            </div>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-droplet text-cyan-500 mr-2"></i>Soluciones Parenterales</h3>
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            <label for="machote-sel-soluciones" class="sr-only">Cargar machote</label>
+                            <select id="machote-sel-soluciones" onchange="cargarMachote('soluciones')" class="flex-1 min-w-[200px] bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:border-cyan-500 outline-none"></select>
+                            <button type="button" onclick="guardarMachote('soluciones')" class="bg-cyan-50 text-cyan-700 border border-cyan-200 px-3 py-2 rounded-lg text-xs font-bold hover:bg-cyan-100 transition inline-flex items-center gap-1.5"><i class="fas fa-bookmark"></i> Guardar como machote</button>
+                            <button type="button" onclick="borrarMachote('soluciones')" class="text-red-400 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-lg text-xs transition" title="Eliminar un machote guardado"><i class="fas fa-trash"></i></button>
                         </div>
+                        <label for="ind-soluciones" class="sr-only">Soluciones Parenterales</label>
+                        <textarea id="ind-soluciones" rows="6" placeholder="Ej. Solución Salina 0.9% 1000 ml para 24 hrs.&#10;Solución Hartmann 1000 ml para 12 hrs." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed text-slate-800 focus:border-cyan-500 outline-none resize-y"></textarea>
                     </div>
 
-                    <!-- 3. MEDICAMENTOS (dinámico) -->
+                    <!-- MEDICAMENTOS (texto libre + machotes) -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-                        <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
-                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-pills text-cyan-500 mr-2"></i>Medicamentos</h3>
-                            <span class="text-[10px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-100 px-2 py-1 rounded-full"><span id="contador-medicamentos">0</span> indicados</span>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-pills text-cyan-500 mr-2"></i>Medicamentos</h3>
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            <label for="machote-sel-medicamentos" class="sr-only">Cargar machote</label>
+                            <select id="machote-sel-medicamentos" onchange="cargarMachote('medicamentos')" class="flex-1 min-w-[200px] bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:border-cyan-500 outline-none"></select>
+                            <button type="button" onclick="guardarMachote('medicamentos')" class="bg-cyan-50 text-cyan-700 border border-cyan-200 px-3 py-2 rounded-lg text-xs font-bold hover:bg-cyan-100 transition inline-flex items-center gap-1.5"><i class="fas fa-bookmark"></i> Guardar como machote</button>
+                            <button type="button" onclick="borrarMachote('medicamentos')" class="text-red-400 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-lg text-xs transition" title="Eliminar un machote guardado"><i class="fas fa-trash"></i></button>
                         </div>
-                        <div class="grid grid-cols-2 md:grid-cols-12 gap-3 items-end bg-slate-50 border border-slate-200 rounded-xl p-3 md:p-4">
-                            <div class="col-span-2 md:col-span-4">
-                                <label for="ind-med-nombre" class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Medicamento</label>
-                                <input type="text" id="ind-med-nombre" placeholder="Ej. Paracetamol 500 mg" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:border-cyan-500 outline-none">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="ind-med-dosis" class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Dosis</label>
-                                <input type="text" id="ind-med-dosis" placeholder="Ej. 1 tableta" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:border-cyan-500 outline-none">
-                            </div>
-                            <div class="md:col-span-2">
-                                <label for="ind-med-via" class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Vía</label>
-                                <select id="ind-med-via" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:border-cyan-500 outline-none">
-                                    <option value="IV">IV</option><option value="VO">VO</option><option value="IM">IM</option><option value="SC">SC</option>
-                                </select>
-                            </div>
-                            <div class="col-span-2 md:col-span-4">
-                                <label for="ind-med-frecuencia" class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Frecuencia</label>
-                                <input type="text" id="ind-med-frecuencia" list="frecuencias-list" placeholder="Ej. Cada 8 hrs" class="w-full bg-white border border-slate-200 rounded-lg p-2 text-sm focus:border-cyan-500 outline-none">
-                                <datalist id="frecuencias-list">
-                                    <option value="Cada 4 hrs"><option value="Cada 6 hrs"><option value="Cada 8 hrs"><option value="Cada 12 hrs"><option value="Cada 24 hrs"><option value="Dosis única"><option value="PRN (por razón necesaria)">
-                                </datalist>
-                            </div>
-                        </div>
-                        <div class="mt-3 text-right">
-                            <button type="button" onclick="agregarMedicamento()" class="bg-cyan-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-cyan-700 transition inline-flex items-center gap-2"><i class="fas fa-plus"></i> Agregar Medicamento</button>
-                        </div>
-                        <ul id="lista-medicamentos" class="space-y-2 mt-4">
-                            <li class="text-xs text-slate-400 italic text-center py-4 border border-dashed border-slate-200 rounded-xl">Sin medicamentos agregados.</li>
-                        </ul>
+                        <label for="ind-medicamentos" class="sr-only">Medicamentos</label>
+                        <textarea id="ind-medicamentos" rows="10" placeholder="Un medicamento por línea. Ej.&#10;Paracetamol 500 mg VO cada 8 hrs.&#10;Ketorolaco 30 mg IV cada 8 hrs." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed text-slate-800 focus:border-cyan-500 outline-none resize-y"></textarea>
                     </div>
 
-                    <!-- 4. MEDIDAS GENERALES -->
+                    <!-- MEDIDAS GENERALES (texto libre + machotes) -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                         <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-clipboard-check text-cyan-500 mr-2"></i>Medidas Generales</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <label class="relative block cursor-pointer">
-                                <input type="checkbox" id="ind-signos-turno" data-medida-general="SIGNOS_VITALES_TURNO" data-descripcion="Signos vitales por turno" class="peer sr-only">
-                                <div class="flex items-center gap-3 p-4 pr-12 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-600 font-bold text-sm transition select-none hover:border-cyan-300 peer-checked:border-emerald-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-cyan-300">
-                                    <i class="fas fa-heart-pulse text-lg w-6 text-center"></i><span>Signos vitales por turno</span>
-                                </div>
-                                <div class="absolute top-1/2 -translate-y-1/2 right-4 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-transparent transition peer-checked:bg-emerald-500 peer-checked:border-emerald-500 peer-checked:text-white"><i class="fas fa-check text-[10px]"></i></div>
-                            </label>
-                            <label class="relative block cursor-pointer">
-                                <input type="checkbox" id="ind-control-liquidos" data-medida-general="CONTROL_LIQUIDOS" data-descripcion="Control de líquidos" class="peer sr-only">
-                                <div class="flex items-center gap-3 p-4 pr-12 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-600 font-bold text-sm transition select-none hover:border-cyan-300 peer-checked:border-emerald-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-cyan-300">
-                                    <i class="fas fa-glass-water text-lg w-6 text-center"></i><span>Control de líquidos</span>
-                                </div>
-                                <div class="absolute top-1/2 -translate-y-1/2 right-4 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-transparent transition peer-checked:bg-emerald-500 peer-checked:border-emerald-500 peer-checked:text-white"><i class="fas fa-check text-[10px]"></i></div>
-                            </label>
-                            <label class="relative block cursor-pointer">
-                                <input type="checkbox" id="ind-reposo-absoluto" data-medida-general="REPOSO_ABSOLUTO" data-descripcion="Reposo absoluto" class="peer sr-only">
-                                <div class="flex items-center gap-3 p-4 pr-12 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-600 font-bold text-sm transition select-none hover:border-cyan-300 peer-checked:border-emerald-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-cyan-300">
-                                    <i class="fas fa-bed text-lg w-6 text-center"></i><span>Reposo absoluto</span>
-                                </div>
-                                <div class="absolute top-1/2 -translate-y-1/2 right-4 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-transparent transition peer-checked:bg-emerald-500 peer-checked:border-emerald-500 peer-checked:text-white"><i class="fas fa-check text-[10px]"></i></div>
-                            </label>
-                            <label class="relative block cursor-pointer">
-                                <input type="checkbox" id="ind-cabecera-30" data-medida-general="CABECERA_30_GRADOS" data-descripcion="Cabecera a 30 grados" class="peer sr-only">
-                                <div class="flex items-center gap-3 p-4 pr-12 rounded-xl border-2 border-slate-200 bg-slate-50 text-slate-600 font-bold text-sm transition select-none hover:border-cyan-300 peer-checked:border-emerald-400 peer-checked:bg-emerald-50 peer-checked:text-emerald-700 peer-focus-visible:ring-2 peer-focus-visible:ring-cyan-300">
-                                    <i class="fas fa-angle-up text-lg w-6 text-center"></i><span>Cabecera a 30 grados</span>
-                                </div>
-                                <div class="absolute top-1/2 -translate-y-1/2 right-4 w-6 h-6 rounded-full border-2 border-slate-300 bg-white flex items-center justify-center text-transparent transition peer-checked:bg-emerald-500 peer-checked:border-emerald-500 peer-checked:text-white"><i class="fas fa-check text-[10px]"></i></div>
-                            </label>
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            <label for="machote-sel-medidas" class="sr-only">Cargar machote</label>
+                            <select id="machote-sel-medidas" onchange="cargarMachote('medidas')" class="flex-1 min-w-[200px] bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:border-cyan-500 outline-none"></select>
+                            <button type="button" onclick="guardarMachote('medidas')" class="bg-cyan-50 text-cyan-700 border border-cyan-200 px-3 py-2 rounded-lg text-xs font-bold hover:bg-cyan-100 transition inline-flex items-center gap-1.5"><i class="fas fa-bookmark"></i> Guardar como machote</button>
+                            <button type="button" onclick="borrarMachote('medidas')" class="text-red-400 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-lg text-xs transition" title="Eliminar un machote guardado"><i class="fas fa-trash"></i></button>
                         </div>
+                        <label for="ind-medidas" class="sr-only">Medidas Generales</label>
+                        <textarea id="ind-medidas" rows="6" placeholder="Ej. Signos vitales por turno. Control de líquidos. Reposo absoluto. Cabecera a 30 grados." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed text-slate-800 focus:border-cyan-500 outline-none resize-y"></textarea>
                     </div>
 
                     <div class="text-right"><button type="button" data-solo-lectura-ok onclick="imprimirDesdePestanas('indicaciones')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Solo Indicaciones</button></div>
@@ -788,11 +740,12 @@
         <div class="cuadro-datos">
             <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">INDICACIONES</h4>
             <p style="margin: 0 0 10px 0;"><strong>1. DIETA:</strong> <span id="print-ind-dieta"></span></p>
-            <p style="margin: 0 0 10px 0;"><strong>2. SOLUCIONES PARENTERALES:</strong> <span id="print-ind-soluciones"></span></p>
+            <p style="margin: 0 0 2px 0;"><strong>2. SOLUCIONES PARENTERALES:</strong></p>
+            <div id="print-ind-soluciones" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
             <p style="margin: 0 0 2px 0;"><strong>3. MEDICAMENTOS:</strong></p>
-            <ol id="print-ind-medicamentos" style="margin-top: 0; margin-bottom: 10px; padding-left: 25px; list-style: decimal;"></ol>
+            <div id="print-ind-medicamentos" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
             <p style="margin: 0 0 2px 0;"><strong>4. MEDIDAS GENERALES:</strong></p>
-            <ul id="print-ind-medidas" style="margin-top: 0; margin-bottom: 0; padding-left: 25px; list-style: disc;"></ul>
+            <div id="print-ind-medidas" style="white-space: pre-wrap; margin: 0 0 0 15px;"></div>
         </div>
 
         <div class="firma-box" style="margin-top: 60px;">
@@ -805,7 +758,6 @@
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
-        let medicamentosIndicados = [];
         const PARENTESCO_OPCIONES = '<option>Hijo(a)</option><option>Esposo(a)</option><option>Hermano(a)</option><option>Padre/Madre</option><option>Mismo Paciente</option><option>Otro</option>';
 
         function initApp() {
@@ -846,6 +798,7 @@
             ['comp-tel', 'comp-dir'].forEach(id => document.getElementById(id).addEventListener('input', sincronizarResponsableConNota));
             // Peso/Talla (Signos Vitales) alimentan el IMC y el Consentimiento
             ['val-peso', 'val-talla'].forEach(id => document.getElementById(id).addEventListener('input', sincronizarPesoTalla));
+            renderizarMachotes();
             sincronizarPesoTalla();
             actualizarEdadDesdeFN();
             document.getElementById('input-fecha').addEventListener('change', actualizarEstadoMenor);
@@ -1577,18 +1530,10 @@
             document.getElementById('print-ind-alergias').innerText = alergiasTxt;
             document.getElementById('print-ind-dieta').innerText = ind.dieta.descripcion || 'No especificada';
 
-            const solInd = ind.soluciones_parenterales[0];
-            document.getElementById('print-ind-soluciones').innerText = solInd
-                ? solInd.solucion + (solInd.velocidad ? ' — ' + solInd.velocidad : '')
-                : 'No se indican.';
-
-            document.getElementById('print-ind-medicamentos').innerHTML = ind.medicamentos.length
-                ? ind.medicamentos.map(m => `<li style="margin-bottom: 3px;"><strong>${escaparHTML(m.nombre)}</strong> — Dosis: ${escaparHTML(m.dosis)} | Vía: ${escaparHTML(m.via)} | Frecuencia: ${escaparHTML(m.frecuencia)}</li>`).join('')
-                : '<li style="list-style: none; margin-left: -25px;">No se indican medicamentos.</li>';
-
-            document.getElementById('print-ind-medidas').innerHTML = ind.medidas_generales.length
-                ? ind.medidas_generales.map(mg => `<li>${escaparHTML(mg.descripcion || mg.codigo)}</li>`).join('')
-                : '<li style="list-style: none; margin-left: -25px;">Ninguna indicada.</li>';
+            // Texto libre: se imprime tal cual (saltos de línea respetados por white-space: pre-wrap)
+            document.getElementById('print-ind-soluciones').textContent = ind.soluciones_parenterales.texto || 'No se indican.';
+            document.getElementById('print-ind-medicamentos').textContent = ind.medicamentos.texto || 'No se indican medicamentos.';
+            document.getElementById('print-ind-medidas').textContent = ind.medidas_generales.texto || 'Ninguna indicada.';
 
             document.getElementById('print-ind-firma').innerText = document.getElementById('val-medico').value;
         }
@@ -1960,29 +1905,25 @@
 
         // Lee la vista de Indicaciones y devuelve JSON plano (sin efectos secundarios,
         // sin console.log). Lo consumen recolectarExpediente() y compilarDatosNota().
+        // Los tres bloques son texto libre: se guarda el `texto` completo (columna TEXT)
+        // y `lineas[]` (una fila por renglón, por si backend desea normalizar).
         function recolectarIndicaciones() {
             const valor = id => { const n = document.getElementById(id); return n ? n.value.trim() : ''; };
             const selDieta = document.getElementById('ind-dieta');
             const dietaCodigo = selDieta && selDieta.value ? selDieta.value : null;
-            const solucion = valor('ind-solucion');
+            const bloque = id => {
+                const t = valor(id);
+                return { texto: t || null, lineas: t ? t.split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [] };
+            };
 
             return {
                 dieta: {
                     codigo: dietaCodigo,
                     descripcion: dietaCodigo ? selDieta.options[selDieta.selectedIndex].text : null
                 },
-                soluciones_parenterales: solucion
-                    ? [{ orden: 1, solucion: solucion, velocidad: valor('ind-velocidad') || null }]
-                    : [],
-                medicamentos: medicamentosIndicados.map((m, i) => ({
-                    orden: i + 1,
-                    nombre: m.nombre,
-                    dosis: m.dosis,
-                    via: m.via,
-                    frecuencia: m.frecuencia
-                })),
-                medidas_generales: Array.from(document.querySelectorAll('[data-medida-general]:checked'))
-                    .map(c => ({ codigo: c.dataset.medidaGeneral, descripcion: c.dataset.descripcion || null }))
+                soluciones_parenterales: bloque('ind-soluciones'),
+                medicamentos: bloque('ind-medicamentos'),
+                medidas_generales: bloque('ind-medidas')
             };
         }
 
@@ -1990,44 +1931,99 @@
             return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
-        function agregarMedicamento() {
-            const nombre = document.getElementById('ind-med-nombre').value.trim();
-            const dosis = document.getElementById('ind-med-dosis').value.trim();
-            const via = document.getElementById('ind-med-via').value;
-            const frecuencia = document.getElementById('ind-med-frecuencia').value.trim();
+        // ============================================================
+        // MACHOTES (plantillas de indicaciones) — localStorage
+        // ------------------------------------------------------------
+        // Clave 'belen_machotes' -> [{ id, seccion, nombre, texto, creado_en }]
+        // seccion: 'soluciones' | 'medicamentos' | 'medidas'
+        // Misma forma que una tabla `machotes_indicaciones` futura.
+        // ============================================================
+        const MACHOTES_CLAVE = 'belen_machotes';
+        const MACHOTES_SECCIONES = {
+            soluciones:   { textarea: 'ind-soluciones',   etiqueta: 'Soluciones' },
+            medicamentos: { textarea: 'ind-medicamentos', etiqueta: 'Medicamentos' },
+            medidas:      { textarea: 'ind-medidas',      etiqueta: 'Medidas Generales' }
+        };
 
-            if (!nombre) return alert('Ingrese el nombre del medicamento.');
-            if (!dosis) return alert('Ingrese la dosis del medicamento.');
-            if (!frecuencia) return alert('Ingrese la frecuencia de administración.');
-
-            medicamentosIndicados.push({ id: Date.now(), nombre: nombre, dosis: dosis, via: via, frecuencia: frecuencia });
-
-            ['ind-med-nombre', 'ind-med-dosis', 'ind-med-frecuencia'].forEach(id => { document.getElementById(id).value = ''; });
-            document.getElementById('ind-med-via').selectedIndex = 0;
-            renderizarListaMedicamentos();
-            document.getElementById('ind-med-nombre').focus();
+        function leerMachotes() {
+            try {
+                const arr = JSON.parse(localStorage.getItem(MACHOTES_CLAVE) || '[]');
+                return Array.isArray(arr) ? arr.filter(m => m && MACHOTES_SECCIONES[m.seccion] && m.nombre && typeof m.texto === 'string') : [];
+            } catch (e) { return []; }
         }
 
-        function borrarMedicamento(id) {
-            medicamentosIndicados = medicamentosIndicados.filter(m => m.id !== id);
-            renderizarListaMedicamentos();
+        function escribirMachotes(lista) {
+            try { localStorage.setItem(MACHOTES_CLAVE, JSON.stringify(lista)); return true; }
+            catch (e) { alert('No se pudo guardar el machote (almacenamiento local no disponible).'); return false; }
         }
 
-        function renderizarListaMedicamentos() {
-            const lista = document.getElementById('lista-medicamentos');
-            document.getElementById('contador-medicamentos').innerText = medicamentosIndicados.length;
-            if (medicamentosIndicados.length === 0) {
-                lista.innerHTML = '<li class="text-xs text-slate-400 italic text-center py-4 border border-dashed border-slate-200 rounded-xl">Sin medicamentos agregados.</li>';
-                return;
+        function renderizarMachotes() {
+            const todos = leerMachotes();
+            Object.keys(MACHOTES_SECCIONES).forEach(sec => {
+                const sel = document.getElementById(`machote-sel-${sec}`);
+                if (!sel) return;
+                const propios = todos.filter(m => m.seccion === sec).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+                sel.innerHTML = '<option value="">Cargar Machote…</option>' +
+                    propios.map(m => `<option value="${escaparHTML(m.id)}">${escaparHTML(m.nombre)}</option>`).join('');
+            });
+        }
+
+        // Inserta el machote en la posición del cursor SIN borrar el texto existente
+        function cargarMachote(seccion) {
+            const sel = document.getElementById(`machote-sel-${seccion}`);
+            const id = sel.value;
+            if (!id) return;
+            const m = leerMachotes().find(x => x.id === id && x.seccion === seccion);
+            sel.value = '';
+            if (!m) return renderizarMachotes();
+
+            const ta = document.getElementById(MACHOTES_SECCIONES[seccion].textarea);
+            const pos = ta.selectionEnd; // si hubiera selección, se inserta después (no la reemplaza)
+            const antes = ta.value.slice(0, pos);
+            const despues = ta.value.slice(pos);
+            let insertar = m.texto;
+            if (antes && !antes.endsWith('\n')) insertar = '\n' + insertar;
+            if (despues && !insertar.endsWith('\n') && !despues.startsWith('\n')) insertar += '\n';
+            ta.value = antes + insertar + despues;
+            const nuevaPos = antes.length + insertar.length;
+            ta.focus();
+            ta.setSelectionRange(nuevaPos, nuevaPos);
+            ta.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        // Guarda como machote lo seleccionado en el textarea (o todo el texto si no hay selección)
+        function guardarMachote(seccion) {
+            const ta = document.getElementById(MACHOTES_SECCIONES[seccion].textarea);
+            const seleccion = ta.value.slice(ta.selectionStart, ta.selectionEnd).trim();
+            const texto = seleccion || ta.value.trim();
+            if (!texto) return alert('Escriba primero el texto que desea guardar como machote.');
+            let nombre = prompt('Nombre del machote (ej. "Esquema de Insulina"):');
+            if (nombre === null) return;
+            nombre = nombre.trim();
+            if (!nombre) return alert('El machote necesita un nombre.');
+
+            const lista = leerMachotes();
+            const existente = lista.find(m => m.seccion === seccion && m.nombre.toLowerCase() === nombre.toLowerCase());
+            if (existente) {
+                if (!confirm(`Ya existe el machote "${existente.nombre}". ¿Reemplazar su contenido?`)) return;
+                existente.texto = texto;
+                existente.creado_en = new Date().toISOString();
+            } else {
+                lista.push({ id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), seccion: seccion, nombre: nombre, texto: texto, creado_en: new Date().toISOString() });
             }
-            lista.innerHTML = medicamentosIndicados.map((m, idx) => `
-                <li class="flex items-center justify-between gap-3 bg-cyan-50 border border-cyan-100 rounded-xl px-4 py-3">
-                    <div class="min-w-0">
-                        <p class="text-sm font-bold text-cyan-900 truncate">${idx + 1}. ${escaparHTML(m.nombre)}</p>
-                        <p class="text-xs text-slate-600 mt-0.5">${escaparHTML(m.dosis)} <span class="mx-1 text-slate-300">•</span> <span class="font-bold text-cyan-700 bg-white border border-cyan-200 rounded px-1.5 py-0.5">${escaparHTML(m.via)}</span> <span class="mx-1 text-slate-300">•</span> ${escaparHTML(m.frecuencia)}</p>
-                    </div>
-                    <button type="button" onclick="borrarMedicamento(${m.id})" class="text-red-400 hover:text-red-600 p-2 shrink-0" title="Quitar medicamento"><i class="fas fa-trash"></i></button>
-                </li>`).join('');
+            if (escribirMachotes(lista)) renderizarMachotes();
+        }
+
+        function borrarMachote(seccion) {
+            const propios = leerMachotes().filter(m => m.seccion === seccion);
+            if (propios.length === 0) return alert('No hay machotes guardados en esta sección.');
+            const opciones = propios.map((m, i) => `${i + 1}. ${m.nombre}`).join('\n');
+            const resp = prompt(`Escriba el número del machote a eliminar:\n\n${opciones}`);
+            if (resp === null) return;
+            const elegido = propios[parseInt(resp, 10) - 1];
+            if (!elegido) return alert('Número no válido.');
+            if (!confirm(`¿Eliminar el machote "${elegido.nombre}"?`)) return;
+            if (escribirMachotes(leerMachotes().filter(m => m.id !== elegido.id))) renderizarMachotes();
         }
 
         document.addEventListener('DOMContentLoaded', () => { initApp(); });
