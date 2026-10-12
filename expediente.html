@@ -40,6 +40,17 @@
             .firma-box { text-align: center; width: 220px; border-top: 1px solid black; padding-top: 5px; font-size: 10px; margin-left: auto; margin-right: auto; }
             .salto-pagina { page-break-after: always; }
         }
+
+        /* Paquete completo: las zonas fluyen una tras otra (no apiladas en top:0)
+           para que salto-pagina funcione. Solo se activa desde imprimirTodoElPaquete(). */
+        @media print {
+            body.modo-paquete .zona-impresion { position: static; }
+        }
+
+        /* Las zonas de impresión JAMÁS deben verse en pantalla (solo al imprimir) */
+        @media screen {
+            .zona-impresion { display: none !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-50 flex flex-col md:h-screen md:overflow-hidden relative print:bg-white print:h-auto print:overflow-visible min-h-screen">
@@ -500,6 +511,8 @@
                             </label>
                         </div>
                     </div>
+
+                    <div class="text-right"><button type="button" onclick="imprimirDesdePestanas('indicaciones')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Solo Indicaciones</button></div>
                 </div>
 
             </div>
@@ -622,6 +635,35 @@
         <div style="display: flex; justify-content: space-between; margin-top: 50px;">
             <div class="firma-box" style="margin-left:0;">Nombre y firma del paciente</div>
             <div class="firma-box" style="margin-right:0;">Nombre y firma del familiar</div>
+        </div>
+    </div>
+
+    <div id="print-indicaciones" class="zona-impresion hidden">
+        <div style="text-align: right; margin-bottom: 5px;">
+            <strong>Fecha y Hora:</strong> <span class="put-fecha"></span>
+        </div>
+        <div class="hoja-titulo">INDICACIONES MÉDICAS HOSPITALARIAS</div>
+
+        <div class="cuadro-datos">
+            <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">DATOS DEL PACIENTE</h4>
+            <div class="fila"><span><strong>Nombre:</strong> <span id="print-ind-nombre"></span></span> <span><strong>Edad:</strong> <span id="print-ind-edad"></span></span> <span><strong>Cama:</strong> <span class="out-cama"></span></span></div>
+            <p style="margin:2px 0;"><strong>Alergias:</strong> <span id="print-ind-alergias"></span></p>
+        </div>
+
+        <div class="cuadro-datos">
+            <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">INDICACIONES</h4>
+            <p style="margin: 0 0 10px 0;"><strong>1. DIETA:</strong> <span id="print-ind-dieta"></span></p>
+            <p style="margin: 0 0 10px 0;"><strong>2. SOLUCIONES PARENTERALES:</strong> <span id="print-ind-soluciones"></span></p>
+            <p style="margin: 0 0 2px 0;"><strong>3. MEDICAMENTOS:</strong></p>
+            <ol id="print-ind-medicamentos" style="margin-top: 0; margin-bottom: 10px; padding-left: 25px; list-style: decimal;"></ol>
+            <p style="margin: 0 0 2px 0;"><strong>4. MEDIDAS GENERALES:</strong></p>
+            <ul id="print-ind-medidas" style="margin-top: 0; margin-bottom: 0; padding-left: 25px; list-style: disc;"></ul>
+        </div>
+
+        <div class="firma-box" style="margin-top: 60px;">
+            <p style="margin: 0; font-weight: bold; font-size: 12px;" id="print-ind-firma"></p>
+            <p style="margin: 0; font-size: 10px;">Cédula Prof: 87654321</p>
+            <p style="margin: 0; font-size: 10px;">Médico Tratante</p>
         </div>
     </div>
 
@@ -972,6 +1014,29 @@
             document.querySelectorAll('.out-talla').forEach(el => el.innerText = document.getElementById('val-talla').value ? document.getElementById('val-talla').value + ' m' : '');
             document.querySelectorAll('.out-procedimiento').forEach(el => el.innerText = document.getElementById('val-procedimiento').value);
             document.querySelectorAll('.out-riesgos').forEach(el => el.innerText = document.getElementById('val-riesgos').value);
+
+            // ---------- INDICACIONES MÉDICAS (print-indicaciones) ----------
+            const ind = recolectarIndicaciones();
+            const edadMatchInd = document.getElementById('paciente-genero').innerText.match(/(\d+)\s*a[ñn]os/i);
+            document.getElementById('print-ind-nombre').innerText = document.getElementById('paciente-nombre').innerText.trim();
+            document.getElementById('print-ind-edad').innerText = edadMatchInd ? edadMatchInd[1] + ' años' : 'No registrada';
+            document.getElementById('print-ind-alergias').innerText = alergiasTxt;
+            document.getElementById('print-ind-dieta').innerText = ind.dieta.descripcion || 'No especificada';
+
+            const solInd = ind.soluciones_parenterales[0];
+            document.getElementById('print-ind-soluciones').innerText = solInd
+                ? solInd.solucion + (solInd.velocidad ? ' — ' + solInd.velocidad : '')
+                : 'No se indican.';
+
+            document.getElementById('print-ind-medicamentos').innerHTML = ind.medicamentos.length
+                ? ind.medicamentos.map(m => `<li style="margin-bottom: 3px;"><strong>${escaparHTML(m.nombre)}</strong> — Dosis: ${escaparHTML(m.dosis)} | Vía: ${escaparHTML(m.via)} | Frecuencia: ${escaparHTML(m.frecuencia)}</li>`).join('')
+                : '<li style="list-style: none; margin-left: -25px;">No se indican medicamentos.</li>';
+
+            document.getElementById('print-ind-medidas').innerHTML = ind.medidas_generales.length
+                ? ind.medidas_generales.map(mg => `<li>${escaparHTML(mg.descripcion || mg.codigo)}</li>`).join('')
+                : '<li style="list-style: none; margin-left: -25px;">Ninguna indicada.</li>';
+
+            document.getElementById('print-ind-firma').innerText = document.getElementById('val-medico').value;
         }
 
         function ocultarTodosLosPrints() {
@@ -997,12 +1062,24 @@
                 tituloPDF.innerText = 'NOTA DE CONSULTA MÉDICA';
                 pNota.classList.remove('hidden');
                 window.print();
+                ocultarTodosLosPrints();
+
+                // SIMULACRO DE BACKEND: aquí irá el POST a la base de datos
+                const datosGenerados = recolectarExpediente();
+                console.log("ENVIANDO AL BACKEND:", datosGenerados);
+
                 setTimeout(() => window.location.href = 'dashboard.html', 1000);
             } else {
                 tituloPDF.innerText = 'NOTA DE INGRESO HOSPITALARIO';
                 pNota.classList.remove('hidden');
                 window.print();
+                ocultarTodosLosPrints();
                 desbloquearModoIngreso();
+
+                // SIMULACRO DE BACKEND: aquí irá el POST a la base de datos
+                const datosGenerados = recolectarExpediente();
+                console.log("ENVIANDO AL BACKEND:", datosGenerados);
+
                 cambiarPestana('ingreso');
             }
         }
@@ -1016,7 +1093,9 @@
                 const formato = document.getElementById('selector-formato').value;
                 document.getElementById(formato === 'gral' ? 'print-cons-gral' : 'print-cons-esp').classList.remove('hidden');
             }
+            if(documentoUnico === 'indicaciones') document.getElementById('print-indicaciones').classList.remove('hidden');
             window.print();
+            ocultarTodosLosPrints();
         }
 
         function imprimirTodoElPaquete() {
@@ -1028,10 +1107,17 @@
             const pConsGral = document.getElementById('print-cons-gral');
             pNota.classList.remove('hidden'); pNota.classList.add('salto-pagina');
             pIngreso.classList.remove('hidden'); pIngreso.classList.add('salto-pagina');
+            const pIndicaciones = document.getElementById('print-indicaciones');
+            pIndicaciones.classList.remove('hidden'); pIndicaciones.classList.add('salto-pagina');
             const formatoCons = document.getElementById('selector-formato').value;
             if(formatoCons === 'gral') { pConsGral.classList.remove('hidden'); }
             else { document.getElementById('print-cons-esp').classList.remove('hidden'); }
+            // El consentimiento ya no es el último del DOM (print-indicaciones va después): necesita su salto
+            document.getElementById(formatoCons === 'gral' ? 'print-cons-gral' : 'print-cons-esp').classList.add('salto-pagina');
+            document.body.classList.add('modo-paquete');
             window.print();
+            ocultarTodosLosPrints();
+            document.body.classList.remove('modo-paquete');
         }
 
         function generarIngreso(volverDashboard) {
@@ -1256,28 +1342,8 @@
             };
 
             // ---------- INDICACIONES DE PISO ----------
-            const selDieta = el('ind-dieta');
-            const dietaCodigo = selDieta && selDieta.value ? selDieta.value : null;
-            const solucion = textoONull('ind-solucion');
-
-            const indicaciones = {
-                dieta: {
-                    codigo: dietaCodigo,
-                    descripcion: dietaCodigo ? selDieta.options[selDieta.selectedIndex].text : null
-                },
-                soluciones_parenterales: solucion
-                    ? [{ orden: 1, solucion: solucion, velocidad: textoONull('ind-velocidad') }]
-                    : [],
-                medicamentos: medicamentosIndicados.map((m, i) => ({
-                    orden: i + 1,
-                    nombre: m.nombre,
-                    dosis: m.dosis,
-                    via: m.via,
-                    frecuencia: m.frecuencia
-                })),
-                medidas_generales: Array.from(document.querySelectorAll('[data-medida-general]:checked'))
-                    .map(c => ({ codigo: c.dataset.medidaGeneral, descripcion: c.dataset.descripcion || null }))
-            };
+            // Fuente única: la misma función alimenta el JSON y la hoja impresa.
+            const indicaciones = recolectarIndicaciones();
 
             // ---------- OBJETO FINAL ----------
             const pacienteData = {
@@ -1304,6 +1370,35 @@
         // ============================================================
         // INDICACIONES DE PISO (vista-indicaciones)
         // ============================================================
+
+        // Lee la vista de Indicaciones y devuelve JSON plano (sin efectos secundarios,
+        // sin console.log). Lo consumen recolectarExpediente() y compilarDatosNota().
+        function recolectarIndicaciones() {
+            const valor = id => { const n = document.getElementById(id); return n ? n.value.trim() : ''; };
+            const selDieta = document.getElementById('ind-dieta');
+            const dietaCodigo = selDieta && selDieta.value ? selDieta.value : null;
+            const solucion = valor('ind-solucion');
+
+            return {
+                dieta: {
+                    codigo: dietaCodigo,
+                    descripcion: dietaCodigo ? selDieta.options[selDieta.selectedIndex].text : null
+                },
+                soluciones_parenterales: solucion
+                    ? [{ orden: 1, solucion: solucion, velocidad: valor('ind-velocidad') || null }]
+                    : [],
+                medicamentos: medicamentosIndicados.map((m, i) => ({
+                    orden: i + 1,
+                    nombre: m.nombre,
+                    dosis: m.dosis,
+                    via: m.via,
+                    frecuencia: m.frecuencia
+                })),
+                medidas_generales: Array.from(document.querySelectorAll('[data-medida-general]:checked'))
+                    .map(c => ({ codigo: c.dataset.medidaGeneral, descripcion: c.dataset.descripcion || null }))
+            };
+        }
+
         function escaparHTML(t) {
             return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
