@@ -130,6 +130,7 @@
                     <button type="button" onclick="cambiarPestana('ingreso')" id="btn-ingreso" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-procedures"></i> Hoja Frontal</button>
                     <button type="button" onclick="cambiarPestana('consentimientos')" id="btn-consentimientos" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-file-signature"></i> Consentimientos</button>
                     <button type="button" onclick="cambiarPestana('indicaciones')" id="btn-indicaciones" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-clipboard-list"></i> Indicaciones</button>
+                    <button type="button" onclick="cambiarPestana('historia')" id="btn-historia" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-file-medical"></i> Historia Clínica</button>
                 </div>
                 <button type="button" id="btn-imprimir-todo" onclick="imprimirTodoElPaquete()" class="mb-3 bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-lg shadow hover:bg-slate-800 transition flex items-center gap-2 min-w-max">
                     <i class="fas fa-print"></i> Imprimir Expediente Completo
@@ -593,6 +594,20 @@
                     <div class="text-right"><button type="button" data-solo-lectura-ok onclick="imprimirDesdePestanas('indicaciones')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Solo Indicaciones</button></div>
                 </div>
 
+                <div id="vista-historia" class="hidden fade-in max-w-4xl mx-auto space-y-5 pb-20">
+                    <div class="flex items-center gap-3 px-1">
+                        <div class="w-10 h-10 rounded-xl bg-cyan-700 text-white flex items-center justify-center shadow-md"><i class="fas fa-file-medical"></i></div>
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-900 leading-tight">Historia Clínica</h3>
+                            <p class="text-xs text-slate-500">Documento formal (NOM-004) compilado automáticamente con los datos ya capturados. Se actualiza cada vez que abre esta pestaña.</p>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <div id="historia-preview" style="font-family: Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #0f172a;"></div>
+                    </div>
+                    <div class="text-right"><button type="button" data-solo-lectura-ok onclick="imprimirDesdePestanas('historia')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Historia Clínica</button></div>
+                </div>
+
             </div>
         </section>
     </main>
@@ -723,6 +738,10 @@
             <div class="firma-box" id="firma-izq-cons-esp" style="margin-left:0;">Nombre y firma del paciente</div>
             <div class="firma-box" id="firma-der-cons-esp" style="margin-right:0;">Nombre y firma del familiar</div>
         </div>
+    </div>
+
+    <div id="print-historia" class="zona-impresion hidden">
+        <div id="print-historia-contenido"></div>
     </div>
 
     <div id="print-indicaciones" class="zona-impresion hidden">
@@ -1166,14 +1185,16 @@
         }
 
         function cambiarPestana(idDestino) {
-            ['vista-nota', 'vista-ingreso', 'vista-consentimientos', 'vista-indicaciones'].forEach(v => document.getElementById(v).classList.add('hidden'));
-            ['btn-nota', 'btn-ingreso', 'btn-consentimientos', 'btn-indicaciones'].forEach(b => {
+            ['vista-nota', 'vista-ingreso', 'vista-consentimientos', 'vista-indicaciones', 'vista-historia'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            ['btn-nota', 'btn-ingreso', 'btn-consentimientos', 'btn-indicaciones', 'btn-historia'].forEach(b => {
                 const btn = document.getElementById(b);
                 if(btn) { btn.classList.remove('tab-activa'); btn.classList.add('tab-inactiva'); }
             });
             document.getElementById(`vista-${idDestino}`).classList.remove('hidden');
             const btnActivo = document.getElementById(`btn-${idDestino}`);
             if(btnActivo) { btnActivo.classList.remove('tab-inactiva'); btnActivo.classList.add('tab-activa'); }
+            // La Historia Clínica se vuelve a compilar cada vez que se abre
+            if (idDestino === 'historia') compilarHistoriaClinica();
         }
         function cambiarFormatoConsentimiento() {
             const formato = document.getElementById('selector-formato').value;
@@ -1595,6 +1616,10 @@
                 document.getElementById(formato === 'gral' ? 'print-cons-gral' : 'print-cons-esp').classList.remove('hidden');
             }
             if(documentoUnico === 'indicaciones') document.getElementById('print-indicaciones').classList.remove('hidden');
+            if(documentoUnico === 'historia') {
+                compilarHistoriaClinica();
+                document.getElementById('print-historia').classList.remove('hidden');
+            }
             window.print();
             ocultarTodosLosPrints();
         }
@@ -1654,7 +1679,9 @@
         // Los catálogos (dieta, vía, medidas) viajan como `codigo` estable
         // + `descripcion`, listos para ser FK a tablas de catálogo.
         // ============================================================
-        function recolectarExpediente() {
+        // Constructor PURO: lee el DOM y devuelve el objeto, sin console.log ni efectos.
+        // Lo usan recolectarExpediente() (envío al backend) y la Historia Clínica.
+        function construirExpediente() {
             const el = id => document.getElementById(id);
             const textoDOM = id => { const n = el(id); return n ? n.innerText.trim() : ''; };
             const texto = id => { const n = el(id); return n ? String(n.value).trim() : ''; };
@@ -1895,6 +1922,12 @@
                 indicaciones: indicaciones
             };
 
+            return pacienteData;
+        }
+
+        // Punto de entrada histórico (no cambia su contrato): construye, muestra en consola y devuelve.
+        function recolectarExpediente() {
+            const pacienteData = construirExpediente();
             console.log(pacienteData);
             return pacienteData;
         }
@@ -2024,6 +2057,165 @@
             if (!elegido) return alert('Número no válido.');
             if (!confirm(`¿Eliminar el machote "${elegido.nombre}"?`)) return;
             if (escribirMachotes(leerMachotes().filter(m => m.id !== elegido.id))) renderizarMachotes();
+        }
+
+        // ============================================================
+        // HISTORIA CLÍNICA (NOM-004-SSA3-2012)
+        // ------------------------------------------------------------
+        // Se compila 100% desde construirExpediente() (el mismo JSON que irá
+        // al backend), así el documento nunca difiere de los datos guardados.
+        // El HTML generado NO usa ids (se inyecta en pantalla y en la zona de impresión).
+        // ============================================================
+        function fechaLegible(v) {
+            if (!v) return null;
+            const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+            const f = new Date(v);
+            return isNaN(f.getTime()) ? String(v) : f.toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+        }
+
+        function generarHTMLHistoriaClinica(d) {
+            const e = escaparHTML;
+            const vacio = v => v === null || v === undefined || String(v).trim() === '';
+            const val = v => vacio(v) ? 'No referido' : e(v);
+            const par = (etq, v) => `<strong>${e(etq)}:</strong> ${val(v)}`;
+            const linea = (...pares) => `<p style="margin: 2px 0;">${pares.map(p => par(p[0], p[1])).join('&nbsp;&nbsp;|&nbsp;&nbsp;')}</p>`;
+            const parrafo = v => `<p style="margin: 2px 0; white-space: pre-wrap;">${val(v)}</p>`;
+            const viñeta = items => `<ul style="margin: 2px 0 2px 18px; padding: 0; list-style: disc;">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+            let n = 0;
+            const seccion = (titulo, cuerpo) => `<div style="margin-bottom: 12px; page-break-inside: avoid;"><h4 style="margin: 0 0 4px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px;">${++n}. ${e(titulo)}</h4>${cuerpo}</div>`;
+
+            const p = d.paciente, c = d.consulta, a = d.antecedentes, app = a.personales_patologicos;
+            let html = '';
+
+            html += '<div style="text-align: center; font-size: 15px; font-weight: bold; text-decoration: underline;">HISTORIA CLÍNICA</div>';
+            html += '<div style="text-align: center; font-size: 10px; margin-bottom: 14px;">Elaborada conforme a la NOM-004-SSA3-2012, del expediente clínico</div>';
+
+            // 1. FICHA DE IDENTIFICACIÓN
+            const sexoTxt = p.sexo === 'F' ? 'Femenino' : (p.sexo === 'M' ? 'Masculino' : null);
+            let ficha = linea(['Nombre', p.nombre_completo], ['Edad', p.edad_anios !== null ? `${p.edad_anios} años` : null], ['Sexo', sexoTxt])
+                + linea(['Fecha de nacimiento', fechaLegible(p.fecha_nacimiento)], ['Estado civil', p.estado_civil], ['Ocupación', p.ocupacion])
+                + linea(['Teléfono', p.telefono], ['Domicilio', p.direccion])
+                + linea(['Grupo y Rh', p.grupo_sanguineo || 'Desconoce'], ['Fecha y hora de elaboración', fechaLegible(c.fecha_hora)])
+                + linea(['Médico tratante', c.medico_tratante]);
+            if (d.ingreso.area_destino || c.destino === 'Observacion' || c.destino === 'Hospitalizacion') {
+                ficha += linea(['Tipo de ingreso', d.ingreso.tipo_ingreso], ['Área de destino', d.ingreso.area_destino ? d.ingreso.area_destino.descripcion : null]);
+            }
+            html += seccion('Ficha de identificación', ficha);
+
+            // 2. ANTECEDENTES HEREDOFAMILIARES
+            html += seccion('Antecedentes heredofamiliares', parrafo(a.heredofamiliares.negado ? 'Interrogados y negados.' : a.heredofamiliares.detalle));
+
+            // 3. ANTECEDENTES PERSONALES NO PATOLÓGICOS
+            html += seccion('Antecedentes personales no patológicos', parrafo(a.no_patologicos.negado ? 'Interrogados y negados.' : a.no_patologicos.detalle));
+
+            // 4. ANTECEDENTES PERSONALES PATOLÓGICOS
+            let cuerpoAPP;
+            if (app.negado_todo) {
+                cuerpoAPP = parrafo('Interrogados y negados.');
+            } else {
+                const items = [];
+                const cronica = (nombre, x) => {
+                    if (!x.presente) return;
+                    items.push(`<strong>${e(nombre)}:</strong> ${val(x.tiempo_evolucion)} de evolución; tratamiento: ${val(x.tratamiento)}; apego: ${val(x.apego)}.`);
+                };
+                cronica('Hipertensión arterial', app.hipertension);
+                cronica('Diabetes mellitus tipo 2', app.diabetes_mellitus_2);
+                items.push(app.alergias.presente
+                    ? `<strong>Alergias:</strong> ${val(app.alergias.descripcion)}.`
+                    : '<strong>Alergias:</strong> negadas.');
+                if (app.transfusiones.presente) items.push(`<strong>Transfusiones:</strong> ${val(app.transfusiones.detalle)}; complicaciones: ${val(app.transfusiones.complicaciones)}.`);
+                app.cirugias_previas.forEach(q => items.push(`<strong>Cirugía:</strong> ${val(q.procedimiento)} (${val(q.fecha_texto)}); complicaciones: ${val(q.complicaciones)}.`));
+                if (!vacio(app.otras_enfermedades)) items.push(`<strong>Otras enfermedades:</strong> ${e(app.otras_enfermedades)}.`);
+                cuerpoAPP = viñeta(items);
+            }
+            html += seccion('Antecedentes personales patológicos', cuerpoAPP);
+
+            // 5. ANTECEDENTES GINECO-OBSTÉTRICOS (solo mujeres)
+            if (p.sexo === 'F') {
+                const g = a.gineco_obstetricos;
+                if (!g) {
+                    html += seccion('Antecedentes gineco-obstétricos', parrafo('No se interrogaron / no aplican en esta valoración.'));
+                } else {
+                    const nr = x => x.no_referido ? 'No referido' : (vacio(x.detalle) ? null : x.detalle);
+                    const tiposHigiene = { TOALLAS: 'Toallas sanitarias', TAMPONES: 'Tampones', AMBOS: 'Toallas y tampones', COPA: 'Copa menstrual' };
+                    let cuerpo = linea(['Gestas', g.gestas], ['Partos', g.partos], ['Cesáreas', g.cesareas], ['Abortos', g.abortos])
+                        + linea(['FUM', g.fum], ['Ritmo menstrual', g.ritmo_menstrual], ['Método de planificación', g.metodo_planificacion || 'Ninguno']);
+                    if (!g.solo_formula) {
+                        const det = g.detalle_gestas.filter(x => !x.omitir && !vacio(x.detalle));
+                        if (det.length) cuerpo += `<p style="margin: 2px 0;"><strong>Detalle de gestaciones:</strong></p>` + viñeta(det.map(x => `${e({ PARTO: 'Parto', CESAREA: 'Cesárea', ABORTO: 'Aborto' }[x.tipo] || x.tipo)} ${x.numero}: ${e(x.detalle)}`));
+                    }
+                    cuerpo += linea(['IVUS', nr(g.ivus)], ['ETS', nr(g.ets)], ['Parejas sexuales', g.numero_parejas_sexuales.no_referido ? 'No referido' : g.numero_parejas_sexuales.valor]);
+                    cuerpo += linea(['Higiene menstrual', g.higiene_menstrual.no_referido ? 'No referido' : (g.higiene_menstrual.tipo ? (tiposHigiene[g.higiene_menstrual.tipo] || g.higiene_menstrual.tipo) + (g.higiene_menstrual.cantidad ? ` (${g.higiene_menstrual.cantidad})` : '') : null)]);
+                    const emb = g.embarazo_actual;
+                    if (emb.presente) {
+                        cuerpo += `<p style="margin: 4px 0 2px 0;"><strong>EMBARAZO ACTUAL:</strong> Sí. ${emb.sdg !== null ? emb.sdg + ' semanas de gestación' : 'SDG sin capturar'} por ${e(emb.metodo_calculo_sdg === 'USG' ? 'ultrasonido' : 'FUM')}${emb.trimestre ? ` (${['primer', 'segundo', 'tercer'][emb.trimestre - 1]} trimestre)` : ''}.</p>`
+                            + linea(['Consultas prenatales', emb.consultas_prenatales], ['Ultrasonidos', emb.ultrasonidos], ['Vacunas aplicadas', emb.vacunas.length ? emb.vacunas.join(', ') : 'Ninguna referida']);
+                    } else {
+                        cuerpo += `<p style="margin: 4px 0 2px 0;"><strong>Embarazo actual:</strong> No.</p>`;
+                    }
+                    html += seccion('Antecedentes gineco-obstétricos', cuerpo);
+                }
+            }
+
+            // PADECIMIENTO ACTUAL
+            html += seccion('Padecimiento actual', `<p style="margin: 2px 0;"><strong>Motivo de consulta:</strong> ${val(c.motivo_consulta)}</p>` + parrafo(c.padecimiento_actual));
+
+            // EXPLORACIÓN FÍSICA
+            const sv = p.signos_vitales;
+            const partesSV = [];
+            if (sv.ta_sistolica !== null) partesSV.push(`TA: ${sv.ta_sistolica}/${sv.ta_diastolica} mmHg`);
+            if (sv.frecuencia_respiratoria !== null) partesSV.push(`FR: ${sv.frecuencia_respiratoria} rpm`);
+            if (sv.temperatura_c !== null) partesSV.push(`Temp: ${sv.temperatura_c} °C`);
+            if (sv.spo2_porcentaje !== null) partesSV.push(`SpO2: ${sv.spo2_porcentaje}%`);
+            if (sv.peso_kg !== null) partesSV.push(`Peso: ${sv.peso_kg} kg`);
+            if (sv.talla_m !== null) partesSV.push(`Talla: ${sv.talla_m} m`);
+            if (sv.imc !== null) partesSV.push(`IMC: ${sv.imc}`);
+            const catalogoEF = obtenerSistemasEF();
+            const sistemasEF = d.exploracion_fisica.map(x => {
+                const base = catalogoEF.find(s => s.id === x.sistema_codigo);
+                const alterado = x.estatus === 'ALTERADO';
+                let t = alterado ? (x.hallazgo || 'Alteración sin descripción') : (base ? base.normal : '');
+                if (alterado && x.sistema_codigo === 'abdomen') t += sufijoFCF(x.hallazgo);
+                return `<p style="margin: 2px 0;"><strong>${e(x.sistema)}:</strong> ${e(t)}${alterado ? ' <strong>(ALTERADO)</strong>' : ''}</p>`;
+            }).join('');
+            html += seccion('Exploración física', `<p style="margin: 2px 0;"><strong>Signos vitales:</strong> ${partesSV.length ? e(partesSV.join(' | ')) : 'No registrados'}</p>${sistemasEF}`);
+
+            // RESULTADOS DE ESTUDIOS
+            html += seccion('Resultados de estudios de laboratorio, gabinete y otros', parrafo(c.estudios_auxiliares || 'No se solicitan.'));
+
+            // DIAGNÓSTICOS
+            html += seccion('Diagnósticos o problemas clínicos',
+                d.diagnosticos.length
+                    ? `<ol style="margin: 2px 0 2px 20px; padding: 0; list-style: decimal;">${d.diagnosticos.map(x => `<li>${x.cie10_codigo ? `<strong>${e(x.cie10_codigo)}</strong> — ` : ''}${e(x.descripcion)}${x.es_principal ? ' <em>(principal)</em>' : ''}</li>`).join('')}</ol>`
+                    : parrafo(null));
+
+            // ANÁLISIS, PLAN E INDICACIÓN TERAPÉUTICA
+            html += seccion('Análisis clínico', parrafo(c.analisis_clinico));
+            let terapeutica = parrafo(c.plan_tratamiento);
+            const ind = d.indicaciones;
+            const hayInd = ind.dieta.codigo || ind.soluciones_parenterales.texto || ind.medicamentos.texto || ind.medidas_generales.texto;
+            if (hayInd) {
+                terapeutica += '<p style="margin: 6px 0 2px 0;"><strong>Indicaciones iniciales:</strong></p>';
+                if (ind.dieta.codigo) terapeutica += `<p style="margin: 2px 0;"><strong>Dieta:</strong> ${e(ind.dieta.descripcion)}</p>`;
+                if (ind.soluciones_parenterales.texto) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Soluciones parenterales:</strong></p>${parrafo(ind.soluciones_parenterales.texto)}`;
+                if (ind.medicamentos.texto) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Medicamentos:</strong></p>${parrafo(ind.medicamentos.texto)}`;
+                if (ind.medidas_generales.texto) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Medidas generales:</strong></p>${parrafo(ind.medidas_generales.texto)}`;
+            }
+            html += seccion('Plan e indicación terapéutica', terapeutica);
+            if (!vacio(c.signos_alarma_explicados)) html += seccion('Signos de alarma explicados', parrafo(c.signos_alarma_explicados));
+            html += seccion('Pronóstico', parrafo(c.pronostico));
+
+            // FIRMA DEL MÉDICO
+            const medicoFirma = d.meta.usuario_rol === 'admin' ? 'Médico Base' : 'Dr. Brandon Arguelles';
+            html += `<div style="margin-top: 50px; text-align: center; page-break-inside: avoid;"><div style="display: inline-block; width: 240px; border-top: 1px solid #000; padding-top: 5px; font-size: 11px;"><strong>${e(medicoFirma)}</strong><br>Cédula Prof: 87654321<br>Médico Tratante</div></div>`;
+            return html;
+        }
+
+        function compilarHistoriaClinica() {
+            const html = generarHTMLHistoriaClinica(construirExpediente());
+            document.getElementById('historia-preview').innerHTML = html;
+            document.getElementById('print-historia-contenido').innerHTML = html;
         }
 
         document.addEventListener('DOMContentLoaded', () => { initApp(); });
