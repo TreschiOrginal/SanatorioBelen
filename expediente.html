@@ -121,16 +121,17 @@
                 <h4 class="text-xs font-bold text-slate-800 uppercase mb-2">Diagnóstico de Ingreso</h4>
                 <p id="ui-dx-ingreso" class="text-sm text-cyan-700 font-bold bg-cyan-50 p-2 rounded border border-cyan-100">Pendiente</p>
             </div>
+            <button type="button" id="btn-descartar-internamiento" onclick="confirmarModal('Iniciar consulta nueva', 'Se descartará todo lo capturado del internamiento en curso. ¿Desea continuar?', () => { iniciarNuevaConsultaDemo(); }, 'Descartar e iniciar', true)" class="hidden mt-4 text-[11px] text-slate-400 hover:text-red-600 underline text-center transition">Iniciar consulta nueva (descarta lo capturado)</button>
         </aside>
 
         <section class="flex-1 flex flex-col relative overflow-hidden bg-slate-50">
             <div id="header-pestanas" class="bg-white border-b border-slate-200 pt-4 px-6 shrink-0 shadow-sm flex justify-between items-end overflow-x-auto hidden">
                 <div class="flex space-x-1 min-w-max">
                     <button type="button" onclick="cambiarPestana('nota')" id="btn-nota" class="tab-activa px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-stethoscope"></i> Nota Médica</button>
-                    <button type="button" onclick="cambiarPestana('ingreso')" id="btn-ingreso" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-procedures"></i> Hoja Frontal</button>
-                    <button type="button" onclick="cambiarPestana('consentimientos')" id="btn-consentimientos" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-file-signature"></i> Consentimientos</button>
-                    <button type="button" onclick="cambiarPestana('indicaciones')" id="btn-indicaciones" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-clipboard-list"></i> Indicaciones</button>
-                    <button type="button" onclick="cambiarPestana('historia')" id="btn-historia" class="tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-file-medical"></i> Historia Clínica</button>
+                    <button type="button" onclick="cambiarPestana('ingreso')" id="btn-ingreso" class="hidden tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-procedures"></i> Hoja Frontal</button>
+                    <button type="button" onclick="cambiarPestana('consentimientos')" id="btn-consentimientos" class="hidden tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-file-signature"></i> Consentimientos</button>
+                    <button type="button" onclick="cambiarPestana('indicaciones')" id="btn-indicaciones" class="hidden tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-clipboard-list"></i> Indicaciones</button>
+                    <button type="button" onclick="cambiarPestana('historia')" id="btn-historia" class="hidden tab-inactiva px-5 py-3 rounded-t-lg transition flex items-center gap-2"><i class="fas fa-file-medical"></i> Historia Clínica</button>
                 </div>
                 <button type="button" id="btn-imprimir-todo" onclick="imprimirTodoElPaquete()" class="mb-3 bg-slate-900 text-white text-xs font-bold px-4 py-2 rounded-lg shadow hover:bg-slate-800 transition flex items-center gap-2 min-w-max">
                     <i class="fas fa-print"></i> Imprimir Expediente Completo
@@ -149,9 +150,15 @@
                         </div>
                     </div>
                     <button type="button" data-solo-lectura-ok onclick="desactivarModoSoloLectura()" class="text-[11px] font-bold text-slate-300 hover:text-white border border-slate-600 rounded-lg px-3 py-1.5 whitespace-nowrap">Desbloquear (demo)</button>
+                    <button type="button" data-solo-lectura-ok onclick="iniciarNuevaConsultaDemo()" class="text-[11px] font-bold text-slate-300 hover:text-white border border-slate-600 rounded-lg px-3 py-1.5 whitespace-nowrap">Nueva consulta (demo)</button>
                 </div>
 
                 <div id="vista-nota" class="max-w-4xl w-full mx-auto flex flex-col h-full space-y-5 pb-20 fade-in block">
+                    <!-- ===== INICIO BOTON TEMPORAL DE PRUEBAS (BORRAR ESTE BLOQUE Y LA FUNCION llenarDatosDePrueba) ===== -->
+                    <div class="flex justify-end -mb-3">
+                        <button type="button" id="btn-datos-prueba" onclick="llenarDatosDePrueba()" class="text-[10px] text-slate-400 hover:text-slate-600 underline opacity-60 hover:opacity-100 transition">Llenar datos de prueba</button>
+                    </div>
+                    <!-- ===== FIN BOTON TEMPORAL DE PRUEBAS ===== -->
                     <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
                         <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 border-b border-slate-100 pb-2 gap-2">
                             <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-user-edit text-cyan-500 mr-1"></i> Datos Complementarios y Fecha</h3>
@@ -159,7 +166,7 @@
                         </div>
                         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
                             <div>
-                                <div class="flex justify-between items-center mb-1"><label for="comp-fn" class="text-[10px] font-bold text-slate-500 uppercase">F. Nacimiento <span class="text-red-500">*</span></label></div>
+                                <div class="flex justify-between items-center mb-1"><label for="comp-fn" class="text-[10px] font-bold text-slate-500 uppercase">Fecha de Nacimiento <span class="text-red-500">*</span></label></div>
                                 <input type="date" id="comp-fn" onchange="actualizarEdadDesdeFN()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
                             </div>
                             <div>
@@ -170,28 +177,28 @@
                             </div>
                             <div>
                                 <div class="flex justify-between items-center mb-1"><label for="comp-tel" class="text-[10px] font-bold text-slate-500 uppercase">Teléfono <span class="text-red-500">*</span></label></div>
-                                <input type="text" id="comp-tel" placeholder="Ej. 322 123..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                                <input type="tel" inputmode="tel" id="comp-tel" maxlength="20" autocomplete="off" placeholder="10 dígitos. Ej. 322 123 4567" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
                             </div>
                             <div>
                                 <div class="flex justify-between items-center mb-1"><label for="comp-ocu" class="text-[10px] font-bold text-slate-500 uppercase">Ocupación <span class="text-red-500">*</span></label></div>
-                                <input type="text" id="comp-ocu" placeholder="Ej. Ama de casa" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                                <input type="text" id="comp-ocu" minlength="3" maxlength="60" autocomplete="off" placeholder="Ej. Ama de casa" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
                             </div>
                             <div class="col-span-2 md:col-span-1">
                                 <div class="flex justify-between items-center mb-1"><label for="comp-dir" class="text-[10px] font-bold text-slate-500 uppercase">Dirección <span class="text-red-500">*</span></label></div>
-                                <input type="text" id="comp-dir" placeholder="Ej. Calle 123..." class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                                <input type="text" id="comp-dir" minlength="8" maxlength="150" autocomplete="off" placeholder="Calle, número y colonia" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
                             </div>
                         </div>
                     </div>
 
                     <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-history text-cyan-500 mr-1"></i> Antecedentes (APP, AHF, APNP)</h3>
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-history text-cyan-500 mr-1"></i> Antecedentes</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
-                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Heredofamiliares (AHF)</label><label class="flex items-center gap-1 text-[10px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ahf-neg" checked onchange="toggleAntecedente('ahf')" class="text-cyan-600"> Preguntado y Negado</label></div>
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Heredofamiliares</label><label class="flex items-center gap-1 text-[10px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ahf-neg" checked onchange="toggleAntecedente('ahf')" class="text-cyan-600"> Preguntado y Negado</label></div>
                                 <input type="text" id="val-ahf" placeholder="Especifique..." disabled class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500 outline-none opacity-50 cursor-not-allowed">
                             </div>
                             <div>
-                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">No Patológicos (APNP)</label><label class="flex items-center gap-1 text-[10px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-apnp-neg" checked onchange="toggleAntecedente('apnp')" class="text-cyan-600"> Preguntado y Negado</label></div>
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">No Patológicos</label><label class="flex items-center gap-1 text-[10px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-apnp-neg" checked onchange="toggleAntecedente('apnp')" class="text-cyan-600"> Preguntado y Negado</label></div>
                                 <input type="text" id="val-apnp" placeholder="Tabaquismo, alcoholismo, etc." disabled class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500 outline-none opacity-50 cursor-not-allowed">
                             </div>
                         </div>
@@ -204,7 +211,7 @@
                         </div>
                         <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 md:p-4 mb-4">
                             <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-3 gap-2">
-                                <label class="text-xs font-bold text-slate-700 uppercase">Personales Patológicos (APP)</label>
+                                <label class="text-xs font-bold text-slate-700 uppercase">Personales Patológicos</label>
                                 <label class="flex items-center gap-1 text-[11px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-app-neg" onchange="toggleAPP()" class="text-cyan-600"> Todo Preguntado y Negado</label>
                             </div>
                             <div id="contenedor-app" class="space-y-4">
@@ -214,11 +221,11 @@
                                 </div>
                                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                     <div class="bg-white p-2 rounded border border-slate-200">
-                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-hta" onchange="toggleSubAPP('hta')" class="text-cyan-600"> Hipertensión (HTA)</label>
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-hta" onchange="toggleSubAPP('hta')" class="text-cyan-600"> Hipertensión Arterial</label>
                                         <div id="div-hta" class="hidden grid grid-cols-1 gap-2"><input type="text" id="hta-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="hta-meds" placeholder="Medicamento y Dosis" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="hta-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
                                     </div>
                                     <div class="bg-white p-2 rounded border border-slate-200">
-                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-dm2" onchange="toggleSubAPP('dm2')" class="text-cyan-600"> Diabetes (DM2)</label>
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-dm2" onchange="toggleSubAPP('dm2')" class="text-cyan-600"> Diabetes Mellitus tipo 2</label>
                                         <div id="div-dm2" class="hidden grid grid-cols-1 gap-2"><input type="text" id="dm2-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="dm2-meds" placeholder="Medicamento/Insulina" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="dm2-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
                                     </div>
                                 </div>
@@ -244,12 +251,12 @@
                         </div>
                         <div id="seccion-ago" class="bg-pink-50 border border-pink-100 rounded-xl p-3 md:p-4">
                             <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-3 gap-2">
-                                <label class="text-[11px] font-bold text-pink-800 uppercase"><i class="fas fa-venus mr-1"></i> Gineco-Obstétricos (AGO)</label>
+                                <label class="text-[11px] font-bold text-pink-800 uppercase"><i class="fas fa-venus mr-1"></i> Gineco-Obstétricos</label>
                                 <label class="flex items-center gap-1 text-[10px] text-pink-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-omitir" onchange="toggleAGO()" class="text-pink-600"> Omitir en nota / N/A</label>
                             </div>
                             <div id="contenedor-ago" class="space-y-3">
                                 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
-                                    <div class="sm:col-span-2"><label class="text-[9px] uppercase text-pink-700">FUM (Día/Mes/Año)</label><input type="text" id="ago-fum" placeholder="O indicar Menopausia" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"></div>
+                                    <div class="sm:col-span-2"><label class="text-[9px] uppercase text-pink-700">Fecha de última menstruación (Día/Mes/Año)</label><input type="text" id="ago-fum" placeholder="O indicar Menopausia" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"></div>
                                     <div><label class="text-[9px] uppercase text-pink-700">Ritmo</label><select id="ago-ritmo" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"><option>Regular</option><option>Irregular</option><option>N/A</option></select></div>
                                     <div><label class="text-[9px] uppercase text-pink-700">Anticonceptivos</label><input type="text" id="ago-mpf" placeholder="Ninguno, DIU, etc." class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"></div>
                                 </div>
@@ -269,21 +276,21 @@
                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div>
                                             <div class="flex justify-between items-center mb-1">
-                                                <label for="ago-ivus" class="text-[9px] uppercase text-pink-700">IVUS (infecciones urinarias)</label>
+                                                <label for="ago-ivus" class="text-[9px] uppercase text-pink-700">Infecciones de vías urinarias</label>
                                                 <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-ivus-nr" data-targets="ago-ivus" onchange="toggleNoReferido(this)" class="text-pink-600"> No referidas</label>
                                             </div>
                                             <input type="text" id="ago-ivus" placeholder="Ej. 2 en el último año" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
                                         </div>
                                         <div>
                                             <div class="flex justify-between items-center mb-1">
-                                                <label for="ago-ets" class="text-[9px] uppercase text-pink-700">ETS (enf. de transmisión sexual)</label>
+                                                <label for="ago-ets" class="text-[9px] uppercase text-pink-700">Enfermedades de transmisión sexual</label>
                                                 <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-ets-nr" data-targets="ago-ets" onchange="toggleNoReferido(this)" class="text-pink-600"> No referidas</label>
                                             </div>
                                             <input type="text" id="ago-ets" placeholder="Ej. VPH 2015, tratado" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
                                         </div>
                                         <div>
                                             <div class="flex justify-between items-center mb-1">
-                                                <label for="ago-parejas" class="text-[9px] uppercase text-pink-700">No. de parejas sexuales</label>
+                                                <label for="ago-parejas" class="text-[9px] uppercase text-pink-700">Número de parejas sexuales</label>
                                                 <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-parejas-nr" data-targets="ago-parejas" onchange="toggleNoReferido(this)" class="text-pink-600"> No referido</label>
                                             </div>
                                             <input type="number" id="ago-parejas" min="0" placeholder="0" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
@@ -306,15 +313,15 @@
                                     <div id="div-embarazo" class="hidden mt-3 space-y-3">
                                         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
                                             <div>
-                                                <label for="emb-metodo" class="text-[9px] uppercase text-pink-700 block mb-1">SDG calculadas por</label>
+                                                <label for="emb-metodo" class="text-[9px] uppercase text-pink-700 block mb-1">Semanas de gestación calculadas por</label>
                                                 <select id="emb-metodo" onchange="actualizarEmbarazo()" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs font-bold focus:border-pink-400 outline-none"><option value="FUM">FUM</option><option value="USG">USG</option></select>
                                             </div>
                                             <div>
-                                                <label for="emb-sdg" class="text-[9px] uppercase text-pink-700 block mb-1">Semanas (SDG) <span class="text-red-500">*</span></label>
+                                                <label for="emb-sdg" class="text-[9px] uppercase text-pink-700 block mb-1">Semanas de gestación <span class="text-red-500">*</span></label>
                                                 <input type="number" id="emb-sdg" min="1" max="42" placeholder="Ej. 24" oninput="actualizarEmbarazo()" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs font-bold focus:border-pink-400 outline-none">
                                             </div>
                                             <div>
-                                                <button type="button" id="btn-calc-fum" onclick="calcularSDGporFUM()" class="w-full bg-pink-100 text-pink-700 border border-pink-200 text-[10px] font-bold px-2 py-2 rounded hover:bg-pink-200 transition"><i class="fas fa-calculator mr-1"></i> Calcular por FUM</button>
+                                                <button type="button" id="btn-calc-fum" onclick="calcularSDGporFUM()" class="w-full bg-pink-100 text-pink-700 border border-pink-200 text-[10px] font-bold px-2 py-2 rounded hover:bg-pink-200 transition"><i class="fas fa-calculator mr-1"></i> Calcular por fecha de última menstruación</button>
                                             </div>
                                             <div class="text-center">
                                                 <span id="emb-trimestre" class="inline-block bg-pink-50 text-pink-700 border border-pink-200 text-[10px] font-bold px-3 py-2 rounded-full w-full">—</span>
@@ -342,11 +349,11 @@
 
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
                         <div class="lg:col-span-1 bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Motivo de Consulta</label>
+                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Motivo de Consulta <span class="text-red-500">*</span></label>
                             <textarea id="val-motivo" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-32 md:h-40 resize-none" placeholder="Síntoma principal..."></textarea>
                         </div>
                         <div class="lg:col-span-2 bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Padecimiento Actual</label>
+                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Padecimiento Actual <span class="text-red-500">*</span></label>
                             <textarea id="val-padecimiento" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-40 resize-none leading-relaxed" placeholder="Evolución clínica detallada del padecimiento..."></textarea>
                         </div>
                     </div>
@@ -360,11 +367,11 @@
                             <div class="flex flex-col gap-2"><div id="btn-cardio" data-label="Cardiopulmonar Normal" onclick="toggleTarjetaEF('cardio')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Cardiopulmonar Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-cardio" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa hallazgos..."></textarea><input type="hidden" id="estatus-cardio" value="normal"></div>
                             <div class="flex flex-col gap-2"><div id="btn-abdomen" data-label="Abdomen Normal" onclick="toggleTarjetaEF('abdomen')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Abdomen Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-abdomen" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-abdomen" value="normal">
                                 <div id="bloque-fcf" class="hidden bg-pink-50 border border-pink-200 rounded-xl p-3">
-                                    <label for="exp-fcf" class="text-[10px] font-bold text-pink-800 uppercase block mb-1"><i class="fas fa-heart-pulse mr-1"></i> Frecuencia Cardíaca Fetal (FCF) <span class="text-red-500">*</span></label>
+                                    <label for="exp-fcf" class="text-[10px] font-bold text-pink-800 uppercase block mb-1"><i class="fas fa-heart-pulse mr-1"></i> Frecuencia Cardíaca Fetal <span class="text-red-500">*</span></label>
                                     <div class="flex items-center gap-2">
                                         <input type="number" id="exp-fcf" min="60" max="220" placeholder="Ej. 142" class="w-28 bg-white border border-pink-200 rounded-lg p-2 text-sm font-bold focus:border-pink-400 outline-none">
                                         <span class="text-xs font-bold text-pink-700">lpm</span>
-                                        <span class="text-[10px] text-slate-500 ml-2">Obligatoria con embarazo ≥ 20 SDG</span>
+                                        <span class="text-[10px] text-slate-500 ml-2">Obligatoria con embarazo ≥ 20 semanas de gestación</span>
                                     </div>
                                 </div></div>
                             <div class="flex flex-col gap-2"><div id="btn-rectal" data-label="Tacto Rectal / GU Normal" onclick="toggleTarjetaEF('rectal')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Tacto Rectal / GU Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-rectal" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-rectal" value="normal"></div>
@@ -375,13 +382,13 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
                             <div class="flex justify-between items-center mb-2">
-                                <label class="text-sm font-bold text-slate-800 uppercase tracking-wide block">Estudios Auxiliares</label>
+                                <label class="text-sm font-bold text-slate-800 uppercase tracking-wide block">Estudios Auxiliares <span class="text-red-500">*</span></label>
                                 <label class="flex items-center gap-1 text-[10px] bg-slate-100 p-1 rounded cursor-pointer font-bold text-slate-600"><input type="checkbox" id="chk-omitir-estudios" onchange="toggleOmitir('estudios')" class="text-cyan-600"> No hay / Omitir</label>
                             </div>
                             <textarea id="val-estudios" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-24" placeholder="Ej. Rx Abdomen..."></textarea>
                         </div>
                         <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">IDX (Diagnósticos)</label>
+                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Diagnósticos <span class="text-red-500">*</span></label>
                             <div class="flex gap-2 mb-3">
                                 <input list="cie10-list" id="input-dx" placeholder="Buscar CIE-10 o libre..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm focus:border-cyan-500 outline-none">
                                 <datalist id="cie10-list"><option value="J03.9 Amigdalitis aguda"><option value="E11.9 Diabetes mellitus 2"><option value="K56.4 Impactación fecal"><option value="R14.X Distensión abdominal"></datalist>
@@ -392,20 +399,20 @@
                     </div>
 
                     <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                        <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Análisis Clínico</label>
+                        <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Análisis Clínico <span class="text-red-500">*</span></label>
                         <textarea id="val-analisis" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Análisis del caso, integración diagnóstica..."></textarea>
-                        <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Plan y Tratamiento</label>
+                        <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Plan y Tratamiento <span class="text-red-500">*</span></label>
                         <textarea id="val-plan" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Ej. Desimpactación manual, Paracetamol..."></textarea>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
                             <div>
                                 <div class="flex justify-between items-center mb-2">
-                                    <label class="text-xs font-bold text-slate-800 uppercase tracking-wide">Signos de Alarma Explicados</label>
+                                    <label class="text-xs font-bold text-slate-800 uppercase tracking-wide">Signos de Alarma Explicados <span class="text-red-500">*</span></label>
                                     <label class="flex items-center gap-1 text-[10px] bg-slate-100 p-1 rounded cursor-pointer font-bold text-slate-600"><input type="checkbox" id="chk-omitir-alarma" onchange="toggleOmitir('alarma')" class="text-cyan-600"> Omitir</label>
                                 </div>
                                 <textarea id="val-alarma" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-16" placeholder="Ej. Fiebre, dolor intenso..."></textarea>
                             </div>
                             <div>
-                                <label class="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2 block">Pronóstico Médico Final</label>
+                                <label class="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2 block">Pronóstico Médico Final <span class="text-red-500">*</span></label>
                                 <input list="pronosticos-list" id="val-pronostico" placeholder="Seleccione o escriba..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none font-bold text-slate-700 h-16">
                                 <datalist id="pronosticos-list">
                                     <option value="Favorable con tratamiento oportuno">
@@ -420,7 +427,7 @@
 
                     <div class="text-right pb-10">
                         <button type="button" onclick="validarYGuardar()" class="w-full md:w-auto bg-slate-900 text-white px-10 py-4 md:py-5 rounded-xl text-base md:text-lg font-bold shadow-xl hover:bg-slate-800 hover:-translate-y-1 transition-all inline-flex justify-center items-center gap-3">
-                            <i class="fas fa-save"></i> Guardar e Imprimir Nota
+                            <i class="fas fa-save"></i> Guardar Destino
                         </button>
                     </div>
                 </div>
@@ -497,36 +504,41 @@
                         <p class="mt-4 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><i class="fas fa-bed text-slate-400 mr-1"></i> Cama: <span class="font-bold text-slate-700">Por asignar por Enfermería</span></p>
                     </div>
 
-                    <div class="flex flex-col md:flex-row justify-end gap-3 pb-10">
-                        <button type="button" data-solo-lectura-ok onclick="imprimirDesdePestanas('ingreso')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Solo Hoja Frontal</button>
-                        <button type="button" onclick="generarIngreso(false)" class="bg-slate-900 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-slate-800"><i class="fas fa-procedures"></i> Generar Hoja e Internar</button>
-                        <button type="button" onclick="internarYBloquearExpediente()" class="bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-emerald-700"><i class="fas fa-lock"></i> Imprimir, Internar y Bloquear Expediente</button>
+                    <div class="flex justify-end pb-10">
+                        <button type="button" onclick="guardarYContinuar('ingreso')" class="w-full md:w-auto bg-slate-900 text-white px-10 py-4 rounded-xl text-base font-bold shadow-xl hover:bg-slate-800 hover:-translate-y-0.5 transition-all inline-flex justify-center items-center gap-3">Guardar y Continuar <i class="fas fa-arrow-right"></i></button>
                     </div>
                 </div>
 
                 <div id="vista-consentimientos" class="hidden fade-in max-w-4xl mx-auto space-y-5 pb-20">
-                    <div class="bg-cyan-50 rounded-xl p-4 border border-cyan-200">
-                        <h4 class="text-xs font-bold text-cyan-800 uppercase mb-2">Formato a Generar</h4>
-                        <select id="selector-formato" onchange="cambiarFormatoConsentimiento()" class="w-full bg-white border border-cyan-300 rounded-lg p-2 text-sm font-bold text-cyan-900 outline-none">
-                            <option value="gral">1. Consentimiento de Ingreso y Tratamiento Médico (Obligatorio)</option>
-                            <option value="esp">2. Procedimiento Quirúrgico / Especial</option>
-                        </select>
+                    <div class="flex items-center gap-3 px-1">
+                        <div class="w-10 h-10 rounded-xl bg-cyan-700 text-white flex items-center justify-center shadow-md"><i class="fas fa-file-signature"></i></div>
+                        <div>
+                            <h3 class="text-lg font-extrabold text-slate-900 leading-tight">Consentimientos</h3>
+                            <p class="text-xs text-slate-500">El consentimiento de ingreso es fijo. Agregue los consentimientos de procedimientos que se requieran.</p>
+                        </div>
                     </div>
-                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                        <div id="form-cons-gral" class="grid grid-cols-1 gap-3">
-                            <div class="bg-cyan-50 border border-cyan-100 rounded-xl p-4 text-sm text-cyan-900">
-                                <p class="text-xs font-bold uppercase text-cyan-700 mb-1"><i class="fas fa-weight mr-1"></i> Peso y Talla (tomados de Signos Vitales)</p>
-                                <p>Peso: <strong id="ui-peso-cons">Sin capturar</strong> &nbsp;|&nbsp; Talla: <strong id="ui-talla-cons">Sin capturar</strong></p>
-                                <p class="text-[11px] text-cyan-700 mt-1">Para modificarlos use el panel izquierdo de Signos Vitales.</p>
+
+                    <div id="aviso-menor-cons" class="hidden bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-3 text-xs"><i class="fas fa-child mr-1"></i> <strong>Paciente menor de edad:</strong> los consentimientos se imprimirán para firma del Familiar Responsable (capture sus datos en Hoja Frontal).</div>
+
+                    <!-- Consentimiento de ingreso: fijo e inamovible -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-cyan-200">
+                        <div class="flex items-start justify-between gap-3">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-lock text-cyan-500 mr-2"></i>Consentimiento de Ingreso y Tratamiento Médico</h3>
+                                <p class="text-xs text-slate-500 mt-1">Formato fijo. Se imprime siempre con los datos del paciente y de su responsable, junto con el peso y la talla registrados en los signos vitales de la nota.</p>
                             </div>
-                            <div id="aviso-menor-cons" class="hidden bg-rose-50 border border-rose-200 text-rose-800 rounded-xl p-3 text-xs"><i class="fas fa-child mr-1"></i> <strong>Paciente menor de edad:</strong> el consentimiento se imprimirá para firma del Familiar Responsable (capture sus datos en Hoja Frontal).</div>
-                        </div>
-                        <div id="form-cons-esp" class="hidden grid grid-cols-1 gap-4">
-                            <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">Procedimiento o Cirugía</label><input type="text" id="val-procedimiento" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm"></div>
-                            <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">Riesgos y Objetivos</label><textarea id="val-riesgos" class="w-full bg-slate-50 border border-slate-200 rounded p-2 text-sm h-16"></textarea></div>
+                            <span class="text-[10px] font-bold bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-full px-3 py-1 whitespace-nowrap">Obligatorio</span>
                         </div>
                     </div>
-                    <div class="text-right"><button type="button" data-solo-lectura-ok onclick="imprimirDesdePestanas('consentimiento')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Solo Consentimiento</button></div>
+
+                    <!-- Consentimientos de procedimientos (N) -->
+                    <div id="lista-consentimientos-extra" class="space-y-4"></div>
+
+                    <button type="button" onclick="agregarConsentimientoProcedimiento()" class="w-full border-2 border-dashed border-cyan-300 bg-cyan-50/50 text-cyan-700 font-bold text-sm rounded-2xl py-4 hover:bg-cyan-50 hover:border-cyan-400 transition inline-flex justify-center items-center gap-2"><i class="fas fa-plus"></i> Agregar otro Consentimiento</button>
+
+                    <div class="flex justify-end pb-10">
+                        <button type="button" onclick="guardarYContinuar('consentimientos')" class="w-full md:w-auto bg-slate-900 text-white px-10 py-4 rounded-xl text-base font-bold shadow-xl hover:bg-slate-800 hover:-translate-y-0.5 transition-all inline-flex justify-center items-center gap-3">Guardar y Continuar <i class="fas fa-arrow-right"></i></button>
+                    </div>
                 </div>
 
                 <div id="vista-indicaciones" class="hidden fade-in max-w-4xl mx-auto space-y-5 pb-20">
@@ -591,7 +603,30 @@
                         <textarea id="ind-medidas" rows="6" placeholder="Ej. Signos vitales por turno. Control de líquidos. Reposo absoluto. Cabecera a 30 grados." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed text-slate-800 focus:border-cyan-500 outline-none resize-y"></textarea>
                     </div>
 
-                    <div class="text-right"><button type="button" data-solo-lectura-ok onclick="imprimirDesdePestanas('indicaciones')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Solo Indicaciones</button></div>
+                    <!-- INTERCONSULTAS -->
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-user-doctor text-cyan-500 mr-2"></i>Interconsultas</h3>
+                        <label class="flex items-center gap-3 cursor-pointer w-max">
+                            <input type="checkbox" id="chk-interconsulta" onchange="toggleInterconsulta()" class="w-5 h-5 text-cyan-600 rounded">
+                            <span class="text-sm font-bold text-slate-700">Solicitar Interconsulta</span>
+                        </label>
+                        <div id="div-interconsulta" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div>
+                                <label for="ind-interconsulta-especialidad" class="text-xs font-bold text-slate-500 uppercase block mb-1">Especialidad <span class="text-red-500">*</span></label>
+                                <select id="ind-interconsulta-especialidad" onchange="poblarMedicosInterconsulta()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 focus:border-cyan-500 outline-none"></select>
+                            </div>
+                            <div>
+                                <label for="ind-interconsulta-medico" class="text-xs font-bold text-slate-500 uppercase block mb-1">Médico de la especialidad <span class="text-red-500">*</span></label>
+                                <select id="ind-interconsulta-medico" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 focus:border-cyan-500 outline-none"></select>
+                            </div>
+                            <p class="md:col-span-2 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><i class="fas fa-circle-info text-slate-400 mr-1"></i> El nombre del médico es de uso interno del sistema: no se imprime en la hoja de indicaciones.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-end items-stretch gap-3 pb-10">
+                        <button type="button" data-solo-lectura-ok onclick="imprimirDesdePestanas('indicaciones')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Solo Indicaciones</button>
+                        <button type="button" onclick="guardarYContinuar('indicaciones')" class="bg-slate-900 text-white px-10 py-3 rounded-xl text-base font-bold shadow-xl hover:bg-slate-800 transition inline-flex justify-center items-center gap-3">Guardar y Continuar <i class="fas fa-arrow-right"></i></button>
+                    </div>
                 </div>
 
                 <div id="vista-historia" class="hidden fade-in max-w-4xl mx-auto space-y-5 pb-20">
@@ -599,13 +634,16 @@
                         <div class="w-10 h-10 rounded-xl bg-cyan-700 text-white flex items-center justify-center shadow-md"><i class="fas fa-file-medical"></i></div>
                         <div>
                             <h3 class="text-lg font-extrabold text-slate-900 leading-tight">Historia Clínica</h3>
-                            <p class="text-xs text-slate-500">Documento formal (NOM-004) compilado automáticamente con los datos ya capturados. Se actualiza cada vez que abre esta pestaña.</p>
+                            <p class="text-xs text-slate-500">Resumen de solo lectura (NOM-004) compilado automáticamente con todo lo capturado. No tiene campos editables y se actualiza cada vez que abre esta pestaña.</p>
                         </div>
                     </div>
                     <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
                         <div id="historia-preview" style="font-family: Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #0f172a;"></div>
                     </div>
-                    <div class="text-right"><button type="button" data-solo-lectura-ok onclick="imprimirDesdePestanas('historia')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir Historia Clínica</button></div>
+                    <div class="pb-10">
+                        <button type="button" id="btn-finalizar-expediente" data-solo-lectura-ok onclick="finalizarExpedienteCompleto()" class="w-full bg-emerald-600 text-white px-8 py-7 rounded-2xl text-xl md:text-2xl font-extrabold shadow-2xl hover:bg-emerald-700 hover:-translate-y-1 transition-all inline-flex justify-center items-center gap-4"><i class="fas fa-print text-2xl"></i> Finalizar e Imprimir Expediente Completo</button>
+                        <p class="text-center text-xs text-slate-500 mt-3">Imprime en orden: Nota Médica, Hoja Frontal, Consentimientos, Indicaciones e Historia Clínica. Después bloquea el expediente.</p>
+                    </div>
                 </div>
 
             </div>
@@ -622,8 +660,8 @@
     <div id="modal-destino" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 pointer-events-none print:hidden p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6 text-center transform scale-95 transition-transform" id="modal-content">
             <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 text-2xl mx-auto mb-4"><i class="fas fa-database"></i></div>
-            <h3 class="text-xl font-extrabold text-slate-900 mb-1">Nota Guardada en Expediente Digital</h3>
-            <p class="text-sm text-slate-500 mb-6">Seleccione el destino del paciente para generar la impresión:</p>
+            <h3 class="text-xl font-extrabold text-slate-900 mb-1">Destino del Paciente</h3>
+            <p class="text-sm text-slate-500 mb-6">El alta imprime la nota y termina. Observación u Hospitalización continúan con el papeleo, sin imprimir todavía.</p>
             <div class="space-y-3">
                 <button type="button" onclick="finalizarProceso('Alta')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-3 rounded-xl transition flex justify-between px-6 items-center">
                     <span><i class="fas fa-door-open mr-2"></i> Alta Médica (Imprimir Nota)</span> <i class="fas fa-print text-slate-400"></i>
@@ -655,7 +693,7 @@
             <p style="margin-bottom: 2px;"><strong>EXPLORACIÓN FÍSICA:</strong> <span id="print-sv-linea">TA: 140/86 | FR: 19 | Temp: 36.2°C | SpO2: 98%</span></p>
             <div style="margin-left: 10px; margin-bottom: 10px;" id="print-ef-dinamica"></div>
             <div id="bloque-print-estudios" style="margin-bottom: 10px;"><strong>ESTUDIOS AUXILIARES:</strong> <span id="print-estudios"></span></div>
-            <p style="margin-bottom: 2px;"><strong>IDX (DIAGNÓSTICOS):</strong></p>
+            <p style="margin-bottom: 2px;"><strong>DIAGNÓSTICOS:</strong></p>
             <ul id="print-idx-list" style="margin-top: 0; margin-bottom: 10px;"></ul>
             <p style="margin-bottom: 10px;"><strong>ANÁLISIS CLÍNICO:</strong> <span id="print-analisis"></span></p>
             <p style="margin-bottom: 10px;"><strong>PLAN Y TRATAMIENTO:</strong> <span id="print-plan"></span></p>
@@ -664,7 +702,7 @@
         </div>
         <div class="firma-box" style="margin-top: 60px;">
             <p style="margin: 0; font-weight: bold; font-size: 12px;" id="print-doctor-firma"></p>
-            <p style="margin: 0; font-size: 10px;">Cédula Prof: 87654321</p>
+            <p style="margin: 0; font-size: 10px;">Cédula Profesional: 87654321</p>
             <p style="margin: 0; font-size: 10px;">Médico Tratante</p>
         </div>
     </div>
@@ -726,23 +764,8 @@
         </div>
     </div>
 
-    <div id="print-cons-esp" class="zona-impresion hidden">
-        <div style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px;">CONSENTIMIENTO INFORMADO (PROCEDIMIENTO)</div>
-        <div style="line-height: 1.8; margin-bottom: 15px;">
-            <strong>Paciente:</strong> <span class="linea-input out-paciente" style="width:250px;">Simona Vargas Rubio</span> &nbsp;&nbsp; <strong>Área:</strong> <span class="linea-input out-area" style="width:130px;"></span><br>
-            <strong>Procedimiento:</strong> <span class="linea-input out-procedimiento" style="width: 100%;"></span><br>
-            <strong>Riesgos y Objetivos:</strong> <span class="linea-input out-riesgos" style="width: 100%; height: 30px;"></span>
-        </div>
-<p id="texto-cons-esp" style="text-align: justify; margin-bottom: 30px;">Yo, Simona Vargas Rubio, confirmo que se me informó en qué consiste la práctica, sus beneficios y riesgos detalladamente. Entiendo que tengo derecho a no aceptar el procedimiento propuesto.</p>
-        <div style="display: flex; justify-content: space-between; margin-top: 50px;">
-            <div class="firma-box" id="firma-izq-cons-esp" style="margin-left:0;">Nombre y firma del paciente</div>
-            <div class="firma-box" id="firma-der-cons-esp" style="margin-right:0;">Nombre y firma del familiar</div>
-        </div>
-    </div>
-
-    <div id="print-historia" class="zona-impresion hidden">
-        <div id="print-historia-contenido"></div>
-    </div>
+    <!-- Consentimientos de procedimientos: se generan por JS (uno por cada consentimiento agregado) -->
+    <div id="print-cons-esp-lista"></div>
 
     <div id="print-indicaciones" class="zona-impresion hidden">
         <div style="text-align: right; margin-bottom: 5px;">
@@ -765,12 +788,38 @@
             <div id="print-ind-medicamentos" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
             <p style="margin: 0 0 2px 0;"><strong>4. MEDIDAS GENERALES:</strong></p>
             <div id="print-ind-medidas" style="white-space: pre-wrap; margin: 0 0 0 15px;"></div>
+            <div id="bloque-print-interconsulta" style="display: none; margin-top: 10px;">
+                <p style="margin: 0 0 2px 0;"><strong>5. INTERCONSULTA:</strong></p>
+                <div id="print-ind-interconsulta" style="margin: 0 0 0 15px;"></div>
+            </div>
         </div>
 
         <div class="firma-box" style="margin-top: 60px;">
             <p style="margin: 0; font-weight: bold; font-size: 12px;" id="print-ind-firma"></p>
-            <p style="margin: 0; font-size: 10px;">Cédula Prof: 87654321</p>
+            <p style="margin: 0; font-size: 10px;">Cédula Profesional: 87654321</p>
             <p style="margin: 0; font-size: 10px;">Médico Tratante</p>
+        </div>
+    </div>
+
+    <div id="print-historia-clinica" class="zona-impresion hidden">
+        <div id="print-historia-contenido"></div>
+    </div>
+
+    <!-- Contenedor de notificaciones flotantes (toasts) -->
+    <div id="contenedor-toasts" class="fixed top-4 right-4 z-[80] flex flex-col gap-3 items-end pointer-events-none print:hidden"></div>
+
+    <!-- Modal generico estilizado (reemplaza alert, confirm y prompt nativos) -->
+    <div id="modal-app" class="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 pointer-events-none print:hidden p-4">
+        <div id="modal-app-caja" class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6 transform scale-95 transition-transform">
+            <div id="modal-app-icono" class="w-14 h-14 rounded-full flex items-center justify-center text-2xl mx-auto mb-4"></div>
+            <h3 id="modal-app-titulo" class="text-lg font-extrabold text-slate-900 text-center mb-2"></h3>
+            <p id="modal-app-mensaje" class="text-sm text-slate-600 text-center"></p>
+            <ul id="modal-app-lista" class="hidden mt-3 max-h-48 overflow-y-auto text-left text-sm text-slate-700 space-y-1 bg-slate-50 border border-slate-200 rounded-xl p-3"></ul>
+            <div id="modal-app-input-wrap" class="hidden mt-4">
+                <label for="modal-app-input" id="modal-app-input-etiqueta" class="text-xs font-bold text-slate-500 uppercase block mb-1"></label>
+                <input type="text" id="modal-app-input" maxlength="80" autocomplete="off" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+            </div>
+            <div id="modal-app-botones" class="mt-6 flex flex-col-reverse sm:flex-row gap-3 justify-end"></div>
         </div>
     </div>
 
@@ -780,6 +829,21 @@
         const PARENTESCO_OPCIONES = '<option>Hijo(a)</option><option>Esposo(a)</option><option>Hermano(a)</option><option>Padre/Madre</option><option>Mismo Paciente</option><option>Otro</option>';
 
         function initApp() {
+            // --- ¿Consulta nueva o se retoma una captura en curso? ---
+            // Nueva: enlace desde el Dashboard (navegación normal) -> pestañas ocultas y formulario limpio.
+            // Se retoma: recarga / atrás-adelante / ?tab= / ?solo_lectura=1, o un INTERNAMIENTO en curso del mismo paciente.
+            const params = new URLSearchParams(window.location.search);
+            const tipoNavegacion = (performance.getEntriesByType('navigation')[0] || {}).type;
+            const nombrePaciente = document.getElementById('paciente-nombre').innerText.trim();
+            let borrador = leerBorrador();
+            const mismoPaciente = !!borrador && borrador.paciente === nombrePaciente;
+            const internamientoEnCurso = mismoPaciente && borrador.etapa === 'internamiento';
+            const reanudar = params.get('nueva') !== '1' && mismoPaciente &&
+                (internamientoEnCurso || tipoNavegacion === 'reload' || tipoNavegacion === 'back_forward' || params.has('tab') || params.get('solo_lectura') === '1');
+            if (!reanudar) { limpiarSesionConsultaNueva(); borrador = null; }
+            // ?nueva=1 ya cumplió su función: se quita de la URL para que una recarga NO vuelva a borrar la captura
+            if (params.get('nueva') === '1') history.replaceState(null, '', window.location.pathname);
+
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
             document.getElementById('input-fecha').value = now.toISOString().slice(0, 16);
@@ -799,13 +863,29 @@
             }
 
             aplicarTipoIngreso(sessionStorage.getItem('belen_destino'));
+            poblarEspecialidadesInterconsulta();
+            renderizarMachotes();
 
-            const params = new URLSearchParams(window.location.search);
-            const tab = params.get('tab');
-            const destinosInternamiento = ['Observacion', 'Hospitalizacion'];
-            if (tab === 'ingreso' || destinosInternamiento.includes(sessionStorage.getItem('belen_destino'))) {
+            // Responsable legal: se mantiene sincronizado con el teléfono/dirección de la nota
+            ['comp-tel', 'comp-dir'].forEach(id => document.getElementById(id).addEventListener('input', sincronizarResponsableConNota));
+            // Peso/Talla (Signos Vitales) alimentan el IMC y el Consentimiento
+            ['val-peso', 'val-talla'].forEach(id => document.getElementById(id).addEventListener('input', sincronizarPesoTalla));
+            sincronizarPesoTalla();
+            actualizarEdadDesdeFN();
+            document.getElementById('input-fecha').addEventListener('change', actualizarEstadoMenor);
+
+            if (reanudar) {
+                try {
+                    restaurarBorrador(borrador);
+                    if (internamientoEnCurso && tipoNavegacion === 'navigate') mostrarToast('Se retomó el internamiento en curso de ' + nombrePaciente + '.', 'info', 5500);
+                } catch (err) {
+                    console.error('No se pudo restaurar el borrador:', err);
+                    mostrarToast('No se pudo restaurar toda la captura anterior.', 'error');
+                }
+            } else if (params.get('tab') === 'ingreso') {
+                // Compatibilidad con ingreso.html (redirige a expediente.html?tab=ingreso)
                 desbloquearModoIngreso();
-                if (tab === 'ingreso') cambiarPestana('ingreso');
+                cambiarPestana('ingreso');
             }
 
             // Indicador de pendientes: se recalcula ante cualquier cambio en el formulario
@@ -813,20 +893,21 @@
             document.addEventListener('change', actualizarIndicadorPendientes);
             actualizarIndicadorPendientes();
 
-            // Responsable legal: se mantiene sincronizado con el teléfono/dirección de la nota
-            ['comp-tel', 'comp-dir'].forEach(id => document.getElementById(id).addEventListener('input', sincronizarResponsableConNota));
-            // Peso/Talla (Signos Vitales) alimentan el IMC y el Consentimiento
-            ['val-peso', 'val-talla'].forEach(id => document.getElementById(id).addEventListener('input', sincronizarPesoTalla));
-            renderizarMachotes();
-            sincronizarPesoTalla();
-            actualizarEdadDesdeFN();
-            document.getElementById('input-fecha').addEventListener('change', actualizarEstadoMenor);
+            // Borrador automático y limpieza de espacios sobrantes
+            ['input', 'change', 'click'].forEach(ev => document.addEventListener(ev, programarGuardadoBorrador));
+            window.addEventListener('pagehide', guardarBorrador);
+            document.addEventListener('focusout', limpiarCampoAlSalir);
 
-            // Bloqueo: solo se reaplica si se abre explícitamente en modo lectura (?solo_lectura=1)
-            if (params.get('solo_lectura') === '1' && sessionStorage.getItem('belen_expediente_bloqueado') === '1') {
-                desbloquearModoIngreso();
-                activarModoSoloLectura();
-            }
+            // Modal: Escape cierra; Enter en el campo de texto confirma
+            document.addEventListener('keydown', e => {
+                if (!modalAppAbierto()) return;
+                if (e.key === 'Escape') cerrarModalApp();
+                else if (e.key === 'Enter' && e.target.id === 'modal-app-input') {
+                    e.preventDefault();
+                    const principal = document.querySelector('#modal-app-botones [data-principal="1"]');
+                    if (principal) principal.click();
+                }
+            });
         }
 
         function sincronizarCivil() {
@@ -841,12 +922,13 @@
             else inputTipo.value = 'Ingreso General';
         }
 
+        // Se ejecuta SOLO cuando el médico decide internar: aparecen las pestañas administrativas
         function desbloquearModoIngreso() {
             document.getElementById('header-pestanas').classList.remove('hidden');
-            document.getElementById('btn-ingreso').classList.remove('hidden');
-            document.getElementById('btn-consentimientos').classList.remove('hidden');
-            document.getElementById('btn-imprimir-todo').classList.remove('hidden');
-            document.getElementById('panel-dx-ingreso').classList.remove('hidden');
+            ['btn-ingreso', 'btn-consentimientos', 'btn-indicaciones', 'btn-historia', 'btn-imprimir-todo', 'panel-dx-ingreso', 'btn-descartar-internamiento'].forEach(id => {
+                const n = document.getElementById(id);
+                if (n) n.classList.remove('hidden');
+            });
             document.getElementById('ui-dx-ingreso').innerText = diagnósticosAgregados[0] || 'Impactación Fecal (K56.4)';
             preseleccionarAreaPorDestino();
             sincronizarResponsableConNota();
@@ -861,59 +943,9 @@
         // ============================================================
         // CAMPOS OBLIGATORIOS E INDICADOR FLOTANTE DE PENDIENTES
         // ============================================================
-        const CAMPOS_OBLIGATORIOS_NOTA = [
-            { id: 'comp-fn', nombre: 'F. Nacimiento' },
-            { id: 'comp-civil', nombre: 'Estado Civil' },
-            { id: 'comp-tel', nombre: 'Teléfono' },
-            { id: 'comp-ocu', nombre: 'Ocupación' },
-            { id: 'comp-dir', nombre: 'Dirección' }
-        ];
-
         function valorCampo(id) {
             const n = document.getElementById(id);
             return n ? String(n.value || '').trim() : '';
-        }
-
-        // Devuelve [{id, nombre}] de los campos obligatorios aún vacíos, en orden de aparición
-        function obtenerCamposPendientes() {
-            const pendientes = CAMPOS_OBLIGATORIOS_NOTA.filter(c => !valorCampo(c.id));
-            // Condicionales de embarazo: SDG si hay embarazo; FCF si SDG >= 20
-            if (embarazoActivo() && !valorCampo('emb-sdg')) pendientes.push({ id: 'emb-sdg', nombre: 'SDG (Embarazo)' });
-            if (fcfObligatorio() && !valorCampo('exp-fcf')) pendientes.push({ id: 'exp-fcf', nombre: 'FCF (Abdomen)' });
-            return pendientes;
-        }
-
-        function marcarCamposPendientes(pendientes) {
-            pendientes.forEach(c => { const n = document.getElementById(c.id); if (n) n.classList.add('campo-pendiente'); });
-        }
-
-        function actualizarIndicadorPendientes() {
-            const btn = document.getElementById('indicador-pendientes');
-            if (!btn) return;
-            const pendientes = obtenerCamposPendientes();
-            // Quita la marca roja de los campos que ya se llenaron
-            document.querySelectorAll('.campo-pendiente').forEach(n => { if (valorCampo(n.id)) n.classList.remove('campo-pendiente'); });
-
-            if (pendientes.length === 0 || document.body.classList.contains('solo-lectura')) {
-                btn.classList.add('hidden'); btn.classList.remove('flex');
-                return;
-            }
-            document.getElementById('texto-pendientes').innerText = pendientes.length === 1
-                ? 'Falta 1 campo obligatorio'
-                : `Faltan ${pendientes.length} campos obligatorios`;
-            btn.title = 'Pendientes: ' + pendientes.map(c => c.nombre).join(', ');
-            btn.classList.remove('hidden'); btn.classList.add('flex');
-        }
-
-        function irAlPrimerPendiente() {
-            const pendientes = obtenerCamposPendientes();
-            if (pendientes.length === 0) return;
-            cambiarPestana('nota');
-            marcarCamposPendientes(pendientes);
-            const el = document.getElementById(pendientes[0].id);
-            if (!el) return;
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            setTimeout(() => el.focus({ preventScroll: true }), 400);
         }
 
         function tituloNotaSegunDestino(destino) {
@@ -1001,11 +1033,11 @@
 
         function calcularSDGporFUM() {
             const fum = parsearFechaFlexible(document.getElementById('ago-fum').value);
-            if (!fum) return alert('Capture la FUM como DD/MM/AAAA en el campo "FUM" para calcular las semanas de gestación.');
+            if (!fum) { avisar('Fecha de última menstruación', 'Capture la fecha como DD/MM/AAAA en el campo de fecha de última menstruación para calcular las semanas de gestación.'); return; }
             const refInput = new Date(document.getElementById('input-fecha').value);
             const ref = isNaN(refInput.getTime()) ? new Date() : refInput;
             const dias = Math.floor((ref - fum) / 86400000);
-            if (dias < 7 || dias > 301) return alert('La FUM capturada da un resultado fuera de rango (1 a 42 semanas). Verifique la fecha.');
+            if (dias < 7 || dias > 301) { avisar('Fecha fuera de rango', 'La fecha capturada da un resultado fuera de rango (1 a 42 semanas). Verifique la fecha.'); return; }
             document.getElementById('emb-sdg').value = Math.floor(dias / 7);
             actualizarEmbarazo();
         }
@@ -1098,7 +1130,7 @@
             if(id === 'qx') document.getElementById('btn-add-qx').style.display = checked ? 'block' : 'none';
         }
         function agregarCirugiaDOM() {
-            const id = Date.now();
+            const id = (cirugiasAgregadas.length ? Math.max.apply(null, cirugiasAgregadas) : 0) + 1;
             cirugiasAgregadas.push(id);
             const container = document.getElementById('qx-container');
             const html = `
@@ -1185,21 +1217,27 @@
         }
 
         function cambiarPestana(idDestino) {
+            // Sin internamiento no existen las pestañas administrativas
+            if (idDestino !== 'nota' && !internamientoActivo()) {
+                mostrarToast('Esas pestañas se habilitan cuando el paciente se interna (Observación u Hospitalización).', 'aviso');
+                return;
+            }
             ['vista-nota', 'vista-ingreso', 'vista-consentimientos', 'vista-indicaciones', 'vista-historia'].forEach(v => document.getElementById(v).classList.add('hidden'));
             ['btn-nota', 'btn-ingreso', 'btn-consentimientos', 'btn-indicaciones', 'btn-historia'].forEach(b => {
                 const btn = document.getElementById(b);
                 if(btn) { btn.classList.remove('tab-activa'); btn.classList.add('tab-inactiva'); }
             });
-            document.getElementById(`vista-${idDestino}`).classList.remove('hidden');
+            const vista = document.getElementById(`vista-${idDestino}`);
+            vista.classList.remove('hidden');
             const btnActivo = document.getElementById(`btn-${idDestino}`);
             if(btnActivo) { btnActivo.classList.remove('tab-inactiva'); btnActivo.classList.add('tab-activa'); }
+            const contenedor = vista.closest('.custom-scrollbar');
+            if (contenedor) contenedor.scrollTop = 0;
+            pestanaActual = idDestino;
             // La Historia Clínica se vuelve a compilar cada vez que se abre
             if (idDestino === 'historia') compilarHistoriaClinica();
-        }
-        function cambiarFormatoConsentimiento() {
-            const formato = document.getElementById('selector-formato').value;
-            document.getElementById('form-cons-gral').classList.toggle('hidden', formato !== 'gral');
-            document.getElementById('form-cons-esp').classList.toggle('hidden', formato !== 'esp');
+            if (idDestino === 'consentimientos') actualizarEstadoMenor();
+            programarGuardadoBorrador();
         }
         // El médico elige el ÁREA; la cama exacta la asigna Enfermería desde el Dashboard.
         function seleccionarArea(elemento, codigo, descripcion) {
@@ -1212,13 +1250,16 @@
         }
 
         // Pre-selecciona el área según el destino elegido en el modal (el médico puede cambiarla)
+        function marcarAreaVisual(codigo) {
+            const tarjeta = Array.from(document.getElementById('areas-hosp').children).find(c => (c.getAttribute('onclick') || '').includes(`'${codigo}'`));
+            if (tarjeta) tarjeta.click();
+        }
+
         function preseleccionarAreaPorDestino() {
             if (document.getElementById('val-area').value) return;
             const mapa = { Hospitalizacion: 'HOSPITALIZACION', Observacion: 'OBSERVACION' };
             const codigo = mapa[sessionStorage.getItem('belen_destino')];
-            if (!codigo) return;
-            const tarjeta = Array.from(document.getElementById('areas-hosp').children).find(c => (c.getAttribute('onclick') || '').includes(`'${codigo}'`));
-            if (tarjeta) tarjeta.click();
+            if (codigo) marcarAreaVisual(codigo);
         }
 
         // ---------- Responsable legal sincronizado con los datos de la nota ----------
@@ -1331,14 +1372,14 @@
 
         // Un menor requiere Familiar Responsable antes de imprimir ingreso/consentimientos/paquete
         function validarResponsableMenor() {
-            if (!esMenorDeEdad() || document.getElementById('val-responsable').value.trim()) return true;
+            if (!esMenorDeEdad() || contarLetras(document.getElementById('val-responsable').value) >= 3) return true;
             cambiarPestana('ingreso');
             const campo = document.getElementById('val-responsable');
             campo.classList.add('campo-pendiente');
             campo.addEventListener('input', () => campo.classList.remove('campo-pendiente'), { once: true });
             campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
             campo.focus();
-            alert('Paciente menor de edad: capture el nombre del Familiar Responsable antes de imprimir.');
+            avisar('Paciente menor de edad', 'Capture el nombre del Familiar Responsable antes de imprimir o continuar.');
             return false;
         }
 
@@ -1350,11 +1391,10 @@
         }
 
         // Refleja Peso/Talla/IMC del panel de Signos Vitales en el IMC y en la pestaña de Consentimientos
+        // Refleja el IMC calculado con el Peso/Talla de Signos Vitales (Consentimientos ya no los captura: los toma de la nota)
         function sincronizarPesoTalla() {
             const a = pesoTallaIMC();
             document.getElementById('ui-imc').innerText = a.imc !== null ? a.imc : '--';
-            document.getElementById('ui-peso-cons').innerText = a.peso !== null ? a.peso + ' kg' : 'Sin capturar';
-            document.getElementById('ui-talla-cons').innerText = a.talla !== null ? a.talla + ' m' : 'Sin capturar';
         }
 
         // ============================================================
@@ -1379,32 +1419,13 @@
             actualizarIndicadorPendientes();
         }
 
-        // Botón final de la Hoja Frontal: imprime, interna, bloquea y regresa al Dashboard
-        function internarYBloquearExpediente() {
-            if (!document.getElementById('val-responsable').value.trim()) return alert('Ingrese el nombre del Responsable.');
-            if (!validarResponsableMenor()) return;
-            if (!document.getElementById('val-area').value) return alert('Debe seleccionar el área de destino.');
-            persistirDatosNota();
-            imprimirDesdePestanas('ingreso');
-
-            // El flag se fija ANTES de recolectar para que el JSON salga con estatus BLOQUEADO
-            sessionStorage.setItem('belen_expediente_bloqueado', '1');
-            // SIMULACRO DE BACKEND: aquí irá el POST a la base de datos
-            const datosGenerados = recolectarExpediente();
-            console.log("ENVIANDO AL BACKEND:", datosGenerados);
-
-            activarModoSoloLectura();
-            setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
-        }
-
+        // Botón final de la Nota Médica ('Guardar Destino'): valida todo y abre el modal de destino
         function validarYGuardar() {
             const pendientes = obtenerCamposPendientes();
             if (pendientes.length > 0) {
-                irAlPrimerPendiente();
-                return alert('Faltan campos obligatorios: ' + pendientes.map(c => c.nombre).join(', ') + '.');
+                resaltarYAvisar('Faltan datos obligatorios', pendientes);
+                return;
             }
-            if(diagnósticosAgregados.length === 0) return alert('Agregue al menos un diagnóstico.');
-            if(!document.getElementById('val-motivo').value) return alert('Falta el Motivo de Consulta.');
             document.getElementById('modal-destino').classList.remove('opacity-0', 'pointer-events-none');
             document.getElementById('modal-content').classList.remove('scale-95');
         }
@@ -1415,33 +1436,33 @@
             document.querySelectorAll('.put-fecha').forEach(el => el.innerText = fechaTxt);
 
             let comp = [];
-            if(document.getElementById('comp-tel').value) comp.push('Tel: ' + document.getElementById('comp-tel').value);
-            if(document.getElementById('comp-fn').value) comp.push('F. Nac: ' + document.getElementById('comp-fn').value);
-            if(document.getElementById('comp-civil').value) comp.push('E. Civil: ' + document.getElementById('comp-civil').value);
-            if(document.getElementById('comp-dir').value) comp.push('Dir: ' + document.getElementById('comp-dir').value);
+            if(document.getElementById('comp-tel').value) comp.push('Teléfono: ' + document.getElementById('comp-tel').value);
+            if(document.getElementById('comp-fn').value) comp.push('Fecha de Nacimiento: ' + document.getElementById('comp-fn').value);
+            if(document.getElementById('comp-civil').value) comp.push('Estado Civil: ' + document.getElementById('comp-civil').value);
+            if(document.getElementById('comp-dir').value) comp.push('Dirección: ' + document.getElementById('comp-dir').value);
             if(document.getElementById('comp-ocu').value) comp.push('Ocupación: ' + document.getElementById('comp-ocu').value);
             document.getElementById('print-complementos').innerText = comp.join(' | ');
 
             // Título dinámico según el destino elegido en el modal
             document.getElementById('titulo-impresion-nota').innerText = tituloNotaSegunDestino(sessionStorage.getItem('belen_destino'));
 
-            let htmlAnt = `<strong>AHF:</strong> ${document.getElementById('chk-ahf-neg').checked ? 'Preguntados y negados.' : document.getElementById('val-ahf').value} | `;
-            htmlAnt += `<strong>APNP:</strong> ${document.getElementById('chk-apnp-neg').checked ? 'Preguntados y negados.' : document.getElementById('val-apnp').value} <br>`;
+            let htmlAnt = `<strong>Antecedentes Heredofamiliares:</strong> ${document.getElementById('chk-ahf-neg').checked ? 'Preguntados y negados.' : document.getElementById('val-ahf').value} | `;
+            htmlAnt += `<strong>Antecedentes Personales No Patológicos:</strong> ${document.getElementById('chk-apnp-neg').checked ? 'Preguntados y negados.' : document.getElementById('val-apnp').value} <br>`;
             if(!document.getElementById('chk-sangre-omitir').checked && document.getElementById('val-sangre').value) {
                 htmlAnt += `<strong>Grupo y Rh:</strong> ${document.getElementById('val-sangre').value}. `;
             }
             if(document.getElementById('chk-app-neg').checked) {
-                htmlAnt += `<strong>APP:</strong> Preguntados y negados. `;
+                htmlAnt += `<strong>Antecedentes Personales Patológicos:</strong> Preguntados y negados. `;
             } else {
-                htmlAnt += `<strong>APP:</strong> `;
-                if(document.getElementById('chk-hta').checked) htmlAnt += `HTA (${document.getElementById('hta-tiempo').value}, Tx: ${document.getElementById('hta-meds').value}, Apego: ${document.getElementById('hta-apego').value}). `;
-                if(document.getElementById('chk-dm2').checked) htmlAnt += `DM2 (${document.getElementById('dm2-tiempo').value}, Tx: ${document.getElementById('dm2-meds').value}, Apego: ${document.getElementById('dm2-apego').value}). `;
+                htmlAnt += `<strong>Antecedentes Personales Patológicos:</strong> `;
+                if(document.getElementById('chk-hta').checked) htmlAnt += `Hipertensión Arterial (${document.getElementById('hta-tiempo').value}, Tratamiento: ${document.getElementById('hta-meds').value}, Apego: ${document.getElementById('hta-apego').value}). `;
+                if(document.getElementById('chk-dm2').checked) htmlAnt += `Diabetes Mellitus tipo 2 (${document.getElementById('dm2-tiempo').value}, Tratamiento: ${document.getElementById('dm2-meds').value}, Apego: ${document.getElementById('dm2-apego').value}). `;
                 if(document.getElementById('chk-alergias').checked) htmlAnt += `<strong>Alergias:</strong> ${document.getElementById('val-alergias').value}. `;
-                if(document.getElementById('chk-hemo').checked) htmlAnt += `<strong>Transfusiones:</strong> ${document.getElementById('hemo-tipo').value} (Comp: ${document.getElementById('hemo-comp').value}). `;
+                if(document.getElementById('chk-hemo').checked) htmlAnt += `<strong>Transfusiones:</strong> ${document.getElementById('hemo-tipo').value} (Complicaciones: ${document.getElementById('hemo-comp').value}). `;
                 if(document.getElementById('chk-qx').checked && cirugiasAgregadas.length > 0) {
-                    htmlAnt += `<strong>Qx:</strong> `;
+                    htmlAnt += `<strong>Cirugías previas:</strong> `;
                     cirugiasAgregadas.forEach(id => {
-                        htmlAnt += `${document.getElementById('qx-nombre-'+id).value} (${document.getElementById('qx-fecha-'+id).value}, Comp: ${document.getElementById('qx-comp-'+id).value}). `;
+                        htmlAnt += `${document.getElementById('qx-nombre-'+id).value} (${document.getElementById('qx-fecha-'+id).value}, Complicaciones: ${document.getElementById('qx-comp-'+id).value}). `;
                     });
                 }
                 const otras = document.getElementById('val-otras-app').value;
@@ -1450,7 +1471,7 @@
             if(document.getElementById('paciente-genero').innerText.includes('Femenino') && !document.getElementById('chk-ago-omitir').checked) {
                 const g = document.getElementById('ago-g').value || 0; const p = document.getElementById('ago-p').value || 0;
                 const c = document.getElementById('ago-c').value || 0; const a = document.getElementById('ago-a').value || 0;
-                htmlAnt += `<br><strong>AGO:</strong> G:${g} P:${p} C:${c} A:${a}. FUM: ${document.getElementById('ago-fum').value || 'No ref'}. Ritmo: ${document.getElementById('ago-ritmo').value}. MPF: ${document.getElementById('ago-mpf').value || 'Ninguno'}. `;
+                htmlAnt += `<br><strong>Antecedentes Gineco-Obstétricos:</strong> Gestas: ${g}, Partos: ${p}, Cesáreas: ${c}, Abortos: ${a}. Fecha de última menstruación: ${document.getElementById('ago-fum').value || 'No ref'}. Ritmo: ${document.getElementById('ago-ritmo').value}. Método de planificación: ${document.getElementById('ago-mpf').value || 'Ninguno'}. `;
                 htmlAnt += textoAGOExtendido();
                 if(!document.getElementById('chk-ago-solo-formula').checked) {
                     let descGestas = [];
@@ -1518,7 +1539,7 @@
 
             // Signos vitales en la nota impresa (triage + antropometría capturada)
             const antro = pesoTallaIMC();
-            let lineaSV = `TA: ${document.getElementById('sv-ta').innerText.trim()} | FR: ${document.getElementById('sv-fr').innerText.trim()} | Temp: ${document.getElementById('sv-temp').innerText.trim()}°C | SpO2: ${document.getElementById('sv-spo2').innerText.trim()}`;
+            let lineaSV = `Tensión Arterial: ${document.getElementById('sv-ta').innerText.trim()} | Frecuencia Respiratoria: ${document.getElementById('sv-fr').innerText.trim()} | Temperatura: ${document.getElementById('sv-temp').innerText.trim()}°C | Saturación de Oxígeno: ${document.getElementById('sv-spo2').innerText.trim()}`;
             if (antro.peso !== null) lineaSV += ` | Peso: ${antro.peso} kg`;
             if (antro.talla !== null) lineaSV += ` | Talla: ${antro.talla} m`;
             if (antro.imc !== null) lineaSV += ` | IMC: ${antro.imc}`;
@@ -1533,15 +1554,8 @@
             avisoGral.style.display = menorPrint ? 'block' : 'none';
             avisoGral.innerHTML = menorPrint ? `<strong>PACIENTE MENOR DE EDAD:</strong> el presente consentimiento es otorgado por su Familiar Responsable, ${respPrint} (${parentPrint}), quien firma en representación del paciente.` : '';
             document.getElementById('firma-izq-cons-gral').innerHTML = menorPrint ? `<strong>${respPrint}</strong><br>FIRMA DEL FAMILIAR RESPONSABLE (${parentPrint})` : 'FIRMA DEL PACIENTE';
-            document.getElementById('firma-izq-cons-esp').innerHTML = menorPrint ? `<strong>${respPrint}</strong><br>Nombre y firma del Familiar Responsable (${parentPrint})` : 'Nombre y firma del paciente';
-            document.getElementById('firma-der-cons-esp').innerHTML = menorPrint ? 'Nombre y firma del médico' : 'Nombre y firma del familiar';
-            document.getElementById('texto-cons-esp').innerHTML = menorPrint
-                ? `Yo, ${respPrint}, en calidad de Familiar Responsable (${parentPrint}) del paciente menor de edad ${nombrePac}, confirmo que se me informó en qué consiste la práctica, sus beneficios y riesgos detalladamente. Entiendo que tengo derecho a no aceptar el procedimiento propuesto.`
-                : `Yo, ${nombrePac}, confirmo que se me informó en qué consiste la práctica, sus beneficios y riesgos detalladamente. Entiendo que tengo derecho a no aceptar el procedimiento propuesto.`;
             document.querySelectorAll('.out-peso').forEach(el => el.innerText = document.getElementById('val-peso').value ? document.getElementById('val-peso').value + ' kg' : '');
             document.querySelectorAll('.out-talla').forEach(el => el.innerText = document.getElementById('val-talla').value ? document.getElementById('val-talla').value + ' m' : '');
-            document.querySelectorAll('.out-procedimiento').forEach(el => el.innerText = document.getElementById('val-procedimiento').value);
-            document.querySelectorAll('.out-riesgos').forEach(el => el.innerText = document.getElementById('val-riesgos').value);
 
             // ---------- INDICACIONES MÉDICAS (print-indicaciones) ----------
             const ind = recolectarIndicaciones();
@@ -1557,6 +1571,14 @@
             document.getElementById('print-ind-medidas').textContent = ind.medidas_generales.texto || 'Ninguna indicada.';
 
             document.getElementById('print-ind-firma').innerText = document.getElementById('val-medico').value;
+
+            // Interconsulta: la hoja impresa muestra SOLO la especialidad (el médico es dato interno del sistema)
+            const bloqueIC = document.getElementById('bloque-print-interconsulta');
+            bloqueIC.style.display = ind.interconsulta.solicitada ? 'block' : 'none';
+            document.getElementById('print-ind-interconsulta').textContent = ind.interconsulta.solicitada ? `Solicitar Interconsulta a ${ind.interconsulta.especialidad.descripcion}` : '';
+
+            // Un consentimiento impreso por cada procedimiento agregado
+            compilarConsentimientosEspeciales();
         }
 
         function ocultarTodosLosPrints() {
@@ -1566,6 +1588,9 @@
             });
         }
 
+        // Destino elegido en el modal:
+        //   Alta ............................ imprime SOLO la nota, envía al backend y termina.
+        //   Observacion / Hospitalizacion ... NO imprime: guarda, desbloquea el papeleo y abre la Hoja Frontal.
         function finalizarProceso(destino) {
             document.getElementById('modal-destino').classList.add('opacity-0', 'pointer-events-none');
             sessionStorage.setItem('belen_destino', destino);
@@ -1575,12 +1600,9 @@
             compilarDatosNota();
             ocultarTodosLosPrints();
 
-            const pNota = document.getElementById('print-nota');
-            const tituloPDF = document.getElementById('titulo-impresion-nota');
-
-            if(destino === 'Alta') {
-                tituloPDF.innerText = tituloNotaSegunDestino(destino);
-                pNota.classList.remove('hidden');
+            if (destino === 'Alta') {
+                document.getElementById('titulo-impresion-nota').innerText = tituloNotaSegunDestino(destino);
+                document.getElementById('print-nota').classList.remove('hidden');
                 window.print();
                 ocultarTodosLosPrints();
 
@@ -1588,20 +1610,32 @@
                 const datosGenerados = recolectarExpediente();
                 console.log("ENVIANDO AL BACKEND:", datosGenerados);
 
+                descartarBorrador();
+                mostrarToast('Alta registrada. Regresando al Dashboard...', 'exito');
                 setTimeout(() => window.location.href = 'dashboard.html', 1000);
             } else {
-                tituloPDF.innerText = tituloNotaSegunDestino(destino);
-                pNota.classList.remove('hidden');
-                window.print();
-                ocultarTodosLosPrints();
-                desbloquearModoIngreso();
-
-                // SIMULACRO DE BACKEND: aquí irá el POST a la base de datos
+                // SIMULACRO DE BACKEND: aquí irá el POST (la nota se guarda aunque todavía no se imprima)
                 const datosGenerados = recolectarExpediente();
                 console.log("ENVIANDO AL BACKEND:", datosGenerados);
 
+                desbloquearModoIngreso();
                 cambiarPestana('ingreso');
+                guardarBorrador();
+                mostrarToast('Nota guardada. Continúe con la Hoja Frontal.', 'exito');
             }
+        }
+
+        // Imprime una lista de zonas de impresión; con 2 o más usa el modo paquete (saltos de página)
+        function imprimirZonas(zonas) {
+            ocultarTodosLosPrints();
+            zonas.forEach((z, i) => {
+                z.classList.remove('hidden');
+                if (i < zonas.length - 1) z.classList.add('salto-pagina');
+            });
+            document.body.classList.toggle('modo-paquete', zonas.length > 1);
+            window.print();
+            ocultarTodosLosPrints();
+            document.body.classList.remove('modo-paquete');
         }
 
         function imprimirDesdePestanas(documentoUnico) {
@@ -1609,57 +1643,56 @@
             if ((documentoUnico === 'ingreso' || documentoUnico === 'consentimiento') && !validarResponsableMenor()) return;
             persistirDatosNota();
             compilarDatosNota();
-            ocultarTodosLosPrints();
-            if(documentoUnico === 'ingreso') document.getElementById('print-ingreso').classList.remove('hidden');
-            if(documentoUnico === 'consentimiento') {
-                const formato = document.getElementById('selector-formato').value;
-                document.getElementById(formato === 'gral' ? 'print-cons-gral' : 'print-cons-esp').classList.remove('hidden');
-            }
-            if(documentoUnico === 'indicaciones') document.getElementById('print-indicaciones').classList.remove('hidden');
-            if(documentoUnico === 'historia') {
+            const zonas = [];
+            if (documentoUnico === 'ingreso') zonas.push(document.getElementById('print-ingreso'));
+            if (documentoUnico === 'consentimiento') zonasDeConsentimientos().forEach(z => zonas.push(z));
+            if (documentoUnico === 'indicaciones') zonas.push(document.getElementById('print-indicaciones'));
+            if (documentoUnico === 'historia') {
                 compilarHistoriaClinica();
-                document.getElementById('print-historia').classList.remove('hidden');
+                zonas.push(document.getElementById('print-historia-clinica'));
             }
-            window.print();
-            ocultarTodosLosPrints();
+            if (zonas.length) imprimirZonas(zonas);
         }
 
-        function imprimirTodoElPaquete() {
-            if (!validarResponsableMenor()) return;
+        // Paquete completo, en este orden:
+        // Nota Médica > Hoja Frontal > Consentimiento de Ingreso > Consentimientos de Procedimiento (N) > Indicaciones > Historia Clínica
+        function imprimirPaquete() {
             persistirDatosNota();
             compilarDatosNota();
-            ocultarTodosLosPrints();
-            const pNota = document.getElementById('print-nota');
-            const pIngreso = document.getElementById('print-ingreso');
-            const pConsGral = document.getElementById('print-cons-gral');
-            pNota.classList.remove('hidden'); pNota.classList.add('salto-pagina');
-            pIngreso.classList.remove('hidden'); pIngreso.classList.add('salto-pagina');
-            const pIndicaciones = document.getElementById('print-indicaciones');
-            pIndicaciones.classList.remove('hidden'); pIndicaciones.classList.add('salto-pagina');
-            const formatoCons = document.getElementById('selector-formato').value;
-            if(formatoCons === 'gral') { pConsGral.classList.remove('hidden'); }
-            else { document.getElementById('print-cons-esp').classList.remove('hidden'); }
-            // El consentimiento ya no es el último del DOM (print-indicaciones va después): necesita su salto
-            document.getElementById(formatoCons === 'gral' ? 'print-cons-gral' : 'print-cons-esp').classList.add('salto-pagina');
-            document.body.classList.add('modo-paquete');
-            window.print();
-            ocultarTodosLosPrints();
-            document.body.classList.remove('modo-paquete');
+            compilarHistoriaClinica();
+            const zonas = [document.getElementById('print-nota'), document.getElementById('print-ingreso')]
+                .concat(zonasDeConsentimientos(), [document.getElementById('print-indicaciones'), document.getElementById('print-historia-clinica')]);
+            imprimirZonas(zonas);
         }
 
-        function generarIngreso(volverDashboard) {
-            const responsable = document.getElementById('val-responsable').value;
-            const area = document.getElementById('val-area').value;
-            if(!responsable) return alert('Ingrese el nombre del Responsable.');
-            if(!area) return alert('Debe seleccionar el área de destino (la cama la asigna Enfermería).');
-            if(!validarResponsableMenor()) return;
-            persistirDatosNota();
-            imprimirDesdePestanas('ingreso');
-            if (volverDashboard) {
-                setTimeout(() => { window.location.href = 'dashboard.html'; }, 1000);
-            } else {
-                cambiarPestana('consentimientos');
+        // Botón 'Imprimir Todo' del encabezado
+        function imprimirTodoElPaquete() {
+            if (!validarResponsableMenor()) return;
+            imprimirPaquete();
+        }
+
+        // Botón gigante de la Historia Clínica: valida todo el expediente, imprime el paquete,
+        // envía al backend, bloquea (solo lectura) y regresa al Dashboard.
+        function finalizarExpedienteCompleto() {
+            const yaBloqueado = document.body.classList.contains('solo-lectura');
+            if (!yaBloqueado) {
+                const faltantes = validarExpedienteCompleto();
+                if (faltantes.length) return resaltarYAvisar('El expediente está incompleto', faltantes);
             }
+            if (!validarResponsableMenor()) return;
+            imprimirPaquete();
+            if (yaBloqueado) return;   // ya estaba finalizado: solo era una reimpresión
+
+            // El flag se fija ANTES de recolectar para que el JSON salga con estatus BLOQUEADO
+            sessionStorage.setItem('belen_expediente_bloqueado', '1');
+            // SIMULACRO DE BACKEND: aquí irá el POST a la base de datos
+            const datosGenerados = recolectarExpediente();
+            console.log("ENVIANDO AL BACKEND:", datosGenerados);
+
+            activarModoSoloLectura();
+            guardarBorrador();
+            mostrarToast('Expediente finalizado. Regresando al Dashboard...', 'exito');
+            setTimeout(() => { window.location.href = 'dashboard.html'; }, 1800);
         }
 
         // ============================================================
@@ -1675,7 +1708,9 @@
         //   exploracion_fisica[], medicamentos[],
         //   soluciones_parenterales[],
         //   medidas_generales[] .............. N filas por consulta
-        //   ingreso / consentimientos ........ 1 fila c/u (FK consulta)
+        //   ingreso ......................... 1 fila (FK consulta)
+        //   consentimientos.procedimientos[] . N filas por consulta (orden, procedimiento, riesgos)
+        //   indicaciones.interconsulta ....... 0..1 fila (especialidad + medico: el medico es solo interno)
         // Los catálogos (dieta, vía, medidas) viajan como `codigo` estable
         // + `descripcion`, listos para ser FK a tablas de catálogo.
         // ============================================================
@@ -1893,11 +1928,15 @@
 
             // ---------- CONSENTIMIENTOS ----------
             const consentimientos = {
-                formato_seleccionado: el('selector-formato') ? el('selector-formato').value : null, // gral | esp
-                // Peso/talla ya no se capturan aquí: viven en paciente.signos_vitales
+                // Peso/talla no se capturan aquí: viven en paciente.signos_vitales
                 requiere_familiar_responsable: esMenorDeEdad(),
-                procedimiento: textoONull('val-procedimiento'),
-                riesgos_objetivos: textoONull('val-riesgos')
+                ingreso: { incluido: true },  // Consentimiento de ingreso: fijo
+                // N consentimientos de procedimiento, en el orden en que se imprimen
+                procedimientos: consentimientosEspeciales.map((c, i) => ({
+                    orden: i + 1,
+                    procedimiento: c.procedimiento.trim() || null,
+                    riesgos_objetivos: c.riesgos.trim() || null
+                }))
             };
 
             // ---------- INDICACIONES DE PISO ----------
@@ -1956,9 +1995,650 @@
                 },
                 soluciones_parenterales: bloque('ind-soluciones'),
                 medicamentos: bloque('ind-medicamentos'),
-                medidas_generales: bloque('ind-medidas')
+                medidas_generales: bloque('ind-medidas'),
+                // El médico solo viaja en el JSON (uso interno): nunca se imprime
+                interconsulta: obtenerInterconsulta()
             };
         }
+
+        // ============================================================
+        // NOTIFICACIONES: toasts y modales estilizados
+        // (sustituyen a alert / confirm / prompt nativos del navegador)
+        // ============================================================
+        const ESTILOS_AVISO = {
+            info:  { icono: 'fa-circle-info',          fondo: 'bg-cyan-100 text-cyan-600',       toast: 'border-cyan-300 text-cyan-800' },
+            exito: { icono: 'fa-circle-check',         fondo: 'bg-emerald-100 text-emerald-600', toast: 'border-emerald-300 text-emerald-800' },
+            aviso: { icono: 'fa-triangle-exclamation', fondo: 'bg-amber-100 text-amber-600',     toast: 'border-amber-300 text-amber-800' },
+            error: { icono: 'fa-circle-xmark',         fondo: 'bg-red-100 text-red-600',         toast: 'border-red-300 text-red-800' }
+        };
+
+        // Notificación flotante que se cierra sola (clic para cerrarla antes)
+        function mostrarToast(mensaje, tipo = 'info', duracionMs = 4200) {
+            const est = ESTILOS_AVISO[tipo] || ESTILOS_AVISO.info;
+            const t = document.createElement('div');
+            t.className = `pointer-events-auto cursor-pointer flex items-start gap-3 max-w-sm bg-white border ${est.toast} shadow-xl rounded-2xl px-4 py-3 text-sm font-bold transition-all duration-300 opacity-0 translate-x-4`;
+            t.innerHTML = `<i class="fas ${est.icono} mt-0.5"></i><span class="flex-1"></span>`;
+            t.querySelector('span').textContent = mensaje;
+            document.getElementById('contenedor-toasts').appendChild(t);
+            requestAnimationFrame(() => t.classList.remove('opacity-0', 'translate-x-4'));
+            const cerrar = () => { t.classList.add('opacity-0', 'translate-x-4'); setTimeout(() => t.remove(), 300); };
+            t.addEventListener('click', cerrar);
+            setTimeout(cerrar, duracionMs);
+        }
+
+        function cerrarModalApp() {
+            document.getElementById('modal-app').classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('modal-app-caja').classList.add('scale-95');
+        }
+
+        function modalAppAbierto() {
+            return !document.getElementById('modal-app').classList.contains('pointer-events-none');
+        }
+
+        /**
+         * Modal estilizado genérico.
+         * op = { titulo, mensaje, tipo: info|exito|aviso|error, lista: [texto],
+         *        input: { etiqueta, placeholder, valor },
+         *        botones: [{ texto, estilo: primario|secundario|peligro, alPulsar(valorInput) }] }
+         * Cada botón cierra el modal, salvo que alPulsar devuelva false.
+         */
+        function mostrarModal(op) {
+            const $ = id => document.getElementById(id);
+            const est = ESTILOS_AVISO[op.tipo || 'info'] || ESTILOS_AVISO.info;
+            $('modal-app-icono').className = `w-14 h-14 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 ${est.fondo}`;
+            $('modal-app-icono').innerHTML = `<i class="fas ${est.icono}"></i>`;
+            $('modal-app-titulo').textContent = op.titulo || '';
+            $('modal-app-mensaje').textContent = op.mensaje || '';
+            $('modal-app-mensaje').classList.toggle('hidden', !op.mensaje);
+
+            const lista = $('modal-app-lista');
+            lista.innerHTML = '';
+            (op.lista || []).forEach(t => {
+                const li = document.createElement('li');
+                li.innerHTML = '<i class="fas fa-circle text-[5px] text-slate-400 mr-2 align-middle"></i>';
+                li.appendChild(document.createTextNode(t));
+                lista.appendChild(li);
+            });
+            lista.classList.toggle('hidden', !(op.lista && op.lista.length));
+
+            const input = $('modal-app-input');
+            $('modal-app-input-wrap').classList.toggle('hidden', !op.input);
+            if (op.input) {
+                $('modal-app-input-etiqueta').textContent = op.input.etiqueta || '';
+                input.placeholder = op.input.placeholder || '';
+                input.value = op.input.valor || '';
+            }
+
+            const clases = { primario: 'bg-slate-900 text-white hover:bg-slate-800', secundario: 'bg-slate-100 text-slate-700 hover:bg-slate-200', peligro: 'bg-red-600 text-white hover:bg-red-700' };
+            const botones = (op.botones && op.botones.length) ? op.botones : [{ texto: 'Entendido', estilo: 'primario' }];
+            const caja = $('modal-app-botones');
+            caja.innerHTML = '';
+            botones.forEach((b, i) => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `px-5 py-2.5 rounded-xl text-sm font-bold transition ${clases[b.estilo || (i === botones.length - 1 ? 'primario' : 'secundario')]}`;
+                btn.textContent = b.texto;
+                btn.dataset.principal = (i === botones.length - 1) ? '1' : '';
+                btn.addEventListener('click', () => {
+                    if (b.alPulsar && b.alPulsar(op.input ? input.value : undefined) === false) return;
+                    cerrarModalApp();
+                });
+                caja.appendChild(btn);
+            });
+
+            $('modal-app').classList.remove('opacity-0', 'pointer-events-none');
+            $('modal-app-caja').classList.remove('scale-95');
+            setTimeout(() => { (op.input ? input : caja.lastElementChild).focus(); }, 50);
+        }
+
+        function avisar(titulo, mensaje, tipo = 'aviso') {
+            mostrarModal({ titulo: titulo, mensaje: mensaje, tipo: tipo });
+        }
+
+        function confirmarModal(titulo, mensaje, alConfirmar, textoConfirmar = 'Aceptar', peligro = false) {
+            mostrarModal({
+                titulo: titulo, mensaje: mensaje, tipo: peligro ? 'error' : 'aviso',
+                botones: [{ texto: 'Cancelar', estilo: 'secundario' }, { texto: textoConfirmar, estilo: peligro ? 'peligro' : 'primario', alPulsar: alConfirmar }]
+            });
+        }
+
+        function pedirTextoModal(titulo, etiqueta, alAceptar, placeholder = '') {
+            mostrarModal({
+                titulo: titulo, tipo: 'info', input: { etiqueta: etiqueta, placeholder: placeholder },
+                botones: [{ texto: 'Cancelar', estilo: 'secundario' }, { texto: 'Guardar', estilo: 'primario', alPulsar: v => alAceptar(v) }]
+            });
+        }
+
+        // Lista de pendientes en un modal con botón para ir al primero
+        function mostrarFaltantes(titulo, pendientes, alIr) {
+            mostrarModal({
+                titulo: titulo, tipo: 'aviso',
+                mensaje: pendientes.length === 1 ? 'Falta 1 dato por completar:' : `Faltan ${pendientes.length} datos por completar:`,
+                lista: pendientes.map(p => p.motivo ? `${p.nombre}: ${p.motivo}` : p.nombre),
+                botones: [{ texto: 'Cerrar', estilo: 'secundario' }, { texto: 'Ir al primer pendiente', estilo: 'primario', alPulsar: () => { (alIr || irAPendiente)(pendientes[0]); } }]
+            });
+        }
+
+        // ============================================================
+        // BORRADOR PERSISTENTE (sessionStorage)
+        // ------------------------------------------------------------
+        // Evita perder lo capturado si la página se recarga, se vuelve atrás
+        // o el médico sale al Dashboard con un internamiento a medias.
+        // Etapas: 'nota' (sin destino) | 'internamiento' (papeleo en curso) | 'bloqueado' (finalizado).
+        // Una consulta NUEVA (enlace desde el Dashboard) descarta el borrador, salvo que
+        // exista un internamiento en curso del mismo paciente.
+        // ============================================================
+        const CLAVE_BORRADOR = 'belen_borrador';
+        let borradorDescartado = false;
+        let temporizadorBorrador = null;
+        let pestanaActual = 'nota';
+        const PREFIJOS_DINAMICOS_BORRADOR = ['qx-nombre-', 'qx-fecha-', 'qx-comp-', 'cons-proc-', 'cons-riesgos-', 'machote-sel-'];
+        const IDS_EXCLUIDOS_BORRADOR = ['input-dx', 'modal-app-input'];
+
+        function esCampoDeBorrador(n) {
+            if (!n.id || n.type === 'button' || IDS_EXCLUIDOS_BORRADOR.includes(n.id)) return false;
+            return !PREFIJOS_DINAMICOS_BORRADOR.some(p => n.id.startsWith(p));
+        }
+
+        function internamientoActivo() {
+            return !document.getElementById('header-pestanas').classList.contains('hidden');
+        }
+
+        function etapaActual() {
+            if (document.body.classList.contains('solo-lectura')) return 'bloqueado';
+            return internamientoActivo() ? 'internamiento' : 'nota';
+        }
+
+        function capturarBorrador() {
+            const campos = {};
+            document.querySelectorAll('main input[id], main select[id], main textarea[id]').forEach(n => {
+                if (esCampoDeBorrador(n)) campos[n.id] = (n.type === 'checkbox') ? n.checked : n.value;
+            });
+            const valor = id => { const n = document.getElementById(id); return n ? n.value : ''; };
+            return {
+                v: 1,
+                paciente: document.getElementById('paciente-nombre').innerText.trim(),
+                guardado_en: new Date().toISOString(),
+                etapa: etapaActual(),
+                pestana: pestanaActual,
+                campos: campos,
+                vacunas: Array.from(document.querySelectorAll('[data-vacuna-emb]:checked')).map(c => c.dataset.vacunaEmb),
+                diagnosticos: diagnósticosAgregados.slice(),
+                cirugias: cirugiasAgregadas.map(id => ({ nombre: valor('qx-nombre-' + id), fecha: valor('qx-fecha-' + id), comp: valor('qx-comp-' + id) })),
+                consentimientos: consentimientosEspeciales.map(c => ({ procedimiento: c.procedimiento, riesgos: c.riesgos }))
+            };
+        }
+
+        function leerBorrador() {
+            try { return JSON.parse(sessionStorage.getItem(CLAVE_BORRADOR) || 'null'); } catch (e) { return null; }
+        }
+
+        function guardarBorrador() {
+            if (borradorDescartado) return;
+            try { sessionStorage.setItem(CLAVE_BORRADOR, JSON.stringify(capturarBorrador())); } catch (e) { /* almacenamiento lleno o bloqueado */ }
+        }
+
+        function programarGuardadoBorrador() {
+            clearTimeout(temporizadorBorrador);
+            temporizadorBorrador = setTimeout(guardarBorrador, 500);
+        }
+
+        function descartarBorrador() {
+            borradorDescartado = true;
+            clearTimeout(temporizadorBorrador);
+            sessionStorage.removeItem(CLAVE_BORRADOR);
+        }
+
+        function limpiarSesionConsultaNueva() {
+            ['belen_destino', 'belen_expediente_bloqueado', 'belen_paciente_dir', 'belen_paciente_civil', CLAVE_BORRADOR].forEach(k => sessionStorage.removeItem(k));
+        }
+
+        function iniciarNuevaConsultaDemo() {
+            descartarBorrador();
+            limpiarSesionConsultaNueva();
+            window.location.href = 'expediente.html?nueva=1';
+        }
+
+        function restaurarBorrador(b) {
+            const $ = id => document.getElementById(id);
+            const campos = b.campos || {};
+            // Las tarjetas de exploración se reconstruyen con toggleTarjetaEF (no se copia su estatus directamente)
+            const aplicar = () => {
+                Object.keys(campos).forEach(id => {
+                    if (id.startsWith('estatus-')) return;
+                    const n = $(id);
+                    if (!n) return;
+                    if (n.type === 'checkbox') n.checked = !!campos[id]; else n.value = campos[id];
+                });
+                document.querySelectorAll('[data-vacuna-emb]').forEach(c => { c.checked = (b.vacunas || []).includes(c.dataset.vacunaEmb); });
+            };
+
+            // 1) Estructuras dinámicas
+            diagnósticosAgregados = Array.isArray(b.diagnosticos) ? b.diagnosticos.slice() : [];
+            renderizarListaDx();
+            (b.cirugias || []).forEach(q => {
+                agregarCirugiaDOM();
+                const id = cirugiasAgregadas[cirugiasAgregadas.length - 1];
+                $('qx-nombre-' + id).value = q.nombre || ''; $('qx-fecha-' + id).value = q.fecha || ''; $('qx-comp-' + id).value = q.comp || '';
+            });
+            consentimientosEspeciales = (b.consentimientos || []).map(c => ({ id: ++contadorConsentimientos, procedimiento: c.procedimiento || '', riesgos: c.riesgos || '' }));
+            renderizarConsentimientosEspeciales();
+
+            // 2) Campos estáticos y manejadores de interfaz
+            aplicar();
+            document.querySelectorAll('main input[type=checkbox][id]').forEach(c => {
+                if (esCampoDeBorrador(c) && c.checked !== c.defaultChecked) c.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+            ['neuro', 'cabeza', 'cardio', 'abdomen', 'rectal', 'ext'].forEach(id => {
+                if (campos['estatus-' + id] === 'alterado' && $('estatus-' + id).value === 'normal') toggleTarjetaEF(id);
+            });
+            if (campos['val-area']) marcarAreaVisual(campos['val-area']);
+            if ((parseInt(campos['ago-p'], 10) || 0) + (parseInt(campos['ago-c'], 10) || 0) + (parseInt(campos['ago-a'], 10) || 0) > 0) generarFilasAGO();
+            poblarMedicosInterconsulta();
+
+            // 3) Segunda pasada: los manejadores anteriores pudieron limpiar valores
+            aplicar();
+            sincronizarCivil(); sincronizarPesoTalla(); actualizarEdadDesdeFN(); actualizarEmbarazo(); toggleDetallesAGO();
+
+            // 4) Etapa y pestaña
+            if (b.etapa === 'internamiento' || b.etapa === 'bloqueado') {
+                desbloquearModoIngreso();
+                cambiarPestana(b.pestana && b.pestana !== 'nota' ? b.pestana : 'nota');
+            }
+            if (b.etapa === 'bloqueado') {
+                sessionStorage.setItem('belen_expediente_bloqueado', '1');
+                activarModoSoloLectura();
+            }
+            if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+            document.querySelectorAll('.custom-scrollbar').forEach(c => { c.scrollTop = 0; });
+            actualizarIndicadorPendientes();
+        }
+
+        // ============================================================
+        // VALIDACIONES (texto significativo, teléfono, dirección, ocupación)
+        // ============================================================
+        const LETRAS = /[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g;
+        const ALFANUM = /[A-Za-z0-9ÁÉÍÓÚÜÑáéíóúüñ]/g;
+
+        function contarLetras(t) { return (String(t || '').match(LETRAS) || []).length; }
+        function contarAlfanumericos(t) { return (String(t || '').match(ALFANUM) || []).length; }
+        function normalizarEspacios(t) { return String(t || '').trim().replace(/\s+/g, ' '); }
+
+        // Un texto cuenta solo si trae suficientes letras: un punto o espacios no pasan
+        function textoSignificativo(id, minLetras = 3) { return contarLetras(valorCampo(id)) >= minLetras; }
+        function contenidoValido(id) { return contarAlfanumericos(valorCampo(id)) >= 1; }
+
+        function telefonoValido(v) {
+            const t = normalizarEspacios(v);
+            if (!/^\+?[0-9\s\-().]+$/.test(t)) return false;
+            const d = t.replace(/\D/g, '');
+            return d.length >= 10 && d.length <= 13 && !/^(\d)\1+$/.test(d);
+        }
+
+        function direccionValida(v) {
+            const t = normalizarEspacios(v);
+            return t.length >= 8 && contarLetras(t) >= 3 && contarAlfanumericos(t) >= 6 && !/^(.)\1+$/.test(t.replace(/\s/g, ''));
+        }
+
+        function ocupacionValida(v) {
+            const t = normalizarEspacios(v);
+            return /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ][A-Za-zÁÉÍÓÚÜÑáéíóúüñ .,'\/-]{2,59}$/.test(t) && contarLetras(t) >= 3;
+        }
+
+        function fechaNacimientoValida(v) {
+            const f = parsearFechaFlexible(v);
+            if (!f) return false;
+            const ref = new Date(document.getElementById('input-fecha').value);
+            return f.getFullYear() >= 1900 && f <= (isNaN(ref.getTime()) ? new Date() : ref);
+        }
+
+        function marcado(id) { const n = document.getElementById(id); return !!n && n.checked; }
+
+        // Devuelve [{ id, nombre, motivo, marca, tab }] con TODO lo obligatorio de la Nota Médica que falta
+        function obtenerCamposPendientes() {
+            const pend = [];
+            const add = (id, nombre, motivo, marca) => pend.push({ id: id, nombre: nombre, motivo: motivo || 'Campo obligatorio', marca: marca || id, tab: 'nota' });
+            const generoFem = document.getElementById('paciente-genero').innerText.includes('Femenino');
+            const MSG_OMITIR = (etq) => `Escriba algo o marque "${etq}"`;
+
+            // Datos complementarios
+            const fn = valorCampo('comp-fn');
+            if (!fn) add('comp-fn', 'Fecha de Nacimiento'); else if (!fechaNacimientoValida(fn)) add('comp-fn', 'Fecha de Nacimiento', 'Fecha no válida');
+            if (!valorCampo('comp-civil')) add('comp-civil', 'Estado Civil');
+            const tel = valorCampo('comp-tel');
+            if (!tel) add('comp-tel', 'Teléfono'); else if (!telefonoValido(tel)) add('comp-tel', 'Teléfono', 'Escriba 10 dígitos (no se aceptan puntos ni espacios en blanco)');
+            const ocu = valorCampo('comp-ocu');
+            if (!ocu) add('comp-ocu', 'Ocupación'); else if (!ocupacionValida(ocu)) add('comp-ocu', 'Ocupación', 'Debe contener al menos 3 letras');
+            const dir = valorCampo('comp-dir');
+            if (!dir) add('comp-dir', 'Dirección'); else if (!direccionValida(dir)) add('comp-dir', 'Dirección', 'Escriba calle, número y colonia (mínimo 8 caracteres)');
+
+            // Antecedentes: escribir algo o marcar la casilla de negados / omitir
+            if (!marcado('chk-ahf-neg') && !textoSignificativo('val-ahf')) add('val-ahf', 'Antecedentes heredofamiliares', MSG_OMITIR('Preguntado y Negado'));
+            if (!marcado('chk-apnp-neg') && !textoSignificativo('val-apnp')) add('val-apnp', 'Antecedentes personales no patológicos', MSG_OMITIR('Preguntado y Negado'));
+            if (!marcado('chk-sangre-omitir') && !valorCampo('val-sangre')) add('val-sangre', 'Grupo y Rh', 'Seleccione uno o marque "Desconoce / Omitir"');
+            if (!marcado('chk-app-neg')) {
+                const algunApp = ['chk-alergias', 'chk-hta', 'chk-dm2', 'chk-qx', 'chk-hemo'].some(marcado) || textoSignificativo('val-otras-app');
+                if (!algunApp) add('chk-app-neg', 'Antecedentes personales patológicos', 'Capture al menos uno o marque "Todo Preguntado y Negado"', 'contenedor-app');
+                if (marcado('chk-alergias') && !textoSignificativo('val-alergias')) add('val-alergias', 'Alergias', 'Especifique a qué es alérgico');
+                if (marcado('chk-qx') && !cirugiasAgregadas.some(id => textoSignificativo('qx-nombre-' + id))) add('btn-add-qx', 'Antecedentes quirúrgicos', 'Agregue al menos una cirugía con su nombre', 'div-qx');
+                if (marcado('chk-hemo') && !textoSignificativo('hemo-tipo')) add('hemo-tipo', 'Transfusiones', 'Indique cuántas y de qué tipo');
+            }
+            if (generoFem && !marcado('chk-ago-omitir')) {
+                if (valorCampo('ago-fum').length < 5) add('ago-fum', 'Antecedentes gineco-obstétricos: fecha de última menstruación', 'Capture la fecha o indique menopausia');
+                if (!marcado('chk-ago-ivus-nr') && !contenidoValido('ago-ivus')) add('ago-ivus', 'Infecciones de vías urinarias', MSG_OMITIR('No referidas'));
+                if (!marcado('chk-ago-ets-nr') && !contenidoValido('ago-ets')) add('ago-ets', 'Enfermedades de transmisión sexual', MSG_OMITIR('No referidas'));
+                if (!marcado('chk-ago-parejas-nr') && valorCampo('ago-parejas') === '') add('ago-parejas', 'Número de parejas sexuales', MSG_OMITIR('No referido'));
+                if (!marcado('chk-ago-higiene-nr') && !valorCampo('ago-higiene-tipo')) add('ago-higiene-tipo', 'Toallas o tampones', 'Seleccione una opción o marque "No referido"');
+            }
+            if (embarazoActivo() && !valorCampo('emb-sdg')) add('emb-sdg', 'Semanas de gestación (embarazo actual)');
+            if (fcfObligatorio() && !valorCampo('exp-fcf')) add('exp-fcf', 'Frecuencia cardíaca fetal (abdomen)');
+
+            // Narrativa clínica
+            if (!textoSignificativo('val-motivo', 3)) add('val-motivo', 'Motivo de Consulta');
+            if (!textoSignificativo('val-padecimiento', 10)) add('val-padecimiento', 'Padecimiento Actual', 'Describa la evolución (mínimo 10 letras)');
+            [['neuro', 'Neurológico'], ['cabeza', 'Cabeza y Cuello'], ['cardio', 'Cardiopulmonar'], ['abdomen', 'Abdomen'], ['rectal', 'Tacto Rectal / Genitourinario'], ['ext', 'Extremidades']].forEach(([id, nombre]) => {
+                if (valorCampo('estatus-' + id) === 'alterado' && !contenidoValido('text-' + id)) add('text-' + id, 'Exploración física: ' + nombre, 'Describa la alteración o desmarque la tarjeta');
+            });
+            if (!marcado('chk-omitir-estudios') && !textoSignificativo('val-estudios', 2)) add('val-estudios', 'Estudios Auxiliares', MSG_OMITIR('No hay / Omitir'));
+            if (diagnósticosAgregados.length === 0) add('input-dx', 'Diagnósticos', 'Agregue al menos un diagnóstico');
+            if (!textoSignificativo('val-analisis', 10)) add('val-analisis', 'Análisis Clínico', 'Escriba el análisis (mínimo 10 letras)');
+            if (!textoSignificativo('val-plan', 10)) add('val-plan', 'Plan y Tratamiento', 'Escriba el plan (mínimo 10 letras)');
+            if (!marcado('chk-omitir-alarma') && !textoSignificativo('val-alarma', 3)) add('val-alarma', 'Signos de Alarma Explicados', MSG_OMITIR('Omitir'));
+            if (!textoSignificativo('val-pronostico', 3)) add('val-pronostico', 'Pronóstico Médico Final');
+            return pend;
+        }
+
+        function marcarCamposPendientes(pendientes) {
+            pendientes.forEach(c => { const n = document.getElementById(c.marca || c.id); if (n) n.classList.add('campo-pendiente'); });
+        }
+
+        function actualizarIndicadorPendientes() {
+            const btn = document.getElementById('indicador-pendientes');
+            if (!btn) return;
+            const pendientes = obtenerCamposPendientes();
+            // Quita la marca roja de todo lo que ya no esté pendiente
+            const aunPendientes = new Set(pendientes.map(p => p.marca || p.id));
+            document.querySelectorAll('.campo-pendiente').forEach(n => { if (!aunPendientes.has(n.id)) n.classList.remove('campo-pendiente'); });
+
+            if (pendientes.length === 0 || document.body.classList.contains('solo-lectura')) {
+                btn.classList.add('hidden'); btn.classList.remove('flex');
+                return;
+            }
+            document.getElementById('texto-pendientes').innerText = pendientes.length === 1
+                ? 'Falta 1 campo obligatorio'
+                : `Faltan ${pendientes.length} campos obligatorios`;
+            btn.title = 'Pendientes: ' + pendientes.map(c => c.nombre).join(', ');
+            btn.classList.remove('hidden'); btn.classList.add('flex');
+        }
+
+        // Lleva al médico a un pendiente concreto (en la pestaña que le corresponda)
+        function irAPendiente(p) {
+            if (!p) return;
+            cambiarPestana(p.tab || 'nota');
+            marcarCamposPendientes([p]);
+            const el = document.getElementById(p.id);
+            if (!el) return;
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => { if (el.focus) el.focus({ preventScroll: true }); }, 400);
+        }
+
+        function irAlPrimerPendiente() {
+            const pendientes = obtenerCamposPendientes();
+            if (pendientes.length === 0) return;
+            marcarCamposPendientes(pendientes);
+            irAPendiente(pendientes[0]);
+        }
+
+        // Limpia espacios sobrantes al salir de teléfono, ocupación y dirección
+        function limpiarCampoAlSalir(e) {
+            const n = e.target;
+            if (!['comp-tel', 'comp-ocu', 'comp-dir', 'val-responsable', 'val-tel-resp', 'val-dir-resp'].includes(n.id)) return;
+            n.value = normalizarEspacios(n.value);
+        }
+
+        // ============================================================
+        // INTERCONSULTA (catálogo fijo por ahora)
+        // ============================================================
+        const CATALOGO_INTERCONSULTA = [
+            { codigo: 'MEDICINA_INTERNA', nombre: 'Medicina Interna', medicos: [{ codigo: 'MI-01', nombre: 'Dra. Laura Méndez Ortiz' }, { codigo: 'MI-02', nombre: 'Dr. Ricardo Salazar Núñez' }] },
+            { codigo: 'CARDIOLOGIA', nombre: 'Cardiología', medicos: [{ codigo: 'CA-01', nombre: 'Dr. Héctor Villalobos Reyes' }, { codigo: 'CA-02', nombre: 'Dra. Mariana Ochoa Prieto' }] },
+            { codigo: 'NEUROLOGIA', nombre: 'Neurología', medicos: [{ codigo: 'NE-01', nombre: 'Dr. Andrés Ibarra Cuevas' }, { codigo: 'NE-02', nombre: 'Dra. Paola Treviño Lara' }] },
+            { codigo: 'CIRUGIA_GENERAL', nombre: 'Cirugía General', medicos: [{ codigo: 'CG-01', nombre: 'Dr. Fernando Aguirre Soto' }, { codigo: 'CG-02', nombre: 'Dra. Elena Camacho Duarte' }] },
+            { codigo: 'GINECOLOGIA_OBSTETRICIA', nombre: 'Ginecología y Obstetricia', medicos: [{ codigo: 'GO-01', nombre: 'Dra. Verónica Escalante Ruiz' }, { codigo: 'GO-02', nombre: 'Dr. Mauricio Fuentes Barrera' }] },
+            { codigo: 'PEDIATRIA', nombre: 'Pediatría', medicos: [{ codigo: 'PE-01', nombre: 'Dra. Claudia Robles Ayala' }, { codigo: 'PE-02', nombre: 'Dr. Iván Montes Galindo' }] },
+            { codigo: 'TRAUMATOLOGIA_ORTOPEDIA', nombre: 'Traumatología y Ortopedia', medicos: [{ codigo: 'TO-01', nombre: 'Dr. Gustavo Paredes Lemus' }, { codigo: 'TO-02', nombre: 'Dra. Natalia Cordero Vega' }] },
+            { codigo: 'UROLOGIA', nombre: 'Urología', medicos: [{ codigo: 'UR-01', nombre: 'Dr. Sergio Valenzuela Mora' }, { codigo: 'UR-02', nombre: 'Dra. Itzel Navarro Pineda' }] },
+            { codigo: 'GASTROENTEROLOGIA', nombre: 'Gastroenterología', medicos: [{ codigo: 'GA-01', nombre: 'Dra. Beatriz Solís Cárdenas' }, { codigo: 'GA-02', nombre: 'Dr. Raúl Esquivel Ponce' }] },
+            { codigo: 'NEUMOLOGIA', nombre: 'Neumología', medicos: [{ codigo: 'NM-01', nombre: 'Dr. Emilio Contreras Baca' }, { codigo: 'NM-02', nombre: 'Dra. Sofía Archundia Neri' }] },
+            { codigo: 'NEFROLOGIA', nombre: 'Nefrología', medicos: [{ codigo: 'NF-01', nombre: 'Dr. Luis Orozco Medina' }, { codigo: 'NF-02', nombre: 'Dra. Karen Zamudio Ríos' }] },
+            { codigo: 'ENDOCRINOLOGIA', nombre: 'Endocrinología', medicos: [{ codigo: 'EN-01', nombre: 'Dra. Daniela Quiroz Hidalgo' }, { codigo: 'EN-02', nombre: 'Dr. Alberto Lugo Mendoza' }] }
+        ];
+
+        function poblarEspecialidadesInterconsulta() {
+            document.getElementById('ind-interconsulta-especialidad').innerHTML =
+                '<option value="">Seleccione una especialidad...</option>' +
+                CATALOGO_INTERCONSULTA.map(e => `<option value="${e.codigo}">${e.nombre}</option>`).join('');
+            poblarMedicosInterconsulta();
+        }
+
+        function poblarMedicosInterconsulta() {
+            const esp = CATALOGO_INTERCONSULTA.find(e => e.codigo === document.getElementById('ind-interconsulta-especialidad').value);
+            document.getElementById('ind-interconsulta-medico').innerHTML = esp
+                ? '<option value="">Seleccione un médico...</option>' + esp.medicos.map(m => `<option value="${m.codigo}">${m.nombre}</option>`).join('')
+                : '<option value="">Seleccione primero una especialidad</option>';
+        }
+
+        function toggleInterconsulta() {
+            const activa = document.getElementById('chk-interconsulta').checked;
+            document.getElementById('div-interconsulta').classList.toggle('hidden', !activa);
+            if (!activa) { document.getElementById('ind-interconsulta-especialidad').value = ''; poblarMedicosInterconsulta(); }
+        }
+
+        // Lee la solicitud de interconsulta. El nombre del médico es SOLO para el sistema (JSON): nunca se imprime.
+        function obtenerInterconsulta() {
+            const solicitada = marcado('chk-interconsulta');
+            const esp = CATALOGO_INTERCONSULTA.find(e => e.codigo === valorCampo('ind-interconsulta-especialidad')) || null;
+            const med = esp ? (esp.medicos.find(m => m.codigo === valorCampo('ind-interconsulta-medico')) || null) : null;
+            return {
+                solicitada: solicitada && !!esp,
+                especialidad: solicitada && esp ? { codigo: esp.codigo, descripcion: esp.nombre } : null,
+                medico: solicitada && med ? { codigo: med.codigo, nombre: med.nombre } : null
+            };
+        }
+
+        // ============================================================
+        // CONSENTIMIENTOS: ingreso fijo + N consentimientos de procedimiento
+        // ============================================================
+        let consentimientosEspeciales = [];
+        let contadorConsentimientos = 0;
+
+        function agregarConsentimientoProcedimiento() {
+            consentimientosEspeciales.push({ id: ++contadorConsentimientos, procedimiento: '', riesgos: '' });
+            renderizarConsentimientosEspeciales();
+            const nuevo = document.getElementById('cons-proc-' + contadorConsentimientos);
+            if (nuevo) nuevo.focus();
+            programarGuardadoBorrador();
+        }
+
+        function actualizarConsentimiento(id, campo, valor) {
+            const c = consentimientosEspeciales.find(x => x.id === id);
+            if (c) c[campo] = valor;
+            const n = document.getElementById(`cons-${campo === 'procedimiento' ? 'proc' : 'riesgos'}-${id}`);
+            if (n && contarLetras(valor) >= 3) n.classList.remove('campo-pendiente');
+        }
+
+        function quitarConsentimiento(id) {
+            const c = consentimientosEspeciales.find(x => x.id === id);
+            if (!c) return;
+            const quitar = () => { consentimientosEspeciales = consentimientosEspeciales.filter(x => x.id !== id); renderizarConsentimientosEspeciales(); programarGuardadoBorrador(); };
+            if (!c.procedimiento.trim() && !c.riesgos.trim()) return quitar();
+            confirmarModal('Quitar consentimiento', 'Se eliminará este consentimiento de procedimiento con lo que escribió. ¿Desea continuar?', () => { quitar(); }, 'Quitar', true);
+        }
+
+        function renderizarConsentimientosEspeciales() {
+            const cont = document.getElementById('lista-consentimientos-extra');
+            cont.innerHTML = consentimientosEspeciales.map((c, i) => `
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200" data-consentimiento="${c.id}">
+                    <div class="flex items-center justify-between mb-4 border-b border-slate-100 pb-2">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-scalpel text-cyan-500 mr-2"></i>Consentimiento de Procedimiento ${i + 1}</h3>
+                        <button type="button" onclick="quitarConsentimiento(${c.id})" class="text-red-400 hover:text-red-600 p-2" title="Quitar este consentimiento"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <div class="grid grid-cols-1 gap-4">
+                        <div>
+                            <label for="cons-proc-${c.id}" class="text-xs font-bold text-slate-500 uppercase block mb-1">Procedimiento o Cirugía <span class="text-red-500">*</span></label>
+                            <input type="text" id="cons-proc-${c.id}" maxlength="200" value="${escaparHTML(c.procedimiento)}" oninput="actualizarConsentimiento(${c.id}, 'procedimiento', this.value)" placeholder="Ej. Apendicectomía laparoscópica" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none">
+                        </div>
+                        <div>
+                            <label for="cons-riesgos-${c.id}" class="text-xs font-bold text-slate-500 uppercase block mb-1">Riesgos y Objetivos <span class="text-red-500">*</span></label>
+                            <textarea id="cons-riesgos-${c.id}" maxlength="1500" oninput="actualizarConsentimiento(${c.id}, 'riesgos', this.value)" placeholder="Objetivo del procedimiento y riesgos que se explicaron..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-24 resize-y">${escaparHTML(c.riesgos)}</textarea>
+                        </div>
+                    </div>
+                </div>`).join('');
+        }
+
+        // Genera una zona de impresión por cada consentimiento de procedimiento (en orden)
+        function compilarConsentimientosEspeciales() {
+            const e = escaparHTML;
+            const menor = esMenorDeEdad();
+            const resp = e(document.getElementById('val-responsable').value.trim() || '________________');
+            const parent = e(document.getElementById('val-parentesco').value || 'Familiar');
+            const paciente = e(document.getElementById('paciente-nombre').innerText.trim());
+            const area = e(document.getElementById('val-area-desc').value || 'Por definir');
+            const fecha = e(document.getElementById('print-fecha').textContent);
+            const total = consentimientosEspeciales.length;
+            document.getElementById('print-cons-esp-lista').innerHTML = consentimientosEspeciales.map((c, i) => `
+                <div id="print-cons-esp-${i + 1}" class="zona-impresion hidden">
+                    <div style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px;">CONSENTIMIENTO INFORMADO (PROCEDIMIENTO${total > 1 ? ' ' + (i + 1) + ' DE ' + total : ''})</div>
+                    <div style="line-height: 1.8; margin-bottom: 15px;">
+                        <strong>Paciente:</strong> <span class="linea-input" style="width:250px;">${paciente}</span> &nbsp;&nbsp; <strong>Área:</strong> <span class="linea-input" style="width:130px;">${area}</span><br>
+                        <strong>Fecha:</strong> <span class="linea-input" style="width:150px;">${fecha}</span><br>
+                        <strong>Procedimiento:</strong> <span class="linea-input" style="width: 100%;">${e(c.procedimiento)}</span><br>
+                        <strong>Riesgos y Objetivos:</strong> <span class="linea-input" style="width: 100%; min-height: 30px; white-space: pre-wrap;">${e(c.riesgos)}</span>
+                    </div>
+                    <p style="text-align: justify; margin-bottom: 30px;">${menor
+                        ? `Yo, ${resp}, en calidad de Familiar Responsable (${parent}) del paciente menor de edad ${paciente}, confirmo que se me informó en qué consiste la práctica, sus beneficios y riesgos detalladamente. Entiendo que tengo derecho a no aceptar el procedimiento propuesto.`
+                        : `Yo, ${paciente}, confirmo que se me informó en qué consiste la práctica, sus beneficios y riesgos detalladamente. Entiendo que tengo derecho a no aceptar el procedimiento propuesto.`}</p>
+                    <div style="display: flex; justify-content: space-between; margin-top: 50px;">
+                        <div class="firma-box" style="margin-left:0;">${menor ? `<strong>${resp}</strong><br>Nombre y firma del Familiar Responsable (${parent})` : 'Nombre y firma del paciente'}</div>
+                        <div class="firma-box" style="margin-right:0;">${menor ? 'Nombre y firma del médico' : 'Nombre y firma del familiar'}</div>
+                    </div>
+                </div>`).join('');
+        }
+
+        function zonasDeConsentimientos() {
+            return [document.getElementById('print-cons-gral')].concat(Array.from(document.querySelectorAll('#print-cons-esp-lista .zona-impresion')));
+        }
+
+        // ============================================================
+        // "GUARDAR Y CONTINUAR" + VALIDACIONES POR PESTAÑA
+        // ============================================================
+        function validarHojaFrontal() {
+            const pend = [];
+            const add = (id, nombre, motivo) => pend.push({ id: id, nombre: nombre, motivo: motivo || 'Campo obligatorio', tab: 'ingreso' });
+            if (contarLetras(valorCampo('val-responsable')) < 3) add('val-responsable', 'Nombre del Responsable', 'Escriba el nombre completo (mínimo 3 letras)');
+            if (valorCampo('val-tel-resp') && !telefonoValido(valorCampo('val-tel-resp'))) add('val-tel-resp', 'Teléfono del Responsable', 'Escriba 10 dígitos válidos o déjelo vacío');
+            if (!valorCampo('val-area')) add('areas-hosp', 'Área de Destino', 'Seleccione Hospitalización, Observación o Consultorio extra');
+            return pend;
+        }
+
+        function validarConsentimientos() {
+            const pend = [];
+            consentimientosEspeciales.forEach((c, i) => {
+                if (contarLetras(c.procedimiento) < 3) pend.push({ id: 'cons-proc-' + c.id, nombre: `Consentimiento de Procedimiento ${i + 1}: Procedimiento`, motivo: 'Escriba el procedimiento o quite el consentimiento', tab: 'consentimientos' });
+                if (contarLetras(c.riesgos) < 5) pend.push({ id: 'cons-riesgos-' + c.id, nombre: `Consentimiento de Procedimiento ${i + 1}: Riesgos y Objetivos`, motivo: 'Describa los riesgos y objetivos', tab: 'consentimientos' });
+            });
+            return pend;
+        }
+
+        function validarIndicaciones() {
+            const pend = [];
+            if (marcado('chk-interconsulta')) {
+                if (!valorCampo('ind-interconsulta-especialidad')) pend.push({ id: 'ind-interconsulta-especialidad', nombre: 'Interconsulta: Especialidad', motivo: 'Seleccione la especialidad', tab: 'indicaciones' });
+                else if (!valorCampo('ind-interconsulta-medico')) pend.push({ id: 'ind-interconsulta-medico', nombre: 'Interconsulta: Médico', motivo: 'Seleccione el médico de la especialidad', tab: 'indicaciones' });
+            }
+            return pend;
+        }
+
+        function validarExpedienteCompleto() {
+            return obtenerCamposPendientes().concat(validarHojaFrontal(), validarConsentimientos(), validarIndicaciones());
+        }
+
+        function resaltarYAvisar(titulo, pend) {
+            pend.forEach(p => { const n = document.getElementById(p.marca || p.id); if (n) n.classList.add('campo-pendiente'); });
+            mostrarFaltantes(titulo, pend);
+        }
+
+        function guardarYContinuar(origen) {
+            if (origen === 'ingreso') {
+                const pend = validarHojaFrontal();
+                if (pend.length) return resaltarYAvisar('Complete la Hoja Frontal', pend);
+                if (!validarResponsableMenor()) return;
+                persistirDatosNota();
+                mostrarToast('Hoja Frontal guardada.', 'exito');
+                cambiarPestana('consentimientos');
+            } else if (origen === 'consentimientos') {
+                const pend = validarConsentimientos();
+                if (pend.length) return resaltarYAvisar('Complete los consentimientos', pend);
+                mostrarToast('Consentimientos guardados.', 'exito');
+                cambiarPestana('indicaciones');
+            } else if (origen === 'indicaciones') {
+                const pend = validarIndicaciones();
+                if (pend.length) return resaltarYAvisar('Complete las indicaciones', pend);
+                mostrarToast('Indicaciones guardadas. Revise la Historia Clínica.', 'exito');
+                cambiarPestana('historia');
+            }
+            guardarBorrador();
+        }
+
+        // ============================================================
+        // ===== INICIO FUNCION TEMPORAL DE PRUEBAS (BORRAR JUNTO CON #btn-datos-prueba) =====
+        // Rellena la Nota Médica con LOREM IPSUM (y valores válidos donde hay validación).
+        // ============================================================
+        function llenarDatosDePrueba() {
+            const L = 'LOREM IPSUM';
+            const poner = (id, v) => { const n = document.getElementById(id); if (!n) return; n.value = v; n.dispatchEvent(new Event('input', { bubbles: true })); n.dispatchEvent(new Event('change', { bubbles: true })); };
+            const poner_check = (id, estado) => { const n = document.getElementById(id); if (!n || n.checked === estado) return; n.checked = estado; n.dispatchEvent(new Event('change', { bubbles: true })); };
+
+            poner('comp-fn', '1985-06-15'); poner('comp-civil', 'Casado(a)'); poner('comp-tel', '3221234567');
+            poner('comp-ocu', L); poner('comp-dir', L + ' 123, Col. Centro');
+
+            poner_check('chk-ahf-neg', false); poner('val-ahf', L);
+            poner_check('chk-apnp-neg', false); poner('val-apnp', L);
+            poner_check('chk-sangre-omitir', false); poner('val-sangre', 'O+');
+            poner_check('chk-app-neg', false);
+            poner_check('chk-alergias', true); poner('val-alergias', L);
+            poner_check('chk-hta', true); poner('hta-tiempo', L); poner('hta-meds', L);
+            poner_check('chk-dm2', true); poner('dm2-tiempo', L); poner('dm2-meds', L);
+            poner('val-otras-app', L);
+            poner_check('chk-qx', true);
+            if (!cirugiasAgregadas.length) agregarCirugiaDOM();
+            const idQx = cirugiasAgregadas[0];
+            poner('qx-nombre-' + idQx, L); poner('qx-fecha-' + idQx, L); poner('qx-comp-' + idQx, 'Ninguna');
+            poner_check('chk-hemo', true); poner('hemo-tipo', L); poner('hemo-comp', 'Ninguna');
+
+            if (document.getElementById('paciente-genero').innerText.includes('Femenino')) {
+                poner_check('chk-ago-omitir', false);
+                poner('ago-fum', L); poner('ago-mpf', L);
+                poner_check('chk-ago-ivus-nr', false); poner('ago-ivus', L);
+                poner_check('chk-ago-ets-nr', false); poner('ago-ets', L);
+                poner_check('chk-ago-parejas-nr', false); poner('ago-parejas', 1);
+                poner_check('chk-ago-higiene-nr', false); poner('ago-higiene-tipo', 'TOALLAS'); poner('ago-higiene-cant', L);
+            }
+
+            poner('val-peso', 70); poner('val-talla', 1.70);
+            poner('val-motivo', L); poner('val-padecimiento', L + ' dolor sit amet, consectetur adipiscing elit.');
+            poner_check('chk-omitir-estudios', false); poner('val-estudios', L);
+            poner('val-analisis', L + ' dolor sit amet, consectetur adipiscing elit.');
+            poner('val-plan', L + ' dolor sit amet, consectetur adipiscing elit.');
+            poner_check('chk-omitir-alarma', false); poner('val-alarma', L);
+            poner('val-pronostico', 'Favorable con tratamiento oportuno');
+            if (!diagnósticosAgregados.length) { diagnósticosAgregados.push('R69 ' + L); renderizarListaDx(); }
+
+            if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+            actualizarIndicadorPendientes();
+            mostrarToast('Datos de prueba cargados en la Nota Médica.', 'info');
+        }
+        // ===== FIN FUNCION TEMPORAL DE PRUEBAS =====
 
         function escaparHTML(t) {
             return String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1987,7 +2667,7 @@
 
         function escribirMachotes(lista) {
             try { localStorage.setItem(MACHOTES_CLAVE, JSON.stringify(lista)); return true; }
-            catch (e) { alert('No se pudo guardar el machote (almacenamiento local no disponible).'); return false; }
+            catch (e) { mostrarToast('No se pudo guardar el machote (almacenamiento local no disponible).', 'error'); return false; }
         }
 
         function renderizarMachotes() {
@@ -2029,34 +2709,33 @@
             const ta = document.getElementById(MACHOTES_SECCIONES[seccion].textarea);
             const seleccion = ta.value.slice(ta.selectionStart, ta.selectionEnd).trim();
             const texto = seleccion || ta.value.trim();
-            if (!texto) return alert('Escriba primero el texto que desea guardar como machote.');
-            let nombre = prompt('Nombre del machote (ej. "Esquema de Insulina"):');
-            if (nombre === null) return;
-            nombre = nombre.trim();
-            if (!nombre) return alert('El machote necesita un nombre.');
-
-            const lista = leerMachotes();
-            const existente = lista.find(m => m.seccion === seccion && m.nombre.toLowerCase() === nombre.toLowerCase());
-            if (existente) {
-                if (!confirm(`Ya existe el machote "${existente.nombre}". ¿Reemplazar su contenido?`)) return;
-                existente.texto = texto;
-                existente.creado_en = new Date().toISOString();
-            } else {
-                lista.push({ id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), seccion: seccion, nombre: nombre, texto: texto, creado_en: new Date().toISOString() });
-            }
-            if (escribirMachotes(lista)) renderizarMachotes();
+            if (!texto) { mostrarToast('Escriba primero el texto que desea guardar como machote.', 'aviso'); return; }
+            pedirTextoModal('Guardar machote', 'Nombre del machote (ej. "Esquema de Insulina")', nombreCrudo => {
+                const nombre = (nombreCrudo || '').trim();
+                if (contarAlfanumericos(nombre) < 2) { mostrarToast('El machote necesita un nombre.', 'aviso'); return false; }
+                const lista = leerMachotes();
+                const existente = lista.find(m => m.seccion === seccion && m.nombre.toLowerCase() === nombre.toLowerCase());
+                const guardar = () => {
+                    if (existente) { existente.texto = texto; existente.creado_en = new Date().toISOString(); }
+                    else lista.push({ id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), seccion: seccion, nombre: nombre, texto: texto, creado_en: new Date().toISOString() });
+                    if (escribirMachotes(lista)) { renderizarMachotes(); mostrarToast('Machote guardado.', 'exito'); }
+                };
+                if (existente) {
+                    // Se abre un segundo modal DESPUÉS de que este se cierre
+                    setTimeout(() => confirmarModal('Machote existente', `Ya existe el machote "${existente.nombre}". ¿Reemplazar su contenido?`, () => { guardar(); }, 'Reemplazar'), 0);
+                } else guardar();
+            });
         }
 
         function borrarMachote(seccion) {
             const propios = leerMachotes().filter(m => m.seccion === seccion);
-            if (propios.length === 0) return alert('No hay machotes guardados en esta sección.');
-            const opciones = propios.map((m, i) => `${i + 1}. ${m.nombre}`).join('\n');
-            const resp = prompt(`Escriba el número del machote a eliminar:\n\n${opciones}`);
-            if (resp === null) return;
-            const elegido = propios[parseInt(resp, 10) - 1];
-            if (!elegido) return alert('Número no válido.');
-            if (!confirm(`¿Eliminar el machote "${elegido.nombre}"?`)) return;
-            if (escribirMachotes(leerMachotes().filter(m => m.id !== elegido.id))) renderizarMachotes();
+            if (propios.length === 0) { mostrarToast('No hay machotes guardados en esta sección.', 'aviso'); return; }
+            const sel = document.getElementById('machote-sel-' + seccion);
+            const elegido = sel && sel.value ? propios.find(m => m.id === sel.value) : null;
+            if (!elegido) { mostrarToast('Primero elija en la lista el machote que desea eliminar.', 'aviso'); return; }
+            confirmarModal('Eliminar machote', `¿Eliminar el machote "${elegido.nombre}"? Esta acción no se puede deshacer.`, () => {
+                if (escribirMachotes(leerMachotes().filter(m => m.id !== elegido.id))) { renderizarMachotes(); mostrarToast('Machote eliminado.', 'exito'); }
+            }, 'Eliminar', true);
         }
 
         // ============================================================
@@ -2082,11 +2761,16 @@
             const linea = (...pares) => `<p style="margin: 2px 0;">${pares.map(p => par(p[0], p[1])).join('&nbsp;&nbsp;|&nbsp;&nbsp;')}</p>`;
             const parrafo = v => `<p style="margin: 2px 0; white-space: pre-wrap;">${val(v)}</p>`;
             const viñeta = items => `<ul style="margin: 2px 0 2px 18px; padding: 0; list-style: disc;">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+            const ROMANOS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
             let n = 0;
-            const seccion = (titulo, cuerpo) => `<div style="margin-bottom: 12px; page-break-inside: avoid;"><h4 style="margin: 0 0 4px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px;">${++n}. ${e(titulo)}</h4>${cuerpo}</div>`;
+            const seccion = (titulo, cuerpo) => `<div style="margin-bottom: 12px;"><h4 style="margin: 0 0 4px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px;">${ROMANOS[n++]}. ${e(titulo)}</h4>${cuerpo}</div>`;
+            // Subsecciones del Interrogatorio (A, B, C...)
+            let letraSub = 0;
+            const subInt = (titulo, cuerpo) => `<div style="margin: 6px 0 8px 0; page-break-inside: avoid;"><p style="margin: 0 0 2px 0; font-size: 11px; font-weight: bold; text-transform: uppercase;">${String.fromCharCode(65 + letraSub++)}) ${e(titulo)}</p>${cuerpo}</div>`;
 
             const p = d.paciente, c = d.consulta, a = d.antecedentes, app = a.personales_patologicos;
             let html = '';
+            let interrog = '';
 
             html += '<div style="text-align: center; font-size: 15px; font-weight: bold; text-decoration: underline;">HISTORIA CLÍNICA</div>';
             html += '<div style="text-align: center; font-size: 10px; margin-bottom: 14px;">Elaborada conforme a la NOM-004-SSA3-2012, del expediente clínico</div>';
@@ -2104,10 +2788,10 @@
             html += seccion('Ficha de identificación', ficha);
 
             // 2. ANTECEDENTES HEREDOFAMILIARES
-            html += seccion('Antecedentes heredofamiliares', parrafo(a.heredofamiliares.negado ? 'Interrogados y negados.' : a.heredofamiliares.detalle));
+            interrog += subInt('Antecedentes heredofamiliares', parrafo(a.heredofamiliares.negado ? 'Interrogados y negados.' : a.heredofamiliares.detalle));
 
             // 3. ANTECEDENTES PERSONALES NO PATOLÓGICOS
-            html += seccion('Antecedentes personales no patológicos', parrafo(a.no_patologicos.negado ? 'Interrogados y negados.' : a.no_patologicos.detalle));
+            interrog += subInt('Antecedentes personales no patológicos', parrafo(a.no_patologicos.negado ? 'Interrogados y negados.' : a.no_patologicos.detalle));
 
             // 4. ANTECEDENTES PERSONALES PATOLÓGICOS
             let cuerpoAPP;
@@ -2129,45 +2813,46 @@
                 if (!vacio(app.otras_enfermedades)) items.push(`<strong>Otras enfermedades:</strong> ${e(app.otras_enfermedades)}.`);
                 cuerpoAPP = viñeta(items);
             }
-            html += seccion('Antecedentes personales patológicos', cuerpoAPP);
+            interrog += subInt('Antecedentes personales patológicos', cuerpoAPP);
 
             // 5. ANTECEDENTES GINECO-OBSTÉTRICOS (solo mujeres)
             if (p.sexo === 'F') {
                 const g = a.gineco_obstetricos;
                 if (!g) {
-                    html += seccion('Antecedentes gineco-obstétricos', parrafo('No se interrogaron / no aplican en esta valoración.'));
+                    interrog += subInt('Antecedentes gineco-obstétricos', parrafo('No se interrogaron / no aplican en esta valoración.'));
                 } else {
                     const nr = x => x.no_referido ? 'No referido' : (vacio(x.detalle) ? null : x.detalle);
                     const tiposHigiene = { TOALLAS: 'Toallas sanitarias', TAMPONES: 'Tampones', AMBOS: 'Toallas y tampones', COPA: 'Copa menstrual' };
                     let cuerpo = linea(['Gestas', g.gestas], ['Partos', g.partos], ['Cesáreas', g.cesareas], ['Abortos', g.abortos])
-                        + linea(['FUM', g.fum], ['Ritmo menstrual', g.ritmo_menstrual], ['Método de planificación', g.metodo_planificacion || 'Ninguno']);
+                        + linea(['Fecha de última menstruación', g.fum], ['Ritmo menstrual', g.ritmo_menstrual], ['Método de planificación', g.metodo_planificacion || 'Ninguno']);
                     if (!g.solo_formula) {
                         const det = g.detalle_gestas.filter(x => !x.omitir && !vacio(x.detalle));
                         if (det.length) cuerpo += `<p style="margin: 2px 0;"><strong>Detalle de gestaciones:</strong></p>` + viñeta(det.map(x => `${e({ PARTO: 'Parto', CESAREA: 'Cesárea', ABORTO: 'Aborto' }[x.tipo] || x.tipo)} ${x.numero}: ${e(x.detalle)}`));
                     }
-                    cuerpo += linea(['IVUS', nr(g.ivus)], ['ETS', nr(g.ets)], ['Parejas sexuales', g.numero_parejas_sexuales.no_referido ? 'No referido' : g.numero_parejas_sexuales.valor]);
+                    cuerpo += linea(['Infecciones de vías urinarias', nr(g.ivus)], ['Enfermedades de transmisión sexual', nr(g.ets)], ['Parejas sexuales', g.numero_parejas_sexuales.no_referido ? 'No referido' : g.numero_parejas_sexuales.valor]);
                     cuerpo += linea(['Higiene menstrual', g.higiene_menstrual.no_referido ? 'No referido' : (g.higiene_menstrual.tipo ? (tiposHigiene[g.higiene_menstrual.tipo] || g.higiene_menstrual.tipo) + (g.higiene_menstrual.cantidad ? ` (${g.higiene_menstrual.cantidad})` : '') : null)]);
                     const emb = g.embarazo_actual;
                     if (emb.presente) {
-                        cuerpo += `<p style="margin: 4px 0 2px 0;"><strong>EMBARAZO ACTUAL:</strong> Sí. ${emb.sdg !== null ? emb.sdg + ' semanas de gestación' : 'SDG sin capturar'} por ${e(emb.metodo_calculo_sdg === 'USG' ? 'ultrasonido' : 'FUM')}${emb.trimestre ? ` (${['primer', 'segundo', 'tercer'][emb.trimestre - 1]} trimestre)` : ''}.</p>`
+                        cuerpo += `<p style="margin: 4px 0 2px 0;"><strong>EMBARAZO ACTUAL:</strong> Sí. ${emb.sdg !== null ? emb.sdg + ' semanas de gestación' : 'Semanas de gestación sin capturar'} por ${e(emb.metodo_calculo_sdg === 'USG' ? 'ultrasonido' : 'fecha de última menstruación')}${emb.trimestre ? ` (${['primer', 'segundo', 'tercer'][emb.trimestre - 1]} trimestre)` : ''}.</p>`
                             + linea(['Consultas prenatales', emb.consultas_prenatales], ['Ultrasonidos', emb.ultrasonidos], ['Vacunas aplicadas', emb.vacunas.length ? emb.vacunas.join(', ') : 'Ninguna referida']);
                     } else {
                         cuerpo += `<p style="margin: 4px 0 2px 0;"><strong>Embarazo actual:</strong> No.</p>`;
                     }
-                    html += seccion('Antecedentes gineco-obstétricos', cuerpo);
+                    interrog += subInt('Antecedentes gineco-obstétricos', cuerpo);
                 }
             }
 
-            // PADECIMIENTO ACTUAL
-            html += seccion('Padecimiento actual', `<p style="margin: 2px 0;"><strong>Motivo de consulta:</strong> ${val(c.motivo_consulta)}</p>` + parrafo(c.padecimiento_actual));
+            // PADECIMIENTO ACTUAL (cierra el Interrogatorio)
+            interrog += subInt('Padecimiento actual', `<p style="margin: 2px 0;"><strong>Motivo de consulta:</strong> ${val(c.motivo_consulta)}</p>` + parrafo(c.padecimiento_actual));
+            html += seccion('Interrogatorio', interrog);
 
             // EXPLORACIÓN FÍSICA
             const sv = p.signos_vitales;
             const partesSV = [];
-            if (sv.ta_sistolica !== null) partesSV.push(`TA: ${sv.ta_sistolica}/${sv.ta_diastolica} mmHg`);
-            if (sv.frecuencia_respiratoria !== null) partesSV.push(`FR: ${sv.frecuencia_respiratoria} rpm`);
-            if (sv.temperatura_c !== null) partesSV.push(`Temp: ${sv.temperatura_c} °C`);
-            if (sv.spo2_porcentaje !== null) partesSV.push(`SpO2: ${sv.spo2_porcentaje}%`);
+            if (sv.ta_sistolica !== null) partesSV.push(`Tensión arterial: ${sv.ta_sistolica}/${sv.ta_diastolica} mmHg`);
+            if (sv.frecuencia_respiratoria !== null) partesSV.push(`Frecuencia respiratoria: ${sv.frecuencia_respiratoria} rpm`);
+            if (sv.temperatura_c !== null) partesSV.push(`Temperatura: ${sv.temperatura_c} °C`);
+            if (sv.spo2_porcentaje !== null) partesSV.push(`Saturación de oxígeno: ${sv.spo2_porcentaje}%`);
             if (sv.peso_kg !== null) partesSV.push(`Peso: ${sv.peso_kg} kg`);
             if (sv.talla_m !== null) partesSV.push(`Talla: ${sv.talla_m} m`);
             if (sv.imc !== null) partesSV.push(`IMC: ${sv.imc}`);
@@ -2182,33 +2867,35 @@
             html += seccion('Exploración física', `<p style="margin: 2px 0;"><strong>Signos vitales:</strong> ${partesSV.length ? e(partesSV.join(' | ')) : 'No registrados'}</p>${sistemasEF}`);
 
             // RESULTADOS DE ESTUDIOS
-            html += seccion('Resultados de estudios de laboratorio, gabinete y otros', parrafo(c.estudios_auxiliares || 'No se solicitan.'));
+            html += seccion('Resultados previos y actuales de estudios de laboratorio, gabinete y otros', parrafo(c.estudios_auxiliares || 'No se solicitan.'));
 
-            // DIAGNÓSTICOS
-            html += seccion('Diagnósticos o problemas clínicos',
-                d.diagnosticos.length
-                    ? `<ol style="margin: 2px 0 2px 20px; padding: 0; list-style: decimal;">${d.diagnosticos.map(x => `<li>${x.cie10_codigo ? `<strong>${e(x.cie10_codigo)}</strong> — ` : ''}${e(x.descripcion)}${x.es_principal ? ' <em>(principal)</em>' : ''}</li>`).join('')}</ol>`
-                    : parrafo(null));
+            // DIAGNÓSTICOS O PROBLEMAS CLÍNICOS (con el análisis clínico que los sustenta)
+            const listaDx = d.diagnosticos.length
+                ? `<ol style="margin: 2px 0 2px 20px; padding: 0; list-style: decimal;">${d.diagnosticos.map(x => `<li>${x.cie10_codigo ? `<strong>${e(x.cie10_codigo)}</strong> — ` : ''}${e(x.descripcion)}${x.es_principal ? ' <em>(principal)</em>' : ''}</li>`).join('')}</ol>`
+                : parrafo(null);
+            html += seccion('Diagnósticos o problemas clínicos', listaDx + '<p style="margin: 6px 0 2px 0;"><strong>Análisis clínico:</strong></p>' + parrafo(c.analisis_clinico));
 
-            // ANÁLISIS, PLAN E INDICACIÓN TERAPÉUTICA
-            html += seccion('Análisis clínico', parrafo(c.analisis_clinico));
-            let terapeutica = parrafo(c.plan_tratamiento);
+            // PRONÓSTICO
+            html += seccion('Pronóstico', parrafo(c.pronostico));
+
+            // INDICACIÓN TERAPÉUTICA
+            let terapeutica = '<p style="margin: 2px 0;"><strong>Plan y tratamiento:</strong></p>' + parrafo(c.plan_tratamiento);
             const ind = d.indicaciones;
-            const hayInd = ind.dieta.codigo || ind.soluciones_parenterales.texto || ind.medicamentos.texto || ind.medidas_generales.texto;
+            const hayInd = ind.dieta.codigo || ind.soluciones_parenterales.texto || ind.medicamentos.texto || ind.medidas_generales.texto || ind.interconsulta.solicitada;
             if (hayInd) {
-                terapeutica += '<p style="margin: 6px 0 2px 0;"><strong>Indicaciones iniciales:</strong></p>';
+                terapeutica += '<p style="margin: 6px 0 2px 0;"><strong>Indicaciones médicas:</strong></p>';
                 if (ind.dieta.codigo) terapeutica += `<p style="margin: 2px 0;"><strong>Dieta:</strong> ${e(ind.dieta.descripcion)}</p>`;
                 if (ind.soluciones_parenterales.texto) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Soluciones parenterales:</strong></p>${parrafo(ind.soluciones_parenterales.texto)}`;
                 if (ind.medicamentos.texto) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Medicamentos:</strong></p>${parrafo(ind.medicamentos.texto)}`;
                 if (ind.medidas_generales.texto) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Medidas generales:</strong></p>${parrafo(ind.medidas_generales.texto)}`;
+                if (ind.interconsulta.solicitada) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Interconsulta:</strong> Solicitar Interconsulta a ${e(ind.interconsulta.especialidad.descripcion)}</p>`;
             }
-            html += seccion('Plan e indicación terapéutica', terapeutica);
-            if (!vacio(c.signos_alarma_explicados)) html += seccion('Signos de alarma explicados', parrafo(c.signos_alarma_explicados));
-            html += seccion('Pronóstico', parrafo(c.pronostico));
+            if (!vacio(c.signos_alarma_explicados)) terapeutica += '<p style="margin: 6px 0 2px 0;"><strong>Signos de alarma explicados:</strong></p>' + parrafo(c.signos_alarma_explicados);
+            html += seccion('Indicación terapéutica', terapeutica);
 
             // FIRMA DEL MÉDICO
             const medicoFirma = d.meta.usuario_rol === 'admin' ? 'Médico Base' : 'Dr. Brandon Arguelles';
-            html += `<div style="margin-top: 50px; text-align: center; page-break-inside: avoid;"><div style="display: inline-block; width: 240px; border-top: 1px solid #000; padding-top: 5px; font-size: 11px;"><strong>${e(medicoFirma)}</strong><br>Cédula Prof: 87654321<br>Médico Tratante</div></div>`;
+            html += `<div style="margin-top: 50px; text-align: center; page-break-inside: avoid;"><div style="display: inline-block; width: 240px; border-top: 1px solid #000; padding-top: 5px; font-size: 11px;"><strong>${e(medicoFirma)}</strong><br>Cédula Profesional: 87654321<br>Médico Tratante</div></div>`;
             return html;
         }
 
