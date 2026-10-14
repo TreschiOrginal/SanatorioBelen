@@ -87,6 +87,14 @@
         .solo-admin-demo { display: none; }
         body[data-rol="admin"] .solo-admin-demo { display: inline-block; }
 
+        /* Visor de hospitalización: las hojas se ven en pantalla con el aspecto de la impresión y NO son editables */
+        .hoja-papel { background: #fff; width: 100%; max-width: 21cm; margin: 0 auto 24px; padding: 1.6cm 1.8cm; border: 1px solid #e2e8f0; border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(15,23,42,.12), 0 8px 24px rgba(15,23,42,.08); font-family: Arial, sans-serif; font-size: 11px; line-height: 1.5; color: #000; cursor: default; }
+        .hoja-papel .linea-input { border-bottom: 1px solid black; display: inline-block; padding: 0 5px; font-weight: bold; }
+        .hoja-papel .firma-box { text-align: center; width: 220px; border-top: 1px solid black; padding-top: 5px; font-size: 10px; margin-left: auto; margin-right: auto; }
+        .hoja-papel input, .hoja-papel textarea, .hoja-papel select, .hoja-papel button { pointer-events: none; }
+        body.modo-visor #indicador-pendientes { display: none !important; }
+
         /* Las zonas de impresión JAMÁS deben verse en pantalla (solo al imprimir) */
         @media screen {
             .zona-impresion { display: none !important; }
@@ -111,7 +119,7 @@
         </div>
     </header>
 
-    <main class="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden z-10 relative print:hidden">
+    <main id="main-expediente" class="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden z-10 relative print:hidden">
         <aside class="w-full md:w-72 lg:w-80 glass-panel border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col md:overflow-y-auto custom-scrollbar shrink-0">
             <div class="text-center mb-6 mt-2 md:mt-0">
                 <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-slate-100 mx-auto mb-3 flex items-center justify-center text-xl md:text-2xl text-cyan-700 font-extrabold shadow-sm border border-slate-200" id="paciente-iniciales">--</div>
@@ -707,6 +715,43 @@
         </section>
     </main>
 
+    <!-- ================= VISOR DE HOSPITALIZACIÓN (expediente.html?modo=hospitalizado&id=...) ================= -->
+    <main id="visor-hospitalizado" class="hidden flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden z-10 relative print:hidden">
+        <aside class="w-full md:w-80 lg:w-96 glass-panel border-b md:border-b-0 md:border-r border-slate-200 p-4 flex flex-col md:overflow-y-auto custom-scrollbar shrink-0">
+            <div class="flex items-center gap-3 mb-4">
+                <div id="visor-iniciales" class="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 text-cyan-700 font-extrabold flex items-center justify-center shrink-0">--</div>
+                <div class="min-w-0">
+                    <h3 id="visor-paciente-nombre" class="text-base font-extrabold text-slate-900 leading-tight">Cargando...</h3>
+                    <p id="visor-paciente-datos" class="text-xs text-slate-500">--</p>
+                </div>
+            </div>
+            <div id="visor-resumen" class="bg-white/70 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600 space-y-2"></div>
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i class="fas fa-folder-tree text-cyan-500"></i> Portafolio del internamiento</h4>
+            <nav id="visor-portafolio" class="space-y-1" aria-label="Documentos del internamiento"></nav>
+            <div class="mt-auto pt-6 text-center">
+                <button type="button" id="btn-corregir-datos" onclick="abrirCorreccionDatosPaciente()" class="hidden text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2">Corregir Datos del Paciente</button>
+            </div>
+        </aside>
+        <section class="flex-1 flex flex-col min-w-0 md:overflow-hidden">
+            <div class="bg-white border-b border-slate-200 px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-sm">
+                <div class="min-w-0">
+                    <p id="visor-doc-titulo" class="text-sm md:text-base font-extrabold text-slate-900 leading-tight">Documento</p>
+                    <p id="visor-doc-meta" class="text-xs text-slate-500"></p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" id="btn-nueva-evolucion" onclick="abrirNuevaNotaEvolucion()" class="hidden bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-plus"></i> Nueva Nota de Evolución</button>
+                    <button type="button" id="btn-modificar-indicaciones" onclick="abrirModificarIndicaciones()" class="hidden bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-plus"></i> Modificar Indicaciones Médicas</button>
+                    <button type="button" id="btn-solicitar-interconsulta" onclick="abrirSolicitarInterconsulta()" class="hidden bg-white border border-cyan-300 text-cyan-700 hover:bg-cyan-50 text-xs font-bold px-3.5 py-2 rounded-lg transition items-center gap-1.5"><i class="fas fa-plus"></i> Solicitar Interconsulta</button>
+                    <button type="button" id="btn-imprimir-documento" onclick="imprimirDocumentoVisor()" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-print"></i> Imprimir este documento</button>
+                </div>
+            </div>
+            <div id="visor-documento-wrap" class="flex-1 md:overflow-y-auto custom-scrollbar p-4 md:p-6 bg-slate-100/60">
+                <div class="max-w-[21cm] mx-auto mb-3 flex items-center gap-2 bg-slate-800 text-slate-100 text-xs rounded-lg px-4 py-2"><i class="fas fa-lock text-slate-300"></i> <span id="visor-banner-texto">Documento inmutable: se muestra con el formato de impresión y no puede editarse.</span></div>
+                <div id="visor-documento"></div>
+            </div>
+        </section>
+    </main>
+
     <!-- Indicador flotante de campos obligatorios pendientes -->
     <button type="button" id="indicador-pendientes" onclick="irAlPrimerPendiente()" class="hidden fixed bottom-6 right-6 z-40 print:hidden items-center gap-2 bg-amber-50 text-amber-800 border border-amber-300 shadow-lg rounded-full px-4 py-2.5 text-xs font-bold hover:bg-amber-100 hover:-translate-y-0.5 transition-all">
         <i class="fas fa-exclamation-circle text-amber-500"></i>
@@ -776,7 +821,7 @@
         <div class="cuadro-datos">
             <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">II. DATOS DE INTERNAMIENTO</h4>
             <div class="fila"><span><strong>Médico Tratante:</strong> <span id="print-medico"></span></span> <span><strong>Área de Destino:</strong> <span class="out-area" id="print-area"></span></span></div>
-            <div class="fila"><span><strong>Cama:</strong> Por asignar por Enfermería</span></div>
+            <div class="fila"><span><strong>Cama:</strong> <span class="out-cama">Por asignar por Enfermería</span></span></div>
             <div class="fila"><span><strong>Tipo de Ingreso:</strong> <span id="print-tipo"></span></span></div>
             <div style="margin-top: 8px;"><strong>Diagnóstico Presuncional:</strong> <span class="out-dx-prin"></span></div>
         </div>
@@ -862,6 +907,35 @@
     <div id="print-historia-clinica" class="zona-impresion hidden">
         <div id="print-historia-contenido"></div>
     </div>
+
+    <!-- Nota de Evolución (plantilla de impresión; se rellena desde el registro inmutable del internamiento) -->
+    <div id="print-evolucion" class="zona-impresion hidden">
+        <div style="text-align: right; margin-bottom: 5px;">
+            <p style="margin: 0; font-size: 14px; font-weight: bold; text-decoration: underline;">NOTA DE EVOLUCIÓN</p>
+            <p style="margin: 0;">Folio: <span id="ev-folio"></span> &nbsp;&nbsp; Fecha y Hora: <span id="ev-fecha"></span></p>
+        </div>
+        <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+            <p style="margin: 2px 0;"><strong>NOMBRE:</strong> <span class="out-paciente"></span> &nbsp;&nbsp; <strong>EDAD:</strong> <span class="out-edad"></span> &nbsp;&nbsp; <strong>SEXO:</strong> <span class="out-sexo"></span></p>
+            <p style="margin: 2px 0;"><strong>ÁREA:</strong> <span id="ev-area"></span> &nbsp;&nbsp; <strong>CAMA:</strong> <span id="ev-cama"></span> &nbsp;&nbsp; <strong>ALERGIAS:</strong> <span id="ev-alergias"></span></p>
+            <p style="margin: 2px 0;"><strong>DIAGNÓSTICO DE INGRESO:</strong> <span id="ev-dx-ingreso"></span></p>
+        </div>
+        <div style="line-height: 1.4; text-align: justify;">
+            <p style="margin-bottom: 10px;"><strong>MOTIVO DE LA NOTA:</strong> <span id="ev-motivo"></span></p>
+            <p style="margin: 0 0 2px 0;"><strong>EVOLUCIÓN:</strong></p>
+            <div id="ev-evolucion" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+            <p style="margin: 0 0 2px 0;"><strong>EXPLORACIÓN FÍSICA:</strong></p>
+            <div id="ev-exploracion" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+            <p><strong>DIAGNÓSTICO ACTUALIZADO:</strong> <span id="ev-dx-actual"></span></p>
+        </div>
+        <div class="firma-box" style="margin-top: 60px;">
+            <p style="margin: 0; font-weight: bold; font-size: 12px;" id="ev-firma"></p>
+            <p style="margin: 0; font-size: 10px;">Cédula Profesional: 87654321</p>
+            <p style="margin: 0; font-size: 10px;" id="ev-rol-firma"></p>
+        </div>
+    </div>
+
+    <!-- Zona de impresión del visor de hospitalización: se llena con el documento abierto justo antes de imprimir -->
+    <div id="print-visor" class="zona-impresion hidden"></div>
 
     <!-- Contenedor de notificaciones flotantes (toasts) -->
     <div id="contenedor-toasts" class="fixed top-4 right-4 z-[80] flex flex-col gap-3 items-end pointer-events-none print:hidden"></div>
@@ -1132,6 +1206,10 @@
                 ? ((datos.diagnosticos[0].cie10_codigo ? datos.diagnosticos[0].cie10_codigo + ' ' : '') + datos.diagnosticos[0].descripcion) : null;
             const area = datos.ingreso && datos.ingreso.area_destino ? datos.ingreso.area_destino.descripcion : null;
             TURNO = BelenStore.actualizarTurno(TURNO.turno_id, { estatus: estatus, destino: datos.consulta.destino, area_destino: area, dx_principal: dx }) || TURNO;
+            // Internamiento (Monitor de Camas / visor): se crea al internar y se completa (con la captura) al finalizar el expediente
+            if (estatus === 'internado_en_proceso' || estatus === 'internado') {
+                BelenStore.sincronizarInternamiento(TURNO.turno_id, datos, { finalizado: estatus === 'internado', snapshot: estatus === 'internado' ? capturarBorrador() : null });
+            }
         }
         // Guarda el expediente completo en belen_visitas (historial longitudinal) y cierra el turno
         function persistirConsultaConcluida(datos, estatus) {
@@ -1140,11 +1218,414 @@
             return true;
         }
 
+        // ============================================================
+        // VISOR DE HOSPITALIZACIÓN: expediente.html?modo=hospitalizado&id=<internamiento_id>
+        // ------------------------------------------------------------
+        // Portafolio de documentos del internamiento. Todo se muestra como HTML estático (sin campos), por lo tanto inmutable.
+        // Hoja Frontal, Nota de Ingreso y Consentimientos se compilan con el MISMO código de impresión (rehidratando el
+        // formulario oculto con la captura guardada); Indicaciones y Notas de Evolución se generan desde sus registros
+        // inmutables con las plantillas de impresión. Nombre, edad y sexo se leen SIEMPRE del catálogo: una corrección
+        // administrativa se refleja en todos los documentos y en sus impresiones futuras.
+        // ============================================================
+        let INTERNAMIENTO = null, ACCESO_VISOR = null, DOCS_VISOR = [], NODOS_VISOR = [], DOC_ACTIVO_ID = null, HTML_CAPTURADO = {};
+        const NODOS_COLAPSADOS = {};
+        const CLASE_CAMPO = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white';
+
+        function limpiarIds(nodo) {
+            nodo.removeAttribute('id');
+            nodo.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+            return nodo;
+        }
+        // Copia de una zona de impresión como documento de pantalla (sin ids duplicados y sin la clase que la oculta)
+        function zonaComoDocumento(zona) {
+            const c = limpiarIds(zona.cloneNode(true));
+            c.classList.remove('zona-impresion', 'hidden', 'salto-pagina');
+            return c.outerHTML;
+        }
+        function datosPacienteVigentes() {
+            const pac = BelenStore.buscarPacientePorId(TURNO.paciente_id) || { nombre_completo: TURNO.paciente_nombre, fecha_nacimiento: TURNO.fecha_nacimiento, sexo: TURNO.sexo };
+            const edad = BelenStore.calcularEdad(pac.fecha_nacimiento);
+            return { pac: pac, nombre: pac.nombre_completo, edad: edad,
+                     edadTxt: edad === null ? 'No registrada' : edad + ' ' + (edad === 1 ? 'año' : 'años'), sexoTxt: pac.sexo === 'F' ? 'Femenino' : 'Masculino' };
+        }
+        function etiquetaRelacion(doc) {
+            return doc.relacion === 'interconsultante'
+                ? 'Médico Interconsultante' + (doc.interconsulta_especialidad ? ' · ' + doc.interconsulta_especialidad : '') : 'Médico Tratante';
+        }
+        function textoAlergiasVisor() { return INTERNAMIENTO.alergias || 'Ninguna referida'; }
+        function areaVisor() { return INTERNAMIENTO.area_destino || TURNO.area_destino || 'Hospitalización'; }
+
+        // Compila con el código de impresión existente los documentos que viven en la captura guardada
+        function compilarDocumentosCapturados() {
+            const $ = id => document.getElementById(id);
+            aplicarContextoPaciente();      // identidad vigente del catálogo (la captura guardada puede traer la anterior)
+            actualizarEdadDesdeFN();
+            compilarDatosNota();
+            document.querySelectorAll('.out-cama').forEach(el => { el.innerText = INTERNAMIENTO.cama || 'Por asignar por Enfermería'; });
+            HTML_CAPTURADO = {
+                hoja: zonaComoDocumento($('print-ingreso')),
+                nota: zonaComoDocumento($('print-nota')),
+                consentimientos: zonasDeConsentimientos().map(zonaComoDocumento)
+            };
+        }
+
+        // Hoja de indicaciones (inmutable) con la plantilla de impresión de Indicaciones Médicas
+        function htmlHojaIndicaciones(h) {
+            const z = document.getElementById('print-indicaciones').cloneNode(true);
+            const q = id => z.querySelector('#' + id);
+            const p = datosPacienteVigentes();
+            z.querySelectorAll('.put-fecha').forEach(e => { e.textContent = BelenStore.fechaHoraLegible(h.fecha_hora); });
+            z.querySelectorAll('.out-area').forEach(e => { e.textContent = areaVisor(); });
+            q('print-ind-nombre').textContent = p.nombre;
+            q('print-ind-edad').textContent = p.edadTxt;
+            q('print-ind-alergias').textContent = textoAlergiasVisor();
+            q('print-ind-dieta').textContent = h.dieta || 'No especificada.';
+            q('print-ind-soluciones').textContent = h.soluciones_parenterales || 'No se indican.';
+            q('print-ind-medicamentos').textContent = h.medicamentos || 'No se indican medicamentos.';
+            q('print-ind-medidas').textContent = h.medidas_generales || 'Ninguna indicada.';
+            q('bloque-print-interconsulta').style.display = 'none';
+            q('print-ind-firma').textContent = h.autor_nombre;
+            z.firstElementChild.insertAdjacentHTML('afterbegin', '<span style="float:left;"><strong>Folio:</strong> ' + BelenUI.esc(h.folio) + '</span>');
+            return zonaComoDocumento(z);
+        }
+
+        // Nota de evolución (inmutable)
+        function htmlNotaEvolucion(n) {
+            const z = document.getElementById('print-evolucion').cloneNode(true);
+            const q = id => z.querySelector('#' + id);
+            const p = datosPacienteVigentes();
+            z.querySelectorAll('.out-paciente').forEach(e => { e.textContent = p.nombre; });
+            z.querySelectorAll('.out-edad').forEach(e => { e.textContent = p.edadTxt; });
+            z.querySelectorAll('.out-sexo').forEach(e => { e.textContent = p.sexoTxt; });
+            q('ev-folio').textContent = n.folio;
+            q('ev-fecha').textContent = BelenStore.fechaHoraLegible(n.fecha_hora);
+            q('ev-area').textContent = areaVisor();
+            q('ev-cama').textContent = INTERNAMIENTO.cama || 'Sin asignar';
+            q('ev-alergias').textContent = textoAlergiasVisor();
+            q('ev-dx-ingreso').textContent = INTERNAMIENTO.diagnostico_ingreso || 'No registrado';
+            q('ev-motivo').textContent = n.motivo;
+            q('ev-evolucion').textContent = n.evolucion;
+            q('ev-exploracion').textContent = n.exploracion_fisica;
+            q('ev-dx-actual').textContent = n.diagnostico_actualizado;
+            q('ev-firma').textContent = n.autor_nombre;
+            q('ev-rol-firma').textContent = etiquetaRelacion(n);
+            return zonaComoDocumento(z);
+        }
+
+        // Árbol de documentos: Hoja Frontal > Nota de Ingreso > Consentimientos > Indicaciones Vigentes > Notas de Evolución
+        function construirDocumentosVisor() {
+            const S = BelenStore, docs = [], nodos = [];
+            const nodo = (clave, titulo, icono, items, opc) => { nodos.push(Object.assign({ clave: clave, titulo: titulo, icono: icono, items: items }, opc || {})); items.forEach(d => docs.push(d)); };
+            const ingreso = S.fechaHoraLegible(INTERNAMIENTO.fecha_ingreso);
+            const tituloNota = tituloNotaSegunDestino(sessionStorage.getItem('belen_destino'));
+
+            nodo('hoja-frontal', 'Hoja Frontal', 'fa-id-card',
+                [{ id: 'hoja-frontal', titulo: 'Hoja Frontal de Ingreso Hospitalario', meta: 'Documento de ingreso · ' + ingreso, htmls: () => [HTML_CAPTURADO.hoja] }], { directo: true });
+            nodo('nota-ingreso', 'Nota de Ingreso', 'fa-file-medical',
+                [{ id: 'nota-ingreso', titulo: 'Nota de Ingreso', meta: tituloNota + ' · ' + ingreso, htmls: () => [HTML_CAPTURADO.nota] }], { directo: true });
+
+            const cons = HTML_CAPTURADO.consentimientos.map((h, i) => ({
+                id: 'cons-' + i, titulo: i === 0 ? 'Consentimiento general de ingreso' : 'Consentimiento: ' + ((consentimientosEspeciales[i - 1] || {}).procedimiento || 'procedimiento'),
+                meta: 'Consentimiento informado · ' + ingreso, htmls: () => [h] }));
+            nodo('consentimientos', 'Consentimientos', 'fa-file-signature', cons, { directo: cons.length === 1 });
+
+            const hojas = (INTERNAMIENTO.hojas_indicaciones || []).slice().reverse();
+            nodo('indicaciones', 'Indicaciones Vigentes', 'fa-prescription-bottle-medical', hojas.map((h, k) => ({
+                id: 'ind-' + h.hoja_id, titulo: k === 0 ? 'Indicaciones Vigentes' : 'Hoja anterior ' + h.folio, etiqueta: k === 0 ? 'Vigente' : 'Anterior',
+                sub: h.folio + ' · ' + S.fechaHoraLegible(h.fecha_hora),
+                meta: h.folio + ' · ' + S.fechaHoraLegible(h.fecha_hora) + ' · ' + h.autor_nombre + ' (' + etiquetaRelacion(h) + ')' + (k === 0 ? ' · VIGENTE' : ' · reemplazada por una hoja más reciente'),
+                htmls: () => [htmlHojaIndicaciones(h)] })), { vacio: 'Sin hojas de indicaciones' });
+
+            const notas = (INTERNAMIENTO.notas_evolucion || []).slice().reverse();
+            nodo('evolucion', 'Notas de Evolución', 'fa-notes-medical', notas.map(n => ({
+                id: 'ev-' + n.nota_id, titulo: 'Nota de Evolución ' + n.folio, sub: S.fechaHoraLegible(n.fecha_hora) + ' · ' + n.autor_nombre,
+                meta: n.folio + ' · ' + S.fechaHoraLegible(n.fecha_hora) + ' · ' + n.autor_nombre + ' (' + etiquetaRelacion(n) + ')',
+                htmls: () => [htmlNotaEvolucion(n)] })), { vacio: 'Aún no hay notas de evolución' });
+
+            DOCS_VISOR = docs; NODOS_VISOR = nodos;
+        }
+
+        function renderPortafolio() {
+            const e = BelenUI.esc;
+            document.getElementById('visor-portafolio').innerHTML = NODOS_VISOR.map(n => {
+                const activo = n.items.some(d => d.id === DOC_ACTIVO_ID);
+                const base = 'w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-sm font-bold transition ';
+                if (n.directo) {
+                    return `<button type="button" data-doc="${e(n.items[0].id)}" class="${base}${activo ? 'bg-cyan-50 text-cyan-800 ring-1 ring-cyan-200' : 'text-slate-700 hover:bg-slate-100'}">
+                        <i class="fas ${n.icono} w-4 text-cyan-600"></i><span class="flex-1">${e(n.titulo)}</span></button>`;
+                }
+                const colapsado = !!NODOS_COLAPSADOS[n.clave];
+                const hijos = n.items.length ? n.items.map(d => {
+                    const sel = d.id === DOC_ACTIVO_ID;
+                    return `<button type="button" data-doc="${e(d.id)}" class="w-full text-left px-3 py-2 rounded-lg text-xs transition ${sel ? 'bg-cyan-50 ring-1 ring-cyan-200 text-cyan-900' : 'text-slate-600 hover:bg-slate-100'}">
+                        <span class="block font-semibold">${e(d.titulo)}${d.etiqueta ? ` <span class="ml-1 text-[9px] uppercase font-bold rounded px-1.5 py-0.5 ${d.etiqueta === 'Vigente' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'}">${e(d.etiqueta)}</span>` : ''}</span>
+                        ${d.sub ? `<span class="block text-[10px] text-slate-400">${e(d.sub)}</span>` : ''}</button>`;
+                }).join('') : `<p class="px-3 py-2 text-[11px] text-slate-400 italic">${e(n.vacio || 'Sin documentos')}</p>`;
+                return `<div><button type="button" data-nodo="${e(n.clave)}" class="${base}${activo ? 'text-cyan-800' : 'text-slate-700 hover:bg-slate-100'}">
+                        <i class="fas ${n.icono} w-4 text-cyan-600"></i><span class="flex-1">${e(n.titulo)}</span>
+                        <span class="text-[10px] bg-slate-200 text-slate-600 rounded-full px-2 py-0.5">${n.items.length}</span>
+                        <i class="fas fa-chevron-${colapsado ? 'right' : 'down'} text-[10px] text-slate-400"></i></button>
+                    <div class="ml-4 pl-2 border-l border-slate-200 space-y-0.5 ${colapsado ? 'hidden' : ''}">${hijos}</div></div>`;
+            }).join('');
+        }
+
+        function renderDocumentoActivo() {
+            const d = DOCS_VISOR.find(x => x.id === DOC_ACTIVO_ID) || DOCS_VISOR[0];
+            if (!d) return;
+            DOC_ACTIVO_ID = d.id;
+            document.getElementById('visor-doc-titulo').textContent = d.titulo;
+            document.getElementById('visor-doc-meta').textContent = d.meta || '';
+            document.getElementById('visor-documento').innerHTML = d.htmls().map(h => `<article class="hoja-papel" aria-readonly="true" data-hoja>${h}</article>`).join('');
+            document.getElementById('visor-documento-wrap').scrollTop = 0;
+        }
+
+        function seleccionarDocumento(id) { DOC_ACTIVO_ID = id; renderPortafolio(); renderDocumentoActivo(); }
+
+        function renderResumenVisor() {
+            const e = BelenUI.esc, $ = id => document.getElementById(id);
+            const p = datosPacienteVigentes();
+            $('visor-iniciales').textContent = BelenStore.iniciales(p.nombre);
+            $('visor-paciente-nombre').textContent = p.nombre;
+            $('visor-paciente-datos').textContent = p.sexoTxt + ' · ' + p.edadTxt + ' · ' + BelenStore.especialidadPorCodigo(TURNO.especialidad_codigo).nombre;
+            document.title = 'Hospitalización | ' + p.nombre;
+            const fila = (et, v) => `<div><p class="text-[10px] font-bold text-slate-400 uppercase leading-none">${et}</p><p class="mt-0.5 text-slate-800">${v}</p></div>`;
+            const ics = (INTERNAMIENTO.interconsultas || []);
+            $('visor-resumen').innerHTML =
+                `<div class="grid grid-cols-2 gap-2">${fila('Cama', INTERNAMIENTO.cama ? `<b>${e(INTERNAMIENTO.cama)}</b>` : '<span class="text-slate-400">Sin asignar</span>')}${fila('Área', e(areaVisor()))}</div>` +
+                fila('Médico tratante', `<b>${e(INTERNAMIENTO.medico_tratante_nombre)}</b>`) +
+                fila('Diagnóstico actual', e(INTERNAMIENTO.diagnostico_actual || 'No registrado')) +
+                `<div class="${INTERNAMIENTO.alergias ? 'bg-red-50 border border-red-300 text-red-700' : 'bg-slate-50 border border-slate-200 text-slate-500'} rounded-lg px-2.5 py-2">
+                    <p class="text-[10px] font-bold uppercase leading-none"><i class="fas ${INTERNAMIENTO.alergias ? 'fa-triangle-exclamation' : 'fa-shield-heart'} mr-1"></i>Alergias</p>
+                    <p class="mt-0.5 font-bold">${e(textoAlergiasVisor())}</p></div>` +
+                (ics.length ? fila('Interconsultas', ics.map(x => `<span class="inline-block bg-indigo-50 text-indigo-700 border border-indigo-200 rounded px-1.5 py-0.5 text-[10px] font-bold mr-1 mb-1">${e(x.especialidad)} · ${e(x.medico_nombre)}</span>`).join('')) : '');
+            if (ACCESO_VISOR.relacion === 'interconsultante') {
+                document.getElementById('visor-banner-texto').textContent = 'Documento inmutable. Usted participa por interconsulta: puede agregar notas de evolución e indicaciones.';
+            }
+        }
+
+        function aplicarPermisosVisor() {
+            const $ = id => document.getElementById(id);
+            const escribe = ACCESO_VISOR.puede_escribir;
+            ['btn-nueva-evolucion', 'btn-modificar-indicaciones', 'btn-solicitar-interconsulta'].forEach(id => { $(id).classList.toggle('hidden', !escribe); $(id).classList.toggle('flex', escribe); });
+            $('btn-corregir-datos').classList.toggle('hidden', !ACCESO_VISOR.puede_corregir);
+        }
+
+        function refrescarVisor(seleccionarId) {
+            INTERNAMIENTO = BelenStore.obtenerInternamiento(INTERNAMIENTO.internamiento_id) || INTERNAMIENTO;
+            TURNO = BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
+            compilarDocumentosCapturados();
+            construirDocumentosVisor();
+            if (seleccionarId) DOC_ACTIVO_ID = seleccionarId;
+            if (!DOCS_VISOR.some(d => d.id === DOC_ACTIVO_ID)) DOC_ACTIVO_ID = 'hoja-frontal';
+            renderResumenVisor();
+            renderPortafolio();
+            renderDocumentoActivo();
+            aplicarPermisosVisor();
+        }
+
+        function initVisorHospitalizado(params) {
+            SESION = SESION || BelenStore.sesion();
+            INTERNAMIENTO = BelenStore.resolverInternamiento(params.get('id') || '');
+            ACCESO_VISOR = BelenStore.accesoVisorHospitalizado(SESION, INTERNAMIENTO);
+            if (!ACCESO_VISOR.ok) { bloquearAcceso(ACCESO_VISOR.motivo, 'Expediente de hospitalización'); return; }
+            TURNO = ACCESO_VISOR.turno;
+            MODO_ACCESO = 'lectura';       // el visor jamás guarda borradores
+            document.body.dataset.rol = SESION.rol;
+            document.body.dataset.modo = 'visor';
+            document.body.classList.add('modo-visor');
+            document.getElementById('nombre-doctor').innerText = SESION.nombre;
+            const volver = document.querySelector('header a[href="dashboard.html"]');
+            if (volver) volver.href = 'dashboard.html?vista=hospitalizacion';
+
+            const captura = INTERNAMIENTO.snapshot_formulario || BelenStore.leerBorrador(TURNO.turno_id);
+            if (!captura) { bloquearAcceso('No se encontró la captura del expediente de este internamiento.', 'Expediente no disponible'); return; }
+            // El formulario (oculto) se rehidrata con la captura para compilar los documentos con el código de impresión existente
+            sessionStorage.setItem('belen_destino', captura.destino || INTERNAMIENTO.destino || 'Hospitalizacion');
+            aplicarContextoPaciente();
+            sincronizarSignosDesdeTurno(true);
+            sincronizarCivil();
+            aplicarTipoIngreso(sessionStorage.getItem('belen_destino'));
+            poblarEspecialidadesInterconsulta();
+            try { restaurarBorrador(captura); } catch (err) { console.error('No se pudo rehidratar la captura:', err); }
+            document.getElementById('main-expediente').classList.add('hidden');
+            document.getElementById('visor-hospitalizado').classList.remove('hidden');
+
+            document.getElementById('visor-portafolio').addEventListener('click', ev => {
+                const d = ev.target.closest('[data-doc]');
+                if (d) { seleccionarDocumento(d.getAttribute('data-doc')); return; }
+                const n = ev.target.closest('[data-nodo]');
+                if (n) { const k = n.getAttribute('data-nodo'); NODOS_COLAPSADOS[k] = !NODOS_COLAPSADOS[k]; renderPortafolio(); }
+            });
+            // Cambios de otras pestañas (cama, interconsultas): se actualiza el resumen y el árbol sin mover la hoja abierta
+            window.addEventListener('storage', e => {
+                if (e.key !== BelenStore.CLAVES.internamientos && e.key !== BelenStore.CLAVES.turnos) return;
+                INTERNAMIENTO = BelenStore.obtenerInternamiento(INTERNAMIENTO.internamiento_id) || INTERNAMIENTO;
+                renderResumenVisor();
+            });
+            refrescarVisor('hoja-frontal');
+        }
+
+        // ---------- Impresión de la hoja abierta (la inmutabilidad no impide reimprimir) ----------
+        function imprimirDocumentoVisor() {
+            const d = DOCS_VISOR.find(x => x.id === DOC_ACTIVO_ID);
+            if (!d) return;
+            const zona = document.getElementById('print-visor');
+            const hojas = d.htmls();
+            zona.innerHTML = hojas.map((h, i) => `<div${i < hojas.length - 1 ? ' style="page-break-after: always;"' : ''}>${h}</div>`).join('');
+            imprimirZonas([zona]);
+            zona.innerHTML = '';
+        }
+
+        // ---------- Utilidades de los formularios en modal ----------
+        function leerCamposModal(c, prefijo, claves) {
+            const v = {};
+            claves.forEach(k => { const n = c.el.querySelector('#' + prefijo + '-' + k); v[k] = n ? n.value : ''; });
+            return v;
+        }
+        function marcarErroresModal(c, prefijo, claves, errores) {
+            claves.forEach(k => {
+                const n = c.el.querySelector('#' + prefijo + '-' + k), m = c.el.querySelector('[data-err="' + k + '"]');
+                if (n) { n.classList.toggle('border-red-500', !!errores[k]); n.classList.toggle('border-slate-300', !errores[k]); }
+                if (m) { m.textContent = errores[k] || ''; m.classList.toggle('hidden', !errores[k]); }
+            });
+            const primero = claves.find(k => errores[k]);
+            if (primero) { const n = c.el.querySelector('#' + prefijo + '-' + primero); if (n) n.focus(); }
+        }
+        function campoModal(prefijo, clave, etiqueta, control, ayuda) {
+            return `<div><label for="${prefijo}-${clave}" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">${etiqueta}</label>${control}
+                ${ayuda ? `<p class="text-[11px] text-slate-400 mt-1">${ayuda}</p>` : ''}<p data-err="${clave}" class="text-[11px] text-red-600 mt-1 hidden"></p></div>`;
+        }
+        function sinPermisoEscritura() {
+            if (ACCESO_VISOR && ACCESO_VISOR.puede_escribir) return false;
+            BelenUI.toast('Solo el médico tratante o interconsultado puede realizar esta acción.', 'alerta');
+            return true;
+        }
+
+        // ---------- + Nueva Nota de Evolución ----------
+        function abrirNuevaNotaEvolucion() {
+            if (sinPermisoEscritura()) return;
+            const e = BelenUI.esc, claves = ['motivo', 'evolucion', 'exploracion_fisica', 'diagnostico_actualizado'];
+            const html = `<div class="space-y-4 text-left">
+                <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 flex items-start gap-2"><i class="fas fa-lock mt-0.5"></i><span>Al guardar se genera un documento nuevo en el Portafolio. Las notas no se pueden editar ni eliminar.</span></div>
+                ${campoModal('evm', 'motivo', 'Motivo', `<input id="evm-motivo" type="text" maxlength="160" autocomplete="off" placeholder="Ej. Seguimiento de evolución posoperatoria" class="${CLASE_CAMPO}" data-autofoco>`)}
+                ${campoModal('evm', 'evolucion', 'Evolución', `<textarea id="evm-evolucion" rows="4" placeholder="Evolución clínica del paciente" class="${CLASE_CAMPO} resize-none"></textarea>`)}
+                ${campoModal('evm', 'exploracion_fisica', 'Exploración física', `<textarea id="evm-exploracion_fisica" rows="4" placeholder="Hallazgos de la exploración física" class="${CLASE_CAMPO} resize-none"></textarea>`)}
+                ${campoModal('evm', 'diagnostico_actualizado', 'Actualización de diagnóstico', `<textarea id="evm-diagnostico_actualizado" rows="2" class="${CLASE_CAMPO} resize-none">${e(INTERNAMIENTO.diagnostico_actual || '')}</textarea>`, 'Se precarga el diagnóstico actual; modifíquelo solo si cambió.')}</div>`;
+            BelenUI.modal({
+                titulo: 'Nueva Nota de Evolución', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-notes-medical', ancho: 'lg', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Guardar Nota de Evolución', estilo: 'primario', id: 'evm-guardar', alPulsar: c => {
+                        const entrada = leerCamposModal(c, 'evm', claves);
+                        const r = BelenStore.agregarNotaEvolucion(INTERNAMIENTO.internamiento_id, entrada, BelenStore.sesion());
+                        if (!r.ok) {
+                            if (r.errores) marcarErroresModal(c, 'evm', claves, r.errores); else BelenUI.toast(r.motivo, 'peligro');
+                            return false;
+                        }
+                        BelenUI.toast('Nota de evolución ' + r.nota.folio + ' guardada en el Portafolio.', 'exito');
+                        refrescarVisor('ev-' + r.nota.nota_id);
+                    } }
+                ]
+            });
+        }
+
+        // ---------- + Modificar Indicaciones Médicas (precarga las vigentes; guarda una hoja nueva) ----------
+        function abrirModificarIndicaciones() {
+            if (sinPermisoEscritura()) return;
+            const e = BelenUI.esc;
+            const vig = BelenStore.indicacionesVigentes(INTERNAMIENTO) || {};
+            const campos = [['dieta', 'Dieta'], ['soluciones_parenterales', 'Soluciones parenterales'], ['medicamentos', 'Medicamentos'], ['medidas_generales', 'Medidas generales']];
+            const html = `<div class="space-y-4 text-left">
+                <div class="bg-cyan-50 border border-cyan-200 text-cyan-800 text-xs rounded-lg px-3 py-2 flex items-start gap-2"><i class="fas fa-circle-info mt-0.5"></i>
+                    <span>Se cargaron las indicaciones vigentes${vig.folio ? ' (hoja ' + e(vig.folio) + ', ' + e(BelenStore.fechaHoraLegible(vig.fecha_hora)) + ')' : ''}. Edite solo lo necesario, por ejemplo cambiar una dosis o suspender un suero. Al guardar se genera una hoja nueva y vigente; la anterior queda en el Portafolio.</span></div>
+                ${campos.map(([k, et]) => campoModal('indm', k, et, `<textarea id="indm-${k}" rows="3" class="${CLASE_CAMPO} resize-y">${e(vig[k] || '')}</textarea>`)).join('')}
+                <p data-err="general" class="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 hidden"></p></div>`;
+            BelenUI.modal({
+                titulo: 'Modificar Indicaciones Médicas', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-prescription-bottle-medical', ancho: 'xl', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Guardar Nueva Hoja de Indicaciones', estilo: 'primario', id: 'indm-guardar', alPulsar: c => {
+                        const entrada = leerCamposModal(c, 'indm', campos.map(x => x[0]));
+                        const r = BelenStore.agregarHojaIndicaciones(INTERNAMIENTO.internamiento_id, entrada, BelenStore.sesion());
+                        if (!r.ok) { marcarErroresModal(c, 'indm', ['general'], { general: r.motivo }); return false; }
+                        BelenUI.toast('Hoja de indicaciones ' + r.hoja.folio + ' guardada y vigente.', 'exito');
+                        refrescarVisor('ind-' + r.hoja.hoja_id);
+                    } }
+                ]
+            });
+        }
+
+        // ---------- + Solicitar Interconsulta (no imprime nada; otorga acceso inmediato al especialista) ----------
+        function abrirSolicitarInterconsulta() {
+            if (sinPermisoEscritura()) return;
+            const e = BelenUI.esc, S = BelenStore;
+            const disponibles = S.ESPECIALIDADES.filter(x => S.medicosParaInterconsulta(INTERNAMIENTO, x.codigo).length);
+            if (!disponibles.length) { BelenUI.aviso('Sin médicos disponibles', 'Todos los médicos disponibles ya tienen acceso a este paciente.', 'info'); return; }
+            const html = `<div class="space-y-4 text-left">
+                <div class="bg-cyan-50 border border-cyan-200 text-cyan-800 text-xs rounded-lg px-3 py-2 flex items-start gap-2"><i class="fas fa-user-doctor mt-0.5"></i>
+                    <span>No se imprime ningún documento. El especialista verá a este paciente de inmediato en su Dashboard y podrá agregar notas de evolución e indicaciones.</span></div>
+                ${campoModal('icm', 'especialidad', 'Especialidad', `<select id="icm-especialidad" class="${CLASE_CAMPO}" data-autofoco><option value="">Seleccione…</option>${disponibles.map(x => `<option value="${x.codigo}">${e(x.nombre)}</option>`).join('')}</select>`)}
+                ${campoModal('icm', 'medico', 'Médico destino', `<select id="icm-medico" class="${CLASE_CAMPO}"><option value="">Seleccione una especialidad…</option></select>`)}</div>`;
+            BelenUI.modal({
+                titulo: 'Solicitar Interconsulta', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-user-doctor', ancho: 'md', html: html,
+                alMostrar: c => {
+                    const esp = c.el.querySelector('#icm-especialidad'), med = c.el.querySelector('#icm-medico');
+                    esp.addEventListener('change', () => {
+                        const lista = esp.value ? S.medicosParaInterconsulta(INTERNAMIENTO, esp.value) : [];
+                        med.innerHTML = (lista.length === 1 ? '' : '<option value="">' + (esp.value ? 'Seleccione…' : 'Seleccione una especialidad…') + '</option>') + lista.map(m => `<option value="${m.medico_id}">${e(m.nombre)}</option>`).join('');
+                    });
+                },
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Confirmar Interconsulta', estilo: 'primario', id: 'icm-confirmar', alPulsar: c => {
+                        const entrada = leerCamposModal(c, 'icm', ['especialidad', 'medico']);
+                        const errores = {};
+                        if (!entrada.especialidad) errores.especialidad = 'Seleccione la especialidad.';
+                        if (!entrada.medico) errores.medico = 'Seleccione el médico destino.';
+                        if (Object.keys(errores).length) { marcarErroresModal(c, 'icm', ['especialidad', 'medico'], errores); return false; }
+                        const r = S.solicitarInterconsulta(INTERNAMIENTO.internamiento_id, { especialidad_codigo: entrada.especialidad, medico_id: entrada.medico }, S.sesion());
+                        if (!r.ok) { marcarErroresModal(c, 'icm', ['especialidad', 'medico'], { medico: r.motivo }); return false; }
+                        BelenUI.toast('Interconsulta otorgada a ' + r.interconsulta.medico_nombre + ' (' + r.interconsulta.especialidad + ').', 'exito', 5000);
+                        refrescarVisor();
+                    } }
+                ]
+            });
+        }
+
+        // ---------- Corregir Datos del Paciente (administración): solo nombre, edad y sexo ----------
+        function abrirCorreccionDatosPaciente() {
+            if (!ACCESO_VISOR || !ACCESO_VISOR.puede_corregir) { BelenUI.toast('Solo la administración puede corregir datos del paciente.', 'alerta'); return; }
+            const e = BelenUI.esc, p = datosPacienteVigentes(), claves = ['nombre', 'edad', 'sexo'];
+            const html = `<div class="space-y-4 text-left">
+                <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 flex items-start gap-2"><i class="fas fa-triangle-exclamation mt-0.5"></i>
+                    <span>Corrección administrativa. El cambio se aplica a todos los documentos del paciente y a sus impresiones futuras, y queda en la bitácora.</span></div>
+                ${campoModal('cor', 'nombre', 'Nombre completo', `<input id="cor-nombre" type="text" autocomplete="off" value="${e(p.nombre)}" class="${CLASE_CAMPO}" data-autofoco>`)}
+                <div class="grid grid-cols-2 gap-4">
+                    ${campoModal('cor', 'edad', 'Edad (años)', `<input id="cor-edad" type="number" inputmode="numeric" min="0" max="120" step="1" value="${p.edad === null ? '' : p.edad}" class="${CLASE_CAMPO}">`)}
+                    ${campoModal('cor', 'sexo', 'Sexo', `<select id="cor-sexo" class="${CLASE_CAMPO}"><option value="F" ${p.pac.sexo === 'F' ? 'selected' : ''}>Femenino</option><option value="M" ${p.pac.sexo === 'M' ? 'selected' : ''}>Masculino</option></select>`)}</div></div>`;
+            BelenUI.modal({
+                titulo: 'Corregir Datos del Paciente', subtitulo: p.pac.paciente_id || '', icono: 'fa-user-pen', tipo: 'alerta', ancho: 'md', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Guardar Corrección', estilo: 'alerta', id: 'cor-guardar', alPulsar: c => {
+                        const r = BelenStore.corregirDatosPaciente(TURNO.paciente_id, leerCamposModal(c, 'cor', claves), BelenStore.sesion());
+                        if (!r.ok) {
+                            if (r.errores) marcarErroresModal(c, 'cor', claves, r.errores); else BelenUI.toast(r.motivo, 'peligro');
+                            return false;
+                        }
+                        BelenUI.toast('Datos del paciente corregidos en todos sus documentos.', 'exito');
+                        refrescarVisor();
+                    } }
+                ]
+            });
+        }
+
         function initApp() {
             // --- Sesión, turno y permisos ---
             SESION = BelenStore.sesion();
             if (!SESION) { window.location.replace('login.html'); return; }
             const params = new URLSearchParams(window.location.search);
+            if (params.get('modo') === 'hospitalizado') { initVisorHospitalizado(params); return; }   // visor longitudinal de hospitalización
             const turnoId = params.get('turno');
             TURNO = turnoId ? BelenStore.obtenerTurno(turnoId) : null;
             if (!turnoId) { bloquearAcceso('Abra el expediente desde el Dashboard, eligiendo a un paciente de su fila.', 'Falta seleccionar un paciente'); return; }
@@ -1842,7 +2323,7 @@
 
             const dxPrin = diagnósticosAgregados[0] || 'Impactación Fecal (K56.4)';
             const grupoRh = (!document.getElementById('chk-sangre-omitir').checked && document.getElementById('val-sangre').value) ? document.getElementById('val-sangre').value : 'Desconoce';
-            const alergiasTxt = document.getElementById('chk-alergias').checked && document.getElementById('val-alergias').value ? document.getElementById('val-alergias').value : 'Difenidol';
+            const alergiasTxt = document.getElementById('chk-alergias').checked && document.getElementById('val-alergias').value ? document.getElementById('val-alergias').value : 'Ninguna referida';
             document.getElementById('print-grupo-rh').innerText = grupoRh;
             document.getElementById('print-alergias-ingreso').innerText = alergiasTxt;
             document.getElementById('print-tipo').innerText = document.getElementById('val-tipo-ingreso').value;
@@ -2569,7 +3050,7 @@
             const turnoId = TURNO.turno_id;
             descartarBorrador();
             limpiarSesionConsultaNueva();
-            if (TURNO.estatus === 'internado_en_proceso') BelenStore.actualizarTurno(turnoId, { estatus: 'en_consulta', destino: null, area_destino: null, dx_principal: null });
+            if (TURNO.estatus === 'internado_en_proceso') { BelenStore.actualizarTurno(turnoId, { estatus: 'en_consulta', destino: null, area_destino: null, dx_principal: null }); BelenStore.descartarInternamiento(turnoId); }
             window.location.href = 'expediente.html?turno=' + encodeURIComponent(turnoId);
         }
 

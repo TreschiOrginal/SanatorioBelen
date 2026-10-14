@@ -11,6 +11,10 @@
 //   belen_visitas .............. expedientes finalizados completos (visita_id PK, FK paciente_id, turno_id)
 //   belen_borradores ........... { [turno_id]: borrador del expediente en curso }
 //   belen_pacientes_hospitalizados ... arreglo de expedientes de pacientes internados
+//   belen_internamientos ....... episodio hospitalario (internamiento_id PK, FK turno_id, paciente_id, medico_tratante_id)
+//                                con cama, interconsultas[], notas_evolucion[] e hojas_indicaciones[] (inmutables: solo se agregan)
+//   belen_permisos_personal .... { [usuario_id]: { ver_consultas, ver_hospitalizados, ver_farmacia } } (interruptores del administrador)
+//   belen_correcciones ......... bitácora de correcciones administrativas de datos del paciente
 // ============================================================
 (function (global) {
     'use strict';
@@ -21,6 +25,9 @@
         visitas: 'belen_visitas',
         borradores: 'belen_borradores',
         hospitalizados: 'belen_pacientes_hospitalizados',
+        internamientos: 'belen_internamientos',
+        permisosPersonal: 'belen_permisos_personal',
+        correcciones: 'belen_correcciones',
         demo: 'belen_demo_sembrado'
     };
 
@@ -59,9 +66,26 @@
         editar_consentimientos:    ['admin', 'enfermeria', 'medico'],
         finalizar_expediente:      ['admin', 'medico'],
         ver_historial_visitas:     ['admin', 'medico'],
-        ver_hospitalizados:        ['admin', 'enfermeria', 'medico'],
-        ver_expedientes_catalogo:  ['admin', 'medico']
+        ver_hospitalizados:        ['admin', 'enfermeria', 'medico'],   // MÓDULO (interruptor por usuario)
+        ver_expedientes_catalogo:  ['admin', 'medico'],
+        ver_consultas:             ['admin', 'enfermeria', 'medico'],   // MÓDULO (interruptor por usuario)
+        ver_farmacia:              ['admin', 'enfermeria'],             // MÓDULO (interruptor por usuario; módulo futuro)
+        gestionar_personal:        ['admin'],
+        asignar_cama:              ['admin', 'enfermeria'],
+        corregir_datos_paciente:   ['admin']                            // corrección administrativa: nombre, edad y sexo
     };
+
+    // Módulos que el administrador puede encender/apagar por usuario. El valor por defecto sale de PERMISOS (por rol);
+    // el interruptor guardado en belen_permisos_personal lo sobrescribe (el administrador siempre conserva todos).
+    const MODULOS = [
+        { permiso: 'ver_consultas',      etiqueta: 'Ver Consultas/Triage', icono: 'fa-stethoscope', vistas: ['central', 'fila', 'expedientes'],
+          descripcion: 'Dashboard de consulta, fila de triage y expedientes clínicos.' },
+        { permiso: 'ver_hospitalizados', etiqueta: 'Ver Hospitalizados',   icono: 'fa-bed-pulse',   vistas: ['hospitalizacion'],
+          descripcion: 'Monitor de camas y visor del expediente de hospitalización.' },
+        { permiso: 'ver_farmacia',       etiqueta: 'Ver Farmacia',         icono: 'fa-pills',       vistas: [],
+          descripcion: 'Inventario y Farmacia (módulo en preparación).' }
+    ];
+    const PERMISOS_MODULO = MODULOS.map(m => m.permiso);
 
     const ESTATUS = {
         PENDIENTE_SIGNOS: 'pendiente_signos',
@@ -178,7 +202,33 @@
          'belen_especialidad', 'belen_especialidad_codigo', 'belen_destino', 'belen_expediente_bloqueado'].forEach(k => sessionStorage.removeItem(k));
     }
 
+    // Permisos por usuario de los MÓDULOS (interruptores del administrador). Se leen siempre de localStorage:
+    // apagar un módulo lo retira del sidebar del usuario (en su próxima sesión o al refrescar su dashboard).
+    function leerPermisosPersonal() { return leer(CLAVES.permisosPersonal, {}) || {}; }
+    function permisoModuloDe(usuarioId, permiso) {
+        const u = USUARIOS[usuarioId];
+        if (!u || !PERMISOS[permiso]) return false;
+        if (u.rol === 'admin') return true;                       // el administrador no puede quedarse sin módulos
+        const ajuste = (leerPermisosPersonal()[usuarioId] || {})[permiso];
+        return typeof ajuste === 'boolean' ? ajuste : PERMISOS[permiso].includes(u.rol);
+    }
+    function establecerPermisoModulo(usuarioId, permiso, valor) {
+        if (!USUARIOS[usuarioId] || USUARIOS[usuarioId].rol === 'admin' || !PERMISOS_MODULO.includes(permiso)) return false;
+        const todos = leerPermisosPersonal();
+        todos[usuarioId] = Object.assign({}, todos[usuarioId], { [permiso]: !!valor });
+        return escribir(CLAVES.permisosPersonal, todos);
+    }
+    function restablecerPermisosPersonal(usuarioId) {
+        const todos = leerPermisosPersonal();
+        delete todos[usuarioId];
+        return escribir(CLAVES.permisosPersonal, todos);
+    }
+
     function puede(accion, rol) {
+        if (!rol && PERMISOS_MODULO.includes(accion)) {            // módulo: valor por usuario
+            const s = sesion();
+            return !!s && permisoModuloDe(s.usuario_id, accion);
+        }
         const r = rol || (sesion() || {}).rol;
         return !!r && !!PERMISOS[accion] && PERMISOS[accion].includes(r);
     }
@@ -301,9 +351,17 @@
             ESTATUS_EN_FILA.includes(t.estatus) && turnoVisiblePara(t, s) &&
             (!filtro.especialidad_codigo || t.especialidad_codigo === filtro.especialidad_codigo)));
     }
+    // PRIVACIDAD (hospitalizados): admin y enfermería ven a todos; un médico solo a sus pacientes (médico tratante)
+    // o a los que le hayan solicitado en interconsulta.
+    function hospitalizadoVisiblePara(turno, s) {
+        if (!s) return false;
+        if (s.rol === 'admin' || s.rol === 'enfermeria') return true;
+        if (s.rol === 'medico') return turno.medico_id === s.medico_id || tieneInterconsulta(turno.turno_id, s.medico_id);
+        return false;
+    }
     function hospitalizadosDe(s) {
         return listarTurnos()
-            .filter(t => (t.estatus === ESTATUS.INTERNADO_EN_PROCESO || t.estatus === ESTATUS.INTERNADO) && turnoVisiblePara(t, s))
+            .filter(t => (t.estatus === ESTATUS.INTERNADO_EN_PROCESO || t.estatus === ESTATUS.INTERNADO) && hospitalizadoVisiblePara(t, s))
             .sort((a, b) => (a.timestamp_llegada < b.timestamp_llegada ? 1 : -1));
     }
 
@@ -398,6 +456,12 @@
         if (!s) return { ok: false, motivo: 'Inicie sesión para continuar.' };
         if (!turno) return { ok: false, motivo: 'El turno solicitado no existe.' };
         const finalizado = turno.estatus === ESTATUS.INTERNADO || turno.estatus === ESTATUS.ALTA;
+        if (s.rol !== 'admin') {
+            // Módulos apagados por el administrador (interruptores de Gestión de Personal)
+            const enAtencion = ESTATUS_EN_FILA.includes(turno.estatus);
+            if (enAtencion && !permisoModuloDe(s.usuario_id, 'ver_consultas')) return { ok: false, motivo: 'Su perfil no tiene habilitado el módulo de Consultas/Triage.' };
+            if (!enAtencion && !permisoModuloDe(s.usuario_id, 'ver_hospitalizados')) return { ok: false, motivo: 'Su perfil no tiene habilitado el módulo de Hospitalizados.' };
+        }
         if (s.rol === 'admin') return { ok: true, modo: finalizado ? 'lectura' : 'medico' };
         if (s.rol === 'medico') {
             if (turno.medico_id !== s.medico_id) return { ok: false, motivo: 'Este paciente pertenece a la fila de otro médico. Solo puede ver a sus propios pacientes.' };
@@ -493,6 +557,302 @@
         return escribir(CLAVES.hospitalizados, lista);
     }
 
+    // ================================================================ INTERNAMIENTOS (hospitalización)
+    // Un internamiento nace cuando el médico interna al paciente (estatus internado_en_proceso) y se completa al finalizar el expediente.
+    // Los documentos nuevos (notas de evolución, hojas de indicaciones) son INMUTABLES: la capa de datos solo ofrece "agregar",
+    // nunca editar ni borrar. Los datos del paciente (nombre, edad, sexo) NO se copian a los documentos: se leen del catálogo
+    // al renderizar, por eso una corrección administrativa se refleja en todas las impresiones futuras.
+    function listarInternamientos() { return leer(CLAVES.internamientos, []); }
+    function internamientoDeTurno(turnoId) { return listarInternamientos().find(x => x.turno_id === turnoId && x.estatus !== 'descartado') || null; }
+    function obtenerInternamiento(id) { return listarInternamientos().find(x => x.internamiento_id === id && x.estatus !== 'descartado') || null; }
+    function tieneInterconsulta(turnoId, medicoId) {
+        const i = internamientoDeTurno(turnoId);
+        return !!i && (i.interconsultas || []).some(x => x.medico_id === medicoId);
+    }
+    function guardarInternamiento(i) {
+        const lista = listarInternamientos();
+        const k = lista.findIndex(x => x.internamiento_id === i.internamiento_id);
+        i.actualizado_en = new Date().toISOString();
+        if (k >= 0) lista[k] = i; else lista.push(i);
+        return escribir(CLAVES.internamientos, lista) ? i : null;
+    }
+    function pad3(n) { return String(n).padStart(3, '0'); }
+    function fechaHoraLegible(valor) {
+        const d = new Date(valor);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleDateString('es-MX') + ' ' + d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    }
+    function alergiasDeBorrador(turnoId) {
+        const b = leerBorrador(turnoId);
+        const c = (b && b.campos) || {};
+        return (c['chk-alergias'] && c['val-alergias']) ? limpiarEspacios(c['val-alergias']) : null;
+    }
+    function textoDiagnosticos(datos, turno) {
+        const lista = ((datos && datos.diagnosticos) || []).map(d => ((d.cie10_codigo ? d.cie10_codigo + ' ' : '') + (d.descripcion || '')).trim()).filter(Boolean);
+        if (!lista.length && turno && turno.dx_principal) lista.push(turno.dx_principal);
+        return lista.join('; ') || null;
+    }
+    function textosIndicaciones(ind) {
+        const t = k => String(((ind || {})[k] || {}).texto || '').trim();
+        return { dieta: t('dieta'), soluciones_parenterales: t('soluciones_parenterales'), medicamentos: t('medicamentos'), medidas_generales: t('medidas_generales') };
+    }
+    function nuevaHojaIndicaciones(hojas, origen, textos, autor, fechaHora) {
+        return Object.assign({
+            hoja_id: uid('IM'), folio: 'IM-' + pad3(hojas.length + 1), fecha_hora: fechaHora || new Date().toISOString(), fecha_dia: hoyLocal(), origen: origen,
+            autor_id: autor.id, autor_nombre: autor.nombre, relacion: autor.relacion
+        }, textos);
+    }
+
+    // Crea o actualiza el internamiento de un turno. datos = expediente exportado (construirExpediente); extra = { finalizado, snapshot }
+    function sincronizarInternamiento(turnoId, datos, extra) {
+        const t = obtenerTurno(turnoId);
+        if (!t) return null;
+        datos = datos || {}; extra = extra || {};
+        let i = listarInternamientos().find(x => x.turno_id === turnoId && x.estatus !== 'descartado');
+        if (!i) {
+            i = { internamiento_id: uid('INT'), turno_id: turnoId, paciente_id: t.paciente_id, medico_tratante_id: t.medico_id, medico_tratante_nombre: t.medico_nombre,
+                  especialidad_codigo: t.especialidad_codigo, especialidad: t.especialidad, fecha_ingreso: new Date().toISOString(), cama: null, estatus: 'activo',
+                  interconsultas: [], notas_evolucion: [], hojas_indicaciones: [] };
+        }
+        i.estatus = 'activo';
+        const al = ((datos.antecedentes || {}).personales_patologicos || {}).alergias;
+        if (al) i.alergias = (al.presente && al.descripcion) ? limpiarEspacios(al.descripcion) : null;
+        else if (i.alergias === undefined) i.alergias = alergiasDeBorrador(turnoId);
+        i.diagnostico_ingreso = textoDiagnosticos(datos, t) || i.diagnostico_ingreso || null;
+        if (!(i.notas_evolucion || []).length) i.diagnostico_actual = i.diagnostico_ingreso;
+        i.destino = (datos.consulta && datos.consulta.destino) || t.destino || null;
+        i.area_destino = (datos.ingreso && datos.ingreso.area_destino && datos.ingreso.area_destino.descripcion) || t.area_destino || null;
+        if (extra.finalizado) {
+            i.finalizado_en = new Date().toISOString();
+            if (extra.snapshot) i.snapshot_formulario = extra.snapshot;
+            if (datos.indicaciones) {
+                const textos = textosIndicaciones(datos.indicaciones);
+                const primera = i.hojas_indicaciones.find(h => h.origen === 'ingreso');
+                const autor = { id: t.medico_id, nombre: t.medico_nombre, relacion: 'tratante' };
+                if (!primera) i.hojas_indicaciones.unshift(nuevaHojaIndicaciones([], 'ingreso', textos, autor, (datos.consulta && datos.consulta.fecha_hora) || null));
+                else if (i.hojas_indicaciones.length === 1) Object.assign(primera, textos);   // se reabrió y refinalizó antes de que hubiera hojas nuevas
+            }
+        }
+        return guardarInternamiento(i);
+    }
+    // Reconstruye el internamiento de un turno ya hospitalizado que aún no lo tuviera (datos anteriores a este módulo)
+    function asegurarInternamiento(turnoId) {
+        const ya = internamientoDeTurno(turnoId);
+        if (ya) return ya;
+        const t = obtenerTurno(turnoId);
+        if (!t || (t.estatus !== ESTATUS.INTERNADO_EN_PROCESO && t.estatus !== ESTATUS.INTERNADO)) return null;
+        const visita = listarVisitas().find(v => v.meta && v.meta.turno_id === turnoId) || null;
+        const final = t.estatus === ESTATUS.INTERNADO;
+        return sincronizarInternamiento(turnoId, visita, { finalizado: final && !!visita, snapshot: final ? leerBorrador(turnoId) : null });
+    }
+    // Acepta internamiento_id o turno_id
+    function resolverInternamiento(id) {
+        return obtenerInternamiento(id) || (obtenerTurno(id) ? asegurarInternamiento(id) : null);
+    }
+    function descartarInternamiento(turnoId) {
+        const lista = listarInternamientos();
+        const i = lista.find(x => x.turno_id === turnoId && x.estatus !== 'descartado');
+        if (!i) return false;
+        i.estatus = 'descartado'; i.actualizado_en = new Date().toISOString();
+        return escribir(CLAVES.internamientos, lista);
+    }
+
+    // Tarjeta del Monitor de Camas
+    function relacionMedico(i, turno, s) {
+        if (!s || s.rol !== 'medico' || !turno) return null;
+        if (turno.medico_id === s.medico_id) return 'tratante';
+        return ((i && i.interconsultas) || []).some(x => x.medico_id === s.medico_id) ? 'interconsultante' : null;
+    }
+    function fichaHospitalizado(turno, s) {
+        const i = internamientoDeTurno(turno.turno_id);
+        const p = buscarPacientePorId(turno.paciente_id) || { nombre_completo: turno.paciente_nombre, fecha_nacimiento: turno.fecha_nacimiento, sexo: turno.sexo };
+        return {
+            turno_id: turno.turno_id, internamiento_id: i ? i.internamiento_id : null, paciente_id: turno.paciente_id,
+            nombre: p.nombre_completo, edad: calcularEdad(p.fecha_nacimiento), sexo: p.sexo,
+            cama: i ? i.cama : null,
+            alergias: i && i.alergias !== undefined ? i.alergias : alergiasDeBorrador(turno.turno_id),
+            medico_tratante_id: turno.medico_id, medico_tratante: turno.medico_nombre, especialidad: turno.especialidad,
+            diagnostico_actual: (i && i.diagnostico_actual) || turno.dx_principal || null,
+            interconsultas: i ? (i.interconsultas || []) : [],
+            notas: i ? (i.notas_evolucion || []).length : 0,
+            estatus: turno.estatus, finalizado: turno.estatus === ESTATUS.INTERNADO,
+            area: (i && i.area_destino) || turno.area_destino || null, destino: (i && i.destino) || turno.destino || null,
+            relacion: relacionMedico(i, turno, s)
+        };
+    }
+
+    // Quién puede abrir el visor expediente.html?modo=hospitalizado&id=...
+    function accesoVisorHospitalizado(s, i) {
+        if (!s) return { ok: false, motivo: 'Inicie sesión para continuar.' };
+        if (!i) return { ok: false, motivo: 'No se encontró el internamiento solicitado.' };
+        const t = obtenerTurno(i.turno_id);
+        if (!t) return { ok: false, motivo: 'No se encontró el episodio del paciente.' };
+        if (!permisoModuloDe(s.usuario_id, 'ver_hospitalizados')) return { ok: false, motivo: 'Su perfil no tiene habilitado el módulo de Hospitalizados.' };
+        if (!hospitalizadoVisiblePara(t, s)) return { ok: false, motivo: 'Este paciente no está a su cargo ni le fue solicitado en interconsulta. Solo puede ver a sus propios pacientes hospitalizados.' };
+        if (t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El papeleo de ingreso de este paciente sigue en curso. El visor se habilita cuando el médico finaliza el expediente.' };
+        const relacion = relacionMedico(i, t, s) || s.rol;
+        return { ok: true, relacion: relacion, puede_escribir: s.rol === 'medico' && (relacion === 'tratante' || relacion === 'interconsultante'),
+                 puede_corregir: !!PERMISOS.corregir_datos_paciente.includes(s.rol), turno: t };
+    }
+    function puedeEscribirInternamiento(s, i) {
+        const a = accesoVisorHospitalizado(s, i);
+        return a.ok && a.puede_escribir;
+    }
+
+    // ---- Interconsulta: otorga permiso inmediato al especialista (no imprime nada)
+    function medicosParaInterconsulta(i, codigoEspecialidad) {
+        const t = obtenerTurno(i.turno_id);
+        const ya = new Set((i.interconsultas || []).map(x => x.medico_id));
+        return medicosDeEspecialidad(codigoEspecialidad).filter(m => m.medico_id !== (t && t.medico_id) && !ya.has(m.medico_id));
+    }
+    function solicitarInterconsulta(internamientoId, datos, s) {
+        const i = obtenerInternamiento(internamientoId);
+        if (!i || !puedeEscribirInternamiento(s, i)) return { ok: false, motivo: 'No tiene permiso para solicitar interconsultas de este paciente.' };
+        const esp = especialidadPorCodigo(datos.especialidad_codigo);
+        const m = USUARIOS[datos.medico_id];
+        if (!esp) return { ok: false, motivo: 'Seleccione la especialidad.' };
+        if (!m || m.rol !== 'medico' || m.especialidad_codigo !== esp.codigo) return { ok: false, motivo: 'Seleccione un médico de esa especialidad.' };
+        if (m.medico_id === s.medico_id) return { ok: false, motivo: 'No puede solicitarse una interconsulta a sí mismo.' };
+        if (m.medico_id === i.medico_tratante_id) return { ok: false, motivo: 'Ese médico ya es el médico tratante del paciente.' };
+        if ((i.interconsultas || []).some(x => x.medico_id === m.medico_id)) return { ok: false, motivo: 'Ese médico ya tiene acceso a este paciente.' };
+        const ic = { interconsulta_id: uid('IC'), especialidad_codigo: esp.codigo, especialidad: esp.nombre, medico_id: m.medico_id, medico_nombre: m.nombre,
+                     solicitada_por_id: s.usuario_id, solicitada_por_nombre: s.nombre, solicitada_en: new Date().toISOString() };
+        i.interconsultas = (i.interconsultas || []).concat([ic]);
+        return guardarInternamiento(i) ? { ok: true, interconsulta: ic } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+    }
+
+    // ---- Notas de evolución (documentos inmutables)
+    function contarLetrasTxt(t) { return (String(t || '').match(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g) || []).length; }
+    function validarNotaEvolucion(entrada) {
+        const v = {
+            motivo: limpiarEspacios(entrada.motivo), evolucion: String(entrada.evolucion || '').trim(),
+            exploracion_fisica: String(entrada.exploracion_fisica || '').trim(), diagnostico_actualizado: limpiarEspacios(entrada.diagnostico_actualizado)
+        };
+        const errores = {};
+        if (contarLetrasTxt(v.motivo) < 3) errores.motivo = 'Describa el motivo de la nota.';
+        if (contarLetrasTxt(v.evolucion) < 10) errores.evolucion = 'Describa la evolución del paciente (mínimo 10 letras).';
+        if (contarLetrasTxt(v.exploracion_fisica) < 5) errores.exploracion_fisica = 'Registre la exploración física.';
+        if (contarLetrasTxt(v.diagnostico_actualizado) < 3) errores.diagnostico_actualizado = 'Indique el diagnóstico actual.';
+        return { ok: Object.keys(errores).length === 0, errores: errores, valores: v };
+    }
+    function agregarNotaEvolucion(internamientoId, entrada, s) {
+        const i = obtenerInternamiento(internamientoId);
+        if (!i || !puedeEscribirInternamiento(s, i)) return { ok: false, motivo: 'Solo el médico tratante o interconsultado puede agregar notas de evolución.' };
+        const r = validarNotaEvolucion(entrada);
+        if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
+        const t = obtenerTurno(i.turno_id);
+        const relacion = relacionMedico(i, t, s);
+        const ic = (i.interconsultas || []).find(x => x.medico_id === s.medico_id);
+        const nota = Object.assign({
+            nota_id: uid('EV'), folio: 'EV-' + pad3((i.notas_evolucion || []).length + 1), fecha_hora: new Date().toISOString(),
+            autor_id: s.usuario_id, autor_nombre: s.nombre, autor_especialidad: s.especialidad || null, relacion: relacion,
+            interconsulta_especialidad: relacion === 'interconsultante' && ic ? ic.especialidad : null
+        }, r.valores);
+        i.notas_evolucion = (i.notas_evolucion || []).concat([nota]);
+        i.diagnostico_actual = nota.diagnostico_actualizado;
+        return guardarInternamiento(i) ? { ok: true, nota: nota } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+    }
+
+    // ---- Indicaciones médicas: cada modificación genera una hoja nueva; la última es la vigente
+    function indicacionesVigentes(i) { const h = (i && i.hojas_indicaciones) || []; return h.length ? h[h.length - 1] : null; }
+    function agregarHojaIndicaciones(internamientoId, entrada, s) {
+        const i = obtenerInternamiento(internamientoId);
+        if (!i || !puedeEscribirInternamiento(s, i)) return { ok: false, motivo: 'Solo el médico tratante o interconsultado puede modificar las indicaciones.' };
+        const textos = {};
+        ['dieta', 'soluciones_parenterales', 'medicamentos', 'medidas_generales'].forEach(k => { textos[k] = String(entrada[k] || '').trim(); });
+        if (!Object.values(textos).some(Boolean)) return { ok: false, motivo: 'Capture al menos una indicación.' };
+        const vig = indicacionesVigentes(i);
+        if (vig && Object.keys(textos).every(k => String(vig[k] || '').trim() === textos[k])) return { ok: false, sin_cambios: true, motivo: 'No hay cambios respecto a las indicaciones vigentes.' };
+        const t = obtenerTurno(i.turno_id);
+        const hoja = nuevaHojaIndicaciones(i.hojas_indicaciones || [], 'actualizacion', textos, { id: s.usuario_id, nombre: s.nombre, relacion: relacionMedico(i, t, s) });
+        i.hojas_indicaciones = (i.hojas_indicaciones || []).concat([hoja]);
+        return guardarInternamiento(i) ? { ok: true, hoja: hoja } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+    }
+
+    // ---- Cama (la asigna Enfermería o Administración desde el Monitor de Camas)
+    function asignarCama(turnoId, cama, s) {
+        if (!s || !PERMISOS.asignar_cama.includes(s.rol)) return { ok: false, motivo: 'Su perfil no puede asignar camas.' };
+        const texto = limpiarEspacios(cama);
+        if (texto.length < 1 || texto.length > 40 || !/^[\p{L}\p{N} .,:·#\-\/]+$/u.test(texto)) return { ok: false, motivo: 'Escriba una cama válida (letras, números, comas y guiones; máximo 40 caracteres).' };
+        const i = asegurarInternamiento(turnoId);
+        if (!i) return { ok: false, motivo: 'El paciente no está hospitalizado.' };
+        const ocupada = listarInternamientos().find(x => x.internamiento_id !== i.internamiento_id && x.estatus === 'activo' && normalizar(x.cama) === normalizar(texto)
+            && ['internado', 'internado_en_proceso'].includes((obtenerTurno(x.turno_id) || {}).estatus));
+        if (ocupada) { const o = obtenerTurno(ocupada.turno_id); return { ok: false, motivo: `La cama "${texto}" ya está ocupada por ${o ? o.paciente_nombre : 'otro paciente'}.` }; }
+        i.cama = texto;
+        return guardarInternamiento(i) ? { ok: true, internamiento: i } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+    }
+
+    // ---- Corrección administrativa de datos del paciente (nombre, edad y sexo)
+    function fechaNacimientoParaEdad(fnActual, edad, ref) {
+        const hoy = ref || new Date();
+        const base = parseFechaISO(fnActual) || new Date(hoy.getFullYear(), 0, 1);
+        const mes = base.getMonth(), dia = base.getDate();
+        const cumplido = hoy.getMonth() > mes || (hoy.getMonth() === mes && hoy.getDate() >= dia);
+        const anio = hoy.getFullYear() - edad - (cumplido ? 0 : 1);
+        let f = new Date(anio, mes, dia);
+        if (f.getMonth() !== mes) f = new Date(anio, mes, 28);   // 29 de febrero en año no bisiesto
+        return f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
+    }
+    function validarCorreccionPaciente(entrada) {
+        const v = { nombre: limpiarEspacios(entrada.nombre), edad: String(entrada.edad === undefined || entrada.edad === null ? '' : entrada.edad).trim(), sexo: entrada.sexo };
+        const errores = {};
+        if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]{5,}$/.test(v.nombre) || v.nombre.split(' ').filter(w => w.length > 1).length < 2) errores.nombre = 'Escriba nombre y apellido (solo letras).';
+        const e = Number(v.edad);
+        if (v.edad === '' || !Number.isInteger(e) || e < 0 || e > 120) errores.edad = 'Escriba la edad en años (0 a 120).';
+        if (v.sexo !== 'F' && v.sexo !== 'M') errores.sexo = 'Seleccione el sexo.';
+        return { ok: Object.keys(errores).length === 0, errores: errores, valores: { nombre: v.nombre, edad: e, sexo: v.sexo } };
+    }
+    // Cambia el catálogo y TODAS las copias del paciente (turnos, visitas, hospitalizados, borradores). Los documentos del
+    // internamiento no guardan estos datos: se renderizan desde el catálogo, así que reflejan el cambio de inmediato.
+    function corregirDatosPaciente(pacienteId, entrada, s) {
+        if (!s || !PERMISOS.corregir_datos_paciente.includes(s.rol)) return { ok: false, motivo: 'Solo la administración puede corregir datos del paciente.' };
+        const r = validarCorreccionPaciente(entrada);
+        if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
+        const cat = listarPacientes();
+        const p = cat.find(x => x.paciente_id === pacienteId);
+        if (!p) return { ok: false, motivo: 'No se encontró el paciente.' };
+        const edadActual = calcularEdad(p.fecha_nacimiento);
+        const nuevaFN = (edadActual === r.valores.edad) ? p.fecha_nacimiento : fechaNacimientoParaEdad(p.fecha_nacimiento, r.valores.edad);
+        const choque = cat.find(x => x.paciente_id !== pacienteId && normalizar(x.nombre_completo) === normalizar(r.valores.nombre) && x.fecha_nacimiento === nuevaFN);
+        if (choque) return { ok: false, motivo: 'Ya existe otro expediente con ese nombre y esa edad (' + choque.paciente_id + ').', errores: { nombre: 'Coincide con el expediente ' + choque.paciente_id + '.' } };
+
+        const antes = { nombre: p.nombre_completo, edad: edadActual, sexo: p.sexo, fecha_nacimiento: p.fecha_nacimiento };
+        p.nombre_completo = r.valores.nombre; p.sexo = r.valores.sexo; p.fecha_nacimiento = nuevaFN; p.actualizado_en = new Date().toISOString();
+        escribir(CLAVES.catalogo, cat);
+
+        const turnos = listarTurnos();
+        turnos.forEach(t => { if (t.paciente_id === pacienteId) { t.paciente_nombre = r.valores.nombre; t.sexo = r.valores.sexo; t.fecha_nacimiento = nuevaFN; } });
+        escribir(CLAVES.turnos, turnos);
+
+        const aplicarEnExpediente = e => {
+            if (!e || !e.meta || e.meta.paciente_id !== pacienteId) return;
+            e.paciente = e.paciente || {};
+            e.paciente.nombre_completo = r.valores.nombre; e.paciente.sexo = r.valores.sexo; e.paciente.fecha_nacimiento = nuevaFN;
+            const f = e.consulta && e.consulta.fecha_hora ? new Date(e.consulta.fecha_hora) : null;
+            e.paciente.edad_anios = calcularEdad(nuevaFN, f && !isNaN(f.getTime()) ? f : new Date());
+        };
+        const visitas = listarVisitas(); visitas.forEach(aplicarEnExpediente); escribir(CLAVES.visitas, visitas);
+        const hosp = listarHospitalizados(); hosp.forEach(aplicarEnExpediente); escribir(CLAVES.hospitalizados, hosp);
+
+        const borradores = leer(CLAVES.borradores, {}) || {};
+        turnos.filter(t => t.paciente_id === pacienteId).forEach(t => {
+            const b = borradores[t.turno_id];
+            if (!b) return;
+            b.paciente = r.valores.nombre;
+            if (b.campos && 'comp-fn' in b.campos) b.campos['comp-fn'] = nuevaFN;
+        });
+        escribir(CLAVES.borradores, borradores);
+
+        const bitacora = leer(CLAVES.correcciones, []);
+        const ahora = new Date().toISOString();
+        const asiento = (campo, a, d) => { if (String(a) !== String(d)) bitacora.push({ correccion_id: uid('COR'), paciente_id: pacienteId, campo: campo, antes: a, despues: d, por_id: s.usuario_id, por_nombre: s.nombre, en: ahora }); };
+        asiento('nombre_completo', antes.nombre, r.valores.nombre); asiento('edad_anios', antes.edad, r.valores.edad); asiento('sexo', antes.sexo, r.valores.sexo);
+        if (antes.fecha_nacimiento !== nuevaFN) asiento('fecha_nacimiento', antes.fecha_nacimiento, nuevaFN);
+        escribir(CLAVES.correcciones, bitacora);
+        return { ok: true, paciente: p, antes: antes };
+    }
+
     // ---------------------------------------------------------------- Datos de demostración
     // Se siembran UNA sola vez (si el navegador no tiene catálogo ni visitas) para poder probar el autollenado.
     function expedienteDemo(p, v) {
@@ -577,21 +937,25 @@
 
     // Borra TODA la información operativa del demo (no toca los machotes) y vuelve a sembrar
     function restablecerDemo() {
-        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.demo].forEach(k => localStorage.removeItem(k));
+        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
         return sembrarDemoSiHaceFalta();
     }
 
     global.BelenStore = {
-        CLAVES, ESPECIALIDADES, USUARIOS, PERMISOS, ESTATUS, ETIQUETA_ESTATUS, ESTATUS_EN_FILA, RANGOS_SIGNOS, SIGNOS_OBLIGATORIOS,
+        CLAVES, ESPECIALIDADES, USUARIOS, PERMISOS, MODULOS, ESTATUS, ETIQUETA_ESTATUS, ESTATUS_EN_FILA, RANGOS_SIGNOS, SIGNOS_OBLIGATORIOS,
         leer, escribir, normalizar, limpiarEspacios, hoyLocal, parseFechaISO, calcularEdad, fechaLegibleISO, iniciales, formatoReloj,
-        iniciarSesion, sesion, cerrarSesion, puede, especialidadPorCodigo, medicosDeEspecialidad,
+        iniciarSesion, sesion, cerrarSesion, puede, permisoModuloDe, establecerPermisoModulo, restablecerPermisosPersonal, leerPermisosPersonal, especialidadPorCodigo, medicosDeEspecialidad,
         listarPacientes, buscarPacientePorIdentidad, buscarPacientesPorNombre, buscarPacientePorId, homonimos, guardarPaciente,
-        listarTurnos, obtenerTurno, actualizarTurno, siguienteNumeroTurno, crearTurno, ordenarPorLlegada, turnoVisiblePara, filaDe, hospitalizadosDe,
+        listarTurnos, obtenerTurno, actualizarTurno, siguienteNumeroTurno, crearTurno, ordenarPorLlegada, turnoVisiblePara, filaDe, hospitalizadosDe, hospitalizadoVisiblePara,
         validarSignos, signosCompletos, resumenSignos, guardarSignos,
         pasarAMedico, iniciarConsulta, accesoExpediente,
         leerBorrador, guardarBorrador, borrarBorrador,
         listarVisitas, registrarVisita, visitasDePaciente, antecedentesLongitudinales,
         listarHospitalizados, guardarHospitalizado,
+        listarInternamientos, internamientoDeTurno, obtenerInternamiento, resolverInternamiento, asegurarInternamiento, sincronizarInternamiento, descartarInternamiento,
+        fichaHospitalizado, accesoVisorHospitalizado, relacionMedico, tieneInterconsulta, medicosParaInterconsulta, solicitarInterconsulta,
+        validarNotaEvolucion, agregarNotaEvolucion, indicacionesVigentes, agregarHojaIndicaciones, asignarCama,
+        validarCorreccionPaciente, corregirDatosPaciente, fechaNacimientoParaEdad, fechaHoraLegible,
         sembrarDemoSiHaceFalta, restablecerDemo
     };
 })(window);
