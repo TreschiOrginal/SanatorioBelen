@@ -1,7 +1,7 @@
 // Archivo: js/admin-app.js
 // ============================================================
 // CONTROLADOR DEL DASHBOARD (vistas por rol y por médico)
-// Vistas: central | fila | hospitalizacion | expedientes | personal   (?vista=...)
+// Vistas: central | fila | hospitalizacion | cirugias | expedientes | personal   (?vista=...)
 // Datos: BelenStore (js/belen-store.js). Interfaz: BelenUI (js/belen-ui.js).
 // CERO alert()/prompt()/confirm() nativos: todo con modales Tailwind.
 // ============================================================
@@ -16,11 +16,12 @@ const AdminController = {
 
     // roles: quién puede tener la vista. modulo: permiso de módulo (BelenStore.PERMISOS) que el administrador enciende/apaga por usuario.
     VISTAS: {
-        central:         { roles: ['admin', 'medico'],                 modulo: 'ver_consultas',      titulo: { admin: 'Dashboard Central', medico: 'Mi Consultorio' } },
-        fila:            { roles: ['admin', 'enfermeria'],             modulo: 'ver_consultas',      titulo: { admin: 'Fila de Espera', enfermeria: 'Fila de Espera' } },
-        hospitalizacion: { roles: ['admin', 'enfermeria', 'medico'],   modulo: 'ver_hospitalizados', titulo: { admin: 'Monitor de Camas', enfermeria: 'Monitor de Camas', medico: 'Mis Pacientes Hospitalizados' } },
-        expedientes:     { roles: ['admin', 'medico'],                 modulo: 'ver_consultas',      titulo: { admin: 'Expedientes Clínicos', medico: 'Expedientes Clínicos' } },
-        personal:        { roles: ['admin'],                           modulo: 'gestionar_personal', titulo: { admin: 'Gestión de Personal' } }
+        central:         { roles: ['admin', 'administrador', 'medico'],                                           modulo: 'ver_consultas',      titulo: { admin: 'Dashboard Central', administrador: 'Dashboard Central', medico: 'Mi Consultorio' } },
+        fila:            { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],      modulo: 'ver_consultas',      titulo: { admin: 'Fila de Espera' } },
+        hospitalizacion: { roles: ['admin', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'],             modulo: 'ver_hospitalizados', titulo: { admin: 'Monitor de Camas', medico: 'Mis Pacientes Hospitalizados' } },
+        cirugias:        { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],      modulo: 'ver_quirofano',      titulo: { admin: 'Próximas Cirugías' } },
+        expedientes:     { roles: ['admin', 'medico'],                                                            modulo: 'ver_consultas',      titulo: { admin: 'Expedientes Clínicos', medico: 'Expedientes Clínicos' } },
+        personal:        { roles: ['admin'],                                                                      modulo: 'gestionar_personal', titulo: { admin: 'Gestión de Personal' } }
     },
 
     init: async function () {
@@ -32,6 +33,7 @@ const AdminController = {
         this.vista = this.vistaPermitida(pedida) ? pedida : this.vistaInicial();
         if (pedida && !this.vistaPermitida(pedida)) {
             BelenUI.toast('Su perfil no tiene acceso a esa sección.', 'alerta');
+            if (this.vista) history.replaceState(null, '', '?vista=' + this.vista);
         }
         await this.render();
 
@@ -79,7 +81,7 @@ const AdminController = {
     },
     // Primera vista disponible para el usuario (null si el administrador le apagó todos los módulos)
     vistaInicial: function () {
-        return ['central', 'fila', 'hospitalizacion', 'expedientes', 'personal'].find(v => this.vistaPermitida(v)) || null;
+        return ['central', 'fila', 'hospitalizacion', 'cirugias', 'expedientes', 'personal'].find(v => this.vistaPermitida(v)) || null;
     },
 
     navegar: function (vista, ev) {
@@ -125,6 +127,7 @@ const AdminController = {
         if (this.vista === 'central') cont.innerHTML = this.rolActual === 'medico' ? this.htmlMedico() : await this.htmlAdmin();
         else if (this.vista === 'fila') cont.innerHTML = this.htmlFila();
         else if (this.vista === 'hospitalizacion') cont.innerHTML = this.htmlHospitalizacion();
+        else if (this.vista === 'cirugias') cont.innerHTML = this.htmlCirugias();
         else if (this.vista === 'expedientes') cont.innerHTML = this.htmlExpedientes();
         else if (this.vista === 'personal') cont.innerHTML = this.htmlPersonal();
         this.actualizarRelojes();
@@ -184,18 +187,28 @@ const AdminController = {
         return `<span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${mapa[t.estatus] || mapa.alta}">${this.e(BelenStore.ETIQUETA_ESTATUS[t.estatus] || t.estatus)}</span>`;
     },
 
+    // Caja de turno: el número es la POSICIÓN en la cola de espera (Fila Inteligente), no un folio fijo.
+    // Quien está en consulta ya salió de la cola y muestra un ícono en lugar de número.
     htmlTurnoCaja: function (t, oscuro) {
-        return `<div class="w-16 h-16 rounded-xl ${oscuro === false ? 'bg-slate-200 text-slate-700' : 'bg-slate-900 text-white'} flex flex-col items-center justify-center shrink-0">
+        const fondo = oscuro === false ? 'bg-slate-200 text-slate-700' : 'bg-slate-900 text-white';
+        if (!t.posicion) {
+            return `<div class="w-16 h-16 rounded-xl bg-emerald-600 text-white flex flex-col items-center justify-center shrink-0" data-posicion="0">
+                    <i class="fas fa-user-doctor text-lg"></i><span class="text-[9px] uppercase tracking-wider text-emerald-100 mt-0.5">En consulta</span></div>`;
+        }
+        return `<div class="w-16 h-16 rounded-xl ${fondo} flex flex-col items-center justify-center shrink-0" data-posicion="${t.posicion}">
                     <span class="text-[9px] uppercase tracking-wider ${oscuro === false ? 'text-slate-500' : 'text-slate-400'}">Turno</span>
-                    <span class="text-2xl font-extrabold leading-none">#${t.numero_turno}</span></div>`;
+                    <span class="text-2xl font-extrabold leading-none">${t.posicion}</span></div>`;
     },
 
     // ======================================================================
-    // VISTA: FILA DE ESPERA (admin / enfermería)
+    // VISTA: FILA DE ESPERA INTELIGENTE (admin / administrador / enfermería)
+    //   La cola es un arreglo ordenado por llegada: al salir el Turno 1, el Turno 2 se convierte en el Turno 1.
     // ======================================================================
     htmlFila: function () {
         const S = BelenStore;
-        const todos = S.filaDe(this.sesion);
+        const espera = S.colaEspera(this.sesion);
+        const consulta = S.pacientesEnConsulta(this.sesion).map(t => Object.assign({}, t, { posicion: 0 }));
+        const todos = espera.concat(consulta);
         const filtro = this.filtroEspecialidad;
         const chip = (codigo, texto, n) => {
             const act = filtro === codigo;
@@ -203,26 +216,32 @@ const AdminController = {
                         class="px-4 py-2 rounded-full text-sm font-semibold border transition ${act ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:border-cyan-400'}">
                         ${this.e(texto)} <span class="ml-1 text-xs ${act ? 'text-slate-300' : 'text-slate-400'}">${n}</span></button>`;
         };
-        let chips = chip('', 'Todas', todos.length);
-        S.ESPECIALIDADES.forEach(esp => { chips += chip(esp.codigo, esp.nombre, todos.filter(t => t.especialidad_codigo === esp.codigo).length); });
+        let chips = chip('', 'Todas', espera.length);
+        S.ESPECIALIDADES.forEach(esp => { chips += chip(esp.codigo, esp.nombre, espera.filter(t => t.especialidad_codigo === esp.codigo).length); });
 
         const espVisibles = S.ESPECIALIDADES.filter(esp => !filtro || esp.codigo === filtro);
         let secciones = '';
         espVisibles.forEach(esp => {
-            const lista = todos.filter(t => t.especialidad_codigo === esp.codigo); // ya viene ordenada por llegada
-            if (!lista.length && !filtro) return;
+            const enEspera = espera.filter(t => t.especialidad_codigo === esp.codigo);          // arreglo de turnos (ya con posición)
+            const conMedico = consulta.filter(t => t.especialidad_codigo === esp.codigo);
+            if (!enEspera.length && !conMedico.length && !filtro) return;
+            const siguiente = enEspera[0];
             secciones += `<section class="mb-8" data-seccion="${esp.codigo}">
-                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2"><i class="fas fa-stethoscope text-cyan-600"></i> ${this.e(esp.nombre)}
-                    <span class="bg-slate-200 text-slate-600 text-[10px] rounded-full px-2 py-0.5">${lista.length}</span></h3>
-                <div class="flex flex-col gap-3">${lista.length ? lista.map(t => this.htmlTarjetaFila(t)).join('') : '<p class="text-sm text-slate-400 bg-white/60 border border-dashed border-slate-300 rounded-xl p-6 text-center">No hay pacientes en esta fila.</p>'}</div></section>`;
+                <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 flex flex-wrap items-center gap-2"><i class="fas fa-stethoscope text-cyan-600"></i> ${this.e(esp.nombre)}
+                    <span class="bg-slate-200 text-slate-600 text-[10px] rounded-full px-2 py-0.5" title="Pacientes en espera">${enEspera.length} en espera</span>
+                    ${conMedico.length ? `<span class="bg-emerald-100 text-emerald-700 text-[10px] rounded-full px-2 py-0.5">${conMedico.length} en consulta</span>` : ''}
+                    ${siguiente ? `<span class="normal-case tracking-normal font-medium text-[11px] text-slate-400">Siguiente: ${this.e(siguiente.paciente_nombre)}</span>` : ''}</h3>
+                <div class="flex flex-col gap-3">${(enEspera.length || conMedico.length) ? enEspera.concat(conMedico).map(t => this.htmlTarjetaFila(t)).join('') : '<p class="text-sm text-slate-400 bg-white/60 border border-dashed border-slate-300 rounded-xl p-6 text-center">No hay pacientes en esta fila.</p>'}</div></section>`;
         });
         if (!secciones) secciones = `<div class="text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-user-clock text-4xl mb-3 text-slate-300"></i><p>No hay pacientes en espera.</p></div>`;
 
         const boton = BelenStore.puede('registrar_paciente') ? this.htmlBotonRegistro() : '';
-        const aviso = this.rolActual === 'enfermeria'
-            ? `<div class="mb-6 bg-cyan-50 border border-cyan-200 text-cyan-800 text-xs rounded-xl px-4 py-3 flex items-center gap-2"><i class="fas fa-user-nurse"></i> Modo Enfermería: capture o edite signos vitales y pase al paciente con su médico. El orden de la fila lo define únicamente la hora de llegada.</div>` : '';
+        const aviso = this.rolActual === 'administrador'
+            ? `<div class="mb-6 bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl px-4 py-3 flex items-center gap-2"><i class="fas fa-cash-register"></i> Caja y Recepción: registre pacientes, capture sus signos vitales y envíelos con su médico. El turno es la posición en la fila: al pasar el Turno 1 con el médico, el Turno 2 se convierte en el Turno 1.</div>`
+            : (S.esEnfermeria(this.rolActual)
+                ? `<div class="mb-6 bg-cyan-50 border border-cyan-200 text-cyan-800 text-xs rounded-xl px-4 py-3 flex items-center gap-2"><i class="fas fa-user-nurse"></i> Modo Enfermería: capture o edite signos vitales y envíe al paciente con su médico. El orden de la fila lo define únicamente la hora de llegada.</div>` : '');
         return `<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
-                    <div><h2 class="text-2xl font-extrabold text-slate-800">Fila de Espera</h2><p class="text-slate-500">Pacientes agrupados por especialidad y ordenados por turno de llegada.</p></div>${boton}</div>
+                    <div><h2 class="text-2xl font-extrabold text-slate-800">Fila de Espera</h2><p class="text-slate-500">Cola inteligente por especialidad: el número de turno es la posición en la fila y se recorre solo.</p></div>${boton}</div>
                 ${aviso}<div class="flex flex-wrap gap-2 mb-6">${chips}</div>${secciones}`;
     },
 
@@ -233,17 +252,19 @@ const AdminController = {
                     <i class="fas fa-plus-circle"></i> + Registrar Paciente a Consulta</button>`;
     },
 
+    // Tarjeta de la fila para personal operativo (admin, administrador, enf_*): Capturar Signos + Enviar a Médico
     htmlTarjetaFila: function (t) {
         const enConsulta = t.estatus === 'en_consulta';
         const completos = BelenStore.signosCompletos(t.signos_vitales);
         const borde = enConsulta ? 'border-l-emerald-500' : (completos ? 'border-l-cyan-500' : 'border-l-amber-400');
         const id = this.e(t.turno_id);
+        const puedeSignos = BelenStore.puede('capturar_signos');
         const botones = `
-            <button type="button" data-accion="signos" onclick="AdminController.abrirSignos('${id}')" class="bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center gap-1.5">
-                <i class="fas fa-heart-pulse"></i> ${t.signos_vitales ? 'Editar Signos Vitales' : 'Capturar Signos Vitales'}</button>
+            ${puedeSignos ? `<button type="button" data-accion="signos" onclick="AdminController.abrirSignos('${id}')" class="bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center gap-1.5">
+                <i class="fas fa-heart-pulse"></i> ${t.signos_vitales ? 'Editar Signos' : 'Capturar Signos'}</button>` : ''}
             ${enConsulta
                 ? `<span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"><i class="fas fa-user-doctor mr-1"></i> Con el médico</span>`
-                : (BelenStore.puede('pasar_a_medico') ? `<button type="button" data-accion="pasar" onclick="AdminController.confirmarPase('${id}')" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition flex items-center gap-1.5"><i class="fas fa-arrow-right"></i> Pasar a Médico</button>` : '')}`;
+                : (BelenStore.puede('pasar_a_medico') ? `<button type="button" data-accion="pasar" onclick="AdminController.confirmarPase('${id}')" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition flex items-center gap-1.5"><i class="fas fa-arrow-right"></i> Enviar a Médico</button>` : '')}`;
         return `<div data-turno="${id}" class="bg-white rounded-2xl border border-slate-200 border-l-4 ${borde} shadow-sm p-4 flex flex-wrap items-center gap-4">
             ${this.htmlTurnoCaja(t)}
             <div class="flex-1 min-w-[220px]">
@@ -269,22 +290,30 @@ const AdminController = {
     },
 
     confirmarPase: function (turnoId) {
-        const t = BelenStore.obtenerTurno(turnoId);
-        if (!t || !BelenStore.puede('pasar_a_medico')) { BelenUI.toast('No es posible pasar a este paciente.', 'alerta'); return; }
-        if (!BelenStore.ESTATUS_EN_FILA.includes(t.estatus) || t.estatus === 'en_consulta') { BelenUI.toast('Este paciente ya está con el médico.', 'info'); this.render(); return; }
-        const sinSignos = !BelenStore.signosCompletos(t.signos_vitales);
+        const S = BelenStore, t = S.obtenerTurno(turnoId);
+        if (!t || !S.puede('pasar_a_medico')) { BelenUI.toast('No es posible enviar a este paciente.', 'alerta'); return; }
+        if (!S.ESTATUS_EN_FILA.includes(t.estatus) || t.estatus === 'en_consulta') { BelenUI.toast('Este paciente ya está con el médico.', 'info'); this.render(); return; }
+        const sinSignos = !S.signosCompletos(t.signos_vitales);
+        const pos = S.posicionEnCola(turnoId);
         BelenUI.confirmar({
-            titulo: `¿Pasar a ${t.paciente_nombre} con ${t.medico_nombre}?`,
-            mensaje: sinSignos ? 'El paciente NO tiene signos vitales. ¿Pasar de todos modos?' : `${t.especialidad} · Turno #${t.numero_turno}. El paciente aparecerá destacado en la fila del médico.`,
+            titulo: `¿Enviar a ${t.paciente_nombre} con ${t.medico_nombre}?`,
+            mensaje: sinSignos ? 'El paciente NO tiene signos vitales. ¿Enviar de todos modos?' : `${t.especialidad}${pos ? ' · Turno ' + pos : ''}. El paciente aparecerá destacado en la fila del médico.`,
             tipo: sinSignos ? 'alerta' : 'info',
-            textoConfirmar: sinSignos ? 'Pasar de todos modos' : 'Sí, pasar a médico',
+            textoConfirmar: sinSignos ? 'Enviar de todos modos' : 'Sí, enviar a médico',
             idConfirmar: 'btn-confirmar-pase',
             alConfirmar: () => {
-                const r = BelenStore.pasarAMedico(turnoId, this.sesion);
-                if (r) BelenUI.toast(`${t.paciente_nombre} pasó con ${t.medico_nombre}.`, 'exito');
+                const r = S.pasarAMedico(turnoId, this.sesion);
+                if (r) this.avisarRecorridoDeFila(t, pos, `${t.paciente_nombre} pasó con ${t.medico_nombre}.`);
                 this.render();
             }
         });
+    },
+
+    // Fila inteligente: avisa quién es ahora el Turno 1 cuando se vacía la primera posición
+    avisarRecorridoDeFila: function (t, posicionAnterior, mensajeBase) {
+        const sig = BelenStore.siguienteEnCola(t.medico_id);
+        const extra = (posicionAnterior === 1 && sig) ? ` ${sig.paciente_nombre} es ahora el Turno 1.` : '';
+        BelenUI.toast(mensajeBase + extra, 'exito', extra ? 5500 : 3500);
     },
 
     // ======================================================================
@@ -292,20 +321,21 @@ const AdminController = {
     // ======================================================================
     htmlMedico: function () {
         const S = BelenStore, s = this.sesion;
-        const fila = S.filaDe(s); // PRIVACIDAD: filaDe ya filtra por medico_id
-        const enConsulta = fila.filter(t => t.estatus === 'en_consulta');
-        const espera = fila.filter(t => t.estatus !== 'en_consulta');
+        // PRIVACIDAD: ambas listas filtran por medico_id. FILA INTELIGENTE: espera es el arreglo de turnos con su posición (1 = siguiente).
+        const enConsulta = S.pacientesEnConsulta(s);
+        const espera = S.colaEspera(s);
         const hosp = S.hospitalizadosDe(s);
 
         const tarjetaConsulta = t => {
             const id = this.e(t.turno_id);
-            const porEnfermeria = t.pase_por_rol === 'enfermeria' || t.pase_por_rol === 'admin';
+            const porEnfermeria = !!t.pase_por_rol && t.pase_por_rol !== 'medico';
+            const quienEnvio = String(t.pase_por_rol || '').indexOf('enf') === 0 ? 'Enfermería' : 'Recepción';
             const sinSignos = !S.signosCompletos(t.signos_vitales);
             return `<div data-turno="${id}" data-destacado="1" class="bg-emerald-50 rounded-2xl border-2 border-emerald-400 shadow-md p-5 ring-4 ring-emerald-100">
                 <div class="flex flex-wrap items-start gap-4">
                     ${this.htmlTurnoCaja(t)}
                     <div class="flex-1 min-w-[200px]">
-                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-800 bg-emerald-200/70 rounded px-2 py-0.5 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span> ${porEnfermeria ? 'Enfermería le envió este paciente' : 'Consulta en curso'}</span>
+                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-800 bg-emerald-200/70 rounded px-2 py-0.5 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span> ${porEnfermeria ? quienEnvio + ' le envió este paciente' : 'Consulta en curso'}</span>
                         <h3 class="text-xl font-extrabold text-slate-900">${this.e(t.paciente_nombre)}</h3>
                         <p class="text-xs text-slate-500">${this.e(this.edadTexto(t))}${porEnfermeria && t.pase_por ? ' · Pasó: ' + this.e(t.pase_por) : ''}</p>
                         <p class="text-sm text-slate-700 mt-2"><span class="text-[10px] uppercase text-slate-400 font-bold">Motivo:</span> ${this.e(t.motivo)}</p>
@@ -331,8 +361,8 @@ const AdminController = {
                 <div class="flex flex-col items-end gap-2 shrink-0">
                     <p class="text-[10px] uppercase text-slate-400 font-bold text-right leading-none">Tiempo de espera<br><span class="text-lg">${this.htmlReloj(t)}</span></p>
                     <div class="flex flex-wrap gap-2 justify-end">
-                        <button type="button" data-accion="signos" onclick="AdminController.abrirSignos('${id}')" class="bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-heart-pulse"></i> ${t.signos_vitales ? 'Editar Signos Vitales' : 'Capturar Signos Vitales'}</button>
-                        <button type="button" data-accion="iniciar" onclick="AdminController.confirmarInicioConsulta('${id}')" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition flex items-center gap-1.5"><i class="fas fa-play"></i> Iniciar Consulta</button>
+                        <!-- El médico no captura signos desde la fila: los registra dentro de su nota médica -->
+                        <button type="button" data-accion="iniciar" onclick="AdminController.confirmarInicioConsulta('${id}')" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition flex items-center gap-1.5"><i class="fas fa-play"></i> Pasar a Consulta</button>
                     </div>
                 </div></div>`;
         };
@@ -343,7 +373,7 @@ const AdminController = {
                     <button type="button" id="btn-consulta-directa" onclick="AdminController.abrirRegistro('medico')" class="bg-cyan-700 hover:bg-cyan-800 text-white font-bold py-3 px-6 rounded-xl shadow-md transition flex items-center gap-2"><i class="fas fa-plus-circle"></i> Nueva Consulta Directa</button>
                 </div>
                 <h3 class="text-sm font-bold text-emerald-700 uppercase tracking-wider mb-3 flex items-center gap-2"><i class="fas fa-user-doctor"></i> En consulta <span class="bg-emerald-100 text-emerald-700 text-[10px] rounded-full px-2 py-0.5">${enConsulta.length}</span></h3>
-                <div class="flex flex-col gap-4 mb-8" id="medico-en-consulta">${enConsulta.length ? enConsulta.map(tarjetaConsulta).join('') : '<p class="text-sm text-slate-400 bg-white/60 border border-dashed border-slate-300 rounded-xl p-5 text-center">Enfermería aún no le ha pasado pacientes.</p>'}</div>
+                <div class="flex flex-col gap-4 mb-8" id="medico-en-consulta">${enConsulta.length ? enConsulta.map(tarjetaConsulta).join('') : '<p class="text-sm text-slate-400 bg-white/60 border border-dashed border-slate-300 rounded-xl p-5 text-center">Aún no le han enviado pacientes a consulta.</p>'}</div>
                 <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2"><i class="fas fa-user-clock text-cyan-600"></i> Mi fila de espera <span class="bg-slate-200 text-slate-600 text-[10px] rounded-full px-2 py-0.5">${espera.length}</span></h3>
                 <div class="flex flex-col gap-3 mb-8" id="medico-fila">${espera.length ? espera.map(tarjetaEspera).join('') : '<p class="text-sm text-slate-400 bg-white/60 border border-dashed border-slate-300 rounded-xl p-5 text-center">No hay pacientes en espera en este momento.</p>'}</div>
                 <div class="bg-white/80 border border-slate-200 rounded-2xl p-4 flex items-center justify-between">
@@ -358,10 +388,10 @@ const AdminController = {
         }
         const sinSignos = !BelenStore.signosCompletos(t.signos_vitales);
         BelenUI.confirmar({
-            titulo: `¿Iniciar consulta con ${t.paciente_nombre}?`,
-            mensaje: sinSignos ? 'El paciente aún no tiene signos vitales. Podrá capturarlos desde el expediente, pero no podrá cerrar la Nota Médica sin ellos.' : `${t.especialidad} · Turno #${t.numero_turno}.`,
+            titulo: `¿Pasar a consulta a ${t.paciente_nombre}?`,
+            mensaje: sinSignos ? 'El paciente aún no tiene signos vitales. Los capturará dentro de su nota médica y no podrá cerrarla sin ellos.' : `${t.especialidad} · Turno ${BelenStore.posicionEnCola(turnoId) || ''}. Al pasar, el siguiente paciente avanza un lugar en su fila.`,
             tipo: sinSignos ? 'alerta' : 'info',
-            textoConfirmar: 'Iniciar Consulta',
+            textoConfirmar: 'Pasar a Consulta',
             idConfirmar: 'btn-confirmar-inicio',
             alConfirmar: () => {
                 const r = BelenStore.iniciarConsulta(turnoId, this.sesion);
@@ -376,12 +406,12 @@ const AdminController = {
     // ======================================================================
     htmlAdmin: async function () {
         const S = BelenStore;
-        const fila = S.filaDe(this.sesion);
-        const hosp = S.hospitalizadosDe(this.sesion);
+        const espera = S.colaEspera(this.sesion);
+        const consulta = S.pacientesEnConsulta(this.sesion);
+        const hosp = S.puede('ver_hospitalizados') ? S.hospitalizadosDe(this.sesion) : [];
         const tarjetasEsp = S.ESPECIALIDADES.map(esp => {
-            const l = fila.filter(t => t.especialidad_codigo === esp.codigo);
-            const pend = l.filter(t => t.estatus !== 'en_consulta');
-            const cons = l.filter(t => t.estatus === 'en_consulta');
+            const pend = espera.filter(t => t.especialidad_codigo === esp.codigo);
+            const cons = consulta.filter(t => t.especialidad_codigo === esp.codigo);
             const proximo = pend[0];
             return `<div class="bg-white/80 border border-slate-200 rounded-2xl p-4 shadow-sm">
                 <p class="text-[10px] font-bold text-slate-400 uppercase">${this.e(esp.nombre)}</p>
@@ -389,14 +419,16 @@ const AdminController = {
                     <div><p class="text-3xl font-extrabold text-slate-800 leading-none">${pend.length}</p><p class="text-[10px] text-slate-500">en espera</p></div>
                     <div><p class="text-3xl font-extrabold text-emerald-600 leading-none">${cons.length}</p><p class="text-[10px] text-slate-500">en consulta</p></div>
                 </div>
-                <p class="text-[11px] text-slate-500 mt-2">${proximo ? 'Próximo: <b>#' + proximo.numero_turno + '</b> ' + this.e(proximo.paciente_nombre) : 'Sin pacientes en espera'}</p></div>`;
+                <p class="text-[11px] text-slate-500 mt-2">${proximo ? 'Turno 1: <b>' + this.e(proximo.paciente_nombre) + '</b>' : 'Sin pacientes en espera'}</p></div>`;
         }).join('');
 
+        const verCirugias = S.puede('ver_quirofano');
         let mock = '';
         if (typeof AdminAPI !== 'undefined') {
-            const [pacientes, cirugias] = await Promise.all([AdminAPI.obtenerPacientesActivos(), AdminAPI.obtenerCirugiasProgramadas()]);
+            const pacientes = await AdminAPI.obtenerPacientesActivos();
+            const proximas = verCirugias ? S.proximasCirugias().slice(0, 3) : [];
             mock = `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
-                <div class="lg:col-span-7 flex flex-col gap-4">
+                <div class="${verCirugias ? 'lg:col-span-6' : 'lg:col-span-12'} flex flex-col gap-4">
                     <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-procedures text-cyan-600"></i> Pacientes Activos <span class="text-[10px] font-semibold text-slate-400 uppercase">(datos de demostración)</span></h3>
                     ${pacientes.map(p => `
                         <div class="bg-white/80 p-5 rounded-2xl shadow-sm border-l-4 border-${p.colorArea}-500 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-200">
@@ -408,36 +440,152 @@ const AdminController = {
                             <button type="button" onclick="AdminController.verCuentaRapida('${this.e(p.nombre)}', ${Number(p.cuentaActual)})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 px-4 rounded-xl transition"><i class="fas fa-receipt mr-1"></i> Cuenta Rápida</button>
                         </div>`).join('')}
                 </div>
-                <div class="lg:col-span-5 flex flex-col gap-6">
-                    <div class="bg-white/80 p-5 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-3 flex items-center gap-2"><i class="fas fa-scalpel text-cyan-600"></i> Próximas Cirugías</h3>
-                        <div class="flex flex-col gap-3">
-                        ${cirugias.map(c => `
-                            <div class="${c.bgEtiqueta} border-l-4 ${c.colorEtiqueta} rounded-r-xl p-3">
-                                <h4 class="font-bold text-slate-900 text-sm">${this.e(c.paciente)}</h4>
-                                <p class="text-xs text-slate-600 font-medium">${this.e(c.procedimiento)}</p>
-                                <div class="bg-yellow-100/50 p-2 rounded border border-yellow-200 mt-2">
-                                    <p class="text-[10px] font-bold text-yellow-700 uppercase mb-1 flex items-center gap-1"><i class="fas fa-lock"></i> Notas Privadas</p>
-                                    <p class="text-xs text-slate-800 italic">${this.e(c.notasAlfonso)}</p>
-                                </div>
-                            </div>`).join('')}
-                        </div>
-                    </div>
-                </div></div>`;
+                ${verCirugias ? `<div class="lg:col-span-6 flex flex-col gap-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-kit-medical text-violet-600"></i> Próximas Cirugías</h3>
+                        <a href="?vista=cirugias" onclick="AdminController.navegar('cirugias', event)" class="text-xs font-bold text-cyan-700 hover:text-cyan-900">Ver todas <i class="fas fa-arrow-right ml-1"></i></a></div>
+                    ${proximas.length ? proximas.map(c => this.htmlTarjetaCirugia(c)).join('') : '<p class="text-sm text-slate-400 bg-white/60 border border-dashed border-slate-300 rounded-xl p-5 text-center">No hay cirugías programadas.</p>'}
+                </div>` : ''}</div>`;
         }
 
-        return `<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
-                    <div><h2 class="text-2xl font-extrabold text-slate-800">Operación del Día</h2><p class="text-slate-500">Resumen de filas por especialidad y pacientes hospitalizados.</p></div>
-                    ${this.htmlBotonRegistro()}</div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">${tarjetasEsp}
-                    <a href="?vista=hospitalizacion" onclick="AdminController.navegar('hospitalizacion', event)" class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition">
-                        <p class="text-[10px] font-bold text-indigo-400 uppercase">Hospitalizados</p><p class="text-3xl font-extrabold text-indigo-700 leading-none mt-1">${hosp.length}</p>
-                        <p class="text-[11px] text-indigo-600 mt-2">Ver monitor de camas <i class="fas fa-arrow-right ml-1"></i></p></a>
-                </div>
-                ${mock}
+        const registro = S.puede('registrar_paciente') ? this.htmlBotonRegistro() : '';
+        const metricas = S.puede('ver_metricas') ? this.htmlMetricas() : '';
+        const restablecer = this.rolActual === 'admin' ? `
                 <div class="mt-10 pt-4 border-t border-slate-200 flex items-center justify-between">
                     <p class="text-xs text-slate-400"><i class="fas fa-gear mr-1"></i> Configuración del demo</p>
-                    <button type="button" id="btn-restablecer-demo" onclick="AdminController.confirmarRestablecerDemo()" class="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-lg transition">Restablecer datos de demostración</button></div>`;
+                    <button type="button" id="btn-restablecer-demo" onclick="AdminController.confirmarRestablecerDemo()" class="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-lg transition">Restablecer datos de demostración</button></div>` : '';
+        return `${metricas}
+                <div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+                    <div><h2 class="text-2xl font-extrabold text-slate-800">Operación del Día</h2><p class="text-slate-500">Resumen de filas por especialidad${hosp.length || S.puede('ver_hospitalizados') ? ' y pacientes hospitalizados' : ''}.</p></div>
+                    ${registro}</div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">${tarjetasEsp}
+                    ${S.puede('ver_hospitalizados') ? `<a href="?vista=hospitalizacion" onclick="AdminController.navegar('hospitalizacion', event)" class="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 shadow-sm hover:shadow-md transition">
+                        <p class="text-[10px] font-bold text-indigo-400 uppercase">Hospitalizados</p><p class="text-3xl font-extrabold text-indigo-700 leading-none mt-1">${hosp.length}</p>
+                        <p class="text-[11px] text-indigo-600 mt-2">Ver monitor de camas <i class="fas fa-arrow-right ml-1"></i></p></a>` : ''}
+                </div>
+                ${mock}${restablecer}`;
+    },
+
+    // ----------------------------------------------------------------------
+    // Métricas centrales de 24 horas (solo admin y administrador). Corte diario a las 7:00 AM.
+    // ----------------------------------------------------------------------
+    htmlMetricas: function () {
+        const m = BelenStore.metricas24h();
+        const tarjeta = (id, etiqueta, valor, icono, color) => `<div data-metrica="${id}" class="bg-white/80 border border-slate-200 rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg ${color} flex items-center justify-center shrink-0"><i class="fas ${icono} text-sm"></i></div>
+                <div><p class="text-2xl font-extrabold text-slate-800 leading-none" data-valor>${valor}</p><p class="text-[10px] font-bold text-slate-400 uppercase mt-1">${etiqueta}</p></div></div>`;
+        const maximo = m.por_especialidad.reduce((x, e) => Math.max(x, e.total), 0) || 1;
+        // REGLA: por_especialidad solo trae especialidades con más de 0 consultas; no se dibuja ninguna otra.
+        const desglose = m.por_especialidad.length
+            ? m.por_especialidad.map(e => `<div data-especialidad="${this.e(e.codigo)}" class="flex items-center gap-3">
+                    <span class="w-32 shrink-0 text-xs font-semibold text-slate-600 truncate">${this.e(e.nombre)}</span>
+                    <div class="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-cyan-500 rounded-full" style="width:${Math.round(e.total / maximo * 100)}%"></div></div>
+                    <span class="w-6 text-right text-sm font-extrabold text-slate-800">${e.total}</span></div>`).join('')
+            : '<p class="text-xs text-slate-400">Aún no hay consultas desde el último corte.</p>';
+        return `<section id="barra-metricas" class="mb-8">
+                <div class="flex items-center justify-between mb-2"><h3 class="text-[11px] font-bold text-slate-400 uppercase tracking-wider"><i class="fas fa-gauge-high mr-1"></i> Métricas de 24 horas</h3>
+                    <p id="metricas-corte" class="text-[11px] text-slate-400"><i class="far fa-clock mr-1"></i>${this.e(m.corte_texto)}</p></div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    ${tarjeta('espera', 'Pacientes en Espera', m.en_espera, 'fa-user-clock', 'bg-amber-100 text-amber-700')}
+                    ${tarjeta('consulta', 'En Consulta', m.en_consulta, 'fa-user-doctor', 'bg-emerald-100 text-emerald-700')}
+                    ${tarjeta('total', 'Consultas Totales (24h)', m.consultas_totales, 'fa-clipboard-check', 'bg-cyan-100 text-cyan-700')}
+                </div>
+                <div id="metricas-desglose" class="mt-3 bg-white/70 border border-slate-200 rounded-xl px-4 py-3">
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Consultas Totales por Especialidad</p>
+                    <div class="flex flex-col gap-2">${desglose}</div></div></section>`;
+    },
+
+    // ======================================================================
+    // VISTA: PRÓXIMAS CIRUGÍAS (admin, administrador, enf_quirofano; módulo "Quirófano")
+    // ======================================================================
+    htmlTarjetaCirugia: function (c) {
+        const e = t => this.e(t);
+        const d = new Date(c.fecha_hora), hoy = new Date();
+        const dias = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())) / 86400000);
+        const cuando = dias === 0 ? ['Hoy', 'bg-red-100 text-red-700'] : (dias === 1 ? ['Mañana', 'bg-amber-100 text-amber-700'] : ['En ' + dias + ' días', 'bg-slate-100 text-slate-600']);
+        const dato = (et, v) => `<div class="min-w-0"><p class="text-[10px] font-bold text-slate-400 uppercase leading-none">${et}</p><p class="text-sm text-slate-800 mt-1 leading-snug">${v}</p></div>`;
+        return `<div data-cirugia="${e(c.cirugia_id)}" class="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-violet-500 shadow-sm p-4">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="min-w-0"><h4 class="text-base font-extrabold text-slate-900" data-campo="paciente">${e(c.nombre)}</h4>
+                    <p class="text-sm font-semibold text-violet-700 mt-0.5" data-campo="procedimiento"><i class="fas fa-kit-medical mr-1 text-xs"></i>${e(c.procedimiento)}</p></div>
+                <div class="text-right shrink-0"><span class="inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded ${cuando[1]}">${cuando[0]}</span>
+                    <p class="text-sm font-bold text-slate-800 mt-1" data-campo="fecha">${e(c.fecha_texto.charAt(0).toUpperCase() + c.fecha_texto.slice(1))}</p>
+                    <p class="text-lg font-extrabold text-slate-900 leading-none" data-campo="hora">${e(c.hora_texto)}</p></div>
+            </div>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3 pt-3 border-t border-slate-100">
+                ${dato('Fecha de nacimiento', `<span data-campo="nacimiento">${e(BelenStore.fechaLegibleISO(c.fecha_nacimiento))}</span>`)}
+                ${dato('Edad', `<span data-campo="edad">${c.edad !== null ? c.edad + ' años' : '—'}</span>`)}
+                ${dato('Médico cirujano', `<span class="font-semibold" data-campo="cirujano">${e(c.medico_cirujano)}</span>${c.medico_especialidad ? `<span class="block text-[11px] text-slate-400">${e(c.medico_especialidad)}</span>` : ''}`)}
+            </div>
+            <div class="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                <p class="text-[10px] font-bold text-yellow-700 uppercase leading-none mb-1"><i class="fas fa-note-sticky mr-1"></i>Notas</p>
+                <p class="text-xs text-slate-800" data-campo="notas">${c.notas ? e(c.notas) : '<span class="text-slate-400 italic">Sin notas registradas.</span>'}</p></div>
+        </div>`;
+    },
+
+    htmlCirugias: function () {
+        const S = BelenStore;
+        const lista = S.proximasCirugias();
+        const boton = S.puede('programar_cirugia')
+            ? `<button type="button" id="btn-programar-cirugia" onclick="AdminController.abrirProgramarCirugia()" class="bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2"><i class="fas fa-plus-circle"></i> + Programar Cirugía</button>` : '';
+        const aviso = this.rolActual === 'enf_quirofano'
+            ? 'Enfermería de Quirófano: consulte la agenda quirúrgica para preparar sala, material y paciente.'
+            : 'Agenda quirúrgica ordenada por fecha y hora exacta.';
+        return `<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+                    <div><h2 class="text-2xl font-extrabold text-slate-800">Próximas Cirugías</h2><p class="text-slate-500">${this.e(aviso)}</p></div>${boton}</div>
+                <div id="lista-cirugias" class="grid grid-cols-1 xl:grid-cols-2 gap-4">${lista.length ? lista.map(c => this.htmlTarjetaCirugia(c)).join('') : '<div class="xl:col-span-2 text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-kit-medical text-4xl mb-3 text-slate-300"></i><p>No hay cirugías programadas.</p></div>'}</div>`;
+    },
+
+    abrirProgramarCirugia: function () {
+        const S = BelenStore;
+        if (!S.puede('programar_cirugia')) { BelenUI.toast('Su perfil no puede programar cirugías.', 'alerta'); return; }
+        const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none bg-white';
+        const err = k => `<p data-err="${k}" class="text-[11px] text-red-600 mt-1 hidden"></p>`;
+        const lab = (id, t, req) => `<label for="${id}" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">${t}${req ? ' <span class="text-red-500">*</span>' : ''}</label>`;
+        const ahora = new Date(), pad = n => String(n).padStart(2, '0');
+        const minimo = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())}T${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
+        const medicos = S.cirujanos().map(m => `<option value="${m.id}">${this.e(m.nombre)} · ${this.e(m.cargo)}</option>`).join('');
+        BelenUI.modal({
+            titulo: 'Programar Cirugía', subtitulo: 'Todos los datos se mostrarán en la tarjeta de la agenda quirúrgica.', icono: 'fa-kit-medical', ancho: 'lg',
+            html: `<div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
+                <div class="sm:col-span-6">${lab('cx-nombre', 'Nombre completo del paciente', true)}<input id="cx-nombre" type="text" autocomplete="off" placeholder="Nombre y apellidos" class="${cls}" data-autofoco>${err('nombre')}</div>
+                <div class="sm:col-span-3">${lab('cx-fecha_nacimiento', 'Fecha de nacimiento', true)}<input id="cx-fecha_nacimiento" type="date" min="1900-01-01" max="${S.hoyLocal()}" class="${cls}">${err('fecha_nacimiento')}</div>
+                <div class="sm:col-span-3">${lab('cx-edad', 'Edad')}<input id="cx-edad" type="text" readonly tabindex="-1" placeholder="Se calcula sola" class="${cls} bg-slate-50 text-slate-500"></div>
+                <div class="sm:col-span-6">${lab('cx-procedimiento', 'Nombre de la cirugía', true)}<input id="cx-procedimiento" type="text" maxlength="120" placeholder="Ej. Colecistectomía laparoscópica" class="${cls}">${err('procedimiento')}</div>
+                <div class="sm:col-span-3">${lab('cx-fecha_hora', 'Fecha y hora exacta', true)}<input id="cx-fecha_hora" type="datetime-local" min="${minimo}" step="300" class="${cls}">${err('fecha_hora')}</div>
+                <div class="sm:col-span-3">${lab('cx-medico_cirujano_id', 'Médico cirujano', true)}<select id="cx-medico_cirujano_id" class="${cls}"><option value="">Seleccione…</option>${medicos}</select>${err('medico_cirujano_id')}</div>
+                <div class="sm:col-span-6">${lab('cx-notas', 'Notas')}<textarea id="cx-notas" rows="2" maxlength="600" placeholder="Preparación, alergias, pendientes administrativos…" class="${cls} resize-none"></textarea>${err('notas')}</div>
+            </div>`,
+            alMostrar: c => {
+                const fn = c.el.querySelector('#cx-fecha_nacimiento'), ed = c.el.querySelector('#cx-edad');
+                const calc = () => { const x = S.calcularEdad(fn.value); ed.value = x !== null ? x + ' años' : ''; };
+                fn.addEventListener('input', calc); fn.addEventListener('change', calc);
+                c.el.querySelectorAll('input,select,textarea').forEach(i => i.addEventListener('input', () => {
+                    const p = c.el.querySelector(`[data-err="${i.id.replace('cx-', '')}"]`); if (p) p.classList.add('hidden'); i.classList.remove('border-red-500');
+                }));
+            },
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Guardar Cirugía', estilo: 'primario', id: 'cx-guardar', alPulsar: c => {
+                    const q = sel => c.el.querySelector(sel);
+                    const r = S.programarCirugia({
+                        nombre: q('#cx-nombre').value, fecha_nacimiento: q('#cx-fecha_nacimiento').value, procedimiento: q('#cx-procedimiento').value,
+                        fecha_hora: q('#cx-fecha_hora').value, medico_cirujano_id: q('#cx-medico_cirujano_id').value, notas: q('#cx-notas').value
+                    }, this.sesion);
+                    if (!r.ok) {
+                        c.el.querySelectorAll('[data-err]').forEach(p => p.classList.add('hidden'));
+                        Object.keys(r.errores || {}).forEach(k => {
+                            const p = q(`[data-err="${k}"]`); if (p) { p.textContent = r.errores[k]; p.classList.remove('hidden'); }
+                            const i = q('#cx-' + k); if (i) i.classList.add('border-red-500');
+                        });
+                        if (!r.errores) BelenUI.toast(r.motivo, 'peligro');
+                        return false;
+                    }
+                    BelenUI.toast('Cirugía programada: ' + r.cirugia.procedimiento + '.', 'exito');
+                    this.render();
+                } }
+            ]
+        });
     },
 
     verCuentaRapida: function (nombre, monto) {
@@ -447,7 +595,7 @@ const AdminController = {
     confirmarRestablecerDemo: function () {
         BelenUI.confirmar({
             titulo: '¿Restablecer los datos de demostración?', tipo: 'peligro', textoConfirmar: 'Sí, restablecer',
-            mensaje: 'Se borrarán filas, turnos, borradores, visitas y hospitalizados guardados en este navegador y se cargarán los pacientes de ejemplo.',
+            mensaje: 'Se borrarán filas, turnos, borradores, visitas, hospitalizados y cirugías guardados en este navegador y se cargarán los pacientes de ejemplo.',
             alConfirmar: () => { BelenStore.restablecerDemo(); BelenUI.toast('Datos de demostración restablecidos.', 'exito'); this.render(); }
         });
     },
@@ -459,7 +607,8 @@ const AdminController = {
         const S = BelenStore, s = this.sesion, e = t => this.e(t);
         // PRIVACIDAD: admin y enfermería ven todos; el médico solo a sus pacientes (tratante) o los que le solicitaron en interconsulta
         const lista = S.hospitalizadosDe(s).map(t => S.fichaHospitalizado(t, s));
-        const modo = s.rol === 'enfermeria' ? 'Modo Enfermería: asigne camas y complete la Hoja Frontal y los Consentimientos; la Nota Médica y las Indicaciones son solo del médico.' :
+        const esEnf = S.esEnfermeria(s.rol);
+        const modo = esEnf ? 'Modo Enfermería: asigne camas y complete la Hoja Frontal y los Consentimientos; la Nota Médica y las Indicaciones son solo del médico.' :
                      (s.rol === 'medico' ? 'Solo se muestran los pacientes a su cargo y los que le fueron solicitados en interconsulta.' : 'Vista completa de todos los pacientes hospitalizados.');
         const sexoTxt = f => f.sexo === 'F' ? 'Femenino' : (f.sexo === 'M' ? 'Masculino' : '');
         const dato = (et, v) => `<div class="min-w-0"><p class="text-[10px] font-bold text-slate-400 uppercase leading-none">${et}</p><p class="text-sm text-slate-800 mt-1 leading-snug">${v}</p></div>`;
@@ -477,9 +626,9 @@ const AdminController = {
             } else if (f.relacion === 'interconsultante') {
                 accion = `<span class="text-[11px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">Papeleo de ingreso en curso</span>`;
             } else {
-                const txt = s.rol === 'enfermeria' ? 'Completar Hoja Frontal y Consentimientos' : 'Continuar Expediente';
-                const ico = s.rol === 'enfermeria' ? 'fa-clipboard-list' : 'fa-file-medical';
-                const cls = s.rol === 'enfermeria' ? 'bg-cyan-700 hover:bg-cyan-800 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white';
+                const txt = esEnf ? 'Completar Hoja Frontal y Consentimientos' : 'Continuar Expediente';
+                const ico = esEnf ? 'fa-clipboard-list' : 'fa-file-medical';
+                const cls = esEnf ? 'bg-cyan-700 hover:bg-cyan-800 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white';
                 accion = `<a href="expediente.html?turno=${encodeURIComponent(f.turno_id)}" data-accion="abrir-expediente" class="${cls} text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas ${ico}"></i> ${txt}</a>`;
             }
             const botonCama = S.puede('asignar_cama')
@@ -538,9 +687,10 @@ const AdminController = {
     // ======================================================================
     htmlPersonal: function () {
         const S = BelenStore, e = t => this.e(t);
-        const perfil = { admin: 'Administración', enfermeria: 'Enfermería', medico: 'Médico' };
-        const colores = { admin: 'bg-slate-800 text-white', enfermeria: 'bg-cyan-100 text-cyan-700', medico: 'bg-emerald-100 text-emerald-700' };
         const interruptor = (u, m) => {
+            if (!S.moduloAplicaARol(m.permiso, u.rol)) {
+                return `<span data-sin-modulo="1" title="Este módulo no aplica al perfil ${e(S.ROLES[u.rol].etiqueta)}" class="text-slate-300 text-lg leading-none">&mdash;</span>`;
+            }
             const activo = S.permisoModuloDe(u.id, m.permiso), fijo = u.rol === 'admin';
             return `<button type="button" role="switch" aria-checked="${activo}" aria-label="${e(m.etiqueta)} para ${e(u.nombre)}" data-switch="1" data-usuario="${e(u.id)}" data-permiso="${m.permiso}" ${fijo ? 'disabled' : ''}
                     onclick="AdminController.alternarModulo('${e(u.id)}','${m.permiso}')"
@@ -549,27 +699,28 @@ const AdminController = {
         };
         const ajustes = S.leerPermisosPersonal();
         const filas = Object.values(S.USUARIOS).map(u => {
+            const rol = S.ROLES[u.rol];
             const esp = u.rol === 'medico' ? (S.especialidadPorCodigo(u.especialidad_codigo) || {}).nombre : u.cargo;
             const personalizado = !!ajustes[u.id] && Object.keys(ajustes[u.id]).length > 0;
             return `<tr class="border-t border-slate-100 hover:bg-slate-50/70" data-usuario-fila="${e(u.id)}">
                 <td class="px-4 py-3"><div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-full ${colores[u.rol]} flex items-center justify-center text-xs font-bold shrink-0">${e(S.iniciales(u.nombre.replace(/^(Dr\.|Enf\.)\s*/, '')))}</div>
+                    <div class="w-9 h-9 rounded-full ${rol.color} flex items-center justify-center text-xs font-bold shrink-0">${e(S.iniciales(u.nombre.replace(/^(Dr\.|Enf\.|Adm\.)\s*/, '')))}</div>
                     <div><p class="font-bold text-slate-800 leading-tight">${e(u.nombre)}</p><p class="text-[11px] text-slate-400 font-mono">${e(u.id)}</p></div></div></td>
-                <td class="px-4 py-3"><span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded ${colores[u.rol]}">${perfil[u.rol]}</span><p class="text-xs text-slate-500 mt-1">${e(esp || '')}</p></td>
+                <td class="px-4 py-3"><span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded whitespace-nowrap ${rol.color}">${e(rol.corta)}</span><p class="text-xs text-slate-500 mt-1">${e(esp || '')}</p></td>
                 ${S.MODULOS.map(m => `<td class="px-4 py-3 text-center">${interruptor(u, m)}</td>`).join('')}
                 <td class="px-4 py-3 text-right">${u.rol === 'admin'
                     ? '<span class="text-[11px] text-slate-400">Acceso total</span>'
                     : (personalizado ? `<button type="button" data-accion="restablecer-usuario" onclick="AdminController.restablecerUsuario('${e(u.id)}')" class="text-[11px] font-bold text-slate-500 hover:text-cyan-700 underline underline-offset-2">Valores del perfil</button>` : '<span class="text-[11px] text-slate-300">Valores del perfil</span>')}</td></tr>`;
         }).join('');
         return `<div class="mb-6"><h2 class="text-2xl font-extrabold text-slate-800">Gestión de Personal</h2>
-                    <p class="text-slate-500">Encienda o apague módulos por usuario. Un módulo apagado desaparece del menú lateral de esa persona.</p></div>
+                    <p class="text-slate-500">Encienda o apague módulos por empleado. Un módulo apagado desaparece del menú lateral de esa persona y uno encendido aparece en su navegación.</p></div>
                 <div class="mb-6 bg-cyan-50 border border-cyan-200 text-cyan-800 text-xs rounded-xl px-4 py-3 flex items-start gap-2"><i class="fas fa-circle-info mt-0.5"></i>
-                    <span>Los cambios se guardan al instante y se aplican en la siguiente sesión del usuario (o en cuanto actualice su pantalla). La administración conserva siempre todos los módulos.</span></div>
+                    <span>Los cambios se guardan al instante y se aplican en la siguiente sesión del empleado (o en cuanto actualice su pantalla). Alfonso conserva siempre todos los módulos. Un guion (&mdash;) indica que el módulo no aplica a ese perfil.</span></div>
                 <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto"><table class="w-full text-sm text-left" id="tabla-personal">
                     <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr><th class="px-4 py-3">Personal</th><th class="px-4 py-3">Perfil</th>
                         ${S.MODULOS.map(m => `<th class="px-4 py-3 text-center whitespace-nowrap"><i class="fas ${m.icono} mr-1 text-slate-400"></i>${e(m.etiqueta)}</th>`).join('')}<th class="px-4 py-3"></th></tr></thead>
                     <tbody>${filas}</tbody></table></div>
-                <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">${S.MODULOS.map(m => `<div class="bg-white/70 border border-slate-200 rounded-xl px-4 py-3"><p class="text-xs font-bold text-slate-700"><i class="fas ${m.icono} text-cyan-600 mr-1"></i>${e(m.etiqueta)}</p><p class="text-[11px] text-slate-500 mt-0.5">${e(m.descripcion)}</p></div>`).join('')}</div>`;
+                <div class="mt-4 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">${S.MODULOS.map(m => `<div class="bg-white/70 border border-slate-200 rounded-xl px-4 py-3"><p class="text-xs font-bold text-slate-700"><i class="fas ${m.icono} text-cyan-600 mr-1"></i>${e(m.etiqueta)}</p><p class="text-[11px] text-slate-500 mt-0.5">${e(m.descripcion)}</p></div>`).join('')}</div>`;
     },
 
     alternarModulo: function (usuarioId, permiso) {
@@ -781,7 +932,7 @@ const AdminController = {
 
         const esp = S.especialidadPorCodigo(v.especialidad), medico = S.USUARIOS[v.medico];
         const existente = c.coincidencia;
-        const numero = S.siguienteNumeroTurno(v.especialidad);
+        const numero = S.posicionNuevaEnCola(v.medico);   // posición que tendrá en la fila inteligente
         const fila = (et, val) => `<div class="flex justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0"><span class="text-slate-400 text-xs uppercase font-bold">${et}</span><span class="text-slate-800 font-semibold text-right">${val}</span></div>`;
         const edad = S.calcularEdad(v.fn);
         BelenUI.modal({
@@ -794,7 +945,7 @@ const AdminController = {
                 ${fila('Especialidad', this.e(esp.nombre))}
                 ${fila('Médico', this.e(medico.nombre))}
                 ${fila('Motivo', this.e(v.motivo))}
-                <div class="mt-3 bg-slate-900 text-white rounded-lg px-4 py-3 flex items-center justify-between"><span class="text-xs uppercase text-slate-300 font-bold">Turno que se asignará</span><span class="text-lg font-extrabold">${this.e(esp.nombre)} #${numero}</span></div></div>`,
+                <div class="mt-3 bg-slate-900 text-white rounded-lg px-4 py-3 flex items-center justify-between"><span class="text-xs uppercase text-slate-300 font-bold">Posición en la fila</span><span class="text-lg font-extrabold">${this.e(esp.nombre)} · Turno ${numero}</span></div></div>`,
             botones: [
                 { texto: 'Regresar y editar', estilo: 'secundario' },
                 { texto: 'Confirmar y Registrar', estilo: 'exito', id: 'reg-confirmar', alPulsar: () => {
@@ -807,7 +958,7 @@ const AdminController = {
                         window.location.href = 'expediente.html?turno=' + encodeURIComponent(turno.turno_id);
                         return;
                     }
-                    BelenUI.toast(`Turno ${turno.especialidad} #${turno.numero_turno} asignado a ${turno.paciente_nombre}.`, 'exito', 5000);
+                    BelenUI.toast(`${turno.paciente_nombre} quedó en el Turno ${S.posicionEnCola(turno.turno_id) || 1} de ${turno.especialidad}.`, 'exito', 5000);
                     this.vista = this.vistaPermitida('fila') ? 'fila' : this.vista;
                     this.filtroEspecialidad = '';
                     history.replaceState(null, '', '?vista=' + this.vista);

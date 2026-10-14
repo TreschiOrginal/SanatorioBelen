@@ -13,7 +13,8 @@
 //   belen_pacientes_hospitalizados ... arreglo de expedientes de pacientes internados
 //   belen_internamientos ....... episodio hospitalario (internamiento_id PK, FK turno_id, paciente_id, medico_tratante_id)
 //                                con cama, interconsultas[], notas_evolucion[] e hojas_indicaciones[] (inmutables: solo se agregan)
-//   belen_permisos_personal .... { [usuario_id]: { ver_consultas, ver_hospitalizados, ver_farmacia } } (interruptores del administrador)
+//   belen_permisos_personal .... { [usuario_id]: { ver_consultas, ver_hospitalizados, ver_quirofano, ver_farmacia } } (interruptores de Alfonso)
+//   belen_cirugias ............. cirugías programadas (cirugia_id PK, FK paciente_id opcional, FK medico_cirujano_id)
 //   belen_correcciones ......... bitácora de correcciones administrativas de datos del paciente
 // ============================================================
 (function (global) {
@@ -28,6 +29,7 @@
         internamientos: 'belen_internamientos',
         permisosPersonal: 'belen_permisos_personal',
         correcciones: 'belen_correcciones',
+        cirugias: 'belen_cirugias',
         demo: 'belen_demo_sembrado'
     };
 
@@ -39,53 +41,89 @@
         { codigo: 'MEDICINA_INTERNA', nombre: 'Medicina Interna' }
     ];
 
-    // rol: admin | enfermeria | medico   (los 4 médicos comparten el rol 'medico' y se distinguen por medico_id)
-    const USUARIOS = {
-        admin:         { id: 'admin',         rol: 'admin',      nombre: 'Alfonso',               cargo: 'Dirección General' },
-        enfermeria:    { id: 'enfermeria',    rol: 'enfermeria', nombre: 'Enf. Lupita',           cargo: 'Jefa de Enfermería' },
-        dr_juan:       { id: 'dr_juan',       rol: 'medico',     nombre: 'Dr. Juan Pérez',        cargo: 'Medicina General', medico_id: 'dr_juan',       especialidad_codigo: 'MEDICINA_GENERAL' },
-        dr_roberto:    { id: 'dr_roberto',    rol: 'medico',     nombre: 'Dr. Roberto Flores',    cargo: 'Angiología',       medico_id: 'dr_roberto',    especialidad_codigo: 'ANGIOLOGIA' },
-        dr_arturo:     { id: 'dr_arturo',     rol: 'medico',     nombre: 'Dr. Arturo Gómez',      cargo: 'Cirugía General',  medico_id: 'dr_arturo',     especialidad_codigo: 'CIRUGIA_GENERAL' },
-        dr_internista: { id: 'dr_internista', rol: 'medico',     nombre: 'Dr. Carlos Méndez',     cargo: 'Medicina Interna', medico_id: 'dr_internista', especialidad_codigo: 'MEDICINA_INTERNA' }
+    // Roles del ERP (los 4 médicos comparten el rol 'medico' y se distinguen por medico_id):
+    //   admin ........ Alfonso: poderes absolutos (gestiona personal, ve todo, conserva todos los módulos)
+    //   administrador  Caja y Recepción: registra pacientes, fila de espera, métricas y cirugías (sin expedientes clínicos)
+    //   enf_triage ... Enfermería de Triage (signos vitales y envío al médico)
+    //   enf_hospital . Enfermería de Hospitalización (camas, Hoja Frontal y Consentimientos)
+    //   enf_quirofano  Enfermería de Quirófano (cirugías programadas)
+    //   medico ....... Médicos
+    const ROLES = {
+        admin:         { codigo: 'admin',         etiqueta: 'Administración General',        corta: 'Administración', color: 'bg-slate-800 text-white' },
+        administrador: { codigo: 'administrador', etiqueta: 'Caja y Recepción',              corta: 'Caja y Recepción', color: 'bg-amber-100 text-amber-800' },
+        enf_triage:    { codigo: 'enf_triage',    etiqueta: 'Enfermería de Triage',          corta: 'Enfermería · Triage', color: 'bg-cyan-100 text-cyan-700' },
+        enf_hospital:  { codigo: 'enf_hospital',  etiqueta: 'Enfermería de Hospitalización', corta: 'Enfermería · Hospital', color: 'bg-indigo-100 text-indigo-700' },
+        enf_quirofano: { codigo: 'enf_quirofano', etiqueta: 'Enfermería de Quirófano',       corta: 'Enfermería · Quirófano', color: 'bg-violet-100 text-violet-700' },
+        medico:        { codigo: 'medico',        etiqueta: 'Médico',                        corta: 'Médico', color: 'bg-emerald-100 text-emerald-700' }
     };
-    // Alias de la versión anterior del demo
-    const ALIAS_USUARIO = { doctor: 'dr_juan', medico: 'dr_juan', enfermera: 'enfermeria' };
+    const ENFERMERIAS = ['enf_triage', 'enf_hospital', 'enf_quirofano'];
+    const PERSONAL_OPERATIVO = ['admin', 'administrador'].concat(ENFERMERIAS);   // todo el personal no médico
+    function esEnfermeria(rol) { return ENFERMERIAS.includes(rol); }
+
+    const USUARIOS = {
+        admin:         { id: 'admin',         rol: 'admin',         nombre: 'Alfonso',               cargo: 'Dirección General' },
+        administrador: { id: 'administrador', rol: 'administrador', nombre: 'Adm. Sofía',            cargo: 'Caja y Recepción' },
+        enf_triage:    { id: 'enf_triage',    rol: 'enf_triage',    nombre: 'Enf. Lupita',           cargo: 'Enfermería de Triage' },
+        enf_hospital:  { id: 'enf_hospital',  rol: 'enf_hospital',  nombre: 'Enf. Carmen',           cargo: 'Enfermería de Hospitalización' },
+        enf_quirofano: { id: 'enf_quirofano', rol: 'enf_quirofano', nombre: 'Enf. Rosa',             cargo: 'Enfermería de Quirófano' },
+        dr_juan:       { id: 'dr_juan',       rol: 'medico',        nombre: 'Dr. Juan Pérez',        cargo: 'Medicina General', medico_id: 'dr_juan',       especialidad_codigo: 'MEDICINA_GENERAL' },
+        dr_roberto:    { id: 'dr_roberto',    rol: 'medico',        nombre: 'Dr. Roberto Flores',    cargo: 'Angiología',       medico_id: 'dr_roberto',    especialidad_codigo: 'ANGIOLOGIA' },
+        dr_arturo:     { id: 'dr_arturo',     rol: 'medico',        nombre: 'Dr. Arturo Gómez',      cargo: 'Cirugía General',  medico_id: 'dr_arturo',     especialidad_codigo: 'CIRUGIA_GENERAL' },
+        dr_internista: { id: 'dr_internista', rol: 'medico',        nombre: 'Dr. Carlos Méndez',     cargo: 'Medicina Interna', medico_id: 'dr_internista', especialidad_codigo: 'MEDICINA_INTERNA' }
+    };
+    // Alias de versiones anteriores del demo (el rol genérico 'enfermeria' se dividió en tres roles específicos)
+    const ALIAS_USUARIO = { doctor: 'dr_juan', medico: 'dr_juan', enfermera: 'enf_triage', enfermeria: 'enf_triage', recepcion: 'administrador', caja: 'administrador' };
 
     // Matriz de permisos por rol (una sola fuente de verdad para toda la aplicación)
     const PERMISOS = {
-        ver_dashboard_admin:       ['admin'],
-        registrar_paciente:        ['admin'],
+        ver_dashboard_admin:       ['admin', 'administrador'],
+        ver_metricas:              ['admin', 'administrador'],               // barra de métricas de 24 horas del Dashboard Central
+        registrar_paciente:        ['admin', 'administrador'],
         registrar_consulta_directa:['medico'],   // el médico solo puede registrarse pacientes a sí mismo
-        ver_fila_completa:         ['admin', 'enfermeria'],
-        capturar_signos:           ['admin', 'enfermeria', 'medico'],
-        pasar_a_medico:            ['admin', 'enfermeria'],
+        ver_fila_completa:         PERSONAL_OPERATIVO,
+        capturar_signos:           PERSONAL_OPERATIVO.concat(['medico']),     // el médico los captura dentro de su nota (no desde la fila)
+        pasar_a_medico:            PERSONAL_OPERATIVO,
         iniciar_consulta:          ['admin', 'medico'],
         editar_nota_medica:        ['admin', 'medico'],
         editar_indicaciones:       ['admin', 'medico'],
-        editar_hoja_frontal:       ['admin', 'enfermeria', 'medico'],
-        editar_consentimientos:    ['admin', 'enfermeria', 'medico'],
+        editar_hoja_frontal:       ['admin'].concat(ENFERMERIAS, ['medico']),
+        editar_consentimientos:    ['admin'].concat(ENFERMERIAS, ['medico']),
         finalizar_expediente:      ['admin', 'medico'],
         ver_historial_visitas:     ['admin', 'medico'],
-        ver_hospitalizados:        ['admin', 'enfermeria', 'medico'],   // MÓDULO (interruptor por usuario)
         ver_expedientes_catalogo:  ['admin', 'medico'],
-        ver_consultas:             ['admin', 'enfermeria', 'medico'],   // MÓDULO (interruptor por usuario)
-        ver_farmacia:              ['admin', 'enfermeria'],             // MÓDULO (interruptor por usuario; módulo futuro)
+        // ---- MÓDULOS (interruptor por usuario en Gestión de Personal). El valor por defecto es el de esta matriz.
+        ver_consultas:             ['admin', 'administrador', 'enf_triage', 'medico'],
+        ver_hospitalizados:        ['admin', 'enf_hospital', 'medico'],
+        ver_quirofano:             ['admin', 'administrador', 'enf_quirofano'],
+        ver_farmacia:              ['admin', 'enf_hospital', 'enf_quirofano'],   // módulo futuro
+        // ----
         gestionar_personal:        ['admin'],
-        asignar_cama:              ['admin', 'enfermeria'],
+        asignar_cama:              ['admin'].concat(ENFERMERIAS),
+        programar_cirugia:         ['admin', 'administrador'],
         corregir_datos_paciente:   ['admin']                            // corrección administrativa: nombre, edad y sexo
     };
 
-    // Módulos que el administrador puede encender/apagar por usuario. El valor por defecto sale de PERMISOS (por rol);
-    // el interruptor guardado en belen_permisos_personal lo sobrescribe (el administrador siempre conserva todos).
+    // Módulos que Alfonso puede encender/apagar por usuario. 'roles' = perfiles a los que el módulo puede aplicar (un switch fuera de
+    // esa lista no tiene efecto). El valor por defecto sale de PERMISOS; el interruptor guardado en belen_permisos_personal lo sobrescribe.
     const MODULOS = [
-        { permiso: 'ver_consultas',      etiqueta: 'Ver Consultas/Triage', icono: 'fa-stethoscope', vistas: ['central', 'fila', 'expedientes'],
-          descripcion: 'Dashboard de consulta, fila de triage y expedientes clínicos.' },
-        { permiso: 'ver_hospitalizados', etiqueta: 'Ver Hospitalizados',   icono: 'fa-bed-pulse',   vistas: ['hospitalizacion'],
+        { permiso: 'ver_consultas',      etiqueta: 'Triage/Consulta',  icono: 'fa-stethoscope', vistas: ['central', 'fila', 'expedientes'],
+          roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'],
+          descripcion: 'Dashboard central, fila de espera inteligente, triage y expedientes clínicos.' },
+        { permiso: 'ver_hospitalizados', etiqueta: 'Hospitalización', icono: 'fa-bed-pulse',   vistas: ['hospitalizacion'],
+          roles: ['admin', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'],
           descripcion: 'Monitor de camas y visor del expediente de hospitalización.' },
-        { permiso: 'ver_farmacia',       etiqueta: 'Ver Farmacia',         icono: 'fa-pills',       vistas: [],
+        { permiso: 'ver_quirofano',      etiqueta: 'Quirófano',       icono: 'fa-kit-medical', vistas: ['cirugias'],
+          roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],
+          descripcion: 'Próximas cirugías: paciente, fecha y hora, cirujano y notas.' },
+        { permiso: 'ver_farmacia',       etiqueta: 'Farmacia',        icono: 'fa-pills',       vistas: [],
+          roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],
           descripcion: 'Inventario y Farmacia (módulo en preparación).' }
     ];
     const PERMISOS_MODULO = MODULOS.map(m => m.permiso);
+    function moduloAplicaARol(permiso, rol) {
+        const m = MODULOS.find(x => x.permiso === permiso);
+        return !!m && m.roles.includes(rol);
+    }
 
     const ESTATUS = {
         PENDIENTE_SIGNOS: 'pendiente_signos',
@@ -208,12 +246,13 @@
     function permisoModuloDe(usuarioId, permiso) {
         const u = USUARIOS[usuarioId];
         if (!u || !PERMISOS[permiso]) return false;
-        if (u.rol === 'admin') return true;                       // el administrador no puede quedarse sin módulos
+        if (u.rol === 'admin') return true;                       // Alfonso no puede quedarse sin módulos
+        if (!moduloAplicaARol(permiso, u.rol)) return false;      // el módulo no existe para ese perfil
         const ajuste = (leerPermisosPersonal()[usuarioId] || {})[permiso];
         return typeof ajuste === 'boolean' ? ajuste : PERMISOS[permiso].includes(u.rol);
     }
     function establecerPermisoModulo(usuarioId, permiso, valor) {
-        if (!USUARIOS[usuarioId] || USUARIOS[usuarioId].rol === 'admin' || !PERMISOS_MODULO.includes(permiso)) return false;
+        if (!USUARIOS[usuarioId] || USUARIOS[usuarioId].rol === 'admin' || !PERMISOS_MODULO.includes(permiso) || !moduloAplicaARol(permiso, USUARIOS[usuarioId].rol)) return false;
         const todos = leerPermisosPersonal();
         todos[usuarioId] = Object.assign({}, todos[usuarioId], { [permiso]: !!valor });
         return escribir(CLAVES.permisosPersonal, todos);
@@ -343,7 +382,7 @@
     function turnoVisiblePara(turno, s) {
         if (!s) return false;
         if (s.rol === 'medico') return turno.medico_id === s.medico_id;
-        return s.rol === 'admin' || s.rol === 'enfermeria';
+        return PERSONAL_OPERATIVO.includes(s.rol);
     }
     function filaDe(s, filtro) {
         filtro = filtro || {};
@@ -355,7 +394,7 @@
     // o a los que le hayan solicitado en interconsulta.
     function hospitalizadoVisiblePara(turno, s) {
         if (!s) return false;
-        if (s.rol === 'admin' || s.rol === 'enfermeria') return true;
+        if (s.rol === 'admin' || esEnfermeria(s.rol)) return true;
         if (s.rol === 'medico') return turno.medico_id === s.medico_id || tieneInterconsulta(turno.turno_id, s.medico_id);
         return false;
     }
@@ -363,6 +402,70 @@
         return listarTurnos()
             .filter(t => (t.estatus === ESTATUS.INTERNADO_EN_PROCESO || t.estatus === ESTATUS.INTERNADO) && hospitalizadoVisiblePara(t, s))
             .sort((a, b) => (a.timestamp_llegada < b.timestamp_llegada ? 1 : -1));
+    }
+
+    // ---------------------------------------------------------------- FILA INTELIGENTE (cola de espera)
+    // La cola de cada médico es un ARREGLO de turnos ordenado por hora de llegada. El número de turno NO se guarda: es la
+    // posición dentro del arreglo (1 = el siguiente). Cuando el Turno 1 pasa a consulta sale del arreglo y quien era el
+    // Turno 2 pasa a ser el Turno 1 automáticamente. (numero_turno queda como folio histórico del episodio.)
+    const ESTATUS_EN_ESPERA = ['pendiente_signos', 'signos_capturados'];
+    // Devuelve copias de los turnos en espera con { posicion } calculada sobre la cola COMPLETA del médico (igual para todos los roles).
+    function colaEspera(s, filtro) {
+        filtro = filtro || {};
+        const contador = {};
+        return ordenarPorLlegada(listarTurnos().filter(t => ESTATUS_EN_ESPERA.includes(t.estatus)))
+            .map(t => { contador[t.medico_id] = (contador[t.medico_id] || 0) + 1; return Object.assign({}, t, { posicion: contador[t.medico_id] }); })
+            .filter(t => turnoVisiblePara(t, s) && (!filtro.especialidad_codigo || t.especialidad_codigo === filtro.especialidad_codigo));
+    }
+    function pacientesEnConsulta(s, filtro) {
+        filtro = filtro || {};
+        return ordenarPorLlegada(listarTurnos().filter(t => t.estatus === ESTATUS.EN_CONSULTA && turnoVisiblePara(t, s) &&
+            (!filtro.especialidad_codigo || t.especialidad_codigo === filtro.especialidad_codigo)));
+    }
+    function posicionEnCola(turnoId) {
+        const t = obtenerTurno(turnoId);
+        if (!t) return null;
+        const c = colaEspera({ rol: 'admin' }).filter(x => x.medico_id === t.medico_id);
+        const k = c.findIndex(x => x.turno_id === turnoId);
+        return k >= 0 ? k + 1 : null;
+    }
+    function posicionNuevaEnCola(medicoId) {
+        return listarTurnos().filter(t => ESTATUS_EN_ESPERA.includes(t.estatus) && t.medico_id === medicoId).length + 1;
+    }
+    function siguienteEnCola(medicoId) {
+        return colaEspera({ rol: 'admin' }).find(t => t.medico_id === medicoId) || null;
+    }
+
+    // ---------------------------------------------------------------- MÉTRICAS DE 24 HORAS (corte a las 7:00 AM)
+    // Corte vigente: hoy 07:00; si todavía no son las 7:00, el corte vigente es el de ayer 07:00.
+    function corteDiario(ahora) {
+        const d = ahora ? new Date(ahora) : new Date();
+        const c = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 7, 0, 0, 0);
+        const esHoy = d.getTime() >= c.getTime();
+        if (!esHoy) c.setDate(c.getDate() - 1);
+        return { fecha: c, iso: c.toISOString(), es_hoy: esHoy, texto: 'Último corte: ' + (esHoy ? 'Hoy' : 'Ayer') + ' 07:00 AM' };
+    }
+    // Todo es derivable con SQL: turnos con timestamp_llegada >= corte (espera / en consulta) y consultas iniciadas (pase_en) >= corte.
+    //  - Pacientes en espera .... llegaron desde el corte y siguen en la cola de espera
+    //  - En consulta ............ llegaron desde el corte y están con el médico en este momento
+    //  - Consultas totales ...... consultas iniciadas desde el corte (en curso + concluidas, incluye internados y altas)
+    function metricas24h(ahora) {
+        const corte = corteDiario(ahora), desde = corte.fecha.getTime();
+        const turnos = listarTurnos();
+        const inicioConsulta = t => Date.parse(t.pase_en || t.timestamp_llegada);
+        const llego = t => Date.parse(t.timestamp_llegada) >= desde;
+        const consultas = turnos.filter(t => !ESTATUS_EN_ESPERA.includes(t.estatus) && inicioConsulta(t) >= desde);
+        const porEsp = ESPECIALIDADES.map((esp, k) => ({ codigo: esp.codigo, nombre: esp.nombre, total: consultas.filter(t => t.especialidad_codigo === esp.codigo).length, orden: k }))
+            .filter(x => x.total > 0)                                  // REGLA: solo especialidades con más de 0 consultas
+            .sort((a, b) => b.total - a.total || a.orden - b.orden)
+            .map(x => ({ codigo: x.codigo, nombre: x.nombre, total: x.total }));
+        return {
+            corte_iso: corte.iso, corte_texto: corte.texto,
+            en_espera: turnos.filter(t => ESTATUS_EN_ESPERA.includes(t.estatus) && llego(t)).length,
+            en_consulta: turnos.filter(t => t.estatus === ESTATUS.EN_CONSULTA && llego(t)).length,
+            consultas_totales: consultas.length,
+            por_especialidad: porEsp
+        };
     }
 
     // ---------------------------------------------------------------- Signos vitales
@@ -456,6 +559,7 @@
         if (!s) return { ok: false, motivo: 'Inicie sesión para continuar.' };
         if (!turno) return { ok: false, motivo: 'El turno solicitado no existe.' };
         const finalizado = turno.estatus === ESTATUS.INTERNADO || turno.estatus === ESTATUS.ALTA;
+        if (s.rol === 'administrador') return { ok: false, motivo: 'Caja y Recepción no accede a expedientes clínicos.' };
         if (s.rol !== 'admin') {
             // Módulos apagados por el administrador (interruptores de Gestión de Personal)
             const enAtencion = ESTATUS_EN_FILA.includes(turno.estatus);
@@ -469,7 +573,7 @@
             if (turno.estatus === ESTATUS.ALTA) return { ok: false, motivo: 'La consulta de este paciente ya fue concluida con alta.' };
             return { ok: true, modo: finalizado ? 'lectura' : 'medico' };
         }
-        if (s.rol === 'enfermeria') {
+        if (esEnfermeria(s.rol)) {
             if (turno.estatus === ESTATUS.INTERNADO_EN_PROCESO) return { ok: true, modo: 'enfermeria' };
             if (turno.estatus === ESTATUS.INTERNADO) return { ok: true, modo: 'lectura' };
             return { ok: false, motivo: 'Enfermería no puede iniciar consulta médica ni editar la Nota Médica. Solo accede a la Hoja Frontal y los Consentimientos de pacientes internados.' };
@@ -853,6 +957,87 @@
         return { ok: true, paciente: p, antes: antes };
     }
 
+    // ================================================================ CIRUGÍAS PROGRAMADAS
+    // Estructura (tabla SQL futura): cirugia_id PK, paciente_id FK opcional, paciente_nombre, fecha_nacimiento, procedimiento,
+    // fecha_hora (ISO), medico_cirujano_id FK, medico_cirujano_nombre, notas, estatus (programada | realizada | cancelada).
+    // Si la cirugía está ligada a un paciente del catálogo, nombre y fecha de nacimiento se leen del catálogo (reflejan correcciones).
+    function listarCirugias() { return leer(CLAVES.cirugias, []); }
+    function fichaCirugia(c) {
+        const p = c.paciente_id ? buscarPacientePorId(c.paciente_id) : null;
+        const nombre = p ? p.nombre_completo : c.paciente_nombre, fn = p ? p.fecha_nacimiento : c.fecha_nacimiento;
+        const m = USUARIOS[c.medico_cirujano_id];
+        const d = new Date(c.fecha_hora);
+        const valida = !isNaN(d.getTime());
+        return {
+            cirugia_id: c.cirugia_id, paciente_id: c.paciente_id || null, nombre: nombre, fecha_nacimiento: fn, edad: calcularEdad(fn),
+            procedimiento: c.procedimiento, fecha_hora: c.fecha_hora, estatus: c.estatus,
+            fecha_texto: valida ? d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '',
+            hora_texto: valida ? d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '',
+            medico_cirujano_id: c.medico_cirujano_id, medico_cirujano: m ? m.nombre : c.medico_cirujano_nombre,
+            medico_especialidad: m ? m.cargo : null,
+            notas: c.notas || ''
+        };
+    }
+    // Próximas = programadas con fecha y hora de hoy en adelante (más cercana primero)
+    function proximasCirugias(ahora) {
+        const t0 = (ahora ? new Date(ahora) : new Date()).getTime();
+        return listarCirugias().filter(c => c.estatus === 'programada' && Date.parse(c.fecha_hora) >= t0)
+            .sort((a, b) => Date.parse(a.fecha_hora) - Date.parse(b.fecha_hora)).map(fichaCirugia);
+    }
+    function cirujanos() { return Object.values(USUARIOS).filter(u => u.rol === 'medico'); }
+    // entrada.fecha_hora: 'YYYY-MM-DDTHH:mm' (hora local del navegador)
+    function validarCirugia(entrada, ahora) {
+        const v = {
+            nombre: limpiarEspacios(entrada.nombre), fecha_nacimiento: entrada.fecha_nacimiento || '', procedimiento: limpiarEspacios(entrada.procedimiento),
+            fecha_hora: entrada.fecha_hora || '', medico_cirujano_id: entrada.medico_cirujano_id || '', notas: String(entrada.notas || '').trim()
+        };
+        const errores = {};
+        if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]{5,}$/.test(v.nombre) || v.nombre.split(' ').filter(w => w.length > 1).length < 2) errores.nombre = 'Escriba el nombre completo (nombre y apellido, solo letras).';
+        if (!parseFechaISO(v.fecha_nacimiento)) errores.fecha_nacimiento = 'Seleccione la fecha de nacimiento.';
+        else if (v.fecha_nacimiento > hoyLocal() || v.fecha_nacimiento < '1900-01-01') errores.fecha_nacimiento = 'La fecha de nacimiento no es válida.';
+        if (contarLetrasTxt(v.procedimiento) < 4) errores.procedimiento = 'Escriba el nombre de la cirugía.';
+        const d = new Date(v.fecha_hora);
+        if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v.fecha_hora) || isNaN(d.getTime())) errores.fecha_hora = 'Seleccione la fecha y la hora exacta de la cirugía.';
+        else if (d.getTime() < (ahora ? new Date(ahora) : new Date()).getTime()) errores.fecha_hora = 'La fecha y la hora deben ser posteriores al momento actual.';
+        const m = USUARIOS[v.medico_cirujano_id];
+        if (!m || m.rol !== 'medico') errores.medico_cirujano_id = 'Seleccione al médico cirujano.';
+        if (v.notas.length > 600) errores.notas = 'Máximo 600 caracteres.';
+        return { ok: Object.keys(errores).length === 0, errores: errores, valores: v };
+    }
+    function programarCirugia(entrada, s) {
+        if (!s || !PERMISOS.programar_cirugia.includes(s.rol)) return { ok: false, motivo: 'Su perfil no puede programar cirugías.' };
+        const r = validarCirugia(entrada);
+        if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
+        const v = r.valores, m = USUARIOS[v.medico_cirujano_id];
+        const pac = buscarPacientePorIdentidad(v.nombre, v.fecha_nacimiento);
+        const c = {
+            cirugia_id: uid('CX'), paciente_id: pac ? pac.paciente_id : null, paciente_nombre: pac ? pac.nombre_completo : v.nombre, fecha_nacimiento: v.fecha_nacimiento,
+            procedimiento: v.procedimiento, fecha_hora: new Date(v.fecha_hora).toISOString(), medico_cirujano_id: m.id, medico_cirujano_nombre: m.nombre,
+            notas: v.notas, estatus: 'programada', programada_por_id: s.usuario_id, programada_por_nombre: s.nombre, creado_en: new Date().toISOString()
+        };
+        const lista = listarCirugias().concat([c]);
+        return escribir(CLAVES.cirugias, lista) ? { ok: true, cirugia: c } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+    }
+    // Datos de demostración (fechas relativas a hoy, para que siempre sean "próximas")
+    function sembrarCirugiasSiHaceFalta() {
+        if (localStorage.getItem(CLAVES.cirugias) !== null) return false;
+        const base = new Date();
+        const cuando = (dias, h, min) => { const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dias, h, min, 0, 0); return d.toISOString(); };
+        const pronto = new Date(base.getTime() + 3 * 3600000); pronto.setMinutes(pronto.getMinutes() < 30 ? 30 : 60, 0, 0);
+        const enCatalogo = id => !!buscarPacientePorId(id);
+        const lista = [
+            { paciente_id: enCatalogo('PAC-000001') ? 'PAC-000001' : null, paciente_nombre: 'Carlos Ruiz Herrera', fecha_nacimiento: '1979-03-14', procedimiento: 'Colecistectomía laparoscópica',
+              fecha_hora: pronto.toISOString(), medico_cirujano_id: 'dr_arturo', notas: 'Ayuno de 8 horas confirmado. Alergia a penicilina: avisar al anestesiólogo.' },
+            { paciente_id: null, paciente_nombre: 'María Fernández Lozano', fecha_nacimiento: '1984-02-09', procedimiento: 'Safenectomía de miembro inferior derecho',
+              fecha_hora: cuando(1, 8, 0), medico_cirujano_id: 'dr_roberto', notas: 'Prefiere anestesia regional. Pendiente pago del deducible.' },
+            { paciente_id: enCatalogo('PAC-000002') ? 'PAC-000002' : null, paciente_nombre: 'Laura Méndez Olvera', fecha_nacimiento: '1991-07-22', procedimiento: 'Hernioplastía umbilical',
+              fecha_hora: cuando(2, 10, 30), medico_cirujano_id: 'dr_arturo', notas: 'Valoración preanestésica pendiente. Acompañante: esposo.' },
+            { paciente_id: null, paciente_nombre: 'Héctor Salas Mejía', fecha_nacimiento: '1962-11-30', procedimiento: 'Creación de fístula arteriovenosa en antebrazo',
+              fecha_hora: cuando(4, 13, 0), medico_cirujano_id: 'dr_roberto', notas: 'Paciente en hemodiálisis. Requiere cama en hospitalización posterior.' }
+        ].map((c, k) => Object.assign({ cirugia_id: 'CX-DEMO-' + (k + 1), medico_cirujano_nombre: USUARIOS[c.medico_cirujano_id].nombre, estatus: 'programada', programada_por_id: 'administrador', programada_por_nombre: USUARIOS.administrador.nombre, creado_en: new Date().toISOString() }, c));
+        return escribir(CLAVES.cirugias, lista);
+    }
+
     // ---------------------------------------------------------------- Datos de demostración
     // Se siembran UNA sola vez (si el navegador no tiene catálogo ni visitas) para poder probar el autollenado.
     function expedienteDemo(p, v) {
@@ -900,7 +1085,7 @@
     }
 
     function sembrarDemoSiHaceFalta() {
-        if (localStorage.getItem(CLAVES.catalogo) !== null || localStorage.getItem(CLAVES.visitas) !== null) return false;
+        if (localStorage.getItem(CLAVES.catalogo) !== null || localStorage.getItem(CLAVES.visitas) !== null) { sembrarCirugiasSiHaceFalta(); return false; }
         const carlos = { paciente_id: 'PAC-000001', nombre_completo: 'Carlos Ruiz Herrera', fecha_nacimiento: '1979-03-14', sexo: 'M', estado_civil: 'Casado(a)', telefono: '3221110001', ocupacion: 'Contador', direccion: 'Calle Morelos 120, Col. Centro', creado_en: '2026-03-12T09:00:00.000Z' };
         const laura = { paciente_id: 'PAC-000002', nombre_completo: 'Laura Méndez Olvera', fecha_nacimiento: '1991-07-22', sexo: 'F', estado_civil: 'Unión Libre', telefono: '3221110002', ocupacion: 'Maestra', direccion: 'Av. México 455, Col. Versalles', creado_en: '2026-08-02T09:00:00.000Z' };
         const visitaCarlos = expedienteDemo(carlos, {
@@ -932,21 +1117,23 @@
         escribir(CLAVES.catalogo, [carlos, laura]);
         escribir(CLAVES.visitas, [visitaCarlos, visitaLaura]);
         escribir(CLAVES.demo, true);
+        sembrarCirugiasSiHaceFalta();
         return true;
     }
 
     // Borra TODA la información operativa del demo (no toca los machotes) y vuelve a sembrar
     function restablecerDemo() {
-        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
+        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
         return sembrarDemoSiHaceFalta();
     }
 
     global.BelenStore = {
-        CLAVES, ESPECIALIDADES, USUARIOS, PERMISOS, MODULOS, ESTATUS, ETIQUETA_ESTATUS, ESTATUS_EN_FILA, RANGOS_SIGNOS, SIGNOS_OBLIGATORIOS,
+        CLAVES, ESPECIALIDADES, ROLES, ENFERMERIAS, PERSONAL_OPERATIVO, USUARIOS, PERMISOS, MODULOS, ESTATUS, ETIQUETA_ESTATUS, ESTATUS_EN_FILA, RANGOS_SIGNOS, SIGNOS_OBLIGATORIOS,
         leer, escribir, normalizar, limpiarEspacios, hoyLocal, parseFechaISO, calcularEdad, fechaLegibleISO, iniciales, formatoReloj,
-        iniciarSesion, sesion, cerrarSesion, puede, permisoModuloDe, establecerPermisoModulo, restablecerPermisosPersonal, leerPermisosPersonal, especialidadPorCodigo, medicosDeEspecialidad,
+        iniciarSesion, sesion, cerrarSesion, puede, esEnfermeria, moduloAplicaARol, permisoModuloDe, establecerPermisoModulo, restablecerPermisosPersonal, leerPermisosPersonal, especialidadPorCodigo, medicosDeEspecialidad,
         listarPacientes, buscarPacientePorIdentidad, buscarPacientesPorNombre, buscarPacientePorId, homonimos, guardarPaciente,
-        listarTurnos, obtenerTurno, actualizarTurno, siguienteNumeroTurno, crearTurno, ordenarPorLlegada, turnoVisiblePara, filaDe, hospitalizadosDe, hospitalizadoVisiblePara,
+        listarTurnos, obtenerTurno, actualizarTurno, siguienteNumeroTurno, crearTurno, ordenarPorLlegada, turnoVisiblePara, filaDe, colaEspera, pacientesEnConsulta, posicionEnCola, posicionNuevaEnCola, siguienteEnCola, corteDiario, metricas24h,
+        listarCirugias, fichaCirugia, proximasCirugias, cirujanos, validarCirugia, programarCirugia, hospitalizadosDe, hospitalizadoVisiblePara,
         validarSignos, signosCompletos, resumenSignos, guardarSignos,
         pasarAMedico, iniciarConsulta, accesoExpediente,
         leerBorrador, guardarBorrador, borrarBorrador,

@@ -47,23 +47,28 @@
 
         <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
             <!-- NOTA EL ATRIBUTO "data-roles" EN CADA ENLACE; data-vista = vista que se dibuja en #admin-content -->
-            <a href="?vista=central" data-vista="central" data-roles="admin,medico" data-modulo="ver_consultas" onclick="AdminController.navegar('central', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+            <a href="?vista=central" data-vista="central" data-roles="admin,administrador,medico" data-modulo="ver_consultas" onclick="AdminController.navegar('central', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-chart-pie w-5"></i> Dashboard Central
             </a>
 
-            <a href="?vista=fila" data-vista="fila" data-roles="admin,enfermeria" data-modulo="ver_consultas" onclick="AdminController.navegar('fila', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+            <a href="?vista=fila" data-vista="fila" data-roles="admin,administrador,enf_triage,enf_hospital,enf_quirofano" data-modulo="ver_consultas" onclick="AdminController.navegar('fila', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-user-clock w-5"></i> Fila de Espera
             </a>
 
-            <a href="?vista=hospitalizacion" data-vista="hospitalizacion" data-roles="admin,enfermeria,medico" data-modulo="ver_hospitalizados" onclick="AdminController.navegar('hospitalizacion', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+            <a href="?vista=hospitalizacion" data-vista="hospitalizacion" data-roles="admin,enf_triage,enf_hospital,enf_quirofano,medico" data-modulo="ver_hospitalizados" onclick="AdminController.navegar('hospitalizacion', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-bed-pulse w-5"></i> Monitor de Camas
+            </a>
+
+            <!-- Cirugías: módulo "Quirófano" (admin, administrador y enf_quirofano por defecto; interruptor por usuario) -->
+            <a href="?vista=cirugias" data-vista="cirugias" data-roles="admin,administrador,enf_triage,enf_hospital,enf_quirofano" data-modulo="ver_quirofano" onclick="AdminController.navegar('cirugias', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+                <i class="fas fa-kit-medical w-5"></i> Cirugías
             </a>
 
             <a href="?vista=expedientes" data-vista="expedientes" data-roles="admin,medico" data-modulo="ver_consultas" onclick="AdminController.navegar('expedientes', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-folder-open w-5"></i> Expedientes Clínicos
             </a>
 
-            <a href="#" data-proximamente="Agenda y Quirófano" data-roles="admin,medico" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+            <a href="#" data-proximamente="Agenda y Quirófano" data-roles="medico" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-calendar-alt w-5"></i> Agenda y Quirófano
             </a>
 
@@ -72,11 +77,11 @@
                 <i class="fas fa-users-gear w-5"></i> Gestión de Personal
             </a>
 
-            <a href="#" data-proximamente="Tarifario y Caja" data-roles="admin" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+            <a href="#" data-proximamente="Tarifario y Caja" data-roles="admin,administrador" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-file-invoice-dollar w-5"></i> Tarifario y Caja
             </a>
 
-            <!-- Farmacia: módulo con interruptor por usuario (Gestión de Personal). Por defecto: administración y enfermería -->
+            <!-- Farmacia: módulo con interruptor por usuario (Gestión de Personal). Por defecto: Alfonso, Enfermería de Hospitalización y de Quirófano -->
             <a href="#" data-proximamente="Inventario y Farmacia" data-modulo="ver_farmacia" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-pills w-5"></i> Inventario y Farmacia
             </a>
