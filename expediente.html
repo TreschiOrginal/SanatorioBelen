@@ -94,6 +94,9 @@
         .hoja-papel .firma-box { text-align: center; width: 220px; border-top: 1px solid black; padding-top: 5px; font-size: 10px; margin-left: auto; margin-right: auto; }
         .hoja-papel input, .hoja-papel textarea, .hoja-papel select, .hoja-papel button { pointer-events: none; }
         body.modo-visor #indicador-pendientes { display: none !important; }
+        body.modo-visor #main-expediente,
+        body.modo-visor #modal-destino,
+        body.modo-visor #header-pestanas { display: none !important; }
 
         /* Las zonas de impresión JAMÁS deben verse en pantalla (solo al imprimir) */
         @media screen {
@@ -715,7 +718,7 @@
         </section>
     </main>
 
-    <!-- ================= VISOR DE HOSPITALIZACIÓN (expediente.html?modo=hospitalizado&id=...) ================= -->
+    <!-- ================= VISOR DE HOSPITALIZACIÓN (expediente.html?modo=hospitalizado&turno=...) ================= -->
     <main id="visor-hospitalizado" class="hidden flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden z-10 relative print:hidden">
         <aside class="w-full md:w-80 lg:w-96 glass-panel border-b md:border-b-0 md:border-r border-slate-200 p-4 flex flex-col md:overflow-y-auto custom-scrollbar shrink-0">
             <div class="flex items-center gap-3 mb-4">
@@ -726,7 +729,7 @@
                 </div>
             </div>
             <div id="visor-resumen" class="bg-white/70 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600 space-y-2"></div>
-            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i class="fas fa-folder-tree text-cyan-500"></i> Portafolio del internamiento</h4>
+            <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i class="fas fa-folder-tree text-cyan-500"></i> Portafolio Digital</h4>
             <nav id="visor-portafolio" class="space-y-1" aria-label="Documentos del internamiento"></nav>
             <div class="mt-auto pt-6 text-center">
                 <button type="button" id="btn-corregir-datos" onclick="abrirCorreccionDatosPaciente()" class="hidden text-[11px] text-slate-400 hover:text-slate-600 underline underline-offset-2">Corregir Datos del Paciente</button>
@@ -740,7 +743,7 @@
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button type="button" id="btn-nueva-evolucion" onclick="abrirNuevaNotaEvolucion()" class="hidden bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-plus"></i> Nueva Nota de Evolución</button>
-                    <button type="button" id="btn-modificar-indicaciones" onclick="abrirModificarIndicaciones()" class="hidden bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-plus"></i> Modificar Indicaciones Médicas</button>
+                    <button type="button" id="btn-modificar-indicaciones" onclick="abrirModificarIndicaciones()" class="hidden bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-plus"></i> Actualizar Indicaciones</button>
                     <button type="button" id="btn-solicitar-interconsulta" onclick="abrirSolicitarInterconsulta()" class="hidden bg-white border border-cyan-300 text-cyan-700 hover:bg-cyan-50 text-xs font-bold px-3.5 py-2 rounded-lg transition items-center gap-1.5"><i class="fas fa-plus"></i> Solicitar Interconsulta</button>
                     <button type="button" id="btn-imprimir-documento" onclick="imprimirDocumentoVisor()" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-print"></i> Imprimir este documento</button>
                 </div>
@@ -908,10 +911,10 @@
         <div id="print-historia-contenido"></div>
     </div>
 
-    <!-- Nota de Evolución (plantilla de impresión; se rellena desde el registro inmutable del internamiento) -->
+    <!-- Nota de Evolución SOAP (plantilla de impresión; se rellena desde el registro inmutable del internamiento) -->
     <div id="print-evolucion" class="zona-impresion hidden">
         <div style="text-align: right; margin-bottom: 5px;">
-            <p style="margin: 0; font-size: 14px; font-weight: bold; text-decoration: underline;">NOTA DE EVOLUCIÓN</p>
+            <p id="ev-titulo" style="margin: 0; font-size: 14px; font-weight: bold; text-decoration: underline;">NOTA DE EVOLUCIÓN (SOAP)</p>
             <p style="margin: 0;">Folio: <span id="ev-folio"></span> &nbsp;&nbsp; Fecha y Hora: <span id="ev-fecha"></span></p>
         </div>
         <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
@@ -919,13 +922,26 @@
             <p style="margin: 2px 0;"><strong>ÁREA:</strong> <span id="ev-area"></span> &nbsp;&nbsp; <strong>CAMA:</strong> <span id="ev-cama"></span> &nbsp;&nbsp; <strong>ALERGIAS:</strong> <span id="ev-alergias"></span></p>
             <p style="margin: 2px 0;"><strong>DIAGNÓSTICO DE INGRESO:</strong> <span id="ev-dx-ingreso"></span></p>
         </div>
-        <div style="line-height: 1.4; text-align: justify;">
+        <div id="bloque-soap" style="line-height: 1.4; text-align: justify;">
+            <p style="margin: 0 0 2px 0;"><strong>S — SUBJETIVO:</strong></p>
+            <div id="ev-s" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+            <p style="margin: 0 0 2px 0;"><strong>O — OBJETIVO:</strong></p>
+            <p style="margin: 0 0 4px 15px;"><strong>Signos vitales de hoy:</strong> <span id="ev-o-sv"></span></p>
+            <p style="margin: 0 0 2px 15px;"><strong>Exploración física:</strong></p>
+            <div id="ev-o-ef" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+            <p style="margin: 0 0 2px 0;"><strong>A — ANÁLISIS:</strong></p>
+            <div id="ev-a" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+            <p style="margin: 0 0 2px 0;"><strong>P — PLAN:</strong></p>
+            <div id="ev-p" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+            <p><strong>DIAGNÓSTICO ACTUALIZADO:</strong> <span id="ev-dx-actual"></span></p>
+        </div>
+        <div id="bloque-legacy" style="display: none; line-height: 1.4; text-align: justify;">
             <p style="margin-bottom: 10px;"><strong>MOTIVO DE LA NOTA:</strong> <span id="ev-motivo"></span></p>
             <p style="margin: 0 0 2px 0;"><strong>EVOLUCIÓN:</strong></p>
             <div id="ev-evolucion" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
             <p style="margin: 0 0 2px 0;"><strong>EXPLORACIÓN FÍSICA:</strong></p>
             <div id="ev-exploracion" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
-            <p><strong>DIAGNÓSTICO ACTUALIZADO:</strong> <span id="ev-dx-actual"></span></p>
+            <p><strong>DIAGNÓSTICO ACTUALIZADO:</strong> <span id="ev-dx-actual-legado"></span></p>
         </div>
         <div class="firma-box" style="margin-top: 60px;">
             <p style="margin: 0; font-weight: bold; font-size: 12px;" id="ev-firma"></p>
@@ -1219,13 +1235,12 @@
         }
 
         // ============================================================
-        // VISOR DE HOSPITALIZACIÓN: expediente.html?modo=hospitalizado&id=<internamiento_id>
+        // VISOR DE HOSPITALIZACIÓN: expediente.html?modo=hospitalizado&turno=<turno_id>
         // ------------------------------------------------------------
-        // Portafolio de documentos del internamiento. Todo se muestra como HTML estático (sin campos), por lo tanto inmutable.
-        // Hoja Frontal, Nota de Ingreso y Consentimientos se compilan con el MISMO código de impresión (rehidratando el
-        // formulario oculto con la captura guardada); Indicaciones y Notas de Evolución se generan desde sus registros
-        // inmutables con las plantillas de impresión. Nombre, edad y sexo se leen SIEMPRE del catálogo: una corrección
-        // administrativa se refleja en todos los documentos y en sus impresiones futuras.
+        // Portafolio Digital (Ingreso / Indicaciones Médicas / Evolución SOAP). Todo se muestra como HTML estático
+        // (formato .zona-impresion, sin campos), por lo tanto inmutable. Nombre, edad, sexo y fecha de nacimiento
+        // se leen SIEMPRE del catálogo: una corrección administrativa se refleja en todas las reimpresiones.
+        // El internamiento se espeja en belen_pacientes_hospitalizados (Array) en cada cambio.
         // ============================================================
         let INTERNAMIENTO = null, ACCESO_VISOR = null, DOCS_VISOR = [], NODOS_VISOR = [], DOC_ACTIVO_ID = null, HTML_CAPTURADO = {};
         const NODOS_COLAPSADOS = {};
@@ -1265,8 +1280,29 @@
             HTML_CAPTURADO = {
                 hoja: zonaComoDocumento($('print-ingreso')),
                 nota: zonaComoDocumento($('print-nota')),
-                consentimientos: zonasDeConsentimientos().map(zonaComoDocumento)
+                consentimientos: zonasDeConsentimientos().map(zonaComoDocumento),
+                historia: ''
             };
+            try {
+                compilarHistoriaClinica();
+                HTML_CAPTURADO.historia = zonaComoDocumento($('print-historia-clinica'));
+            } catch (err) {
+                console.error('No se pudo reconstruir la Historia Clínica:', err);
+                HTML_CAPTURADO.historia = '<p style="font-family:Arial,sans-serif;font-size:11px;">No se pudo reconstruir la Historia Clínica de este internamiento.</p>';
+            }
+        }
+
+        function lineaSignosSoap(sv) {
+            if (!sv) return 'No registrados';
+            const partes = [];
+            if (sv.ta_sistolica != null && sv.ta_diastolica != null) partes.push('TA: ' + sv.ta_sistolica + '/' + sv.ta_diastolica + ' mmHg');
+            if (sv.frecuencia_cardiaca != null) partes.push('FC: ' + sv.frecuencia_cardiaca + ' lpm');
+            if (sv.frecuencia_respiratoria != null) partes.push('FR: ' + sv.frecuencia_respiratoria + ' rpm');
+            if (sv.temperatura_c != null) partes.push('Temp: ' + sv.temperatura_c + ' °C');
+            if (sv.spo2_porcentaje != null) partes.push('SpO2: ' + sv.spo2_porcentaje + '%');
+            if (sv.peso_kg != null) partes.push('Peso: ' + sv.peso_kg + ' kg');
+            if (sv.talla_m != null) partes.push('Talla: ' + sv.talla_m + ' m');
+            return partes.join('  |  ') || 'No registrados';
         }
 
         // Hoja de indicaciones (inmutable) con la plantilla de impresión de Indicaciones Médicas
@@ -1289,56 +1325,76 @@
             return zonaComoDocumento(z);
         }
 
-        // Nota de evolución (inmutable)
+        // Nota de evolución (inmutable). Formato SOAP; las notas anteriores al formato SOAP se muestran con su plantilla original.
         function htmlNotaEvolucion(n) {
             const z = document.getElementById('print-evolucion').cloneNode(true);
             const q = id => z.querySelector('#' + id);
             const p = datosPacienteVigentes();
+            const soap = n.formato === 'SOAP' || !!n.subjetivo;
             z.querySelectorAll('.out-paciente').forEach(e => { e.textContent = p.nombre; });
             z.querySelectorAll('.out-edad').forEach(e => { e.textContent = p.edadTxt; });
             z.querySelectorAll('.out-sexo').forEach(e => { e.textContent = p.sexoTxt; });
+            q('ev-titulo').textContent = soap ? 'NOTA DE EVOLUCIÓN (SOAP)' : 'NOTA DE EVOLUCIÓN';
             q('ev-folio').textContent = n.folio;
             q('ev-fecha').textContent = BelenStore.fechaHoraLegible(n.fecha_hora);
             q('ev-area').textContent = areaVisor();
             q('ev-cama').textContent = INTERNAMIENTO.cama || 'Sin asignar';
             q('ev-alergias').textContent = textoAlergiasVisor();
             q('ev-dx-ingreso').textContent = INTERNAMIENTO.diagnostico_ingreso || 'No registrado';
-            q('ev-motivo').textContent = n.motivo;
-            q('ev-evolucion').textContent = n.evolucion;
-            q('ev-exploracion').textContent = n.exploracion_fisica;
-            q('ev-dx-actual').textContent = n.diagnostico_actualizado;
+            if (soap) {
+                q('bloque-legacy').style.display = 'none';
+                q('ev-s').textContent = n.subjetivo || '';
+                q('ev-o-sv').textContent = lineaSignosSoap(n.objetivo && n.objetivo.signos_vitales);
+                q('ev-o-ef').textContent = (n.objetivo && n.objetivo.exploracion_fisica) || '';
+                q('ev-a').textContent = n.analisis || '';
+                q('ev-p').textContent = n.plan || '';
+                q('ev-dx-actual').textContent = n.diagnostico_actualizado || n.diagnostico_vigente || INTERNAMIENTO.diagnostico_actual || 'Sin cambios';
+            } else {
+                q('bloque-soap').style.display = 'none';
+                q('bloque-legacy').style.display = 'block';
+                q('ev-motivo').textContent = n.motivo || '';
+                q('ev-evolucion').textContent = n.evolucion || '';
+                q('ev-exploracion').textContent = n.exploracion_fisica || '';
+                q('ev-dx-actual-legado').textContent = n.diagnostico_actualizado || INTERNAMIENTO.diagnostico_actual || 'No registrado';
+            }
             q('ev-firma').textContent = n.autor_nombre;
             q('ev-rol-firma').textContent = etiquetaRelacion(n);
             return zonaComoDocumento(z);
         }
 
-        // Árbol de documentos: Hoja Frontal > Nota de Ingreso > Consentimientos > Indicaciones Vigentes > Notas de Evolución
+        // Árbol: carpeta Ingreso, carpeta Indicaciones Médicas (por fecha), carpeta Evolución (SOAP por fecha/hora)
         function construirDocumentosVisor() {
             const S = BelenStore, docs = [], nodos = [];
             const nodo = (clave, titulo, icono, items, opc) => { nodos.push(Object.assign({ clave: clave, titulo: titulo, icono: icono, items: items }, opc || {})); items.forEach(d => docs.push(d)); };
             const ingreso = S.fechaHoraLegible(INTERNAMIENTO.fecha_ingreso);
             const tituloNota = tituloNotaSegunDestino(sessionStorage.getItem('belen_destino'));
 
-            nodo('hoja-frontal', 'Hoja Frontal', 'fa-id-card',
-                [{ id: 'hoja-frontal', titulo: 'Hoja Frontal de Ingreso Hospitalario', meta: 'Documento de ingreso · ' + ingreso, htmls: () => [HTML_CAPTURADO.hoja] }], { directo: true });
-            nodo('nota-ingreso', 'Nota de Ingreso', 'fa-file-medical',
-                [{ id: 'nota-ingreso', titulo: 'Nota de Ingreso', meta: tituloNota + ' · ' + ingreso, htmls: () => [HTML_CAPTURADO.nota] }], { directo: true });
-
-            const cons = HTML_CAPTURADO.consentimientos.map((h, i) => ({
-                id: 'cons-' + i, titulo: i === 0 ? 'Consentimiento general de ingreso' : 'Consentimiento: ' + ((consentimientosEspeciales[i - 1] || {}).procedimiento || 'procedimiento'),
-                meta: 'Consentimiento informado · ' + ingreso, htmls: () => [h] }));
-            nodo('consentimientos', 'Consentimientos', 'fa-file-signature', cons, { directo: cons.length === 1 });
+            const itemsIngreso = [
+                { id: 'nota-ingreso', titulo: 'Nota de Ingreso', sub: ingreso, meta: tituloNota + ' · ' + ingreso, htmls: () => [HTML_CAPTURADO.nota] },
+                { id: 'hoja-frontal', titulo: 'Hoja Frontal', sub: ingreso, meta: 'Documento de ingreso · ' + ingreso, htmls: () => [HTML_CAPTURADO.hoja] }
+            ];
+            (HTML_CAPTURADO.consentimientos || []).forEach((h, i) => {
+                itemsIngreso.push({
+                    id: 'cons-' + i,
+                    titulo: i === 0 ? 'Consentimientos' : 'Consentimiento: ' + ((consentimientosEspeciales[i - 1] || {}).procedimiento || 'procedimiento'),
+                    sub: ingreso, meta: 'Consentimiento informado · ' + ingreso, htmls: () => [h]
+                });
+            });
+            itemsIngreso.push({ id: 'historia-clinica', titulo: 'Historia Clínica', sub: ingreso, meta: 'Historia Clínica · ' + ingreso, htmls: () => [HTML_CAPTURADO.historia] });
+            nodo('ingreso', 'Ingreso', 'fa-folder-open', itemsIngreso);
 
             const hojas = (INTERNAMIENTO.hojas_indicaciones || []).slice().reverse();
-            nodo('indicaciones', 'Indicaciones Vigentes', 'fa-prescription-bottle-medical', hojas.map((h, k) => ({
-                id: 'ind-' + h.hoja_id, titulo: k === 0 ? 'Indicaciones Vigentes' : 'Hoja anterior ' + h.folio, etiqueta: k === 0 ? 'Vigente' : 'Anterior',
-                sub: h.folio + ' · ' + S.fechaHoraLegible(h.fecha_hora),
+            nodo('indicaciones', 'Indicaciones Médicas', 'fa-prescription-bottle-medical', hojas.map((h, k) => ({
+                id: 'ind-' + h.hoja_id, titulo: k === 0 ? 'Indicaciones vigentes' : h.folio, etiqueta: k === 0 ? 'Vigente' : 'Anterior',
+                sub: S.fechaHoraLegible(h.fecha_hora),
                 meta: h.folio + ' · ' + S.fechaHoraLegible(h.fecha_hora) + ' · ' + h.autor_nombre + ' (' + etiquetaRelacion(h) + ')' + (k === 0 ? ' · VIGENTE' : ' · reemplazada por una hoja más reciente'),
                 htmls: () => [htmlHojaIndicaciones(h)] })), { vacio: 'Sin hojas de indicaciones' });
 
             const notas = (INTERNAMIENTO.notas_evolucion || []).slice().reverse();
-            nodo('evolucion', 'Notas de Evolución', 'fa-notes-medical', notas.map(n => ({
-                id: 'ev-' + n.nota_id, titulo: 'Nota de Evolución ' + n.folio, sub: S.fechaHoraLegible(n.fecha_hora) + ' · ' + n.autor_nombre,
+            nodo('evolucion', 'Evolución', 'fa-notes-medical', notas.map(n => ({
+                id: 'ev-' + n.nota_id,
+                titulo: (n.formato === 'SOAP' || n.subjetivo) ? 'Nota SOAP ' + n.folio : 'Nota de Evolución ' + n.folio,
+                sub: S.fechaHoraLegible(n.fecha_hora) + ' · ' + n.autor_nombre,
                 meta: n.folio + ' · ' + S.fechaHoraLegible(n.fecha_hora) + ' · ' + n.autor_nombre + ' (' + etiquetaRelacion(n) + ')',
                 htmls: () => [htmlNotaEvolucion(n)] })), { vacio: 'Aún no hay notas de evolución' });
 
@@ -1416,7 +1472,7 @@
             compilarDocumentosCapturados();
             construirDocumentosVisor();
             if (seleccionarId) DOC_ACTIVO_ID = seleccionarId;
-            if (!DOCS_VISOR.some(d => d.id === DOC_ACTIVO_ID)) DOC_ACTIVO_ID = 'hoja-frontal';
+            if (!DOCS_VISOR.some(d => d.id === DOC_ACTIVO_ID)) DOC_ACTIVO_ID = 'nota-ingreso';
             renderResumenVisor();
             renderPortafolio();
             renderDocumentoActivo();
@@ -1425,7 +1481,7 @@
 
         function initVisorHospitalizado(params) {
             SESION = SESION || BelenStore.sesion();
-            INTERNAMIENTO = BelenStore.resolverInternamiento(params.get('id') || '');
+            INTERNAMIENTO = BelenStore.resolverInternamiento(params.get('turno') || params.get('id') || '');
             ACCESO_VISOR = BelenStore.accesoVisorHospitalizado(SESION, INTERNAMIENTO);
             if (!ACCESO_VISOR.ok) { bloquearAcceso(ACCESO_VISOR.motivo, 'Expediente de hospitalización'); return; }
             TURNO = ACCESO_VISOR.turno;
@@ -1434,6 +1490,8 @@
             document.body.dataset.modo = 'visor';
             document.body.classList.add('modo-visor');
             document.getElementById('nombre-doctor').innerText = SESION.nombre;
+            const tituloPagina = document.querySelector('header h2');
+            if (tituloPagina) tituloPagina.textContent = 'Portafolio de Hospitalización';
             const volver = document.querySelector('header a[href="dashboard.html"]');
             if (volver) volver.href = 'dashboard.html?vista=hospitalizacion';
 
@@ -1448,7 +1506,9 @@
             poblarEspecialidadesInterconsulta();
             try { restaurarBorrador(captura); } catch (err) { console.error('No se pudo rehidratar la captura:', err); }
             document.getElementById('main-expediente').classList.add('hidden');
+            document.getElementById('main-expediente').setAttribute('aria-hidden', 'true');
             document.getElementById('visor-hospitalizado').classList.remove('hidden');
+            document.getElementById('visor-hospitalizado').classList.add('flex');
 
             document.getElementById('visor-portafolio').addEventListener('click', ev => {
                 const d = ev.target.closest('[data-doc]');
@@ -1462,7 +1522,7 @@
                 INTERNAMIENTO = BelenStore.obtenerInternamiento(INTERNAMIENTO.internamiento_id) || INTERNAMIENTO;
                 renderResumenVisor();
             });
-            refrescarVisor('hoja-frontal');
+            refrescarVisor('nota-ingreso');
         }
 
         // ---------- Impresión de la hoja abierta (la inmutabilidad no impide reimprimir) ----------
@@ -1501,28 +1561,63 @@
             return true;
         }
 
-        // ---------- + Nueva Nota de Evolución ----------
+        // ---------- + Nueva Nota de Evolución (SOAP) ----------
         function abrirNuevaNotaEvolucion() {
             if (sinPermisoEscritura()) return;
-            const e = BelenUI.esc, claves = ['motivo', 'evolucion', 'exploracion_fisica', 'diagnostico_actualizado'];
+            const e = BelenUI.esc, S = BelenStore;
+            const svHoy = (TURNO && TURNO.signos_vitales) || {};
+            const val = c => (svHoy[c] === null || svHoy[c] === undefined) ? '' : svHoy[c];
+            const campoSv = (id, etiqueta, unidad, step, min, max) => {
+                const r = S.RANGOS_SIGNOS[id];
+                const obl = r && !r.opcional;
+                return `<div><label for="evm-sv-${id}" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">${etiqueta}${obl ? ' <span class="text-red-500">*</span>' : ' <span class="text-slate-400 normal-case font-normal">(opcional)</span>'}</label>
+                    <div class="relative"><input type="number" inputmode="decimal" id="evm-sv-${id}" value="${e(val(id))}" step="${step}" min="${min}" max="${max}" class="${CLASE_CAMPO} pr-12">
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">${unidad}</span></div>
+                    <p data-err="sv_${id}" class="text-[11px] text-red-600 mt-1 hidden"></p></div>`;
+            };
             const html = `<div class="space-y-4 text-left">
-                <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 flex items-start gap-2"><i class="fas fa-lock mt-0.5"></i><span>Al guardar se genera un documento nuevo en el Portafolio. Las notas no se pueden editar ni eliminar.</span></div>
-                ${campoModal('evm', 'motivo', 'Motivo', `<input id="evm-motivo" type="text" maxlength="160" autocomplete="off" placeholder="Ej. Seguimiento de evolución posoperatoria" class="${CLASE_CAMPO}" data-autofoco>`)}
-                ${campoModal('evm', 'evolucion', 'Evolución', `<textarea id="evm-evolucion" rows="4" placeholder="Evolución clínica del paciente" class="${CLASE_CAMPO} resize-none"></textarea>`)}
-                ${campoModal('evm', 'exploracion_fisica', 'Exploración física', `<textarea id="evm-exploracion_fisica" rows="4" placeholder="Hallazgos de la exploración física" class="${CLASE_CAMPO} resize-none"></textarea>`)}
-                ${campoModal('evm', 'diagnostico_actualizado', 'Actualización de diagnóstico', `<textarea id="evm-diagnostico_actualizado" rows="2" class="${CLASE_CAMPO} resize-none">${e(INTERNAMIENTO.diagnostico_actual || '')}</textarea>`, 'Se precarga el diagnóstico actual; modifíquelo solo si cambió.')}</div>`;
+                <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 flex items-start gap-2"><i class="fas fa-lock mt-0.5"></i><span>Formato SOAP. Al guardar se genera un documento inmutable en el Portafolio. Las notas no se pueden editar ni eliminar.</span></div>
+                ${campoModal('evm', 'subjetivo', 'S — Subjetivo', `<textarea id="evm-subjetivo" rows="3" placeholder="Lo que refiere el paciente el día de hoy" class="${CLASE_CAMPO} resize-none" data-autofoco></textarea>`)}
+                <div class="border border-slate-200 rounded-xl p-3 bg-slate-50/70">
+                    <p class="text-[11px] font-bold text-slate-500 uppercase mb-3">O — Objetivo</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Signos vitales de hoy</p>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        ${campoSv('ta_sistolica', 'TA sistólica', 'mmHg', '1', '50', '260')}
+                        ${campoSv('ta_diastolica', 'TA diastólica', 'mmHg', '1', '30', '160')}
+                        ${campoSv('frecuencia_cardiaca', 'Frecuencia cardíaca', 'lpm', '1', '20', '250')}
+                        ${campoSv('frecuencia_respiratoria', 'Frecuencia respiratoria', 'rpm', '1', '4', '80')}
+                        ${campoSv('temperatura_c', 'Temperatura', '°C', '0.1', '30', '45')}
+                        ${campoSv('spo2_porcentaje', 'Saturación de oxígeno', '%', '1', '50', '100')}
+                        ${campoSv('peso_kg', 'Peso', 'kg', '0.1', '0.3', '400')}
+                        ${campoSv('talla_m', 'Talla', 'm', '0.01', '0.3', '2.6')}
+                    </div>
+                    ${campoModal('evm', 'exploracion_fisica', 'Exploración física', `<textarea id="evm-exploracion_fisica" rows="3" placeholder="Hallazgos de la exploración física de hoy" class="${CLASE_CAMPO} resize-none"></textarea>`)}
+                </div>
+                ${campoModal('evm', 'analisis', 'A — Análisis', `<textarea id="evm-analisis" rows="3" placeholder="Interpretación clínica del día" class="${CLASE_CAMPO} resize-none"></textarea>`)}
+                ${campoModal('evm', 'plan', 'P — Plan', `<textarea id="evm-plan" rows="3" placeholder="Plan a seguir el día de hoy" class="${CLASE_CAMPO} resize-none"></textarea>`)}
+                ${campoModal('evm', 'diagnostico_actualizado', 'Actualizar diagnóstico', `<textarea id="evm-diagnostico_actualizado" rows="2" class="${CLASE_CAMPO} resize-none">${e(INTERNAMIENTO.diagnostico_actual || '')}</textarea>`, 'Se precarga el diagnóstico actual. Déjelo igual si no cambió.')}</div>`;
             BelenUI.modal({
-                titulo: 'Nueva Nota de Evolución', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-notes-medical', ancho: 'lg', html: html,
+                titulo: 'Nueva Nota de Evolución', subtitulo: 'Formato SOAP · ' + datosPacienteVigentes().nombre, icono: 'fa-notes-medical', ancho: 'xl', html: html,
                 botones: [
                     { texto: 'Cancelar', estilo: 'secundario' },
-                    { texto: 'Guardar Nota de Evolución', estilo: 'primario', id: 'evm-guardar', alPulsar: c => {
-                        const entrada = leerCamposModal(c, 'evm', claves);
-                        const r = BelenStore.agregarNotaEvolucion(INTERNAMIENTO.internamiento_id, entrada, BelenStore.sesion());
+                    { texto: 'Guardar Nota SOAP', estilo: 'primario', id: 'evm-guardar', alPulsar: c => {
+                        const q = sel => c.el.querySelector(sel);
+                        const signos = {};
+                        Object.keys(S.RANGOS_SIGNOS).forEach(k => { const n = q('#evm-sv-' + k); signos[k] = n ? n.value : ''; });
+                        const entrada = Object.assign(leerCamposModal(c, 'evm', ['subjetivo', 'exploracion_fisica', 'analisis', 'plan', 'diagnostico_actualizado']), { signos_vitales: signos });
+                        const r = S.agregarNotaEvolucion(INTERNAMIENTO.internamiento_id, entrada, S.sesion());
                         if (!r.ok) {
-                            if (r.errores) marcarErroresModal(c, 'evm', claves, r.errores); else BelenUI.toast(r.motivo, 'peligro');
+                            if (r.errores) {
+                                marcarErroresModal(c, 'evm', ['subjetivo', 'exploracion_fisica', 'analisis', 'plan', 'diagnostico_actualizado'], r.errores);
+                                Object.keys(S.RANGOS_SIGNOS).forEach(k => {
+                                    const m = q('[data-err="sv_' + k + '"]'), inp = q('#evm-sv-' + k), msg = r.errores['sv_' + k];
+                                    if (m) { m.textContent = msg || ''; m.classList.toggle('hidden', !msg); }
+                                    if (inp) inp.classList.toggle('border-red-500', !!msg);
+                                });
+                            } else BelenUI.toast(r.motivo, 'peligro');
                             return false;
                         }
-                        BelenUI.toast('Nota de evolución ' + r.nota.folio + ' guardada en el Portafolio.', 'exito');
+                        BelenUI.toast('Nota SOAP ' + r.nota.folio + ' guardada en el Portafolio.', 'exito');
                         refrescarVisor('ev-' + r.nota.nota_id);
                     } }
                 ]
@@ -1541,7 +1636,7 @@
                 ${campos.map(([k, et]) => campoModal('indm', k, et, `<textarea id="indm-${k}" rows="3" class="${CLASE_CAMPO} resize-y">${e(vig[k] || '')}</textarea>`)).join('')}
                 <p data-err="general" class="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 hidden"></p></div>`;
             BelenUI.modal({
-                titulo: 'Modificar Indicaciones Médicas', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-prescription-bottle-medical', ancho: 'xl', html: html,
+                titulo: 'Actualizar Indicaciones', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-prescription-bottle-medical', ancho: 'xl', html: html,
                 botones: [
                     { texto: 'Cancelar', estilo: 'secundario' },
                     { texto: 'Guardar Nueva Hoja de Indicaciones', estilo: 'primario', id: 'indm-guardar', alPulsar: c => {
@@ -1592,23 +1687,33 @@
             });
         }
 
-        // ---------- Corregir Datos del Paciente (administración): solo nombre, edad y sexo ----------
+        // ---------- Corregir Datos del Paciente (administración): nombre, edad, sexo y F. Nacimiento ----------
         function abrirCorreccionDatosPaciente() {
             if (!ACCESO_VISOR || !ACCESO_VISOR.puede_corregir) { BelenUI.toast('Solo la administración puede corregir datos del paciente.', 'alerta'); return; }
-            const e = BelenUI.esc, p = datosPacienteVigentes(), claves = ['nombre', 'edad', 'sexo'];
+            const e = BelenUI.esc, S = BelenStore, p = datosPacienteVigentes(), claves = ['nombre', 'edad', 'sexo', 'fecha_nacimiento'];
             const html = `<div class="space-y-4 text-left">
                 <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 flex items-start gap-2"><i class="fas fa-triangle-exclamation mt-0.5"></i>
-                    <span>Corrección administrativa. El cambio se aplica a todos los documentos del paciente y a sus impresiones futuras, y queda en la bitácora.</span></div>
+                    <span>Corrección administrativa. El cambio se aplica al expediente central del paciente y se refleja en todas las impresiones futuras o reimpresiones de notas pasadas.</span></div>
                 ${campoModal('cor', 'nombre', 'Nombre completo', `<input id="cor-nombre" type="text" autocomplete="off" value="${e(p.nombre)}" class="${CLASE_CAMPO}" data-autofoco>`)}
                 <div class="grid grid-cols-2 gap-4">
+                    ${campoModal('cor', 'fecha_nacimiento', 'Fecha de nacimiento', `<input id="cor-fecha_nacimiento" type="date" min="1900-01-01" max="${S.hoyLocal()}" value="${e(p.pac.fecha_nacimiento || '')}" class="${CLASE_CAMPO}">`)}
                     ${campoModal('cor', 'edad', 'Edad (años)', `<input id="cor-edad" type="number" inputmode="numeric" min="0" max="120" step="1" value="${p.edad === null ? '' : p.edad}" class="${CLASE_CAMPO}">`)}
-                    ${campoModal('cor', 'sexo', 'Sexo', `<select id="cor-sexo" class="${CLASE_CAMPO}"><option value="F" ${p.pac.sexo === 'F' ? 'selected' : ''}>Femenino</option><option value="M" ${p.pac.sexo === 'M' ? 'selected' : ''}>Masculino</option></select>`)}</div></div>`;
+                </div>
+                ${campoModal('cor', 'sexo', 'Sexo', `<select id="cor-sexo" class="${CLASE_CAMPO}"><option value="F" ${p.pac.sexo === 'F' ? 'selected' : ''}>Femenino</option><option value="M" ${p.pac.sexo === 'M' ? 'selected' : ''}>Masculino</option></select>`)}</div>`;
             BelenUI.modal({
                 titulo: 'Corregir Datos del Paciente', subtitulo: p.pac.paciente_id || '', icono: 'fa-user-pen', tipo: 'alerta', ancho: 'md', html: html,
+                alMostrar: c => {
+                    const fn = c.el.querySelector('#cor-fecha_nacimiento'), ed = c.el.querySelector('#cor-edad');
+                    fn.addEventListener('input', () => { const x = S.calcularEdad(fn.value); if (x !== null) ed.value = x; });
+                    ed.addEventListener('input', () => {
+                        const n = parseInt(ed.value, 10);
+                        if (Number.isInteger(n) && n >= 0 && n <= 120) fn.value = S.fechaNacimientoParaEdad(fn.value || p.pac.fecha_nacimiento, n);
+                    });
+                },
                 botones: [
                     { texto: 'Cancelar', estilo: 'secundario' },
                     { texto: 'Guardar Corrección', estilo: 'alerta', id: 'cor-guardar', alPulsar: c => {
-                        const r = BelenStore.corregirDatosPaciente(TURNO.paciente_id, leerCamposModal(c, 'cor', claves), BelenStore.sesion());
+                        const r = S.corregirDatosPaciente(TURNO.paciente_id, leerCamposModal(c, 'cor', claves), S.sesion());
                         if (!r.ok) {
                             if (r.errores) marcarErroresModal(c, 'cor', claves, r.errores); else BelenUI.toast(r.motivo, 'peligro');
                             return false;
@@ -2495,16 +2600,7 @@
         // Agrega el expediente completo al arreglo. Si ya existe la misma consulta (mismo paciente y fecha) la reemplaza.
         // Devuelve false si el almacenamiento falla (para no bloquear el expediente sin haberlo guardado).
         function guardarPacienteHospitalizado(expediente) {
-            let lista = [];
-            try {
-                const crudo = JSON.parse(localStorage.getItem(CLAVE_HOSPITALIZADOS) || '[]');
-                lista = Array.isArray(crudo) ? crudo : [];
-            } catch (err) { lista = []; }
-            const clave = x => ((x && x.paciente && x.paciente.nombre_completo) || '') + '|' + ((x && x.consulta && x.consulta.fecha_hora) || '');
-            const i = lista.findIndex(x => clave(x) === clave(expediente));
-            if (i >= 0) lista[i] = expediente; else lista.push(expediente);
-            try { localStorage.setItem(CLAVE_HOSPITALIZADOS, JSON.stringify(lista)); return true; }
-            catch (err) { return false; }
+            return BelenStore.guardarHospitalizado(expediente);
         }
 
         // Botón gigante de la Historia Clínica: valida todo el expediente, lo guarda en el registro de

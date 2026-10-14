@@ -10,7 +10,8 @@
 //   belen_turnos ............... fila de espera / episodios (turno_id PK, FK paciente_id, medico_id)
 //   belen_visitas .............. expedientes finalizados completos (visita_id PK, FK paciente_id, turno_id)
 //   belen_borradores ........... { [turno_id]: borrador del expediente en curso }
-//   belen_pacientes_hospitalizados ... arreglo de expedientes de pacientes internados
+//   belen_pacientes_hospitalizados ... arreglo de expedientes de pacientes internados. Cada elemento lleva además `internamiento`:
+//                                el portafolio vivo (cama, interconsultas[], notas_evolucion[] SOAP, hojas_indicaciones[]) espejado en cada cambio
 //   belen_internamientos ....... episodio hospitalario (internamiento_id PK, FK turno_id, paciente_id, medico_tratante_id)
 //                                con cama, interconsultas[], notas_evolucion[] e hojas_indicaciones[] (inmutables: solo se agregan)
 //   belen_permisos_personal .... { [usuario_id]: { ver_consultas, ver_hospitalizados, ver_quirofano, ver_farmacia } } (interruptores de Alfonso)
@@ -655,9 +656,15 @@
     function listarHospitalizados() { return leer(CLAVES.hospitalizados, []); }
     function guardarHospitalizado(expediente) {
         const lista = listarHospitalizados();
+        const turnoId = expediente && expediente.meta && expediente.meta.turno_id;
         const clave = x => ((x.meta && x.meta.turno_id) || '') + '|' + ((x.paciente && x.paciente.nombre_completo) || '') + '|' + ((x.consulta && x.consulta.fecha_hora) || '');
-        const i = lista.findIndex(x => clave(x) === clave(expediente));
-        if (i >= 0) lista[i] = expediente; else lista.push(expediente);
+        let i = turnoId ? lista.findIndex(x => x && x.meta && x.meta.turno_id === turnoId) : -1;
+        if (i < 0) i = lista.findIndex(x => clave(x) === clave(expediente));
+        if (i >= 0) {
+            const previo = lista[i];
+            if (previo && previo.internamiento && !(expediente && expediente.internamiento)) expediente.internamiento = previo.internamiento;
+            lista[i] = expediente;
+        } else lista.push(expediente);
         return escribir(CLAVES.hospitalizados, lista);
     }
 
@@ -666,7 +673,30 @@
     // Los documentos nuevos (notas de evolución, hojas de indicaciones) son INMUTABLES: la capa de datos solo ofrece "agregar",
     // nunca editar ni borrar. Los datos del paciente (nombre, edad, sexo) NO se copian a los documentos: se leen del catálogo
     // al renderizar, por eso una corrección administrativa se refleja en todas las impresiones futuras.
-    function listarInternamientos() { return leer(CLAVES.internamientos, []); }
+    // Fuente de trabajo: belen_internamientos. Respaldo durable: cada elemento de belen_pacientes_hospitalizados guarda su `internamiento`
+    // (se espeja en cada cambio); si la colección faltara, se recupera desde ese arreglo.
+    function listarInternamientos() {
+        const lista = leer(CLAVES.internamientos, []);
+        const ids = new Set(lista.map(x => x.internamiento_id));
+        const extra = listarHospitalizados().filter(h => h && h.internamiento && !ids.has(h.internamiento.internamiento_id)).map(h => h.internamiento);
+        return extra.length ? lista.concat(extra) : lista;
+    }
+    // Espeja el internamiento dentro del arreglo belen_pacientes_hospitalizados (crea el elemento si el expediente aún no estaba)
+    function espejarEnHospitalizados(i) {
+        const lista = listarHospitalizados();
+        let h = lista.find(x => x && x.meta && x.meta.turno_id === i.turno_id)
+            || lista.find(x => x && x.internamiento && x.internamiento.internamiento_id === i.internamiento_id);
+        if (!h) {
+            const t = obtenerTurno(i.turno_id) || {};
+            const p = buscarPacientePorId(i.paciente_id) || {};
+            h = { meta: { esquema_version: '1.0', origen: 'internamiento', turno_id: i.turno_id, paciente_id: i.paciente_id, medico_id: t.medico_id || i.medico_tratante_id,
+                          medico_nombre: t.medico_nombre || i.medico_tratante_nombre, especialidad_codigo: t.especialidad_codigo || i.especialidad_codigo },
+                 paciente: { nombre_completo: p.nombre_completo || t.paciente_nombre || null, sexo: p.sexo || t.sexo || null, fecha_nacimiento: p.fecha_nacimiento || t.fecha_nacimiento || null } };
+            lista.push(h);
+        }
+        h.internamiento = JSON.parse(JSON.stringify(i));
+        return escribir(CLAVES.hospitalizados, lista);
+    }
     function internamientoDeTurno(turnoId) { return listarInternamientos().find(x => x.turno_id === turnoId && x.estatus !== 'descartado') || null; }
     function obtenerInternamiento(id) { return listarInternamientos().find(x => x.internamiento_id === id && x.estatus !== 'descartado') || null; }
     function tieneInterconsulta(turnoId, medicoId) {
@@ -678,7 +708,9 @@
         const k = lista.findIndex(x => x.internamiento_id === i.internamiento_id);
         i.actualizado_en = new Date().toISOString();
         if (k >= 0) lista[k] = i; else lista.push(i);
-        return escribir(CLAVES.internamientos, lista) ? i : null;
+        if (!escribir(CLAVES.internamientos, lista)) return null;
+        espejarEnHospitalizados(i);
+        return i;
     }
     function pad3(n) { return String(n).padStart(3, '0'); }
     function fechaHoraLegible(valor) {
@@ -758,7 +790,9 @@
         const i = lista.find(x => x.turno_id === turnoId && x.estatus !== 'descartado');
         if (!i) return false;
         i.estatus = 'descartado'; i.actualizado_en = new Date().toISOString();
-        return escribir(CLAVES.internamientos, lista);
+        const ok = escribir(CLAVES.internamientos, lista);
+        espejarEnHospitalizados(i);
+        return ok;
     }
 
     // Tarjeta del Monitor de Camas
@@ -785,7 +819,7 @@
         };
     }
 
-    // Quién puede abrir el visor expediente.html?modo=hospitalizado&id=...
+    // Quién puede abrir el visor expediente.html?modo=hospitalizado&turno=... (también acepta internamiento_id)
     function accesoVisorHospitalizado(s, i) {
         if (!s) return { ok: false, motivo: 'Inicie sesión para continuar.' };
         if (!i) return { ok: false, motivo: 'No se encontró el internamiento solicitado.' };
@@ -827,17 +861,26 @@
 
     // ---- Notas de evolución (documentos inmutables)
     function contarLetrasTxt(t) { return (String(t || '').match(/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g) || []).length; }
+    // Formato SOAP: Subjetivo, Objetivo (signos vitales de hoy + exploración física), Análisis y Plan; diagnóstico opcional.
+    // entrada: { subjetivo, signos_vitales:{campo:valor}, exploracion_fisica, analisis, plan, diagnostico_actualizado }
+    // Errores de signos: clave 'sv_<campo>'.
     function validarNotaEvolucion(entrada) {
+        const sv = validarSignos(entrada.signos_vitales || {});
         const v = {
-            motivo: limpiarEspacios(entrada.motivo), evolucion: String(entrada.evolucion || '').trim(),
-            exploracion_fisica: String(entrada.exploracion_fisica || '').trim(), diagnostico_actualizado: limpiarEspacios(entrada.diagnostico_actualizado)
+            subjetivo: String(entrada.subjetivo || '').trim(), exploracion_fisica: String(entrada.exploracion_fisica || '').trim(),
+            analisis: String(entrada.analisis || '').trim(), plan: String(entrada.plan || '').trim(), diagnostico_actualizado: limpiarEspacios(entrada.diagnostico_actualizado)
         };
         const errores = {};
-        if (contarLetrasTxt(v.motivo) < 3) errores.motivo = 'Describa el motivo de la nota.';
-        if (contarLetrasTxt(v.evolucion) < 10) errores.evolucion = 'Describa la evolución del paciente (mínimo 10 letras).';
+        if (contarLetrasTxt(v.subjetivo) < 10) errores.subjetivo = 'Describa lo que refiere el paciente (mínimo 10 letras).';
+        Object.keys(sv.errores).forEach(c => { if (SIGNOS_OBLIGATORIOS.includes(c) || sv.valores[c] !== null) errores['sv_' + c] = sv.errores[c]; });
         if (contarLetrasTxt(v.exploracion_fisica) < 5) errores.exploracion_fisica = 'Registre la exploración física.';
-        if (contarLetrasTxt(v.diagnostico_actualizado) < 3) errores.diagnostico_actualizado = 'Indique el diagnóstico actual.';
-        return { ok: Object.keys(errores).length === 0, errores: errores, valores: v };
+        if (contarLetrasTxt(v.analisis) < 10) errores.analisis = 'Escriba el análisis clínico (mínimo 10 letras).';
+        if (contarLetrasTxt(v.plan) < 5) errores.plan = 'Escriba el plan a seguir.';
+        if (v.diagnostico_actualizado && contarLetrasTxt(v.diagnostico_actualizado) < 3) errores.diagnostico_actualizado = 'Escriba el diagnóstico completo o déjelo vacío si no cambió.';
+        const signos = {};
+        SIGNOS_OBLIGATORIOS.concat(['peso_kg', 'talla_m']).forEach(c => { signos[c] = sv.valores[c] === undefined ? null : sv.valores[c]; });
+        return { ok: Object.keys(errores).length === 0, errores: errores,
+                 valores: { subjetivo: v.subjetivo, objetivo: { signos_vitales: signos, exploracion_fisica: v.exploracion_fisica }, analisis: v.analisis, plan: v.plan, diagnostico_actualizado: v.diagnostico_actualizado || null } };
     }
     function agregarNotaEvolucion(internamientoId, entrada, s) {
         const i = obtenerInternamiento(internamientoId);
@@ -848,12 +891,13 @@
         const relacion = relacionMedico(i, t, s);
         const ic = (i.interconsultas || []).find(x => x.medico_id === s.medico_id);
         const nota = Object.assign({
-            nota_id: uid('EV'), folio: 'EV-' + pad3((i.notas_evolucion || []).length + 1), fecha_hora: new Date().toISOString(),
+            nota_id: uid('EV'), folio: 'EV-' + pad3((i.notas_evolucion || []).length + 1), formato: 'SOAP', fecha_hora: new Date().toISOString(),
             autor_id: s.usuario_id, autor_nombre: s.nombre, autor_especialidad: s.especialidad || null, relacion: relacion,
             interconsulta_especialidad: relacion === 'interconsultante' && ic ? ic.especialidad : null
         }, r.valores);
+        nota.diagnostico_vigente = r.valores.diagnostico_actualizado || i.diagnostico_actual || i.diagnostico_ingreso || null;   // el diagnóstico que rige al firmar la nota
         i.notas_evolucion = (i.notas_evolucion || []).concat([nota]);
-        i.diagnostico_actual = nota.diagnostico_actualizado;
+        if (r.valores.diagnostico_actualizado) i.diagnostico_actual = r.valores.diagnostico_actualizado;
         return guardarInternamiento(i) ? { ok: true, nota: nota } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
     }
 
@@ -899,13 +943,20 @@
         return f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0');
     }
     function validarCorreccionPaciente(entrada) {
-        const v = { nombre: limpiarEspacios(entrada.nombre), edad: String(entrada.edad === undefined || entrada.edad === null ? '' : entrada.edad).trim(), sexo: entrada.sexo };
+        const v = { nombre: limpiarEspacios(entrada.nombre), edad: String(entrada.edad === undefined || entrada.edad === null ? '' : entrada.edad).trim(), sexo: entrada.sexo,
+                    fecha_nacimiento: entrada.fecha_nacimiento };
         const errores = {};
         if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]{5,}$/.test(v.nombre) || v.nombre.split(' ').filter(w => w.length > 1).length < 2) errores.nombre = 'Escriba nombre y apellido (solo letras).';
         const e = Number(v.edad);
         if (v.edad === '' || !Number.isInteger(e) || e < 0 || e > 120) errores.edad = 'Escriba la edad en años (0 a 120).';
         if (v.sexo !== 'F' && v.sexo !== 'M') errores.sexo = 'Seleccione el sexo.';
-        return { ok: Object.keys(errores).length === 0, errores: errores, valores: { nombre: v.nombre, edad: e, sexo: v.sexo } };
+        // F. Nacimiento (opcional para compatibilidad: si falta, se deriva de la edad). Si viene, debe ser coherente con la edad.
+        if (v.fecha_nacimiento !== undefined) {
+            if (!parseFechaISO(v.fecha_nacimiento)) errores.fecha_nacimiento = 'Seleccione la fecha de nacimiento.';
+            else if (v.fecha_nacimiento > hoyLocal() || v.fecha_nacimiento < '1900-01-01') errores.fecha_nacimiento = 'La fecha de nacimiento no es válida.';
+            else if (!errores.edad && calcularEdad(v.fecha_nacimiento) !== e) errores.edad = 'La edad no coincide con la fecha de nacimiento (' + calcularEdad(v.fecha_nacimiento) + ' años).';
+        }
+        return { ok: Object.keys(errores).length === 0, errores: errores, valores: { nombre: v.nombre, edad: e, sexo: v.sexo, fecha_nacimiento: v.fecha_nacimiento } };
     }
     // Cambia el catálogo y TODAS las copias del paciente (turnos, visitas, hospitalizados, borradores). Los documentos del
     // internamiento no guardan estos datos: se renderizan desde el catálogo, así que reflejan el cambio de inmediato.
@@ -917,9 +968,9 @@
         const p = cat.find(x => x.paciente_id === pacienteId);
         if (!p) return { ok: false, motivo: 'No se encontró el paciente.' };
         const edadActual = calcularEdad(p.fecha_nacimiento);
-        const nuevaFN = (edadActual === r.valores.edad) ? p.fecha_nacimiento : fechaNacimientoParaEdad(p.fecha_nacimiento, r.valores.edad);
+        const nuevaFN = r.valores.fecha_nacimiento || ((edadActual === r.valores.edad) ? p.fecha_nacimiento : fechaNacimientoParaEdad(p.fecha_nacimiento, r.valores.edad));
         const choque = cat.find(x => x.paciente_id !== pacienteId && normalizar(x.nombre_completo) === normalizar(r.valores.nombre) && x.fecha_nacimiento === nuevaFN);
-        if (choque) return { ok: false, motivo: 'Ya existe otro expediente con ese nombre y esa edad (' + choque.paciente_id + ').', errores: { nombre: 'Coincide con el expediente ' + choque.paciente_id + '.' } };
+        if (choque) return { ok: false, motivo: 'Ya existe otro expediente con ese nombre y esa fecha de nacimiento (' + choque.paciente_id + ').', errores: { nombre: 'Coincide con el expediente ' + choque.paciente_id + '.' } };
 
         const antes = { nombre: p.nombre_completo, edad: edadActual, sexo: p.sexo, fecha_nacimiento: p.fecha_nacimiento };
         p.nombre_completo = r.valores.nombre; p.sexo = r.valores.sexo; p.fecha_nacimiento = nuevaFN; p.actualizado_en = new Date().toISOString();

@@ -618,11 +618,10 @@ const AdminController = {
                 ? `<span data-alergias="1" class="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 bg-red-50 border border-red-300 rounded-lg px-2.5 py-1"><i class="fas fa-triangle-exclamation"></i> ${e(f.alergias)}</span>`
                 : `<span data-alergias="0" class="text-xs text-slate-400">Ninguna referida</span>`;
             const relacion = f.relacion === 'interconsultante'
-                ? '<span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200"><i class="fas fa-user-doctor mr-1"></i>Interconsulta</span>' : '';
+                ? '<span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200"><i class="fas fa-user-doctor mr-1"></i>Interconsulta Solicitada</span>' : '';
             let accion;
             if (f.finalizado) {
-                const idv = encodeURIComponent(f.internamiento_id || f.turno_id);
-                accion = `<a href="expediente.html?modo=hospitalizado&id=${idv}" data-accion="abrir-expediente" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-folder-tree"></i> Ver Expediente</a>`;
+                accion = `<a href="expediente.html?modo=hospitalizado&turno=${encodeURIComponent(f.turno_id)}" data-accion="abrir-expediente" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-folder-tree"></i> Ver Expediente</a>`;
             } else if (f.relacion === 'interconsultante') {
                 accion = `<span class="text-[11px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">Papeleo de ingreso en curso</span>`;
             } else {
