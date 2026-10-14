@@ -81,9 +81,9 @@
                 <i class="fas fa-file-invoice-dollar w-5"></i> Tarifario y Caja
             </a>
 
-            <!-- Farmacia: módulo con interruptor por usuario (Gestión de Personal). Por defecto: Alfonso, Enfermería de Hospitalización y de Quirófano -->
-            <a href="#" data-proximamente="Inventario y Farmacia" data-modulo="ver_farmacia" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
-                <i class="fas fa-pills w-5"></i> Inventario y Farmacia
+            <!-- Farmacia: admin, caja y encargado por defecto. Hospital y quirófano solo si Alfonso enciende el módulo. -->
+            <a href="?vista=farmacia" data-vista="farmacia" data-roles="admin,administrador,enf_farmacia,enf_hospital,enf_quirofano" data-modulo="ver_farmacia" onclick="AdminController.navegar('farmacia', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+                <i class="fas fa-pills w-5"></i> Farmacia e Inventario
             </a>
         </nav>
 

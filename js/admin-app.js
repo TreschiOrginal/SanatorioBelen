@@ -1,7 +1,7 @@
 // Archivo: js/admin-app.js
 // ============================================================
 // CONTROLADOR DEL DASHBOARD (vistas por rol y por médico)
-// Vistas: central | fila | hospitalizacion | cirugias | expedientes | personal   (?vista=...)
+// Vistas: central | fila | hospitalizacion | cirugias | expedientes | personal | farmacia   (?vista=...)
 // Datos: BelenStore (js/belen-store.js). Interfaz: BelenUI (js/belen-ui.js).
 // CERO alert()/prompt()/confirm() nativos: todo con modales Tailwind.
 // ============================================================
@@ -11,6 +11,7 @@ const AdminController = {
     sesion: null,
     vista: 'central',
     filtroEspecialidad: '',
+    pestanaFarmacia: 'inventario',
     _temporizador: null,
     _pendienteRender: null,
 
@@ -21,7 +22,8 @@ const AdminController = {
         hospitalizacion: { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'], modulo: 'ver_hospitalizados', titulo: { admin: 'Monitor de Camas', administrador: 'Monitor de Camas', medico: 'Mis Pacientes Hospitalizados' } },
         cirugias:        { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],      modulo: 'ver_quirofano',      titulo: { admin: 'Próximas Cirugías' } },
         expedientes:     { roles: ['admin', 'medico'],                                                            modulo: 'ver_consultas',      titulo: { admin: 'Búsqueda Histórica', medico: 'Búsqueda Histórica' } },
-        personal:        { roles: ['admin'],                                                                      modulo: 'gestionar_personal', titulo: { admin: 'Gestión de Personal' } }
+        personal:        { roles: ['admin'],                                                                      modulo: 'gestionar_personal', titulo: { admin: 'Gestión de Personal' } },
+        farmacia:        { roles: ['admin', 'administrador', 'enf_farmacia', 'enf_hospital', 'enf_quirofano'], modulo: 'ver_farmacia', titulo: { admin: 'Farmacia e Inventario' } }
     },
 
     init: async function () {
@@ -81,7 +83,7 @@ const AdminController = {
     },
     // Primera vista disponible para el usuario (null si el administrador le apagó todos los módulos)
     vistaInicial: function () {
-        return ['central', 'fila', 'hospitalizacion', 'cirugias', 'expedientes', 'personal'].find(v => this.vistaPermitida(v)) || null;
+        return ['central', 'fila', 'hospitalizacion', 'cirugias', 'expedientes', 'personal', 'farmacia'].find(v => this.vistaPermitida(v)) || null;
     },
 
     navegar: function (vista, ev) {
@@ -130,6 +132,7 @@ const AdminController = {
         else if (this.vista === 'cirugias') cont.innerHTML = this.htmlCirugias();
         else if (this.vista === 'expedientes') cont.innerHTML = this.htmlExpedientes();
         else if (this.vista === 'personal') cont.innerHTML = this.htmlPersonal();
+        else if (this.vista === 'farmacia') cont.innerHTML = this.htmlFarmacia();
         this.actualizarRelojes();
     },
 
@@ -774,6 +777,191 @@ const AdminController = {
                 } }
             ]
         });
+    },
+
+    // ======================================================================
+    // VISTA: FARMACIA E INVENTARIO
+    // ======================================================================
+    cambiarPestanaFarmacia: function (pestana) {
+        this.pestanaFarmacia = pestana === 'surtido' ? 'surtido' : 'inventario';
+        this.render();
+    },
+
+    htmlFarmacia: function () {
+        const S = BelenStore;
+        const inv = this.pestanaFarmacia !== 'surtido';
+        const tab = (id, txt, n) => {
+            const on = (id === 'inventario') === inv;
+            return `<button type="button" onclick="AdminController.cambiarPestanaFarmacia('${id}')" class="px-4 py-2 rounded-lg text-sm font-bold transition ${on ? 'bg-white text-teal-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">${txt}${n ? `<span class="ml-2 inline-flex min-w-[1.25rem] justify-center rounded-full bg-teal-600 text-white text-[10px] px-1.5 py-0.5">${n}</span>` : ''}</button>`;
+        };
+        const pendientes = S.fichasSurtidoPendiente(this.sesion);
+        const cuerpo = inv ? this.htmlInventarioFarmacia() : this.htmlColaSurtido(pendientes);
+        return `<div class="mb-6 flex flex-wrap items-end justify-between gap-3">
+                    <div><h2 class="text-2xl font-extrabold text-slate-800">Farmacia e Inventario</h2>
+                    <p class="text-slate-500">Almacén central y surtido de lo que pide el piso o la consulta.</p></div>
+                    ${inv && S.puede('gestionar_farmacia') ? '<button type="button" onclick="AdminController.abrirIngresoFarmacia()" class="bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-plus"></i> Nuevo Ingreso de Insumo</button>' : ''}
+                </div>
+                <div class="inline-flex bg-slate-100 rounded-xl p-1 mb-5 gap-1">${tab('inventario', 'Inventario')}${tab('surtido', 'Solicitudes de Piso / Pendientes de Surtir', pendientes.length)}</div>
+                ${cuerpo}`;
+    },
+
+    htmlInventarioFarmacia: function () {
+        const S = BelenStore, e = t => this.e(t);
+        const filas = S.listarInventarioFarmacia(this.sesion);
+        const motivo = p => {
+            const partes = [];
+            if (p.stock < 5) partes.push('stock menor a 5');
+            if (p.dias_caducidad !== null && p.dias_caducidad < 0) partes.push('caducado');
+            else if (p.dias_caducidad !== null && p.dias_caducidad < 30) partes.push('caduca en ' + p.dias_caducidad + ' días');
+            return partes.join(' · ');
+        };
+        const tr = p => `<tr class="border-t border-slate-100 ${p.alerta ? 'bg-red-50 text-red-900' : 'hover:bg-slate-50/80'}" ${p.alerta ? `title="${e(motivo(p))}"` : ''}>
+            <td class="px-4 py-3 font-mono text-xs font-bold">${e(p.sku)}</td>
+            <td class="px-4 py-3 font-semibold">${e(p.nombre)}</td>
+            <td class="px-4 py-3 font-mono text-xs">${e(p.lote)}</td>
+            <td class="px-4 py-3">${e(S.fechaLegibleISO(p.caducidad))}${p.alerta && p.dias_caducidad !== null && p.dias_caducidad < 30 ? ' <i class="fas fa-triangle-exclamation text-red-600"></i>' : ''}</td>
+            <td class="px-4 py-3 font-bold">${p.stock}${p.stock < 5 ? ' <i class="fas fa-triangle-exclamation text-red-600"></i>' : ''}</td>
+            <td class="px-4 py-3">${e(S.formatoMoneda(p.precio_unitario))}</td></tr>`;
+        return `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table class="w-full text-sm text-left" id="tabla-farmacia">
+                <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr>
+                    <th class="px-4 py-3">Código/SKU</th><th class="px-4 py-3">Nombre del Producto</th><th class="px-4 py-3">Lote</th>
+                    <th class="px-4 py-3">Fecha de Caducidad</th><th class="px-4 py-3">Stock Actual</th><th class="px-4 py-3">Precio Unitario</th>
+                </tr></thead>
+                <tbody>${filas.length ? filas.map(tr).join('') : '<tr><td colspan="6" class="px-4 py-16 text-center text-slate-400">No hay insumos en el almacén.</td></tr>'}</tbody>
+            </table></div>
+            <p class="text-[11px] text-slate-400 mt-3">La fila roja avisa stock menor a 5 o caducidad en menos de 30 días. Enter en el código simula la pistola lectora.</p>`;
+    },
+
+    htmlColaSurtido: function (pendientes) {
+        const e = t => this.e(t);
+        if (!pendientes.length) {
+            return '<div class="text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-clipboard-check text-4xl mb-3 text-slate-300"></i><p>No hay solicitudes pendientes de surtir.</p></div>';
+        }
+        const puede = BelenStore.puede('gestionar_farmacia');
+        return `<div class="flex flex-col gap-3" id="cola-surtido">${pendientes.map(f => `<article class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-wrap items-center gap-4">
+            <div class="flex-1 min-w-[240px]">
+                <p class="text-sm font-bold text-slate-900">Paciente: ${e(f.paciente)} - Cama: ${e(f.cama)} - Solicita: ${e(f.resumen)}</p>
+                <p class="text-[11px] text-slate-400 mt-1 uppercase font-bold">${f.origen === 'consulta' ? 'Consulta ambulatoria' : 'Indicación de piso'}</p>
+            </div>
+            ${puede ? `<button type="button" onclick="AdminController.abrirSurtido('${e(f.solicitud_id)}')" class="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-barcode"></i> Surtir</button>` : ''}
+        </article>`).join('')}</div>`;
+    },
+
+    abrirIngresoFarmacia: function () {
+        if (!BelenStore.puede('gestionar_farmacia')) { BelenUI.toast('Su perfil no puede registrar inventario.', 'alerta'); return; }
+        const campo = (id, et, tipo, extra) => `<div>
+            <label for="${id}" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">${et}</label>
+            <input id="${id}" type="${tipo}" ${extra || ''} autocomplete="off" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 focus:border-teal-600 focus:ring-1 focus:ring-teal-600 outline-none bg-white">
+            <p id="err-${id}" class="text-[11px] text-red-600 mt-1 hidden"></p></div>`;
+        BelenUI.modal({
+            titulo: 'Nuevo ingreso de insumo', subtitulo: 'Enter avanza al siguiente campo. Si el código ya existe, se completa el producto.', icono: 'fa-barcode', ancho: 'lg',
+            html: `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${campo('far-sku', 'Código / SKU', 'text', 'data-autofoco maxlength="20" placeholder="Escanee o escriba y pulse Enter"')}
+                ${campo('far-nombre', 'Nombre del producto', 'text', 'maxlength="80"')}
+                ${campo('far-lote', 'Lote', 'text', 'maxlength="30"')}
+                ${campo('far-caducidad', 'Fecha de caducidad', 'date', '')}
+                ${campo('far-stock', 'Stock que ingresa', 'number', 'min="1" step="1"')}
+                ${campo('far-precio', 'Precio unitario', 'number', 'min="0.01" step="0.01"')}
+            </div>`,
+            alMostrar: c => {
+                const orden = ['far-sku', 'far-nombre', 'far-lote', 'far-caducidad', 'far-stock', 'far-precio'];
+                orden.forEach((id, i) => {
+                    c.el.querySelector('#' + id).addEventListener('keydown', ev => {
+                        if (ev.key !== 'Enter') return;
+                        ev.preventDefault();
+                        if (id === 'far-sku') {
+                            const prod = BelenStore.productoPorSku(ev.target.value);
+                            if (prod) {
+                                c.el.querySelector('#far-nombre').value = prod.nombre;
+                                c.el.querySelector('#far-precio').value = prod.precio_unitario;
+                                BelenUI.toast(prod.nombre + ' ya está en el catálogo. Capture el lote que ingresa.', 'info');
+                                c.el.querySelector('#far-lote').focus();
+                                return;
+                            }
+                        }
+                        if (i < orden.length - 1) c.el.querySelector('#' + orden[i + 1]).focus();
+                        else c.el.querySelector('#far-guardar').click();
+                    });
+                });
+            },
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Registrar ingreso', estilo: 'exito', id: 'far-guardar', alPulsar: c => {
+                    const val = id => c.el.querySelector('#' + id).value;
+                    const r = BelenStore.ingresarInsumo({ sku: val('far-sku'), nombre: val('far-nombre'), lote: val('far-lote'), caducidad: val('far-caducidad'), stock: val('far-stock'), precio_unitario: val('far-precio') }, this.sesion);
+                    ['far-sku', 'far-nombre', 'far-lote', 'far-caducidad', 'far-stock', 'far-precio'].forEach(id => {
+                        const input = c.el.querySelector('#' + id), msg = c.el.querySelector('#err-' + id);
+                        const clave = id === 'far-precio' ? 'precio_unitario' : id.slice(4);
+                        const error = r.errores && r.errores[clave];
+                        input.classList.toggle('border-red-500', !!error);
+                        msg.textContent = error || '';
+                        msg.classList.toggle('hidden', !error);
+                    });
+                    if (!r.ok) { if (!r.errores) BelenUI.toast(r.motivo, 'alerta'); return false; }
+                    BelenUI.toast(r.producto.nombre + ' ingresado. Stock ' + r.producto.stock + '.', 'exito');
+                    this.render();
+                } }
+            ]
+        });
+    },
+
+    abrirSurtido: function (solicitudId) {
+        const ficha = BelenStore.fichasSurtidoPendiente(this.sesion).find(x => x.solicitud_id === solicitudId);
+        if (!ficha || !BelenStore.puede('gestionar_farmacia')) { BelenUI.toast('Esa solicitud ya no está pendiente.', 'alerta'); return; }
+        BelenUI.modal({
+            titulo: 'Surtir solicitud', subtitulo: 'Paciente: ' + ficha.paciente + ' - Cama: ' + ficha.cama, icono: 'fa-barcode', ancho: 'lg',
+            html: this.htmlCuerpoEscaneo(ficha),
+            alMostrar: c => this.enlazarEscaneo(c, solicitudId),
+            botones: [{ texto: 'Cerrar', estilo: 'secundario' }]
+        });
+    },
+
+    htmlCuerpoEscaneo: function (ficha) {
+        const e = t => this.e(t);
+        const vivas = ficha.lineas.filter(l => l.pendiente > 0);
+        const botones = vivas.filter(l => l.sku_sugerido).map(l =>
+            `<button type="button" data-sku="${e(l.sku_sugerido)}" class="px-3 py-2 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold hover:bg-teal-100 text-left">${e(l.sku_sugerido)} · ${e(l.pendiente)}x ${e(l.nombre)}</button>`).join('');
+        const opciones = vivas.filter(l => l.sku_sugerido).map(l => `<option value="${e(l.sku_sugerido)}">${e(l.sku_sugerido)} · ${e(l.nombre)}</option>`).join('');
+        const avance = ficha.lineas.map(l => `<li class="flex justify-between gap-3 py-1"><span>${e(l.nombre)}</span><span class="font-bold ${l.pendiente ? 'text-amber-700' : 'text-emerald-700'}">${l.cantidad_surtida || 0}/${l.cantidad}</span></li>`).join('');
+        return `<p class="text-sm font-bold text-slate-800 mb-3">Solicita: ${e(ficha.resumen)}</p>
+            <label for="scan-codigo" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Escanear código de barras</label>
+            <input id="scan-codigo" data-autofoco autocomplete="off" placeholder="El cursor queda aquí para la pistola" class="w-full border border-teal-400 rounded-lg p-3 text-sm font-mono text-slate-800 focus:ring-2 focus:ring-teal-500 outline-none bg-white">
+            <div class="flex flex-wrap gap-2 mt-3">${botones || '<p class="text-xs text-slate-400">Ningún código del inventario coincide con lo pedido.</p>'}</div>
+            ${opciones ? `<label class="block text-[11px] font-bold text-slate-500 uppercase mt-3 mb-1">Simular escaneo</label>
+            <select id="scan-lista" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white"><option value="">Elegir código…</option>${opciones}</select>` : ''}
+            <ul class="mt-4 border-t border-slate-100 pt-2 text-sm text-slate-600">${avance}</ul>`;
+    },
+
+    enlazarEscaneo: function (ctrl, solicitudId) {
+        const input = ctrl.el.querySelector('#scan-codigo');
+        const correr = () => this.confirmarEscaneo(ctrl, solicitudId);
+        input.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); correr(); } });
+        ctrl.el.querySelectorAll('[data-sku]').forEach(b => b.addEventListener('click', () => { input.value = b.getAttribute('data-sku'); correr(); }));
+        const lista = ctrl.el.querySelector('#scan-lista');
+        if (lista) lista.addEventListener('change', () => { if (!lista.value) return; input.value = lista.value; correr(); });
+        setTimeout(() => input.focus(), 30);
+    },
+
+    confirmarEscaneo: function (ctrl, solicitudId) {
+        const input = ctrl.el.querySelector('#scan-codigo');
+        const r = BelenStore.surtirLinea(solicitudId, input.value, this.sesion);
+        if (!r.ok) {
+            BelenUI.toast(r.motivo, 'alerta');
+            const lista = ctrl.el.querySelector('#scan-lista');
+            if (lista) lista.value = '';
+            input.focus();
+            input.select();
+            return;
+        }
+        BelenUI.toast(r.completa ? 'Solicitud surtida. El costo ya está en la cuenta.' : r.producto.nombre + ' surtido. Quedan ' + r.producto.stock + ' en almacén.', r.completa ? 'exito' : 'info');
+        this.pestanaFarmacia = 'surtido';
+        this.render();
+        if (r.completa || ctrl.cerrado) { if (!ctrl.cerrado) ctrl.cerrar(); return; }
+        const ficha = BelenStore.fichasSurtidoPendiente(this.sesion).find(x => x.solicitud_id === solicitudId);
+        if (!ficha) { ctrl.cerrar(); return; }
+        ctrl.cuerpo.innerHTML = this.htmlCuerpoEscaneo(ficha);
+        this.enlazarEscaneo(ctrl, solicitudId);
     },
 
     // ======================================================================
