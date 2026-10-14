@@ -83,7 +83,8 @@
         /* Modo Enfermería: la Nota Médica y las Indicaciones son solo del médico (solo lectura); Hoja Frontal y Consentimientos sí se editan */
         body.modo-enfermeria #vista-nota, body.modo-enfermeria #vista-indicaciones { pointer-events: none; opacity: 0.88; }
         body.modo-enfermeria #btn-datos-prueba, body.modo-enfermeria #btn-imprimir-todo, body.modo-enfermeria #btn-descartar-internamiento,
-        body.modo-enfermeria #btn-finalizar-expediente, body.modo-enfermeria #btn-historial-visitas, body.modo-enfermeria #indicador-pendientes { display: none !important; }
+        body.modo-enfermeria #btn-finalizar-expediente, body.modo-enfermeria #btn-historial-visitas, body.modo-enfermeria #indicador-pendientes,
+        body.modo-enfermeria #btn-cargar-cuenta { display: none !important; }
         .solo-admin-demo { display: none; }
         body[data-rol="admin"] .solo-admin-demo { display: inline-block; }
 
@@ -93,7 +94,7 @@
         .hoja-papel .linea-input { border-bottom: 1px solid black; display: inline-block; padding: 0 5px; font-weight: bold; }
         .hoja-papel .firma-box { text-align: center; width: 220px; border-top: 1px solid black; padding-top: 5px; font-size: 10px; margin-left: auto; margin-right: auto; }
         .hoja-papel input, .hoja-papel textarea, .hoja-papel select, .hoja-papel button { pointer-events: none; }
-        body.modo-visor #indicador-pendientes { display: none !important; }
+        body.modo-visor #indicador-pendientes, body.modo-visor #btn-cargar-cuenta { display: none !important; }
         body.modo-visor #main-expediente,
         body.modo-visor #modal-destino,
         body.modo-visor #header-pestanas { display: none !important; }
@@ -134,7 +135,7 @@
                 </div>
                 <span id="badge-menor" class="hidden mt-3 ml-1 inline-flex items-center gap-1 bg-rose-50 text-rose-700 px-3 py-1 rounded-full text-xs font-bold border border-rose-200"><i class="fas fa-child"></i> Menor de edad</span>
             </div>
-
+            
             <div class="bg-white/60 rounded-xl p-3 shadow-sm border border-slate-200 mb-4">
                 <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i class="fas fa-heartbeat text-cyan-500"></i> Signos Vitales</h4>
                 <div class="grid grid-cols-4 md:grid-cols-2 gap-2 text-center">
@@ -148,7 +149,7 @@
                 <div id="alerta-signos" class="hidden mt-2 items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-2.5 py-2 text-[11px] font-semibold leading-snug">
                     <i class="fas fa-triangle-exclamation mt-0.5"></i>
                     <span>El paciente llegó sin signos vitales. Capture TA, FC, FR, Temp y SpO2: la Nota Médica no se podrá cerrar sin ellos.</span>
-                </div>
+            </div>
                 <button type="button" id="btn-capturar-signos" onclick="abrirCapturaSignos()" class="mt-2 w-full bg-white border border-cyan-300 text-cyan-700 hover:bg-cyan-50 text-[11px] font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5"><i class="fas fa-heart-pulse"></i> Capturar / Editar Signos Vitales</button>
                 <!-- Antropometría: se captura una sola vez aquí y el Consentimiento la lee automáticamente -->
                 <div class="grid grid-cols-3 gap-2 text-center mt-2 pt-2 border-t border-slate-100">
@@ -228,117 +229,117 @@
                         </div>
                         <button type="button" onclick="verHistorialVisitas()" class="text-[11px] font-bold text-cyan-700 hover:text-cyan-900 border border-cyan-300 bg-white rounded-lg px-3 py-1.5 whitespace-nowrap">Ver historial</button>
                     </div>
-                    <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 border-b border-slate-100 pb-2 gap-2">
-                            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-user-edit text-cyan-500 mr-1"></i> Datos Complementarios y Fecha</h3>
-                            <input type="datetime-local" id="input-fecha" class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-cyan-500">
-                        </div>
-                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
-                            <div>
+                <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 border-b border-slate-100 pb-2 gap-2">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-user-edit text-cyan-500 mr-1"></i> Datos Complementarios y Fecha</h3>
+                        <input type="datetime-local" id="input-fecha" class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+                        <div>
                                 <div class="flex justify-between items-center mb-1"><label for="comp-fn" class="text-[10px] font-bold text-slate-500 uppercase">Fecha de Nacimiento <span class="text-red-500">*</span></label></div>
                                 <input type="date" id="comp-fn" onchange="actualizarEdadDesdeFN()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
-                            </div>
-                            <div>
+                        </div>
+                        <div>
                                 <div class="flex justify-between items-center mb-1"><label for="comp-civil" class="text-[10px] font-bold text-slate-500 uppercase">Estado Civil <span class="text-red-500">*</span></label></div>
                                 <select id="comp-civil" onchange="sincronizarCivil()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
-                                    <option value="">Seleccione...</option><option>Soltero(a)</option><option>Casado(a)</option><option>Unión Libre</option><option>Divorciado(a)</option><option>Viudo(a)</option>
-                                </select>
-                            </div>
-                            <div>
+                                <option value="">Seleccione...</option><option>Soltero(a)</option><option>Casado(a)</option><option>Unión Libre</option><option>Divorciado(a)</option><option>Viudo(a)</option>
+                            </select>
+                        </div>
+                        <div>
                                 <div class="flex justify-between items-center mb-1"><label for="comp-tel" class="text-[10px] font-bold text-slate-500 uppercase">Teléfono <span class="text-red-500">*</span></label></div>
                                 <input type="tel" inputmode="tel" id="comp-tel" maxlength="20" autocomplete="off" placeholder="10 dígitos. Ej. 322 123 4567" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
-                            </div>
-                            <div>
+                        </div>
+                        <div>
                                 <div class="flex justify-between items-center mb-1"><label for="comp-ocu" class="text-[10px] font-bold text-slate-500 uppercase">Ocupación <span class="text-red-500">*</span></label></div>
                                 <input type="text" id="comp-ocu" minlength="3" maxlength="60" autocomplete="off" placeholder="Ej. Ama de casa" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
-                            </div>
+                        </div>
                             <div class="col-span-2 md:col-span-1">
                                 <div class="flex justify-between items-center mb-1"><label for="comp-dir" class="text-[10px] font-bold text-slate-500 uppercase">Dirección <span class="text-red-500">*</span></label></div>
                                 <input type="text" id="comp-dir" minlength="8" maxlength="150" autocomplete="off" placeholder="Calle, número y colonia" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-history text-cyan-500 mr-1"></i> Antecedentes</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Heredofamiliares</label><label class="flex items-center gap-1 text-[10px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ahf-neg" checked onchange="toggleAntecedente('ahf')" class="text-cyan-600"> Preguntado y Negado</label></div>
+                            <input type="text" id="val-ahf" placeholder="Especifique..." disabled class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500 outline-none opacity-50 cursor-not-allowed">
+                        </div>
+                        <div>
+                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">No Patológicos</label><label class="flex items-center gap-1 text-[10px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-apnp-neg" checked onchange="toggleAntecedente('apnp')" class="text-cyan-600"> Preguntado y Negado</label></div>
+                            <input type="text" id="val-apnp" placeholder="Tabaquismo, alcoholismo, etc." disabled class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500 outline-none opacity-50 cursor-not-allowed">
+                        </div>
+                    </div>
+                    <div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Grupo y Rh:</label>
+                        <div class="flex items-center gap-3">
+                            <select id="val-sangre" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option value="">Seleccione...</option><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select>
+                            <label class="flex items-center gap-1 text-[10px] text-slate-600 cursor-pointer"><input type="checkbox" id="chk-sangre-omitir" onchange="document.getElementById('val-sangre').disabled = this.checked"> Desconoce / Omitir</label>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 md:p-4 mb-4">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-3 gap-2">
+                                <label class="text-xs font-bold text-slate-700 uppercase">Personales Patológicos</label>
+                            <label class="flex items-center gap-1 text-[11px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-app-neg" onchange="toggleAPP()" class="text-cyan-600"> Todo Preguntado y Negado</label>
+                        </div>
+                        <div id="contenedor-app" class="space-y-4">
+                            <div class="flex flex-col sm:flex-row gap-2 sm:items-center bg-white p-2 rounded-lg border border-red-100">
+                                <label class="w-full sm:w-32 flex items-center gap-2 text-xs font-bold text-red-600 cursor-pointer"><input type="checkbox" id="chk-alergias" onchange="toggleSubAPP('alergias')" class="text-red-600"> Alergias</label>
+                                <div id="div-alergias" class="hidden flex-1"><input type="text" id="val-alergias" placeholder="Especifique a qué es alérgico..." class="w-full bg-slate-50 border border-red-200 rounded p-2 text-xs text-red-700 font-bold focus:border-red-500"></div>
+                            </div>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div class="bg-white p-2 rounded border border-slate-200">
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-hta" onchange="toggleSubAPP('hta')" class="text-cyan-600"> Hipertensión Arterial</label>
+                                    <div id="div-hta" class="hidden grid grid-cols-1 gap-2"><input type="text" id="hta-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="hta-meds" placeholder="Medicamento y Dosis" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="hta-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
+                                </div>
+                                <div class="bg-white p-2 rounded border border-slate-200">
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-dm2" onchange="toggleSubAPP('dm2')" class="text-cyan-600"> Diabetes Mellitus tipo 2</label>
+                                    <div id="div-dm2" class="hidden grid grid-cols-1 gap-2"><input type="text" id="dm2-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="dm2-meds" placeholder="Medicamento/Insulina" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="dm2-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Otras Enfermedades (Asma, Tiroides, etc.)</label>
+                                <input type="text" id="val-otras-app" placeholder="Especifique..." class="w-full bg-white border border-slate-200 rounded p-2 text-xs focus:border-cyan-500">
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-slate-200">
+                                <div class="flex justify-between items-center mb-2">
+                                    <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-qx" onchange="toggleSubAPP('qx')" class="text-cyan-600"> Antecedentes Quirúrgicos</label>
+                                        <button type="button" id="btn-add-qx" onclick="agregarCirugiaDOM()" class="hidden text-[10px] bg-cyan-100 text-cyan-700 font-bold px-2 py-1 rounded shadow-sm hover:bg-cyan-200">+ Agregar Cirugía</button>
+                                </div>
+                                <div id="div-qx" class="hidden space-y-2"><div id="qx-container"></div></div>
+                            </div>
+                            <div class="bg-white p-2 rounded-lg border border-slate-200">
+                                <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-hemo" onchange="toggleSubAPP('hemo')" class="text-cyan-600"> Transfusiones (Hemoderivados)</label>
+                                <div id="div-hemo" class="hidden mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    <input type="text" id="hemo-tipo" placeholder="¿Cuántos y de qué tipo? (Ej. 2 CE)" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs">
+                                    <input type="text" id="hemo-comp" placeholder="Complicaciones (o Ninguna)" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs">
+                                </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-history text-cyan-500 mr-1"></i> Antecedentes</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">Heredofamiliares</label><label class="flex items-center gap-1 text-[10px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ahf-neg" checked onchange="toggleAntecedente('ahf')" class="text-cyan-600"> Preguntado y Negado</label></div>
-                                <input type="text" id="val-ahf" placeholder="Especifique..." disabled class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500 outline-none opacity-50 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <div class="flex justify-between items-center mb-1"><label class="text-[10px] font-bold text-slate-500 uppercase">No Patológicos</label><label class="flex items-center gap-1 text-[10px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-apnp-neg" checked onchange="toggleAntecedente('apnp')" class="text-cyan-600"> Preguntado y Negado</label></div>
-                                <input type="text" id="val-apnp" placeholder="Tabaquismo, alcoholismo, etc." disabled class="w-full bg-slate-100 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500 outline-none opacity-50 cursor-not-allowed">
-                            </div>
-                        </div>
-                        <div class="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                            <label class="text-[10px] font-bold text-slate-500 uppercase">Grupo y Rh:</label>
-                            <div class="flex items-center gap-3">
-                                <select id="val-sangre" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option value="">Seleccione...</option><option>O+</option><option>O-</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option></select>
-                                <label class="flex items-center gap-1 text-[10px] text-slate-600 cursor-pointer"><input type="checkbox" id="chk-sangre-omitir" onchange="document.getElementById('val-sangre').disabled = this.checked"> Desconoce / Omitir</label>
-                            </div>
-                        </div>
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 md:p-4 mb-4">
-                            <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-3 gap-2">
-                                <label class="text-xs font-bold text-slate-700 uppercase">Personales Patológicos</label>
-                                <label class="flex items-center gap-1 text-[11px] text-slate-600 font-bold cursor-pointer"><input type="checkbox" id="chk-app-neg" onchange="toggleAPP()" class="text-cyan-600"> Todo Preguntado y Negado</label>
-                            </div>
-                            <div id="contenedor-app" class="space-y-4">
-                                <div class="flex flex-col sm:flex-row gap-2 sm:items-center bg-white p-2 rounded-lg border border-red-100">
-                                    <label class="w-full sm:w-32 flex items-center gap-2 text-xs font-bold text-red-600 cursor-pointer"><input type="checkbox" id="chk-alergias" onchange="toggleSubAPP('alergias')" class="text-red-600"> Alergias</label>
-                                    <div id="div-alergias" class="hidden flex-1"><input type="text" id="val-alergias" placeholder="Especifique a qué es alérgico..." class="w-full bg-slate-50 border border-red-200 rounded p-2 text-xs text-red-700 font-bold focus:border-red-500"></div>
-                                </div>
-                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                    <div class="bg-white p-2 rounded border border-slate-200">
-                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-hta" onchange="toggleSubAPP('hta')" class="text-cyan-600"> Hipertensión Arterial</label>
-                                        <div id="div-hta" class="hidden grid grid-cols-1 gap-2"><input type="text" id="hta-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="hta-meds" placeholder="Medicamento y Dosis" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="hta-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
-                                    </div>
-                                    <div class="bg-white p-2 rounded border border-slate-200">
-                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-dm2" onchange="toggleSubAPP('dm2')" class="text-cyan-600"> Diabetes Mellitus tipo 2</label>
-                                        <div id="div-dm2" class="hidden grid grid-cols-1 gap-2"><input type="text" id="dm2-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="dm2-meds" placeholder="Medicamento/Insulina" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="dm2-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">Otras Enfermedades (Asma, Tiroides, etc.)</label>
-                                    <input type="text" id="val-otras-app" placeholder="Especifique..." class="w-full bg-white border border-slate-200 rounded p-2 text-xs focus:border-cyan-500">
-                                </div>
-                                <div class="bg-white p-3 rounded-lg border border-slate-200">
-                                    <div class="flex justify-between items-center mb-2">
-                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-qx" onchange="toggleSubAPP('qx')" class="text-cyan-600"> Antecedentes Quirúrgicos</label>
-                                        <button type="button" id="btn-add-qx" onclick="agregarCirugiaDOM()" class="hidden text-[10px] bg-cyan-100 text-cyan-700 font-bold px-2 py-1 rounded shadow-sm hover:bg-cyan-200">+ Agregar Cirugía</button>
-                                    </div>
-                                    <div id="div-qx" class="hidden space-y-2"><div id="qx-container"></div></div>
-                                </div>
-                                <div class="bg-white p-2 rounded-lg border border-slate-200">
-                                    <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-hemo" onchange="toggleSubAPP('hemo')" class="text-cyan-600"> Transfusiones (Hemoderivados)</label>
-                                    <div id="div-hemo" class="hidden mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        <input type="text" id="hemo-tipo" placeholder="¿Cuántos y de qué tipo? (Ej. 2 CE)" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs">
-                                        <input type="text" id="hemo-comp" placeholder="Complicaciones (o Ninguna)" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="seccion-ago" class="bg-pink-50 border border-pink-100 rounded-xl p-3 md:p-4">
-                            <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-3 gap-2">
+                    <div id="seccion-ago" class="bg-pink-50 border border-pink-100 rounded-xl p-3 md:p-4">
+                        <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-3 gap-2">
                                 <label class="text-[11px] font-bold text-pink-800 uppercase"><i class="fas fa-venus mr-1"></i> Gineco-Obstétricos</label>
-                                <label class="flex items-center gap-1 text-[10px] text-pink-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-omitir" onchange="toggleAGO()" class="text-pink-600"> Omitir en nota / N/A</label>
-                            </div>
-                            <div id="contenedor-ago" class="space-y-3">
-                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
+                            <label class="flex items-center gap-1 text-[10px] text-pink-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-omitir" onchange="toggleAGO()" class="text-pink-600"> Omitir en nota / N/A</label>
+                        </div>
+                        <div id="contenedor-ago" class="space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
                                     <div class="sm:col-span-2"><label class="text-[9px] uppercase text-pink-700">Fecha de última menstruación (Día/Mes/Año)</label><input type="text" id="ago-fum" placeholder="O indicar Menopausia" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"></div>
-                                    <div><label class="text-[9px] uppercase text-pink-700">Ritmo</label><select id="ago-ritmo" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"><option>Regular</option><option>Irregular</option><option>N/A</option></select></div>
-                                    <div><label class="text-[9px] uppercase text-pink-700">Anticonceptivos</label><input type="text" id="ago-mpf" placeholder="Ninguno, DIU, etc." class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"></div>
+                                <div><label class="text-[9px] uppercase text-pink-700">Ritmo</label><select id="ago-ritmo" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"><option>Regular</option><option>Irregular</option><option>N/A</option></select></div>
+                                <div><label class="text-[9px] uppercase text-pink-700">Anticonceptivos</label><input type="text" id="ago-mpf" placeholder="Ninguno, DIU, etc." class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"></div>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-pink-200 overflow-x-auto">
+                                <div class="flex flex-wrap items-center gap-3 mb-3 min-w-max">
+                                    <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">G:</label><input type="number" id="ago-g" value="0" min="0" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
+                                    <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">P:</label><input type="number" id="ago-p" value="0" min="0" onchange="generarFilasAGO()" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
+                                    <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">C:</label><input type="number" id="ago-c" value="0" min="0" onchange="generarFilasAGO()" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
+                                    <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">A:</label><input type="number" id="ago-a" value="0" min="0" onchange="generarFilasAGO()" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
+                                    <label class="ml-auto flex items-center gap-1 text-[10px] text-pink-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-solo-formula" class="text-pink-600" onchange="toggleDetallesAGO()"> Solo imprimir fórmula</label>
                                 </div>
-                                <div class="bg-white p-3 rounded-lg border border-pink-200 overflow-x-auto">
-                                    <div class="flex flex-wrap items-center gap-3 mb-3 min-w-max">
-                                        <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">G:</label><input type="number" id="ago-g" value="0" min="0" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
-                                        <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">P:</label><input type="number" id="ago-p" value="0" min="0" onchange="generarFilasAGO()" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
-                                        <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">C:</label><input type="number" id="ago-c" value="0" min="0" onchange="generarFilasAGO()" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
-                                        <div class="flex items-center gap-1"><label class="text-xs font-bold text-pink-800">A:</label><input type="number" id="ago-a" value="0" min="0" onchange="generarFilasAGO()" class="w-12 bg-slate-50 border border-pink-200 rounded p-1 text-center font-bold"></div>
-                                        <label class="ml-auto flex items-center gap-1 text-[10px] text-pink-600 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-solo-formula" class="text-pink-600" onchange="toggleDetallesAGO()"> Solo imprimir fórmula</label>
-                                    </div>
-                                    <div id="gestas-container" class="space-y-2 hidden"></div>
-                                </div>
+                                <div id="gestas-container" class="space-y-2 hidden"></div>
+                            </div>
 
                                 <div class="bg-white p-3 rounded-lg border border-pink-200">
                                     <p class="text-[10px] font-bold text-pink-800 uppercase mb-3"><i class="fas fa-notes-medical mr-1"></i> Historia ginecológica y sexual</p>
@@ -347,7 +348,7 @@
                                             <div class="flex justify-between items-center mb-1">
                                                 <label for="ago-ivus" class="text-[9px] uppercase text-pink-700">Infecciones de vías urinarias</label>
                                                 <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-ivus-nr" data-targets="ago-ivus" onchange="toggleNoReferido(this)" class="text-pink-600"> No referidas</label>
-                                            </div>
+                        </div>
                                             <input type="text" id="ago-ivus" placeholder="Ej. 2 en el último año" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
                                         </div>
                                         <div>
@@ -374,8 +375,8 @@
                                                 <input type="text" id="ago-higiene-cant" placeholder="Ej. 3 al día" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
+                    </div>
+                </div>
 
                                 <div class="bg-white p-3 rounded-lg border border-pink-200">
                                     <label class="flex items-center gap-2 text-xs font-bold text-pink-800 cursor-pointer"><input type="checkbox" id="chk-embarazo" onchange="toggleEmbarazo()" class="text-pink-600"> <i class="fas fa-baby-carriage"></i> ¿Embarazo Actual?</label>
@@ -416,21 +417,21 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        <div class="lg:col-span-1 bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <div class="lg:col-span-1 bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
                             <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Motivo de Consulta <span class="text-red-500">*</span></label>
-                            <textarea id="val-motivo" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-32 md:h-40 resize-none" placeholder="Síntoma principal..."></textarea>
-                        </div>
-                        <div class="lg:col-span-2 bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Padecimiento Actual <span class="text-red-500">*</span></label>
-                            <textarea id="val-padecimiento" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-40 resize-none leading-relaxed" placeholder="Evolución clínica detallada del padecimiento..."></textarea>
-                        </div>
+                        <textarea id="val-motivo" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-32 md:h-40 resize-none" placeholder="Síntoma principal..."></textarea>
                     </div>
+                    <div class="lg:col-span-2 bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Padecimiento Actual <span class="text-red-500">*</span></label>
+                        <textarea id="val-padecimiento" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-40 resize-none leading-relaxed" placeholder="Evolución clínica detallada del padecimiento..."></textarea>
+                    </div>
+                </div>
 
-                    <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                        <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-1 block">Exploración Física</label>
-                        <p class="text-xs text-slate-500 mb-4">Toque la tarjeta si encuentra alguna alteración en el sistema.</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-1 block">Exploración Física</label>
+                    <p class="text-xs text-slate-500 mb-4">Toque la tarjeta si encuentra alguna alteración en el sistema.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div class="flex flex-col gap-2"><div id="btn-neuro" data-label="Neurológico Normal" onclick="toggleTarjetaEF('neuro')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Neurológico Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-neuro" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-neuro" value="normal"></div>
                             <div class="flex flex-col gap-2"><div id="btn-cabeza" data-label="Cabeza y Cuello Normal" onclick="toggleTarjetaEF('cabeza')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Cabeza y Cuello Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-cabeza" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-cabeza" value="normal"></div>
                             <div class="flex flex-col gap-2"><div id="btn-cardio" data-label="Cardiopulmonar Normal" onclick="toggleTarjetaEF('cardio')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Cardiopulmonar Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-cardio" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa hallazgos..."></textarea><input type="hidden" id="estatus-cardio" value="normal"></div>
@@ -445,60 +446,60 @@
                                 </div></div>
                             <div class="flex flex-col gap-2"><div id="btn-rectal" data-label="Tacto Rectal / GU Normal" onclick="toggleTarjetaEF('rectal')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Tacto Rectal / GU Normal</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-rectal" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-rectal" value="normal"></div>
                             <div class="flex flex-col gap-2"><div id="btn-ext" data-label="Extremidades Normales" onclick="toggleTarjetaEF('ext')" class="bg-emerald-50 text-emerald-700 border border-emerald-200 p-3 md:p-4 rounded-xl cursor-pointer font-bold flex justify-between items-center transition select-none shadow-sm hover:shadow-md text-sm md:text-base"><span>Extremidades Normales</span><i class="fas fa-check-circle text-lg md:text-xl"></i></div><textarea id="text-ext" class="hidden w-full bg-red-50 border border-red-200 rounded-lg p-3 text-sm focus:outline-none" placeholder="Describa alteraciones..."></textarea><input type="hidden" id="estatus-ext" value="normal"></div>
-                        </div>
                     </div>
+                </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                            <div class="flex justify-between items-center mb-2">
-                                <label class="text-sm font-bold text-slate-800 uppercase tracking-wide block">Estudios Auxiliares <span class="text-red-500">*</span></label>
-                                <label class="flex items-center gap-1 text-[10px] bg-slate-100 p-1 rounded cursor-pointer font-bold text-slate-600"><input type="checkbox" id="chk-omitir-estudios" onchange="toggleOmitir('estudios')" class="text-cyan-600"> No hay / Omitir</label>
-                            </div>
-                            <textarea id="val-estudios" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-24" placeholder="Ej. Rx Abdomen..."></textarea>
-                        </div>
-                        <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Diagnósticos <span class="text-red-500">*</span></label>
-                            <div class="flex gap-2 mb-3">
-                                <input list="cie10-list" id="input-dx" placeholder="Buscar CIE-10 o libre..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm focus:border-cyan-500 outline-none">
-                                <datalist id="cie10-list"><option value="J03.9 Amigdalitis aguda"><option value="E11.9 Diabetes mellitus 2"><option value="K56.4 Impactación fecal"><option value="R14.X Distensión abdominal"></datalist>
-                                <button type="button" onclick="agregarDx()" class="bg-cyan-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-cyan-700 transition"><i class="fas fa-plus"></i></button>
-                            </div>
-                            <ul id="lista-dx" class="space-y-1"></ul>
-                        </div>
-                    </div>
-
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                        <div class="flex justify-between items-center mb-2">
+                                <label class="text-sm font-bold text-slate-800 uppercase tracking-wide block">Estudios Auxiliares <span class="text-red-500">*</span></label>
+                            <label class="flex items-center gap-1 text-[10px] bg-slate-100 p-1 rounded cursor-pointer font-bold text-slate-600"><input type="checkbox" id="chk-omitir-estudios" onchange="toggleOmitir('estudios')" class="text-cyan-600"> No hay / Omitir</label>
+                        </div>
+                        <textarea id="val-estudios" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-24" placeholder="Ej. Rx Abdomen..."></textarea>
+                    </div>
+                    <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
+                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Diagnósticos <span class="text-red-500">*</span></label>
+                        <div class="flex gap-2 mb-3">
+                            <input list="cie10-list" id="input-dx" placeholder="Buscar CIE-10 o libre..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm focus:border-cyan-500 outline-none">
+                            <datalist id="cie10-list"><option value="J03.9 Amigdalitis aguda"><option value="E11.9 Diabetes mellitus 2"><option value="K56.4 Impactación fecal"><option value="R14.X Distensión abdominal"></datalist>
+                                <button type="button" onclick="agregarDx()" class="bg-cyan-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-cyan-700 transition"><i class="fas fa-plus"></i></button>
+                        </div>
+                        <ul id="lista-dx" class="space-y-1"></ul>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
                         <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Análisis Clínico <span class="text-red-500">*</span></label>
-                        <textarea id="val-analisis" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Análisis del caso, integración diagnóstica..."></textarea>
+                    <textarea id="val-analisis" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Análisis del caso, integración diagnóstica..."></textarea>
                         <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Plan y Tratamiento <span class="text-red-500">*</span></label>
-                        <textarea id="val-plan" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Ej. Desimpactación manual, Paracetamol..."></textarea>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
-                            <div>
-                                <div class="flex justify-between items-center mb-2">
+                    <textarea id="val-plan" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Ej. Desimpactación manual, Paracetamol..."></textarea>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
                                     <label class="text-xs font-bold text-slate-800 uppercase tracking-wide">Signos de Alarma Explicados <span class="text-red-500">*</span></label>
-                                    <label class="flex items-center gap-1 text-[10px] bg-slate-100 p-1 rounded cursor-pointer font-bold text-slate-600"><input type="checkbox" id="chk-omitir-alarma" onchange="toggleOmitir('alarma')" class="text-cyan-600"> Omitir</label>
-                                </div>
-                                <textarea id="val-alarma" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-16" placeholder="Ej. Fiebre, dolor intenso..."></textarea>
+                                <label class="flex items-center gap-1 text-[10px] bg-slate-100 p-1 rounded cursor-pointer font-bold text-slate-600"><input type="checkbox" id="chk-omitir-alarma" onchange="toggleOmitir('alarma')" class="text-cyan-600"> Omitir</label>
                             </div>
-                            <div>
+                            <textarea id="val-alarma" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-16" placeholder="Ej. Fiebre, dolor intenso..."></textarea>
+                        </div>
+                        <div>
                                 <label class="text-xs font-bold text-slate-800 uppercase tracking-wide mb-2 block">Pronóstico Médico Final <span class="text-red-500">*</span></label>
-                                <input list="pronosticos-list" id="val-pronostico" placeholder="Seleccione o escriba..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none font-bold text-slate-700 h-16">
-                                <datalist id="pronosticos-list">
-                                    <option value="Favorable con tratamiento oportuno">
-                                    <option value="Reservado a evolución clínica">
-                                    <option value="Reservado a evolución quirúrgica">
-                                    <option value="Reservado a procedimiento">
-                                    <option value="Malo para la vida y la función">
-                                </datalist>
-                            </div>
+                            <input list="pronosticos-list" id="val-pronostico" placeholder="Seleccione o escriba..." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none font-bold text-slate-700 h-16">
+                            <datalist id="pronosticos-list">
+                                <option value="Favorable con tratamiento oportuno">
+                                <option value="Reservado a evolución clínica">
+                                <option value="Reservado a evolución quirúrgica">
+                                <option value="Reservado a procedimiento">
+                                <option value="Malo para la vida y la función">
+                            </datalist>
                         </div>
                     </div>
+                </div>
 
-                    <div class="text-right pb-10">
+                <div class="text-right pb-10">
                         <button type="button" onclick="validarYGuardar()" class="w-full md:w-auto bg-slate-900 text-white px-10 py-4 md:py-5 rounded-xl text-base md:text-lg font-bold shadow-xl hover:bg-slate-800 hover:-translate-y-1 transition-all inline-flex justify-center items-center gap-3">
                             <i class="fas fa-save"></i> Guardar Destino
-                        </button>
-                    </div>
+                    </button>
+                </div>
                 </div>
 
                 <div id="vista-ingreso" class="hidden fade-in max-w-4xl mx-auto space-y-5 pb-20">
@@ -745,6 +746,7 @@
                     <button type="button" id="btn-nueva-evolucion" onclick="abrirNuevaNotaEvolucion()" class="hidden bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-plus"></i> Nueva Nota de Evolución</button>
                     <button type="button" id="btn-modificar-indicaciones" onclick="abrirModificarIndicaciones()" class="hidden bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-plus"></i> Actualizar Indicaciones</button>
                     <button type="button" id="btn-solicitar-interconsulta" onclick="abrirSolicitarInterconsulta()" class="hidden bg-white border border-cyan-300 text-cyan-700 hover:bg-cyan-50 text-xs font-bold px-3.5 py-2 rounded-lg transition items-center gap-1.5"><i class="fas fa-plus"></i> Solicitar Interconsulta</button>
+                    <button type="button" id="btn-dar-alta-egreso" onclick="abrirNotaEgreso()" class="hidden bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-door-open"></i> Dar de Alta (Egreso)</button>
                     <button type="button" id="btn-imprimir-documento" onclick="imprimirDocumentoVisor()" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-print"></i> Imprimir este documento</button>
                 </div>
             </div>
@@ -760,6 +762,11 @@
         <i class="fas fa-exclamation-circle text-amber-500"></i>
         <span id="texto-pendientes">Faltan campos obligatorios</span>
         <i class="fas fa-arrow-down text-[10px] text-amber-500"></i>
+    </button>
+    <button type="button" id="btn-cargar-cuenta" onclick="abrirCargarCuentaConsulta()" class="hidden fixed bottom-6 left-6 z-40 print:hidden items-center gap-2 bg-white text-amber-800 border border-amber-300 shadow-lg rounded-full px-4 py-2.5 text-xs font-bold hover:bg-amber-50 hover:-translate-y-0.5 transition-all">
+        <i class="fas fa-file-invoice-dollar text-amber-500"></i>
+        <span>Cargar a Cuenta</span>
+        <span id="badge-cargos-consulta" class="hidden bg-amber-600 text-white rounded-full min-w-[1.25rem] px-1.5 py-0.5 text-[10px] text-center">0</span>
     </button>
 
     <div id="modal-destino" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 pointer-events-none print:hidden p-4">
@@ -947,6 +954,36 @@
             <p style="margin: 0; font-weight: bold; font-size: 12px;" id="ev-firma"></p>
             <p style="margin: 0; font-size: 10px;">Cédula Profesional: 87654321</p>
             <p style="margin: 0; font-size: 10px;" id="ev-rol-firma"></p>
+        </div>
+    </div>
+
+    <!-- Nota de Egreso (plantilla de impresión; 2 copias al dar de alta) -->
+    <div id="print-egreso" class="zona-impresion hidden">
+        <div style="text-align: right; margin-bottom: 5px;">
+            <p style="margin: 0; font-size: 14px; font-weight: bold; text-decoration: underline;">NOTA DE EGRESO</p>
+            <p style="margin: 0;">Folio: <span id="eg-folio"></span> &nbsp;&nbsp; Fecha y Hora: <span id="eg-fecha"></span></p>
+        </div>
+        <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
+            <p style="margin: 2px 0;"><strong>NOMBRE:</strong> <span class="out-paciente"></span> &nbsp;&nbsp; <strong>EDAD:</strong> <span class="out-edad"></span> &nbsp;&nbsp; <strong>SEXO:</strong> <span class="out-sexo"></span></p>
+            <p style="margin: 2px 0;"><strong>ÁREA:</strong> <span id="eg-area"></span> &nbsp;&nbsp; <strong>CAMA:</strong> <span id="eg-cama"></span> &nbsp;&nbsp; <strong>ALERGIAS:</strong> <span id="eg-alergias"></span></p>
+            <p style="margin: 2px 0;"><strong>DIAGNÓSTICO DE INGRESO:</strong> <span id="eg-dx-ingreso"></span></p>
+        </div>
+        <div style="line-height: 1.4; text-align: justify;">
+            <p style="margin: 0 0 2px 0;"><strong>MOTIVO DE EGRESO:</strong></p>
+            <div id="eg-motivo" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+            <p style="margin: 0 0 2px 0;"><strong>RESUMEN CLÍNICO:</strong></p>
+            <div id="eg-resumen" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+            <p style="margin: 0 0 2px 0;"><strong>DIAGNÓSTICO FINAL:</strong></p>
+            <div id="eg-dx-final" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+            <p style="margin: 0 0 2px 0;"><strong>PRONÓSTICO:</strong></p>
+            <div id="eg-pronostico" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+            <p style="margin: 0 0 2px 0;"><strong>PLAN DE ALTA:</strong></p>
+            <div id="eg-plan" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
+        </div>
+        <div class="firma-box" style="margin-top: 60px;">
+            <p style="margin: 0; font-weight: bold; font-size: 12px;" id="eg-firma"></p>
+            <p style="margin: 0; font-size: 10px;">Cédula Profesional: 87654321</p>
+            <p style="margin: 0; font-size: 10px;">Médico Tratante</p>
         </div>
     </div>
 
@@ -1362,6 +1399,61 @@
             return zonaComoDocumento(z);
         }
 
+        function htmlNotaEgreso(n) {
+            const z = document.getElementById('print-egreso').cloneNode(true);
+            const q = id => z.querySelector('#' + id);
+            const p = datosPacienteVigentes();
+            z.querySelectorAll('.out-paciente').forEach(e => { e.textContent = p.nombre; });
+            z.querySelectorAll('.out-edad').forEach(e => { e.textContent = p.edadTxt; });
+            z.querySelectorAll('.out-sexo').forEach(e => { e.textContent = p.sexoTxt; });
+            q('eg-folio').textContent = n.folio;
+            q('eg-fecha').textContent = BelenStore.fechaHoraLegible(n.fecha_hora);
+            q('eg-area').textContent = areaVisor();
+            q('eg-cama').textContent = INTERNAMIENTO.cama || 'Sin asignar';
+            q('eg-alergias').textContent = textoAlergiasVisor();
+            q('eg-dx-ingreso').textContent = INTERNAMIENTO.diagnostico_ingreso || 'No registrado';
+            q('eg-motivo').textContent = n.motivo_egreso || '';
+            q('eg-resumen').textContent = n.resumen_clinico || '';
+            q('eg-dx-final').textContent = n.diagnostico_final || '';
+            q('eg-pronostico').textContent = n.pronostico || '';
+            q('eg-plan').textContent = n.plan_alta || '';
+            q('eg-firma').textContent = n.autor_nombre;
+            return zonaComoDocumento(z);
+        }
+
+        function htmlCuentaConsumos() {
+            const e = BelenUI.esc, S = BelenStore;
+            const cargos = INTERNAMIENTO.cargos || [];
+            const puede = ACCESO_VISOR && ACCESO_VISOR.puede_cargar_cuenta;
+            const filas = cargos.length ? cargos.map((c, i) => `<tr class="border-t border-slate-100">
+                <td class="px-3 py-2 text-slate-500">${i + 1}</td>
+                <td class="px-3 py-2 font-medium text-slate-800">${e(c.concepto)}</td>
+                <td class="px-3 py-2 text-right">${e(S.formatoMoneda(c.precio_unitario))}</td>
+                <td class="px-3 py-2 text-center">${c.cantidad || 1}</td>
+                <td class="px-3 py-2 text-right font-bold">${e(S.formatoMoneda(c.subtotal))}</td>
+            </tr>`).join('') : '<tr><td colspan="5" class="px-3 py-8 text-center text-slate-400">Aún no hay cargos en esta cuenta.</td></tr>';
+            return `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p class="text-sm font-extrabold text-slate-900">Cuenta y Consumos</p>
+                        <p class="text-xs text-slate-500">Acumulado del internamiento. Más adelante este modal conectará el lector de códigos de barras.</p>
+                    </div>
+                    ${puede ? `<button type="button" onclick="abrirCargarInsumoHospital()" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition inline-flex items-center gap-1.5"><i class="fas fa-plus"></i> Cargar Insumo/Medicamento</button>` : ''}
+                </div>
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr>
+                        <th class="px-3 py-2 text-left">#</th><th class="px-3 py-2 text-left">Concepto</th>
+                        <th class="px-3 py-2 text-right">Precio unitario</th><th class="px-3 py-2 text-center">Cantidad</th>
+                        <th class="px-3 py-2 text-right">Subtotal</th></tr></thead>
+                    <tbody>${filas}</tbody>
+                    <tfoot><tr class="border-t-2 border-slate-200 bg-slate-50">
+                        <td colspan="4" class="px-3 py-3 text-right text-xs font-bold uppercase text-slate-500">Total</td>
+                        <td class="px-3 py-3 text-right text-base font-extrabold text-slate-900">${e(S.formatoMoneda(INTERNAMIENTO.cuenta_actual || 0))}</td>
+                    </tr></tfoot>
+                </table>
+            </div>`;
+        }
+
         // Árbol: carpeta Ingreso, carpeta Indicaciones Médicas (por fecha), carpeta Evolución (SOAP por fecha/hora)
         function construirDocumentosVisor() {
             const S = BelenStore, docs = [], nodos = [];
@@ -1398,6 +1490,25 @@
                 meta: n.folio + ' · ' + S.fechaHoraLegible(n.fecha_hora) + ' · ' + n.autor_nombre + ' (' + etiquetaRelacion(n) + ')',
                 htmls: () => [htmlNotaEvolucion(n)] })), { vacio: 'Aún no hay notas de evolución' });
 
+            if (INTERNAMIENTO.nota_egreso) {
+                const eg = INTERNAMIENTO.nota_egreso;
+                nodo('egreso', 'Nota de Egreso', 'fa-file-circle-check', [{
+                    id: 'nota-egreso', titulo: 'Nota de Egreso',
+                    sub: S.fechaHoraLegible(eg.fecha_hora) + ' · ' + eg.autor_nombre,
+                    meta: eg.folio + ' · ' + S.fechaHoraLegible(eg.fecha_hora) + ' · ' + eg.autor_nombre + ' (Médico Tratante)',
+                    htmls: () => [htmlNotaEgreso(eg)]
+                }], { directo: true });
+            }
+            if (ACCESO_VISOR && ACCESO_VISOR.puede_ver_cuenta) {
+                const nCargos = (INTERNAMIENTO.cargos || []).length;
+                nodo('cuenta', 'Cuenta y Consumos', 'fa-file-invoice-dollar', [{
+                    id: 'cuenta-consumos', titulo: 'Cuenta y Consumos',
+                    sub: nCargos ? nCargos + (nCargos === 1 ? ' cargo' : ' cargos') + ' · ' + S.formatoMoneda(INTERNAMIENTO.cuenta_actual) : 'Sin cargos',
+                    meta: 'Acumulado de cargos del internamiento · ' + S.formatoMoneda(INTERNAMIENTO.cuenta_actual || 0),
+                    htmls: () => [htmlCuentaConsumos()]
+                }], { directo: true });
+            }
+
             DOCS_VISOR = docs; NODOS_VISOR = nodos;
         }
 
@@ -1431,7 +1542,9 @@
             DOC_ACTIVO_ID = d.id;
             document.getElementById('visor-doc-titulo').textContent = d.titulo;
             document.getElementById('visor-doc-meta').textContent = d.meta || '';
-            document.getElementById('visor-documento').innerHTML = d.htmls().map(h => `<article class="hoja-papel" aria-readonly="true" data-hoja>${h}</article>`).join('');
+            const esCuenta = d.id === 'cuenta-consumos';
+            document.getElementById('visor-documento').innerHTML = d.htmls().map(h => esCuenta ? h : `<article class="hoja-papel" aria-readonly="true" data-hoja>${h}</article>`).join('');
+            document.getElementById('btn-imprimir-documento').classList.toggle('hidden', esCuenta);
             document.getElementById('visor-documento-wrap').scrollTop = 0;
         }
 
@@ -1457,18 +1570,29 @@
             if (ACCESO_VISOR.relacion === 'interconsultante') {
                 document.getElementById('visor-banner-texto').textContent = 'Documento inmutable. Usted participa por interconsulta: puede agregar notas de evolución e indicaciones.';
             }
+            if (TURNO.estatus === 'alta_medica_pendiente_pago') {
+                document.getElementById('visor-banner-texto').textContent = 'Alta médica registrada. El expediente quedó pendiente de pago en caja; ya no se pueden agregar notas ni cargos.';
+            } else if (TURNO.estatus === 'cerrado_historico') {
+                document.getElementById('visor-banner-texto').textContent = 'Expediente cerrado (histórico). Solo consulta y reimpresión.';
+            }
+            if (ACCESO_VISOR.puede_ver_cuenta) {
+                $('visor-resumen').insertAdjacentHTML('beforeend', fila('Cuenta actual', `<b>${e(BelenStore.formatoMoneda(INTERNAMIENTO.cuenta_actual || 0))}</b>`));
+            }
         }
 
         function aplicarPermisosVisor() {
             const $ = id => document.getElementById(id);
             const escribe = ACCESO_VISOR.puede_escribir;
+            const alta = !!ACCESO_VISOR.puede_dar_alta;
             ['btn-nueva-evolucion', 'btn-modificar-indicaciones', 'btn-solicitar-interconsulta'].forEach(id => { $(id).classList.toggle('hidden', !escribe); $(id).classList.toggle('flex', escribe); });
+            $('btn-dar-alta-egreso').classList.toggle('hidden', !alta); $('btn-dar-alta-egreso').classList.toggle('flex', alta);
             $('btn-corregir-datos').classList.toggle('hidden', !ACCESO_VISOR.puede_corregir);
         }
 
         function refrescarVisor(seleccionarId) {
             INTERNAMIENTO = BelenStore.obtenerInternamiento(INTERNAMIENTO.internamiento_id) || INTERNAMIENTO;
             TURNO = BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
+            ACCESO_VISOR = BelenStore.accesoVisorHospitalizado(SESION, INTERNAMIENTO);
             compilarDocumentosCapturados();
             construirDocumentosVisor();
             if (seleccionarId) DOC_ACTIVO_ID = seleccionarId;
@@ -1725,6 +1849,109 @@
             });
         }
 
+        function htmlModalCargo(listaConceptos, origen) {
+            const e = BelenUI.esc;
+            const opts = (listaConceptos || []).map(x => `<option value="${e(x)}"></option>`).join('');
+            const hint = origen === 'hospitalizacion'
+                ? 'Más adelante este mismo modal conectará el lector de códigos de barras. Por ahora capture el concepto a mano o elija una opción común.'
+                : 'El cargo queda en la cuenta del paciente. Al dar de Alta, Administración lo verá en Cuentas por Cobrar.';
+            return `<div class="space-y-4 text-left">
+                <p class="text-xs text-slate-500">${hint}</p>
+                ${campoModal('cg', 'concepto', 'Concepto', `<input id="cg-concepto" type="text" list="cg-conceptos" maxlength="80" autocomplete="off" placeholder="Ej. ${e((listaConceptos || [])[0] || 'Concepto')}" class="${CLASE_CAMPO}" data-autofoco>
+                    <datalist id="cg-conceptos">${opts}</datalist>`)}
+                ${campoModal('cg', 'precio_unitario', 'Precio unitario', `<input id="cg-precio_unitario" type="number" inputmode="decimal" step="0.01" min="0.01" max="999999.99" placeholder="0.00" class="${CLASE_CAMPO}">`)}
+            </div>`;
+        }
+        function abrirCargarInsumoHospital() {
+            if (!ACCESO_VISOR || !ACCESO_VISOR.puede_cargar_cuenta) { BelenUI.toast('No puede cargar consumos en este internamiento.', 'alerta'); return; }
+            BelenUI.modal({
+                titulo: 'Cargar Insumo o Medicamento', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-pills', ancho: 'md',
+                html: htmlModalCargo(BelenStore.CONCEPTOS_HOSPITAL, 'hospitalizacion'),
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Agregar a la cuenta', estilo: 'primario', id: 'cg-guardar', alPulsar: c => {
+                        const r = BelenStore.agregarCargoInternamiento(INTERNAMIENTO.internamiento_id, leerCamposModal(c, 'cg', ['concepto', 'precio_unitario']), BelenStore.sesion());
+                        if (!r.ok) {
+                            if (r.errores) marcarErroresModal(c, 'cg', ['concepto', 'precio_unitario'], r.errores); else BelenUI.toast(r.motivo, 'peligro');
+                            return false;
+                        }
+                        BelenUI.toast(r.cargo.concepto + ' agregado · ' + BelenStore.formatoMoneda(r.cargo.subtotal), 'exito');
+                        refrescarVisor('cuenta-consumos');
+                    } }
+                ]
+            });
+        }
+        function imprimirNotaEgresoDosCopias(nota) {
+            const html = htmlNotaEgreso(nota);
+            const zona = document.getElementById('print-visor');
+            zona.innerHTML = `<div style="page-break-after: always;">${html}</div><div>${html}</div>`;
+            imprimirZonas([zona]);
+            zona.innerHTML = '';
+        }
+        function abrirNotaEgreso() {
+            if (!ACCESO_VISOR || !ACCESO_VISOR.puede_dar_alta) { BelenUI.toast('Solo el médico tratante puede dar de alta hospitalaria.', 'alerta'); return; }
+            const e = BelenUI.esc;
+            const html = `<div class="space-y-4 text-left">
+                <div class="bg-red-50 border border-red-200 text-red-800 text-xs rounded-lg px-3 py-2 flex items-start gap-2"><i class="fas fa-door-open mt-0.5"></i>
+                    <span>Al guardar se genera la Nota de Egreso (inmutable), se imprimen 2 copias y el internamiento pasa a Alta médica pendiente de pago. El paciente sale del Monitor de Camas de médicos y enfermería de piso.</span></div>
+                ${campoModal('egm', 'motivo_egreso', 'Motivo de Egreso', `<textarea id="egm-motivo_egreso" rows="2" class="${CLASE_CAMPO} resize-none" data-autofoco></textarea>`)}
+                ${campoModal('egm', 'resumen_clinico', 'Resumen Clínico', `<textarea id="egm-resumen_clinico" rows="4" class="${CLASE_CAMPO} resize-none"></textarea>`)}
+                ${campoModal('egm', 'diagnostico_final', 'Diagnóstico Final', `<textarea id="egm-diagnostico_final" rows="2" class="${CLASE_CAMPO} resize-none">${e(INTERNAMIENTO.diagnostico_actual || '')}</textarea>`)}
+                ${campoModal('egm', 'pronostico', 'Pronóstico', `<textarea id="egm-pronostico" rows="2" class="${CLASE_CAMPO} resize-none"></textarea>`)}
+                ${campoModal('egm', 'plan_alta', 'Plan de Alta', `<textarea id="egm-plan_alta" rows="3" class="${CLASE_CAMPO} resize-none"></textarea>`)}
+            </div>`;
+            BelenUI.modal({
+                titulo: 'Dar de Alta (Egreso)', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-door-open', tipo: 'peligro', ancho: 'lg', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Guardar Nota de Egreso', estilo: 'peligro', id: 'egm-guardar', alPulsar: c => {
+                        const claves = ['motivo_egreso', 'resumen_clinico', 'diagnostico_final', 'pronostico', 'plan_alta'];
+                        const r = BelenStore.registrarEgreso(INTERNAMIENTO.internamiento_id, leerCamposModal(c, 'egm', claves), BelenStore.sesion());
+                        if (!r.ok) {
+                            if (r.errores) marcarErroresModal(c, 'egm', claves, r.errores); else BelenUI.toast(r.motivo, 'peligro');
+                            return false;
+                        }
+                        refrescarVisor('nota-egreso');
+                        setTimeout(() => {
+                            imprimirNotaEgresoDosCopias(r.nota);
+                            BelenUI.toast('Alta médica registrada. El paciente queda pendiente de pago.', 'exito', 5000);
+                        }, 80);
+                    } }
+                ]
+            });
+        }
+
+        function actualizarBotonCargarCuenta() {
+            const btn = document.getElementById('btn-cargar-cuenta');
+            const badge = document.getElementById('badge-cargos-consulta');
+            if (!btn) return;
+            const visible = !!(TURNO && SESION && BelenStore.puede('cargar_cuenta_consulta') && TURNO.estatus === 'en_consulta' && MODO_ACCESO === 'medico');
+            btn.classList.toggle('hidden', !visible);
+            btn.classList.toggle('inline-flex', visible);
+            const n = ((TURNO && TURNO.cargos) || []).length;
+            if (badge) { badge.textContent = String(n); badge.classList.toggle('hidden', !n); }
+        }
+        function abrirCargarCuentaConsulta() {
+            if (!TURNO || !BelenStore.puede('cargar_cuenta_consulta')) { BelenUI.toast('No puede cargar conceptos a esta cuenta.', 'alerta'); return; }
+            BelenUI.modal({
+                titulo: 'Cargar a Cuenta', subtitulo: TURNO.paciente_nombre, icono: 'fa-file-invoice-dollar', ancho: 'md',
+                html: htmlModalCargo(BelenStore.CONCEPTOS_AMBULATORIO, 'ambulatorio'),
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Agregar a la cuenta', estilo: 'primario', id: 'cg-guardar', alPulsar: c => {
+                        const r = BelenStore.agregarCargoTurno(TURNO.turno_id, leerCamposModal(c, 'cg', ['concepto', 'precio_unitario']), BelenStore.sesion());
+                        if (!r.ok) {
+                            if (r.errores) marcarErroresModal(c, 'cg', ['concepto', 'precio_unitario'], r.errores); else BelenUI.toast(r.motivo, 'peligro');
+                            return false;
+                        }
+                        TURNO = r.turno;
+                        actualizarBotonCargarCuenta();
+                        BelenUI.toast(r.cargo.concepto + ' agregado · ' + BelenStore.formatoMoneda(r.cargo.subtotal), 'exito');
+                    } }
+                ]
+            });
+        }
+
         function initApp() {
             // --- Sesión, turno y permisos ---
             SESION = BelenStore.sesion();
@@ -1807,6 +2034,7 @@
             window.addEventListener('pagehide', guardarBorrador);
             document.addEventListener('focusout', limpiarCampoAlSalir);
             programarGuardadoBorrador();
+            actualizarBotonCargarCuenta();
 
             // Modal: Escape cierra; Enter en el campo de texto confirma
             document.addEventListener('keydown', e => {
@@ -2088,7 +2316,7 @@
                 }
             };
             generarFila('Parto', p); generarFila('Cesarea', c); generarFila('Aborto', a);
-            if((p+c+a) > 0 && !document.getElementById('chk-ago-solo-formula').checked) { container.classList.remove('hidden'); }
+            if((p+c+a) > 0 && !document.getElementById('chk-ago-solo-formula').checked) { container.classList.remove('hidden'); } 
             else { container.classList.add('hidden'); }
         }
         function toggleDetallesAGO() {
@@ -2120,7 +2348,7 @@
         }
         function borrarDx(idx) { diagnósticosAgregados.splice(idx, 1); renderizarListaDx(); }
         function renderizarListaDx() {
-            document.getElementById('lista-dx').innerHTML = diagnósticosAgregados.map((dx, idx) =>
+            document.getElementById('lista-dx').innerHTML = diagnósticosAgregados.map((dx, idx) => 
                 `<li class="flex justify-between bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-100"><span class="text-sm font-medium text-cyan-800">${idx+1}. ${dx}</span><button type="button" onclick="borrarDx(${idx})" class="text-red-400 p-1"><i class="fas fa-times"></i></button></li>`
             ).join('');
             if (diagnósticosAgregados[0]) document.getElementById('ui-dx-ingreso').innerText = diagnósticosAgregados[0];
@@ -2403,25 +2631,25 @@
             document.getElementById('print-antecedentes').innerHTML = htmlAnt;
             document.getElementById('print-motivo').innerText = document.getElementById('val-motivo').value;
             document.getElementById('print-padecimiento').innerText = document.getElementById('val-padecimiento').value;
-
+            
             let htmlEF = '';
             // Catálogo de sistemas (movido a obtenerSistemasEF(): el abdomen "normal" cambia con el embarazo)
             const org = obtenerSistemasEF();
             org.forEach(sis => {
-                if(document.getElementById(`estatus-${sis.id}`).value === 'normal') { htmlEF += `<p style="margin: 0;"><strong>${sis.nombre}:</strong> ${sis.normal}</p>`; }
+                if(document.getElementById(`estatus-${sis.id}`).value === 'normal') { htmlEF += `<p style="margin: 0;"><strong>${sis.nombre}:</strong> ${sis.normal}</p>`; } 
                 else { htmlEF += `<p style="margin: 0; color: #b91c1c;"><strong>${sis.nombre}:</strong> ${document.getElementById(`text-${sis.id}`).value}${sis.id === 'abdomen' ? sufijoFCF(document.getElementById('text-abdomen').value) : ''}</p>`; }
             });
             document.getElementById('print-ef-dinamica').innerHTML = htmlEF;
 
-            if(document.getElementById('chk-omitir-estudios').checked) { document.getElementById('bloque-print-estudios').style.display = 'none'; }
+            if(document.getElementById('chk-omitir-estudios').checked) { document.getElementById('bloque-print-estudios').style.display = 'none'; } 
             else { document.getElementById('bloque-print-estudios').style.display = 'block'; document.getElementById('print-estudios').innerText = document.getElementById('val-estudios').value || 'No se solicitan.'; }
-
+            
             document.getElementById('print-idx-list').innerHTML = diagnósticosAgregados.map(d => `<li>${d}</li>`).join('');
             document.getElementById('print-analisis').innerText = document.getElementById('val-analisis').value || '-';
             document.getElementById('print-plan').innerText = document.getElementById('val-plan').value || '-';
             document.getElementById('print-pron').innerText = document.getElementById('val-pronostico').value || '-';
 
-            if(document.getElementById('chk-omitir-alarma').checked) { document.getElementById('bloque-print-alarma').style.display = 'none'; }
+            if(document.getElementById('chk-omitir-alarma').checked) { document.getElementById('bloque-print-alarma').style.display = 'none'; } 
             else { document.getElementById('bloque-print-alarma').style.display = 'block'; document.getElementById('print-alarma').innerText = document.getElementById('val-alarma').value; }
 
             document.getElementById('print-doctor-firma').innerText = document.getElementById('val-medico').value;
@@ -2522,18 +2750,20 @@
                 // Se guarda ANTES de imprimir: si el almacenamiento falla, no se imprime ni se cierra la consulta.
                 const datosGenerados = recolectarExpediente();
                 console.log("ENVIANDO AL BACKEND:", datosGenerados);
-                if (!persistirConsultaConcluida(datosGenerados, 'alta')) {
+                const conCargos = ((TURNO && TURNO.cargos) || []).length > 0;
+                const estatusAlta = conCargos ? 'alta_medica_pendiente_pago' : 'alta';
+                if (!persistirConsultaConcluida(datosGenerados, estatusAlta)) {
                     ocultarTodosLosPrints();
                     avisar('No se pudo guardar la consulta', 'El almacenamiento local del navegador no está disponible o está lleno. La consulta NO se cerró; intente de nuevo.', 'error');
                     return;
                 }
-                window.print();
+            window.print();
                 ocultarTodosLosPrints();
 
                 descartarBorrador();
-                mostrarToast('Alta registrada. Regresando al Dashboard...', 'exito');
+                mostrarToast(conCargos ? 'Alta registrada. Los cargos pasan a Cuentas por Cobrar.' : 'Alta registrada. Regresando al Dashboard...', 'exito');
                 setTimeout(() => window.location.href = 'dashboard.html', 1000);
-            } else {
+                } else {
                 // SIMULACRO DE BACKEND: aquí irá el POST (la nota se guarda aunque todavía no se imprima)
                 const datosGenerados = recolectarExpediente();
                 console.log("ENVIANDO AL BACKEND:", datosGenerados);

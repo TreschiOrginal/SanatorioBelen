@@ -18,7 +18,7 @@ const AdminController = {
     VISTAS: {
         central:         { roles: ['admin', 'administrador', 'medico'],                                           modulo: 'ver_consultas',      titulo: { admin: 'Dashboard Central', administrador: 'Dashboard Central', medico: 'Mi Consultorio' } },
         fila:            { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],      modulo: 'ver_consultas',      titulo: { admin: 'Fila de Espera' } },
-        hospitalizacion: { roles: ['admin', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'],             modulo: 'ver_hospitalizados', titulo: { admin: 'Monitor de Camas', medico: 'Mis Pacientes Hospitalizados' } },
+        hospitalizacion: { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'], modulo: 'ver_hospitalizados', titulo: { admin: 'Monitor de Camas', administrador: 'Monitor de Camas', medico: 'Mis Pacientes Hospitalizados' } },
         cirugias:        { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],      modulo: 'ver_quirofano',      titulo: { admin: 'Próximas Cirugías' } },
         expedientes:     { roles: ['admin', 'medico'],                                                            modulo: 'ver_consultas',      titulo: { admin: 'Expedientes Clínicos', medico: 'Expedientes Clínicos' } },
         personal:        { roles: ['admin'],                                                                      modulo: 'gestionar_personal', titulo: { admin: 'Gestión de Personal' } }
@@ -182,7 +182,9 @@ const AdminController = {
             en_consulta: 'bg-emerald-50 text-emerald-700 border-emerald-200',
             internado_en_proceso: 'bg-indigo-50 text-indigo-700 border-indigo-200',
             internado: 'bg-slate-100 text-slate-700 border-slate-300',
-            alta: 'bg-slate-100 text-slate-500 border-slate-200'
+            alta: 'bg-slate-100 text-slate-500 border-slate-200',
+            alta_medica_pendiente_pago: 'bg-amber-50 text-amber-800 border-amber-300',
+            cerrado_historico: 'bg-slate-100 text-slate-500 border-slate-200'
         };
         return `<span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded border ${mapa[t.estatus] || mapa.alta}">${this.e(BelenStore.ETIQUETA_ESTATUS[t.estatus] || t.estatus)}</span>`;
     },
@@ -408,7 +410,8 @@ const AdminController = {
         const S = BelenStore;
         const espera = S.colaEspera(this.sesion);
         const consulta = S.pacientesEnConsulta(this.sesion);
-        const hosp = S.puede('ver_hospitalizados') ? S.hospitalizadosDe(this.sesion) : [];
+        const hospTodos = S.puede('ver_hospitalizados') ? S.hospitalizadosDe(this.sesion) : [];
+        const hosp = hospTodos.filter(t => t.estatus === 'internado' || t.estatus === 'internado_en_proceso');
         const tarjetasEsp = S.ESPECIALIDADES.map(esp => {
             const pend = espera.filter(t => t.especialidad_codigo === esp.codigo);
             const cons = consulta.filter(t => t.especialidad_codigo === esp.codigo);
@@ -450,11 +453,12 @@ const AdminController = {
 
         const registro = S.puede('registrar_paciente') ? this.htmlBotonRegistro() : '';
         const metricas = S.puede('ver_metricas') ? this.htmlMetricas() : '';
+        const cuentas = S.puede('ver_cuentas_cobrar') ? this.htmlCuentasPorCobrar() : '';
         const restablecer = this.rolActual === 'admin' ? `
                 <div class="mt-10 pt-4 border-t border-slate-200 flex items-center justify-between">
                     <p class="text-xs text-slate-400"><i class="fas fa-gear mr-1"></i> Configuración del demo</p>
                     <button type="button" id="btn-restablecer-demo" onclick="AdminController.confirmarRestablecerDemo()" class="text-xs font-bold text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-lg transition">Restablecer datos de demostración</button></div>` : '';
-        return `${metricas}
+        return `${metricas}${cuentas}
                 <div class="flex flex-wrap justify-between items-end gap-4 mb-6">
                     <div><h2 class="text-2xl font-extrabold text-slate-800">Operación del Día</h2><p class="text-slate-500">Resumen de filas por especialidad${hosp.length || S.puede('ver_hospitalizados') ? ' y pacientes hospitalizados' : ''}.</p></div>
                     ${registro}</div>
@@ -592,6 +596,92 @@ const AdminController = {
         BelenUI.aviso('Pre-cuenta de ' + nombre, 'Cuenta actual: ' + monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }), 'info');
     },
 
+    htmlCuentasPorCobrar: function () {
+        const S = BelenStore, e = t => this.e(t);
+        const filas = S.cuentasPorCobrar(this.sesion).map(t => S.fichaCuenta(t));
+        const cuerpo = filas.length ? filas.map(f => {
+            const origen = f.origen === 'hospitalizacion' ? 'Hospitalización' : 'Consulta ambulatoria';
+            return `<button type="button" data-turno="${e(f.turno_id)}" onclick="AdminController.abrirDesgloseCuenta('${e(f.turno_id)}')"
+                class="w-full text-left bg-white border border-amber-200 hover:border-amber-400 hover:shadow-md rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 transition">
+                <div class="min-w-0">
+                    <div class="flex flex-wrap items-center gap-2"><h4 class="text-base font-extrabold text-slate-900">${e(f.nombre)}</h4>${this.badgeEstatus({ estatus: f.estatus })}</div>
+                    <p class="text-xs text-slate-500 mt-0.5">${e(origen)}${f.cama ? ' · ' + e(f.cama) : ''} · ${e(f.medico_nombre)}</p>
+                    ${f.diagnostico ? `<p class="text-xs text-slate-600 mt-1">${e(f.diagnostico)}</p>` : ''}
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-lg font-extrabold text-amber-800">${e(S.formatoMoneda(f.total))}</p>
+                    <p class="text-[10px] font-bold uppercase text-amber-600">${f.cargos.length} ${f.cargos.length === 1 ? 'concepto' : 'conceptos'}</p>
+                </div>
+            </button>`;
+        }).join('') : `<div class="text-center py-8 text-slate-400 bg-white/70 border border-dashed border-amber-200 rounded-xl">
+            <i class="fas fa-circle-check text-2xl text-emerald-300 mb-2"></i>
+            <p class="text-sm font-medium">No hay egresos pendientes de cobro.</p></div>`;
+        return `<section class="mb-8 bg-amber-50/80 border border-amber-200 rounded-2xl p-5 shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+                <div>
+                    <h3 class="text-lg font-extrabold text-amber-950 flex items-center gap-2"><i class="fas fa-cash-register text-amber-600"></i> Cuentas por Cobrar / Egresos Pendientes</h3>
+                    <p class="text-xs text-amber-800 mt-0.5">Pacientes con alta médica que deben pagar en caja antes de cerrar el expediente.</p>
+                </div>
+                <span class="text-xs font-extrabold bg-amber-600 text-white rounded-full px-3 py-1">${filas.length}</span>
+            </div>
+            <div class="flex flex-col gap-2">${cuerpo}</div>
+        </section>`;
+    },
+
+    abrirDesgloseCuenta: function (turnoId) {
+        const S = BelenStore, t = S.obtenerTurno(turnoId);
+        if (!t || !S.puede('ver_cuentas_cobrar')) { BelenUI.toast('No puede consultar esta cuenta.', 'alerta'); return; }
+        if (t.estatus !== 'alta_medica_pendiente_pago') { BelenUI.toast('Esta cuenta ya no está pendiente de cobro.', 'info'); this.render(); return; }
+        const f = S.fichaCuenta(t), e = x => this.e(x);
+        const filas = f.cargos.length ? f.cargos.map((c, i) => `<tr class="border-t border-slate-100">
+            <td class="px-3 py-2 text-slate-500">${i + 1}</td>
+            <td class="px-3 py-2 font-medium text-slate-800">${e(c.concepto)}</td>
+            <td class="px-3 py-2 text-right">${e(S.formatoMoneda(c.precio_unitario))}</td>
+            <td class="px-3 py-2 text-center">${c.cantidad || 1}</td>
+            <td class="px-3 py-2 text-right font-bold">${e(S.formatoMoneda(c.subtotal))}</td>
+        </tr>`).join('') : '<tr><td colspan="5" class="px-3 py-6 text-center text-slate-400">Sin cargos registrados. El total a cobrar es $0.00.</td></tr>';
+        const html = `<div class="space-y-3 text-left">
+            <p class="text-xs text-slate-500">${f.origen === 'hospitalizacion' ? 'Egreso hospitalario' : 'Consulta ambulatoria'} · ${e(f.medico_nombre)}${f.diagnostico ? ' · ' + e(f.diagnostico) : ''}</p>
+            <div class="border border-slate-200 rounded-xl overflow-hidden">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr>
+                        <th class="px-3 py-2 text-left">#</th><th class="px-3 py-2 text-left">Concepto</th>
+                        <th class="px-3 py-2 text-right">Precio unitario</th><th class="px-3 py-2 text-center">Cantidad</th>
+                        <th class="px-3 py-2 text-right">Subtotal</th></tr></thead>
+                    <tbody>${filas}</tbody>
+                    <tfoot><tr class="border-t-2 border-slate-200 bg-slate-50">
+                        <td colspan="4" class="px-3 py-3 text-right text-xs font-bold uppercase text-slate-500">Total</td>
+                        <td class="px-3 py-3 text-right text-base font-extrabold text-slate-900">${e(S.formatoMoneda(f.total))}</td>
+                    </tr></tfoot>
+                </table>
+            </div>
+            ${f.internamiento_id ? `<a href="expediente.html?modo=hospitalizado&turno=${encodeURIComponent(f.turno_id)}" class="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-700 hover:text-cyan-900"><i class="fas fa-folder-tree"></i> Ver portafolio</a>` : ''}
+        </div>`;
+        BelenUI.modal({
+            titulo: 'Desglose de cuenta', subtitulo: f.nombre, icono: 'fa-receipt', tipo: 'alerta', ancho: 'lg', html: html,
+            botones: [
+                { texto: 'Cerrar', estilo: 'secundario' },
+                { texto: 'Marcar como Pagado y Cerrar Expediente', estilo: 'primario', id: 'caja-pagar', alPulsar: () => { setTimeout(() => this.confirmarCerrarExpediente(turnoId), 200); } }
+            ]
+        });
+    },
+
+    confirmarCerrarExpediente: function (turnoId) {
+        const S = BelenStore, t = S.obtenerTurno(turnoId);
+        if (!t) return;
+        const f = S.fichaCuenta(t);
+        BelenUI.confirmar({
+            titulo: '¿Marcar como pagado y cerrar el expediente?', tipo: 'alerta', textoConfirmar: 'Sí, cobrar y cerrar',
+            mensaje: 'Se registrará el pago de ' + S.formatoMoneda(f.total) + ' para ' + f.nombre + '. El paciente desaparecerá de los monitores activos y quedará solo en la búsqueda histórica.',
+            alConfirmar: () => {
+                const r = S.cerrarExpedientePagado(turnoId, this.sesion);
+                if (!r.ok) { BelenUI.toast(r.motivo, 'peligro'); return false; }
+                BelenUI.toast('Expediente cerrado. ' + f.nombre + ' pasó al archivo histórico.', 'exito');
+                this.render();
+            }
+        });
+    },
+
     confirmarRestablecerDemo: function () {
         BelenUI.confirmar({
             titulo: '¿Restablecer los datos de demostración?', tipo: 'peligro', textoConfirmar: 'Sí, restablecer',
@@ -613,15 +703,19 @@ const AdminController = {
         const sexoTxt = f => f.sexo === 'F' ? 'Femenino' : (f.sexo === 'M' ? 'Masculino' : '');
         const dato = (et, v) => `<div class="min-w-0"><p class="text-[10px] font-bold text-slate-400 uppercase leading-none">${et}</p><p class="text-sm text-slate-800 mt-1 leading-snug">${v}</p></div>`;
         const tarjeta = f => {
-            const enProceso = !f.finalizado;
+            const pendientePago = !!f.pendiente_pago;
+            const enProceso = !f.finalizado && !pendientePago;
             const alergia = f.alergias
                 ? `<span data-alergias="1" class="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 bg-red-50 border border-red-300 rounded-lg px-2.5 py-1"><i class="fas fa-triangle-exclamation"></i> ${e(f.alergias)}</span>`
                 : `<span data-alergias="0" class="text-xs text-slate-400">Ninguna referida</span>`;
             const relacion = f.relacion === 'interconsultante'
                 ? '<span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded border bg-indigo-50 text-indigo-700 border-indigo-200"><i class="fas fa-user-doctor mr-1"></i>Interconsulta Solicitada</span>' : '';
             let accion;
-            if (f.finalizado) {
+            if (f.finalizado || pendientePago) {
                 accion = `<a href="expediente.html?modo=hospitalizado&turno=${encodeURIComponent(f.turno_id)}" data-accion="abrir-expediente" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-folder-tree"></i> Ver Expediente</a>`;
+                if (pendientePago && S.puede('ver_cuentas_cobrar')) {
+                    accion += `<button type="button" onclick="AdminController.abrirDesgloseCuenta('${e(f.turno_id)}')" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-cash-register"></i> Cobrar</button>`;
+                }
             } else if (f.relacion === 'interconsultante') {
                 accion = `<span class="text-[11px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">Papeleo de ingreso en curso</span>`;
             } else {
@@ -630,17 +724,18 @@ const AdminController = {
                 const cls = esEnf ? 'bg-cyan-700 hover:bg-cyan-800 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white';
                 accion = `<a href="expediente.html?turno=${encodeURIComponent(f.turno_id)}" data-accion="abrir-expediente" class="${cls} text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas ${ico}"></i> ${txt}</a>`;
             }
-            const botonCama = S.puede('asignar_cama')
+            const botonCama = (!pendientePago && S.puede('asignar_cama'))
                 ? `<button type="button" data-accion="asignar-cama" onclick="AdminController.abrirAsignarCama('${e(f.turno_id)}')" class="bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-bed"></i> ${f.cama ? 'Cambiar cama' : 'Asignar cama'}</button>` : '';
             const ics = f.interconsultas.length
                 ? f.interconsultas.map(x => `<span class="inline-block bg-indigo-50 text-indigo-700 border border-indigo-200 rounded px-1.5 py-0.5 text-[10px] font-bold mr-1">${e(x.especialidad)} · ${e(x.medico_nombre)}</span>`).join('') : '';
-            return `<div data-turno="${e(f.turno_id)}" data-paciente="${e(f.paciente_id)}" class="bg-white rounded-2xl border border-slate-200 border-l-4 ${enProceso ? 'border-l-indigo-500' : 'border-l-slate-400'} shadow-sm p-5">
+            const borde = pendientePago ? 'border-l-amber-500' : (enProceso ? 'border-l-indigo-500' : 'border-l-slate-400');
+            return `<div data-turno="${e(f.turno_id)}" data-paciente="${e(f.paciente_id)}" class="bg-white rounded-2xl border border-slate-200 border-l-4 ${borde} shadow-sm p-5">
                 <div class="flex flex-wrap items-start gap-4">
-                    <div class="min-w-[4rem] max-w-[7rem] min-h-[4rem] py-1 rounded-xl ${f.cama ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400 border border-dashed border-slate-300'} flex flex-col items-center justify-center shrink-0 text-center px-1">
+                    <div class="min-w-[4rem] max-w-[7rem] min-h-[4rem] py-1 rounded-xl ${f.cama ? (pendientePago ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white') : 'bg-slate-100 text-slate-400 border border-dashed border-slate-300'} flex flex-col items-center justify-center shrink-0 text-center px-1">
                         <i class="fas fa-bed text-sm"></i><span data-cama="1" class="text-[11px] font-extrabold leading-tight mt-0.5 break-words">${f.cama ? e(f.cama) : 'Sin cama'}</span></div>
                     <div class="flex-1 min-w-[240px]">
                         <div class="flex flex-wrap items-center gap-2"><h4 class="text-lg font-bold text-slate-900">${e(f.nombre)}</h4>${this.badgeEstatus({ estatus: f.estatus })}${relacion}</div>
-                        <p class="text-xs text-slate-500">${f.edad !== null ? f.edad + ' años' : ''}${sexoTxt(f) ? ' · ' + sexoTxt(f) : ''}${f.area ? ' · ' + e(f.area) : ''}</p>
+                        <p class="text-xs text-slate-500">${f.edad !== null ? f.edad + ' años' : ''}${sexoTxt(f) ? ' · ' + sexoTxt(f) : ''}${f.area ? ' · ' + e(f.area) : ''}${pendientePago ? ' · ' + e(S.formatoMoneda(f.cuenta_actual || 0)) : ''}</p>
                     </div>
                     <div class="flex flex-wrap gap-2 justify-end">${botonCama}${accion}</div>
                 </div>

@@ -11,9 +11,9 @@
 //   belen_visitas .............. expedientes finalizados completos (visita_id PK, FK paciente_id, turno_id)
 //   belen_borradores ........... { [turno_id]: borrador del expediente en curso }
 //   belen_pacientes_hospitalizados ... arreglo de expedientes de pacientes internados. Cada elemento lleva además `internamiento`:
-//                                el portafolio vivo (cama, interconsultas[], notas_evolucion[] SOAP, hojas_indicaciones[]) espejado en cada cambio
+//                                el portafolio vivo (cama, interconsultas[], notas_evolucion[] SOAP, hojas_indicaciones[], cargos[], nota_egreso) espejado en cada cambio
 //   belen_internamientos ....... episodio hospitalario (internamiento_id PK, FK turno_id, paciente_id, medico_tratante_id)
-//                                con cama, interconsultas[], notas_evolucion[] e hojas_indicaciones[] (inmutables: solo se agregan)
+//                                con cama, interconsultas[], notas_evolucion[], hojas_indicaciones[], cargos[] y nota_egreso (inmutables: solo se agregan)
 //   belen_permisos_personal .... { [usuario_id]: { ver_consultas, ver_hospitalizados, ver_quirofano, ver_farmacia } } (interruptores de Alfonso)
 //   belen_cirugias ............. cirugías programadas (cirugia_id PK, FK paciente_id opcional, FK medico_cirujano_id)
 //   belen_correcciones ......... bitácora de correcciones administrativas de datos del paciente
@@ -101,7 +101,12 @@
         gestionar_personal:        ['admin'],
         asignar_cama:              ['admin'].concat(ENFERMERIAS),
         programar_cirugia:         ['admin', 'administrador'],
-        corregir_datos_paciente:   ['admin']                            // corrección administrativa: nombre, edad y sexo
+        corregir_datos_paciente:   ['admin'],
+        dar_alta_hospital:         ['admin', 'medico'],                  // en la práctica solo el médico tratante
+        cargar_consumos:           ['admin', 'administrador'].concat(ENFERMERIAS),
+        ver_cuentas_cobrar:        ['admin', 'administrador'],
+        cerrar_expediente_pago:    ['admin', 'administrador'],
+        cargar_cuenta_consulta:    ['admin', 'medico']
     };
 
     // Módulos que Alfonso puede encender/apagar por usuario. 'roles' = perfiles a los que el módulo puede aplicar (un switch fuera de
@@ -111,7 +116,7 @@
           roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'],
           descripcion: 'Dashboard central, fila de espera inteligente, triage y expedientes clínicos.' },
         { permiso: 'ver_hospitalizados', etiqueta: 'Hospitalización', icono: 'fa-bed-pulse',   vistas: ['hospitalizacion'],
-          roles: ['admin', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'],
+          roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'],
           descripcion: 'Monitor de camas y visor del expediente de hospitalización.' },
         { permiso: 'ver_quirofano',      etiqueta: 'Quirófano',       icono: 'fa-kit-medical', vistas: ['cirugias'],
           roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],
@@ -132,7 +137,9 @@
         EN_CONSULTA: 'en_consulta',
         INTERNADO_EN_PROCESO: 'internado_en_proceso',
         INTERNADO: 'internado',
-        ALTA: 'alta'
+        ALTA: 'alta',
+        ALTA_PENDIENTE_PAGO: 'alta_medica_pendiente_pago',
+        CERRADO_HISTORICO: 'cerrado_historico'
     };
     const ETIQUETA_ESTATUS = {
         pendiente_signos: 'Pendiente de signos vitales',
@@ -140,7 +147,9 @@
         en_consulta: 'En consulta',
         internado_en_proceso: 'Internamiento en proceso',
         internado: 'Internado',
-        alta: 'Alta'
+        alta: 'Alta',
+        alta_medica_pendiente_pago: 'Alta médica · pendiente de pago',
+        cerrado_historico: 'Cerrado (histórico)'
     };
     const ESTATUS_EN_FILA = ['pendiente_signos', 'signos_capturados', 'en_consulta'];
 
@@ -367,6 +376,8 @@
             timestamp_llegada: new Date().toISOString(),
             estatus: ESTATUS.PENDIENTE_SIGNOS,
             signos_vitales: null,
+            cargos: [],
+            cuenta_actual: 0,
             registrado_por: datos.registrado_por || null
         };
         lista.push(turno);
@@ -395,13 +406,19 @@
     // o a los que le hayan solicitado en interconsulta.
     function hospitalizadoVisiblePara(turno, s) {
         if (!s) return false;
-        if (s.rol === 'admin' || esEnfermeria(s.rol)) return true;
+        if (s.rol === 'admin' || s.rol === 'administrador' || esEnfermeria(s.rol)) return true;
         if (s.rol === 'medico') return turno.medico_id === s.medico_id || tieneInterconsulta(turno.turno_id, s.medico_id);
         return false;
     }
     function hospitalizadosDe(s) {
         return listarTurnos()
-            .filter(t => (t.estatus === ESTATUS.INTERNADO_EN_PROCESO || t.estatus === ESTATUS.INTERNADO) && hospitalizadoVisiblePara(t, s))
+            .filter(t => {
+                if (!hospitalizadoVisiblePara(t, s)) return false;
+                if (t.estatus === ESTATUS.INTERNADO_EN_PROCESO || t.estatus === ESTATUS.INTERNADO) return true;
+                // Tras el alta médica el paciente sale del Monitor de médicos y enfermería de piso;
+                // admin y administrador lo siguen viendo (Cuentas por Cobrar / Monitor) hasta el cierre por pago.
+                return t.estatus === ESTATUS.ALTA_PENDIENTE_PAGO && (s.rol === 'admin' || s.rol === 'administrador');
+            })
             .sort((a, b) => (a.timestamp_llegada < b.timestamp_llegada ? 1 : -1));
     }
 
@@ -559,8 +576,8 @@
     function accesoExpediente(s, turno) {
         if (!s) return { ok: false, motivo: 'Inicie sesión para continuar.' };
         if (!turno) return { ok: false, motivo: 'El turno solicitado no existe.' };
-        const finalizado = turno.estatus === ESTATUS.INTERNADO || turno.estatus === ESTATUS.ALTA;
-        if (s.rol === 'administrador') return { ok: false, motivo: 'Caja y Recepción no accede a expedientes clínicos.' };
+        const finalizado = [ESTATUS.INTERNADO, ESTATUS.ALTA, ESTATUS.ALTA_PENDIENTE_PAGO, ESTATUS.CERRADO_HISTORICO].includes(turno.estatus);
+        if (s.rol === 'administrador') return { ok: false, motivo: 'Caja y Recepción no accede a expedientes clínicos. Use Cuentas por Cobrar para el cobro.' };
         if (s.rol !== 'admin') {
             // Módulos apagados por el administrador (interruptores de Gestión de Personal)
             const enAtencion = ESTATUS_EN_FILA.includes(turno.estatus);
@@ -571,7 +588,7 @@
         if (s.rol === 'medico') {
             if (turno.medico_id !== s.medico_id) return { ok: false, motivo: 'Este paciente pertenece a la fila de otro médico. Solo puede ver a sus propios pacientes.' };
             if (ESTATUS_EN_FILA.includes(turno.estatus) && turno.estatus !== ESTATUS.EN_CONSULTA) return { ok: false, motivo: 'Primero inicie la consulta desde su Dashboard (botón "Iniciar Consulta").' };
-            if (turno.estatus === ESTATUS.ALTA) return { ok: false, motivo: 'La consulta de este paciente ya fue concluida con alta.' };
+            if (turno.estatus === ESTATUS.ALTA || turno.estatus === ESTATUS.ALTA_PENDIENTE_PAGO || turno.estatus === ESTATUS.CERRADO_HISTORICO) return { ok: false, motivo: 'La consulta de este paciente ya fue concluida.' };
             return { ok: true, modo: finalizado ? 'lectura' : 'medico' };
         }
         if (esEnfermeria(s.rol)) {
@@ -748,7 +765,7 @@
         if (!i) {
             i = { internamiento_id: uid('INT'), turno_id: turnoId, paciente_id: t.paciente_id, medico_tratante_id: t.medico_id, medico_tratante_nombre: t.medico_nombre,
                   especialidad_codigo: t.especialidad_codigo, especialidad: t.especialidad, fecha_ingreso: new Date().toISOString(), cama: null, estatus: 'activo',
-                  interconsultas: [], notas_evolucion: [], hojas_indicaciones: [] };
+                  interconsultas: [], notas_evolucion: [], hojas_indicaciones: [], cargos: [], cuenta_actual: 0, nota_egreso: null };
         }
         i.estatus = 'activo';
         const al = ((datos.antecedentes || {}).personales_patologicos || {}).alergias;
@@ -814,6 +831,8 @@
             interconsultas: i ? (i.interconsultas || []) : [],
             notas: i ? (i.notas_evolucion || []).length : 0,
             estatus: turno.estatus, finalizado: turno.estatus === ESTATUS.INTERNADO,
+            pendiente_pago: turno.estatus === ESTATUS.ALTA_PENDIENTE_PAGO,
+            cuenta_actual: i ? Number(i.cuenta_actual || 0) : Number(turno.cuenta_actual || 0),
             area: (i && i.area_destino) || turno.area_destino || null, destino: (i && i.destino) || turno.destino || null,
             relacion: relacionMedico(i, turno, s)
         };
@@ -825,12 +844,20 @@
         if (!i) return { ok: false, motivo: 'No se encontró el internamiento solicitado.' };
         const t = obtenerTurno(i.turno_id);
         if (!t) return { ok: false, motivo: 'No se encontró el episodio del paciente.' };
-        if (!permisoModuloDe(s.usuario_id, 'ver_hospitalizados')) return { ok: false, motivo: 'Su perfil no tiene habilitado el módulo de Hospitalizados.' };
+        const caja = s.rol === 'administrador' && (PERMISOS.cargar_consumos.includes(s.rol) || PERMISOS.ver_cuentas_cobrar.includes(s.rol));
+        if (s.rol !== 'admin' && !caja && !permisoModuloDe(s.usuario_id, 'ver_hospitalizados')) return { ok: false, motivo: 'Su perfil no tiene habilitado el módulo de Hospitalizados.' };
         if (!hospitalizadoVisiblePara(t, s)) return { ok: false, motivo: 'Este paciente no está a su cargo ni le fue solicitado en interconsulta. Solo puede ver a sus propios pacientes hospitalizados.' };
-        if (t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El papeleo de ingreso de este paciente sigue en curso. El visor se habilita cuando el médico finaliza el expediente.' };
+        const visorOk = t.estatus === ESTATUS.INTERNADO || t.estatus === ESTATUS.ALTA_PENDIENTE_PAGO || t.estatus === ESTATUS.CERRADO_HISTORICO;
+        if (!visorOk) return { ok: false, motivo: 'El papeleo de ingreso de este paciente sigue en curso. El visor se habilita cuando el médico finaliza el expediente.' };
         const relacion = relacionMedico(i, t, s) || s.rol;
-        return { ok: true, relacion: relacion, puede_escribir: s.rol === 'medico' && (relacion === 'tratante' || relacion === 'interconsultante'),
-                 puede_corregir: !!PERMISOS.corregir_datos_paciente.includes(s.rol), turno: t };
+        const activo = t.estatus === ESTATUS.INTERNADO;
+        const veCuenta = s.rol === 'admin' || s.rol === 'administrador' || esEnfermeria(s.rol);
+        return { ok: true, relacion: relacion,
+                 puede_escribir: activo && s.rol === 'medico' && (relacion === 'tratante' || relacion === 'interconsultante'),
+                 puede_dar_alta: activo && s.rol === 'medico' && relacion === 'tratante',
+                 puede_cargar_cuenta: activo && PERMISOS.cargar_consumos.includes(s.rol),
+                 puede_ver_cuenta: veCuenta,
+                 puede_corregir: activo && !!PERMISOS.corregir_datos_paciente.includes(s.rol), turno: t };
     }
     function puedeEscribirInternamiento(s, i) {
         const a = accesoVisorHospitalizado(s, i);
@@ -929,6 +956,139 @@
         if (ocupada) { const o = obtenerTurno(ocupada.turno_id); return { ok: false, motivo: `La cama "${texto}" ya está ocupada por ${o ? o.paciente_nombre : 'otro paciente'}.` }; }
         i.cama = texto;
         return guardarInternamiento(i) ? { ok: true, internamiento: i } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+    }
+
+    // ---- Cuenta, cargos, nota de egreso y cierre de caja
+    const CONCEPTOS_HOSPITAL = [
+        'Ceftriaxona 1g', 'Noche de Hospitalización', 'Consulta Especialista', 'Solución fisiológica 1000 ml',
+        'Paracetamol 1g intravenoso', 'Curación', 'Material de sutura', 'Oxígeno por hora', 'Electrocardiograma'
+    ];
+    const CONCEPTOS_AMBULATORIO = [
+        'Inyección', 'Curación', 'Material', 'Consulta', 'Nebulización', 'Electrocardiograma', 'Aplicación intramuscular'
+    ];
+    function formatoMoneda(n) {
+        return Number(n || 0).toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
+    }
+    function totalCargos(cargos) {
+        return (cargos || []).reduce((s, c) => s + Number(c.subtotal || 0), 0);
+    }
+    function validarCargo(entrada) {
+        const concepto = limpiarEspacios(entrada.concepto);
+        const crudo = String(entrada.precio_unitario === undefined || entrada.precio_unitario === null ? '' : entrada.precio_unitario).trim().replace(',', '.');
+        const errores = {};
+        if (concepto.length < 2 || concepto.length > 80) errores.concepto = 'Escriba el concepto (2 a 80 caracteres).';
+        const n = Number(crudo);
+        if (!Number.isFinite(n) || n < 0.01 || n > 999999.99) errores.precio_unitario = 'Indique un precio entre $0.01 y $999,999.99.';
+        const precio = Math.round(n * 100) / 100;
+        return { ok: Object.keys(errores).length === 0, errores: errores, valores: { concepto: concepto, precio_unitario: precio, cantidad: 1, subtotal: precio } };
+    }
+    function nuevoCargo(valores, origen, s) {
+        return {
+            cargo_id: uid('CG'), concepto: valores.concepto, precio_unitario: valores.precio_unitario, cantidad: 1, subtotal: valores.subtotal,
+            origen: origen, cargado_por_id: s.usuario_id, cargado_por_nombre: s.nombre, cargado_en: new Date().toISOString()
+        };
+    }
+    function puedeCargarConsumos(s, i) {
+        if (!s || !i || !PERMISOS.cargar_consumos.includes(s.rol)) return false;
+        const t = obtenerTurno(i.turno_id);
+        return !!t && t.estatus === ESTATUS.INTERNADO;
+    }
+    function agregarCargoInternamiento(internamientoId, entrada, s) {
+        const i = obtenerInternamiento(internamientoId);
+        if (!i) return { ok: false, motivo: 'No se encontró el internamiento.' };
+        if (!puedeCargarConsumos(s, i)) return { ok: false, motivo: 'Solo se pueden cargar consumos mientras el internamiento está activo.' };
+        const r = validarCargo(entrada);
+        if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
+        i.cargos = (i.cargos || []).concat([nuevoCargo(r.valores, 'hospitalizacion', s)]);
+        i.cuenta_actual = totalCargos(i.cargos);
+        return guardarInternamiento(i) ? { ok: true, cargo: i.cargos[i.cargos.length - 1], internamiento: i } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+    }
+    function agregarCargoTurno(turnoId, entrada, s) {
+        if (!s || !PERMISOS.cargar_cuenta_consulta.includes(s.rol)) return { ok: false, motivo: 'Su perfil no puede cargar conceptos a la cuenta de consulta.' };
+        const t = obtenerTurno(turnoId);
+        if (!t) return { ok: false, motivo: 'No se encontró el episodio.' };
+        if (t.estatus !== ESTATUS.EN_CONSULTA) return { ok: false, motivo: 'Solo se pueden cargar conceptos durante la consulta.' };
+        if (s.rol === 'medico' && t.medico_id !== s.medico_id) return { ok: false, motivo: 'Solo el médico de este paciente puede cargar conceptos.' };
+        const r = validarCargo(entrada);
+        if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
+        const cargos = (t.cargos || []).concat([nuevoCargo(r.valores, 'ambulatorio', s)]);
+        const actualizado = actualizarTurno(turnoId, { cargos: cargos, cuenta_actual: totalCargos(cargos) });
+        return actualizado ? { ok: true, cargo: cargos[cargos.length - 1], turno: actualizado } : { ok: false, motivo: 'No se pudo guardar.' };
+    }
+    function validarNotaEgreso(entrada) {
+        const v = {
+            motivo_egreso: String(entrada.motivo_egreso || '').trim(), resumen_clinico: String(entrada.resumen_clinico || '').trim(),
+            diagnostico_final: String(entrada.diagnostico_final || '').trim(), pronostico: String(entrada.pronostico || '').trim(),
+            plan_alta: String(entrada.plan_alta || '').trim()
+        };
+        const errores = {};
+        if (contarLetrasTxt(v.motivo_egreso) < 5) errores.motivo_egreso = 'Indique el motivo de egreso.';
+        if (contarLetrasTxt(v.resumen_clinico) < 15) errores.resumen_clinico = 'Escriba el resumen clínico (mínimo 15 letras).';
+        if (contarLetrasTxt(v.diagnostico_final) < 5) errores.diagnostico_final = 'Indique el diagnóstico final.';
+        if (contarLetrasTxt(v.pronostico) < 5) errores.pronostico = 'Indique el pronóstico.';
+        if (contarLetrasTxt(v.plan_alta) < 5) errores.plan_alta = 'Indique el plan de alta.';
+        return { ok: Object.keys(errores).length === 0, errores: errores, valores: v };
+    }
+    function registrarEgreso(internamientoId, entrada, s) {
+        const i = obtenerInternamiento(internamientoId);
+        if (!i) return { ok: false, motivo: 'No se encontró el internamiento.' };
+        const t = obtenerTurno(i.turno_id);
+        if (!s || !t) return { ok: false, motivo: 'No se pudo validar la sesión.' };
+        if (!PERMISOS.dar_alta_hospital.includes(s.rol)) return { ok: false, motivo: 'Su perfil no puede dar de alta hospitalaria.' };
+        if (s.rol === 'medico' && relacionMedico(i, t, s) !== 'tratante') return { ok: false, motivo: 'Solo el médico tratante puede dar de alta al paciente.' };
+        if (t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El paciente no está en un internamiento activo.' };
+        if (i.nota_egreso) return { ok: false, motivo: 'Ya existe una nota de egreso para este internamiento.' };
+        const r = validarNotaEgreso(entrada);
+        if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
+        const nota = Object.assign({
+            nota_id: uid('EG'), folio: 'EG-001', tipo: 'nota_egreso', fecha_hora: new Date().toISOString(),
+            autor_id: s.usuario_id, autor_nombre: s.nombre, autor_especialidad: s.especialidad || null, relacion: 'tratante'
+        }, r.valores);
+        i.nota_egreso = nota;
+        i.diagnostico_actual = r.valores.diagnostico_final;
+        i.estatus = ESTATUS.ALTA_PENDIENTE_PAGO;
+        i.egreso_en = nota.fecha_hora;
+        i.cuenta_actual = totalCargos(i.cargos);
+        if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+        actualizarTurno(t.turno_id, { estatus: ESTATUS.ALTA_PENDIENTE_PAGO, dx_principal: r.valores.diagnostico_final, cuenta_actual: i.cuenta_actual });
+        return { ok: true, internamiento: obtenerInternamiento(i.internamiento_id), nota: nota };
+    }
+    function cargosDeEpisodio(turno) {
+        const i = internamientoDeTurno(turno.turno_id);
+        if (i) return i.cargos || [];
+        return turno.cargos || [];
+    }
+    function cuentasPorCobrar(s) {
+        if (!s || !PERMISOS.ver_cuentas_cobrar.includes(s.rol)) return [];
+        return listarTurnos()
+            .filter(t => t.estatus === ESTATUS.ALTA_PENDIENTE_PAGO)
+            .sort((a, b) => String(b.actualizado_en || b.timestamp_llegada).localeCompare(String(a.actualizado_en || a.timestamp_llegada)));
+    }
+    function fichaCuenta(turno) {
+        const p = buscarPacientePorId(turno.paciente_id) || { nombre_completo: turno.paciente_nombre, fecha_nacimiento: turno.fecha_nacimiento, sexo: turno.sexo };
+        const i = internamientoDeTurno(turno.turno_id);
+        const cargos = cargosDeEpisodio(turno);
+        const total = totalCargos(cargos);
+        return {
+            turno_id: turno.turno_id, internamiento_id: i ? i.internamiento_id : null, paciente_id: turno.paciente_id,
+            nombre: p.nombre_completo, edad: calcularEdad(p.fecha_nacimiento), sexo: p.sexo,
+            medico_nombre: turno.medico_nombre, especialidad: turno.especialidad,
+            origen: i ? 'hospitalizacion' : 'ambulatorio', cama: i ? i.cama : null,
+            diagnostico: (i && (i.diagnostico_actual || i.diagnostico_ingreso)) || turno.dx_principal || null,
+            cargos: cargos, total: total, cuenta_actual: total, estatus: turno.estatus,
+            egreso_en: (i && i.egreso_en) || turno.actualizado_en || null
+        };
+    }
+    function cerrarExpedientePagado(turnoId, s) {
+        if (!s || !PERMISOS.cerrar_expediente_pago.includes(s.rol)) return { ok: false, motivo: 'Solo Administración puede cerrar el expediente por pago.' };
+        const t = obtenerTurno(turnoId);
+        if (!t) return { ok: false, motivo: 'No se encontró el episodio.' };
+        if (t.estatus !== ESTATUS.ALTA_PENDIENTE_PAGO) return { ok: false, motivo: 'Este expediente no está pendiente de pago.' };
+        const ahora = new Date().toISOString();
+        const cerrado = actualizarTurno(turnoId, { estatus: ESTATUS.CERRADO_HISTORICO, cerrado_en: ahora, cerrado_por_id: s.usuario_id, cerrado_por_nombre: s.nombre });
+        const i = internamientoDeTurno(turnoId);
+        if (i) { i.estatus = ESTATUS.CERRADO_HISTORICO; i.cerrado_en = ahora; guardarInternamiento(i); }
+        return { ok: true, turno: cerrado };
     }
 
     // ---- Corrección administrativa de datos del paciente (nombre, edad y sexo)
@@ -1193,6 +1353,9 @@
         listarInternamientos, internamientoDeTurno, obtenerInternamiento, resolverInternamiento, asegurarInternamiento, sincronizarInternamiento, descartarInternamiento,
         fichaHospitalizado, accesoVisorHospitalizado, relacionMedico, tieneInterconsulta, medicosParaInterconsulta, solicitarInterconsulta,
         validarNotaEvolucion, agregarNotaEvolucion, indicacionesVigentes, agregarHojaIndicaciones, asignarCama,
+        CONCEPTOS_HOSPITAL, CONCEPTOS_AMBULATORIO, formatoMoneda, validarCargo, puedeCargarConsumos,
+        agregarCargoInternamiento, agregarCargoTurno, validarNotaEgreso, registrarEgreso,
+        cargosDeEpisodio, cuentasPorCobrar, fichaCuenta, cerrarExpedientePagado,
         validarCorreccionPaciente, corregirDatosPaciente, fechaNacimientoParaEdad, fechaHoraLegible,
         sembrarDemoSiHaceFalta, restablecerDemo
     };
