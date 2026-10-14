@@ -78,7 +78,14 @@
         /* Expediente bloqueado: las vistas no reciben clics; solo los botones marcados (imprimir) siguen vivos */
         body.solo-lectura [id^="vista-"] { pointer-events: none; }
         body.solo-lectura [id^="vista-"] [data-solo-lectura-ok] { pointer-events: auto; }
-        #banner-solo-lectura.flex { display: flex; }
+        #banner-solo-lectura.flex, #banner-modo-enfermeria.flex, #banner-autollenado.flex, #alerta-signos.flex { display: flex; }
+
+        /* Modo Enfermería: la Nota Médica y las Indicaciones son solo del médico (solo lectura); Hoja Frontal y Consentimientos sí se editan */
+        body.modo-enfermeria #vista-nota, body.modo-enfermeria #vista-indicaciones { pointer-events: none; opacity: 0.88; }
+        body.modo-enfermeria #btn-datos-prueba, body.modo-enfermeria #btn-imprimir-todo, body.modo-enfermeria #btn-descartar-internamiento,
+        body.modo-enfermeria #btn-finalizar-expediente, body.modo-enfermeria #btn-historial-visitas, body.modo-enfermeria #indicador-pendientes { display: none !important; }
+        .solo-admin-demo { display: none; }
+        body[data-rol="admin"] .solo-admin-demo { display: inline-block; }
 
         /* Las zonas de impresión JAMÁS deben verse en pantalla (solo al imprimir) */
         @media screen {
@@ -99,7 +106,7 @@
             <h2 class="font-bold tracking-wide text-slate-800 text-sm md:text-base">Expediente Clínico</h2>
         </div>
         <div class="flex items-center gap-2 md:gap-3">
-            <span id="nombre-doctor" class="text-xs md:text-sm font-bold text-slate-600 hidden sm:block">Dr. Brandon Arguelles</span>
+            <span id="nombre-doctor" class="text-xs md:text-sm font-bold text-slate-600 hidden sm:block">Usuario</span>
             <div class="w-8 h-8 rounded-full bg-cyan-700 text-white flex items-center justify-center shadow-md"><i class="fas fa-user-md"></i></div>
         </div>
     </header>
@@ -107,9 +114,9 @@
     <main class="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden z-10 relative print:hidden">
         <aside class="w-full md:w-72 lg:w-80 glass-panel border-b md:border-b-0 md:border-r border-slate-200 p-4 md:p-6 flex flex-col md:overflow-y-auto custom-scrollbar shrink-0">
             <div class="text-center mb-6 mt-2 md:mt-0">
-                <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-slate-100 mx-auto mb-3 flex items-center justify-center text-xl md:text-2xl text-cyan-700 font-extrabold shadow-sm border border-slate-200">SVR</div>
-                <h3 id="paciente-nombre" class="text-base md:text-lg font-extrabold text-slate-900 leading-tight">Simona Vargas Rubio</h3>
-                <p class="text-xs text-slate-500 font-medium" id="paciente-genero">Femenino • 87 Años</p>
+                <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-slate-100 mx-auto mb-3 flex items-center justify-center text-xl md:text-2xl text-cyan-700 font-extrabold shadow-sm border border-slate-200" id="paciente-iniciales">--</div>
+                <h3 id="paciente-nombre" class="text-base md:text-lg font-extrabold text-slate-900 leading-tight">Cargando paciente...</h3>
+                <p class="text-xs text-slate-500 font-medium" id="paciente-genero">--</p>
                 <p class="text-xs text-slate-500 mt-2"><i class="fas fa-ring text-cyan-500 mr-1"></i> Estado Civil: <span id="ui-civil" class="font-bold">Sin capturar</span></p>
                 <div id="badge-area" class="hidden mt-3 inline-flex items-center gap-2 bg-amber-50 text-amber-700 px-3 py-1 rounded-full text-xs font-bold border border-amber-200">
                     <i class="fas fa-bed"></i> <span id="ui-area">ÁREA PENDIENTE</span>
@@ -120,11 +127,18 @@
             <div class="bg-white/60 rounded-xl p-3 shadow-sm border border-slate-200 mb-4">
                 <h4 class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><i class="fas fa-heartbeat text-cyan-500"></i> Signos Vitales</h4>
                 <div class="grid grid-cols-4 md:grid-cols-2 gap-2 text-center">
-                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">TA</p><p id="sv-ta" class="text-xs font-bold text-slate-800">140/86</p></div>
-                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">FR</p><p id="sv-fr" class="text-xs font-bold text-slate-800">19</p></div>
-                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">Temp</p><p id="sv-temp" class="text-xs font-bold text-slate-800">36.2</p></div>
-                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">SpO2</p><p id="sv-spo2" class="text-xs font-bold text-slate-800">98%</p></div>
+                    <div class="bg-slate-50 rounded p-1 md:col-span-2"><p class="text-[9px] text-slate-500 uppercase">TA</p><p id="sv-ta" class="text-xs font-bold text-slate-800">--</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">FC</p><p id="sv-fc" class="text-xs font-bold text-slate-800">--</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">FR</p><p id="sv-fr" class="text-xs font-bold text-slate-800">--</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">Temp</p><p id="sv-temp" class="text-xs font-bold text-slate-800">--</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">SpO2</p><p id="sv-spo2" class="text-xs font-bold text-slate-800">--</p></div>
                 </div>
+                <!-- Candado de signos vitales: sin TA, FC, FR, Temp y SpO2 no se puede cerrar la Nota Médica -->
+                <div id="alerta-signos" class="hidden mt-2 items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-2.5 py-2 text-[11px] font-semibold leading-snug">
+                    <i class="fas fa-triangle-exclamation mt-0.5"></i>
+                    <span>El paciente llegó sin signos vitales. Capture TA, FC, FR, Temp y SpO2: la Nota Médica no se podrá cerrar sin ellos.</span>
+                </div>
+                <button type="button" id="btn-capturar-signos" onclick="abrirCapturaSignos()" class="mt-2 w-full bg-white border border-cyan-300 text-cyan-700 hover:bg-cyan-50 text-[11px] font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5"><i class="fas fa-heart-pulse"></i> Capturar / Editar Signos Vitales</button>
                 <!-- Antropometría: se captura una sola vez aquí y el Consentimiento la lee automáticamente -->
                 <div class="grid grid-cols-3 gap-2 text-center mt-2 pt-2 border-t border-slate-100">
                     <div>
@@ -141,6 +155,8 @@
                     </div>
                 </div>
             </div>
+
+            <button type="button" id="btn-historial-visitas" onclick="verHistorialVisitas()" class="mb-4 w-full bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2.5 rounded-xl shadow-sm transition flex items-center justify-center gap-2"><i class="fas fa-clock-rotate-left"></i> Ver Historial de Visitas Anteriores <span id="historial-contador" class="bg-slate-100 text-slate-600 rounded-full px-2 py-0.5 text-[10px]">0</span></button>
 
             <div id="panel-dx-ingreso" class="hidden bg-white/60 rounded-xl p-4 shadow-sm border border-slate-200">
                 <h4 class="text-xs font-bold text-slate-800 uppercase mb-2">Diagnóstico de Ingreso</h4>
@@ -174,8 +190,17 @@
                             <p class="text-xs text-slate-300">El paciente fue internado. Ya no se puede editar; solo reimprimir.</p>
                         </div>
                     </div>
-                    <button type="button" data-solo-lectura-ok onclick="desactivarModoSoloLectura()" class="text-[11px] font-bold text-slate-300 hover:text-white border border-slate-600 rounded-lg px-3 py-1.5 whitespace-nowrap">Desbloquear (demo)</button>
-                    <button type="button" data-solo-lectura-ok onclick="iniciarNuevaConsultaDemo()" class="text-[11px] font-bold text-slate-300 hover:text-white border border-slate-600 rounded-lg px-3 py-1.5 whitespace-nowrap">Nueva consulta (demo)</button>
+                    <button type="button" data-solo-lectura-ok onclick="desactivarModoSoloLectura()" class="solo-admin-demo text-[11px] font-bold text-slate-300 hover:text-white border border-slate-600 rounded-lg px-3 py-1.5 whitespace-nowrap">Desbloquear (demo)</button>
+                    <button type="button" data-solo-lectura-ok onclick="irAlDashboard()" class="text-[11px] font-bold text-slate-300 hover:text-white border border-slate-600 rounded-lg px-3 py-1.5 whitespace-nowrap">Volver al Dashboard</button>
+                </div>
+
+                <!-- Banner de Modo Enfermería -->
+                <div id="banner-modo-enfermeria" class="hidden max-w-4xl mx-auto mb-5 bg-cyan-50 border border-cyan-200 text-cyan-900 rounded-2xl p-4 items-center gap-3">
+                    <i class="fas fa-user-nurse text-cyan-600 text-xl"></i>
+                    <div>
+                        <p class="text-sm font-bold">Modo Enfermería</p>
+                        <p class="text-xs">Usted completa la Hoja Frontal y los Consentimientos. La Nota Médica y las Indicaciones Médicas son solo del médico (solo lectura).</p>
+                    </div>
                 </div>
 
                 <div id="vista-nota" class="max-w-4xl w-full mx-auto flex flex-col h-full space-y-5 pb-20 fade-in block">
@@ -184,6 +209,14 @@
                         <button type="button" id="btn-datos-prueba" onclick="llenarDatosDePrueba()" class="text-[10px] text-slate-400 hover:text-slate-600 underline opacity-60 hover:opacity-100 transition">Llenar datos de prueba</button>
                     </div>
                     <!-- ===== FIN BOTON TEMPORAL DE PRUEBAS ===== -->
+                    <div id="banner-autollenado" class="hidden items-start gap-3 bg-cyan-50 border border-cyan-200 rounded-2xl p-4">
+                        <i class="fas fa-wand-magic-sparkles text-cyan-600 text-xl mt-0.5"></i>
+                        <div class="flex-1">
+                            <p class="text-sm font-bold text-cyan-900">Datos precargados del historial del paciente</p>
+                            <p id="texto-autollenado" class="text-xs text-cyan-800 mt-0.5"></p>
+                        </div>
+                        <button type="button" onclick="verHistorialVisitas()" class="text-[11px] font-bold text-cyan-700 hover:text-cyan-900 border border-cyan-300 bg-white rounded-lg px-3 py-1.5 whitespace-nowrap">Ver historial</button>
+                    </div>
                     <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
                         <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 border-b border-slate-100 pb-2 gap-2">
                             <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-user-edit text-cyan-500 mr-1"></i> Datos Complementarios y Fecha</h3>
@@ -511,7 +544,7 @@
                             </div>
                             <div>
                                 <label class="text-xs font-bold text-slate-500 uppercase block mb-1">Médico Tratante</label>
-                                <input type="text" id="val-medico" value="Dr. Brandon Arguelles" disabled class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 outline-none">
+                                <input type="text" id="val-medico" value="" disabled class="w-full bg-slate-100 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 outline-none">
                             </div>
                         </div>
                     </div>
@@ -707,7 +740,7 @@
             <p style="margin: 0;">Fecha y Hora: <span id="print-fecha" class="put-fecha"></span></p>
         </div>
         <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
-            <p style="margin: 2px 0;"><strong>NOMBRE:</strong> <span class="out-paciente">Simona Vargas Rubio</span> &nbsp;&nbsp; <strong>EDAD:</strong> <span class="out-edad">87 años</span> &nbsp;&nbsp; <strong>SEXO:</strong> <span class="out-sexo">Femenino</span></p>
+            <p style="margin: 2px 0;"><strong>NOMBRE:</strong> <span class="out-paciente"></span> &nbsp;&nbsp; <strong>EDAD:</strong> <span class="out-edad">87 años</span> &nbsp;&nbsp; <strong>SEXO:</strong> <span class="out-sexo">Femenino</span></p>
             <p style="margin: 2px 0;" id="print-complementos"></p>
         </div>
         <div style="line-height: 1.4; text-align: justify;">
@@ -736,13 +769,13 @@
         <div style="text-align: right; margin-bottom: 15px;"><strong>Fecha y Hora de Ingreso:</strong> <span class="put-fecha"></span></div>
         <div class="cuadro-datos">
             <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">I. DATOS DEL PACIENTE</h4>
-            <div class="fila"><span><strong>Nombre:</strong> <span class="out-paciente">Simona Vargas Rubio</span></span> <span><strong>Edad:</strong> <span class="out-edad">87 Años</span></span> <span><strong>Sexo:</strong> <span class="out-sexo">Femenino</span></span></div>
+            <div class="fila"><span><strong>Nombre:</strong> <span class="out-paciente"></span></span> <span><strong>Edad:</strong> <span class="out-edad">87 Años</span></span> <span><strong>Sexo:</strong> <span class="out-sexo">Femenino</span></span></div>
             <div class="fila"><span><strong>Estado Civil:</strong> <span class="out-civil" id="print-civil"></span></span> <span><strong>Grupo y Rh:</strong> <span id="print-grupo-rh"></span></span></div>
             <p style="margin:2px 0;"><strong>Dirección:</strong> <span class="out-dir"></span> &nbsp;&nbsp; <strong>Alergias:</strong> <span id="print-alergias-ingreso">Difenidol</span></p>
         </div>
         <div class="cuadro-datos">
             <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">II. DATOS DE INTERNAMIENTO</h4>
-            <div class="fila"><span><strong>Médico Tratante:</strong> <span id="print-medico">Dr. Brandon Arguelles</span></span> <span><strong>Área de Destino:</strong> <span class="out-area" id="print-area"></span></span></div>
+            <div class="fila"><span><strong>Médico Tratante:</strong> <span id="print-medico"></span></span> <span><strong>Área de Destino:</strong> <span class="out-area" id="print-area"></span></span></div>
             <div class="fila"><span><strong>Cama:</strong> Por asignar por Enfermería</span></div>
             <div class="fila"><span><strong>Tipo de Ingreso:</strong> <span id="print-tipo"></span></span></div>
             <div style="margin-top: 8px;"><strong>Diagnóstico Presuncional:</strong> <span class="out-dx-prin"></span></div>
@@ -758,7 +791,7 @@
         </div>
         <div style="display: flex; justify-content: space-between; margin-top: 40px;">
             <div class="firma-box" style="margin-left:0;">
-                <p style="margin:0; font-weight:bold;" id="print-firma-medico">Dr. Brandon Arguelles</p>
+                <p style="margin:0; font-weight:bold;" id="print-firma-medico"></p>
                 <p style="margin:0;">Médico que Ingresa</p>
             </div>
             <div class="firma-box" style="margin-right:0;">
@@ -771,7 +804,7 @@
     <div id="print-cons-gral" class="zona-impresion hidden">
         <div style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px;">CONSENTIMIENTO PARA EL TRATAMIENTO E INTERVENCIÓN MÉDICA</div>
         <div style="line-height: 1.8; margin-bottom: 15px;">
-            <strong>Paciente:</strong> <span class="linea-input out-paciente" style="width:250px;">Simona Vargas Rubio</span> &nbsp;&nbsp; <strong>Área:</strong> <span class="linea-input out-area" style="width:130px;"></span><br>
+            <strong>Paciente:</strong> <span class="linea-input out-paciente" style="width:250px;"></span> &nbsp;&nbsp; <strong>Área:</strong> <span class="linea-input out-area" style="width:130px;"></span><br>
             <strong>Fecha de Ingreso:</strong> <span class="linea-input put-fecha" style="width:150px;"></span> &nbsp;&nbsp; <strong>Peso:</strong> <span class="linea-input out-peso" style="width:50px;"></span> &nbsp;&nbsp; <strong>Talla:</strong> <span class="linea-input out-talla" style="width:50px;"></span><br>
             <strong>Familiar Responsable:</strong> <span class="linea-input out-resp" style="width:250px;"></span>
         </div>
@@ -848,26 +881,289 @@
         </div>
     </div>
 
+    <script src="js/belen-store.js"></script>
+    <script src="js/belen-ui.js"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
         const PARENTESCO_OPCIONES = '<option>Hijo(a)</option><option>Esposo(a)</option><option>Hermano(a)</option><option>Padre/Madre</option><option>Mismo Paciente</option><option>Otro</option>';
 
+        // ============================================================
+        // CONTEXTO CLÍNICO: sesión, turno, permisos, signos vitales, autollenado longitudinal
+        // ------------------------------------------------------------
+        // Todo expediente pertenece a un TURNO (belen_turnos) asignado a un médico. Se abre con
+        // expediente.html?turno=<turno_id>. Los permisos viven en BelenStore (acceso por rol y por médico).
+        // ============================================================
+        let SESION = null;              // BelenStore.sesion()
+        let TURNO = null;               // turno del paciente en curso (se refresca desde localStorage)
+        let MODO_ACCESO = 'medico';     // medico | enfermeria | lectura
+        let textoAutollenadoActual = '';
+
+        function irAlDashboard(vista) {
+            window.location.href = 'dashboard.html' + (vista ? '?vista=' + vista : '');
+        }
+
+        // Sin acceso: se oculta el expediente y se muestra un modal que solo permite regresar
+        function bloquearAcceso(motivo, titulo) {
+            const principal = document.querySelector('main'); if (principal) principal.style.display = 'none';
+            const pestanas = document.getElementById('header-pestanas'); if (pestanas) pestanas.style.display = 'none';
+            BelenUI.modal({
+                titulo: titulo || 'Acceso no permitido', mensaje: motivo, tipo: 'peligro', icono: 'fa-lock', centrado: true, cerrable: false,
+                botones: [{ texto: 'Volver al Dashboard', estilo: 'primario', id: 'btn-volver-dashboard', alPulsar: () => { irAlDashboard(); return false; } }]
+            });
+        }
+
+        // Exige permiso por rol para acciones exclusivas del médico (enfermería jamás las ejecuta)
+        function exigirPermiso(accion, mensaje) {
+            if (BelenStore.puede(accion) && MODO_ACCESO !== 'enfermeria') return true;
+            avisar('Acción no permitida', mensaje || 'Su perfil no tiene permiso para realizar esta acción.', 'aviso');
+            return false;
+        }
+
+        function aplicarContextoPaciente() {
+            const $ = id => document.getElementById(id);
+            const pac = BelenStore.buscarPacientePorId(TURNO.paciente_id) || { nombre_completo: TURNO.paciente_nombre, fecha_nacimiento: TURNO.fecha_nacimiento, sexo: TURNO.sexo };
+            const edad = BelenStore.calcularEdad(pac.fecha_nacimiento);
+            const sexoTxt = pac.sexo === 'F' ? 'Femenino' : 'Masculino';
+            $('paciente-nombre').innerText = pac.nombre_completo;
+            $('paciente-genero').innerText = `${sexoTxt} • ${edad !== null ? edad : '--'} ${edad === 1 ? 'Año' : 'Años'}`;
+            $('paciente-iniciales').innerText = BelenStore.iniciales(pac.nombre_completo);
+            document.title = 'Expediente Clínico | ' + pac.nombre_completo;
+            // La fecha de nacimiento es dato de identidad capturado en Recepción: no se edita en la consulta
+            const fn = $('comp-fn');
+            fn.value = pac.fecha_nacimiento || '';
+            fn.readOnly = true;
+            fn.title = 'Dato de identidad capturado en Recepción';
+            fn.classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
+            $('nombre-doctor').innerText = SESION.nombre;
+            $('val-medico').value = TURNO.medico_nombre;
+        }
+
+        // ---------- Signos vitales (fuente: turno en localStorage; los captura enfermería, el médico o ambos) ----------
+        function sincronizarSignosDesdeTurno(forzarAntropometria) {
+            const $ = id => document.getElementById(id);
+            const actual = BelenStore.obtenerTurno(TURNO.turno_id);
+            if (actual) TURNO = actual;
+            const sv = TURNO.signos_vitales || {};
+            const v = x => (x === null || x === undefined || x === '') ? '--' : x;
+            $('sv-ta').innerText = (sv.ta_sistolica && sv.ta_diastolica) ? `${sv.ta_sistolica}/${sv.ta_diastolica}` : '--';
+            $('sv-fc').innerText = v(sv.frecuencia_cardiaca);
+            $('sv-fr').innerText = v(sv.frecuencia_respiratoria);
+            $('sv-temp').innerText = v(sv.temperatura_c);
+            $('sv-spo2').innerText = sv.spo2_porcentaje ? sv.spo2_porcentaje + '%' : '--';
+            [['val-peso', sv.peso_kg], ['val-talla', sv.talla_m]].forEach(([id, valor]) => {
+                if (valor && (forzarAntropometria || !$(id).value)) $(id).value = valor;
+            });
+            sincronizarPesoTalla();
+            const completos = BelenStore.signosCompletos(sv);
+            const alerta = $('alerta-signos');
+            const mostrar = !completos && MODO_ACCESO === 'medico';
+            alerta.classList.toggle('hidden', !mostrar); alerta.classList.toggle('flex', mostrar);
+            $('btn-capturar-signos').classList.toggle('animate-pulse', mostrar);
+            $('btn-capturar-signos').classList.toggle('hidden', MODO_ACCESO === 'lectura');
+            if (typeof actualizarIndicadorPendientes === 'function') actualizarIndicadorPendientes();
+            programarGuardadoBorrador();
+        }
+
+        function abrirCapturaSignos() {
+            if (MODO_ACCESO === 'lectura' || !BelenStore.puede('capturar_signos')) { avisar('Acción no permitida', 'El expediente está en solo lectura.', 'aviso'); return; }
+            const peso = parseFloat(document.getElementById('val-peso').value), talla = parseFloat(document.getElementById('val-talla').value);
+            BelenUI.modalSignosVitales({
+                turnoId: TURNO.turno_id,
+                extra: { peso_kg: peso > 0 ? peso : null, talla_m: talla > 0 ? talla : null },
+                alGuardar: () => { sincronizarSignosDesdeTurno(true); }
+            });
+        }
+
+        // ---------- Modo de acceso (enfermería / lectura) ----------
+        function aplicarModoAcceso() {
+            const $ = id => document.getElementById(id);
+            if (!BelenStore.puede('ver_historial_visitas')) $('btn-historial-visitas').classList.add('hidden');
+            if (MODO_ACCESO === 'enfermeria') {
+                document.body.classList.add('modo-enfermeria');
+                ['vista-nota', 'vista-indicaciones'].forEach(v => {
+                    document.querySelectorAll(`#${v} input, #${v} select, #${v} textarea, #${v} button`).forEach(n => { if (!n.disabled) { n.disabled = true; n.dataset.bloqueadoRol = '1'; } });
+                });
+                const b = $('banner-modo-enfermeria'); b.classList.remove('hidden'); b.classList.add('flex');
+                if (pestanaActual === 'nota' || pestanaActual === 'indicaciones') cambiarPestana('ingreso');
+            }
+            if (MODO_ACCESO === 'lectura' && !document.body.classList.contains('solo-lectura')) {
+                sessionStorage.setItem('belen_expediente_bloqueado', '1');
+                activarModoSoloLectura();
+            }
+        }
+
+        // ---------- Historial de visitas anteriores ----------
+        function visitasAnterioresDelPaciente() {
+            return BelenStore.visitasDePaciente(TURNO.paciente_id).filter(v => v.meta.turno_id !== TURNO.turno_id);
+        }
+        function actualizarContadorHistorial() {
+            document.getElementById('historial-contador').innerText = visitasAnterioresDelPaciente().length;
+        }
+        function verHistorialVisitas() {
+            if (!BelenStore.puede('ver_historial_visitas')) { avisar('Acción no permitida', 'Su perfil no puede consultar el historial clínico.', 'aviso'); return; }
+            BelenUI.modalHistorial({
+                pacienteId: TURNO.paciente_id, excluirTurnoId: TURNO.turno_id,
+                renderVisita: exp => `<div class="bg-white border border-slate-200 rounded-lg p-4 text-slate-800">${generarHTMLHistoriaClinica(exp)}</div>`
+            });
+        }
+
+        // ---------- Autollenado longitudinal ----------
+        function mostrarBannerAutollenado(texto) {
+            textoAutollenadoActual = texto || '';
+            const b = document.getElementById('banner-autollenado');
+            document.getElementById('texto-autollenado').innerText = textoAutollenadoActual;
+            b.classList.toggle('hidden', !textoAutollenadoActual); b.classList.toggle('flex', !!textoAutollenadoActual);
+        }
+
+        function marcarCirugiaAutomatica(id, origen) {
+            const fila = document.getElementById('qx-row-' + id);
+            if (!fila || fila.querySelector('[data-badge-auto]')) return;
+            fila.dataset.auto = origen;
+            fila.insertAdjacentHTML('afterbegin', `<span data-badge-auto class="absolute -top-2 left-3 bg-cyan-600 text-white text-[9px] font-bold uppercase px-2 py-0.5 rounded-full">${escaparHTML(origen)}</span>`);
+        }
+
+        // Pre-llena la Nota Médica con la ÚLTIMA visita guardada del paciente y suma las cirugías confirmadas en
+        // episodios anteriores. NO precarga lo que cambia en cada consulta (FUM, embarazo, signos, narrativa clínica).
+        function aplicarAutollenadoLongitudinal() {
+            const ctx = BelenStore.antecedentesLongitudinales(TURNO.paciente_id, TURNO.turno_id);
+            if (!ctx.total_visitas) return false;
+            const $ = id => document.getElementById(id);
+            const ponerValor = (id, v) => {
+                const n = $(id);
+                if (!n || v === null || v === undefined || String(v).trim() === '') return false;
+                if (n.tagName === 'SELECT' && !Array.from(n.options).some(o => (o.value || o.text) === String(v))) return false;
+                n.value = v;
+                n.dispatchEvent(new Event('input', { bubbles: true })); n.dispatchEvent(new Event('change', { bubbles: true }));
+                return true;
+            };
+            const ponerCheck = (id, estado) => { const n = $(id); if (!n || n.checked === estado) return; n.checked = estado; n.dispatchEvent(new Event('change', { bubbles: true })); };
+            let campos = 0;
+            const cuenta = ok => { if (ok) campos++; };
+
+            const ex = ctx.ultima_visita, p = ex.paciente || {}, a = ex.antecedentes || {};
+            const cat = BelenStore.buscarPacientePorId(TURNO.paciente_id) || {};
+
+            // Demografía (prioridad al catálogo, que siempre guarda lo más reciente)
+            cuenta(ponerValor('comp-civil', cat.estado_civil || p.estado_civil));
+            cuenta(ponerValor('comp-tel', cat.telefono || p.telefono));
+            cuenta(ponerValor('comp-ocu', cat.ocupacion || p.ocupacion));
+            cuenta(ponerValor('comp-dir', cat.direccion || p.direccion));
+
+            // Grupo y Rh
+            if (p.grupo_sanguineo) { ponerCheck('chk-sangre-omitir', false); cuenta(ponerValor('val-sangre', p.grupo_sanguineo)); }
+
+            // AHF y APNP (si estaban negados, el valor por defecto de la casilla ya es "negado")
+            const ahf = a.heredofamiliares;
+            if (ahf && !ahf.negado && ahf.detalle) { ponerCheck('chk-ahf-neg', false); cuenta(ponerValor('val-ahf', ahf.detalle)); }
+            const apnp = a.no_patologicos;
+            if (apnp && !apnp.negado && apnp.detalle) { ponerCheck('chk-apnp-neg', false); cuenta(ponerValor('val-apnp', apnp.detalle)); }
+
+            // APP
+            const app = a.personales_patologicos;
+            if (app) {
+                if (app.negado_todo) { ponerCheck('chk-app-neg', true); campos++; }
+                else {
+                    ponerCheck('chk-app-neg', false);
+                    ['hta:hipertension', 'dm2:diabetes_mellitus_2'].forEach(par => {
+                        const [pre, clave] = par.split(':'); const x = app[clave];
+                        if (x && x.presente) {
+                            ponerCheck('chk-' + pre, true); campos++;
+                            cuenta(ponerValor(pre + '-tiempo', x.tiempo_evolucion)); cuenta(ponerValor(pre + '-meds', x.tratamiento)); cuenta(ponerValor(pre + '-apego', x.apego));
+                        }
+                    });
+                    if (app.alergias && app.alergias.presente) { ponerCheck('chk-alergias', true); campos++; cuenta(ponerValor('val-alergias', app.alergias.descripcion)); }
+                    if (app.transfusiones && app.transfusiones.presente) { ponerCheck('chk-hemo', true); campos++; cuenta(ponerValor('hemo-tipo', app.transfusiones.detalle)); cuenta(ponerValor('hemo-comp', app.transfusiones.complicaciones)); }
+                    cuenta(ponerValor('val-otras-app', app.otras_enfermedades));
+                }
+            }
+
+            // Antecedentes quirúrgicos: lo ya registrado + procedimientos confirmados en hospitalizaciones anteriores
+            let detectadas = 0;
+            if (ctx.cirugias_detectadas.length && !(app && app.negado_todo)) {
+                ponerCheck('chk-app-neg', false);
+                ponerCheck('chk-qx', true);
+                ctx.cirugias_detectadas.forEach(q => {
+                    agregarCirugiaDOM();
+                    const id = cirugiasAgregadas[cirugiasAgregadas.length - 1];
+                    $('qx-nombre-' + id).value = q.procedimiento;
+                    $('qx-fecha-' + id).value = q.fecha_texto || '';
+                    $('qx-comp-' + id).value = q.complicaciones || '';
+                    if (q.origen === 'consentimiento_quirurgico') { marcarCirugiaAutomatica(id, 'Detectada en hospitalización anterior'); detectadas++; }
+                    campos++;
+                });
+            }
+
+            // Gineco-obstétricos estables (no se precargan FUM ni embarazo actual)
+            const g = a.gineco_obstetricos;
+            if (g && /femenino/i.test($('paciente-genero').innerText)) {
+                ponerCheck('chk-ago-omitir', false);
+                [['ago-g', g.gestas], ['ago-p', g.partos], ['ago-c', g.cesareas], ['ago-a', g.abortos]].forEach(([id, v]) => { $(id).value = v || 0; });
+                generarFilasAGO();
+                (g.detalle_gestas || []).forEach(d => {
+                    const t = ({ PARTO: 'parto', CESAREA: 'cesarea', ABORTO: 'aborto' })[d.tipo];
+                    if (t) { cuenta(ponerValor(`det-${t}-${d.numero}`, d.detalle)); ponerCheck(`omitir-${t}-${d.numero}`, !!d.omitir); }
+                });
+                cuenta(ponerValor('ago-ritmo', g.ritmo_menstrual)); cuenta(ponerValor('ago-mpf', g.metodo_planificacion));
+                if (g.solo_formula) { ponerCheck('chk-ago-solo-formula', true); }
+                [['ivus', g.ivus], ['ets', g.ets]].forEach(([k, x]) => {
+                    if (!x) return;
+                    if (x.no_referido) ponerCheck(`chk-ago-${k}-nr`, true); else { ponerCheck(`chk-ago-${k}-nr`, false); cuenta(ponerValor('ago-' + k, x.detalle)); }
+                });
+                const par = g.numero_parejas_sexuales;
+                if (par) { if (par.no_referido) ponerCheck('chk-ago-parejas-nr', true); else { ponerCheck('chk-ago-parejas-nr', false); cuenta(ponerValor('ago-parejas', par.valor)); } }
+                const hig = g.higiene_menstrual;
+                if (hig) { if (hig.no_referido) ponerCheck('chk-ago-higiene-nr', true); else { ponerCheck('chk-ago-higiene-nr', false); cuenta(ponerValor('ago-higiene-tipo', hig.tipo)); cuenta(ponerValor('ago-higiene-cant', hig.cantidad)); } }
+                toggleDetallesAGO();
+            }
+
+            const fecha = ((ex.consulta || {}).fecha_hora || '').slice(0, 10);
+            const medico = (ex.meta || {}).medico_nombre || (ex.consulta || {}).medico_tratante || '';
+            mostrarBannerAutollenado(
+                `Se completaron ${campos} datos con la visita del ${BelenStore.fechaLegibleISO(fecha)}${medico ? ' (' + medico + ')' : ''}. ` +
+                (detectadas ? `Se agregaron ${detectadas} cirugía${detectadas === 1 ? '' : 's'} confirmada${detectadas === 1 ? '' : 's'} en hospitalizaciones anteriores. ` : '') +
+                'Revise y actualice solo lo que haya cambiado.');
+            return true;
+        }
+
+        // ---------- Persistencia del episodio (visita + turno) ----------
+        function actualizarTurnoClinico(datos, estatus) {
+            const dx = datos.diagnosticos && datos.diagnosticos[0]
+                ? ((datos.diagnosticos[0].cie10_codigo ? datos.diagnosticos[0].cie10_codigo + ' ' : '') + datos.diagnosticos[0].descripcion) : null;
+            const area = datos.ingreso && datos.ingreso.area_destino ? datos.ingreso.area_destino.descripcion : null;
+            TURNO = BelenStore.actualizarTurno(TURNO.turno_id, { estatus: estatus, destino: datos.consulta.destino, area_destino: area, dx_principal: dx }) || TURNO;
+        }
+        // Guarda el expediente completo en belen_visitas (historial longitudinal) y cierra el turno
+        function persistirConsultaConcluida(datos, estatus) {
+            if (!BelenStore.registrarVisita(datos)) return false;
+            actualizarTurnoClinico(datos, estatus);
+            return true;
+        }
+
         function initApp() {
-            // --- ¿Consulta nueva o se retoma una captura en curso? ---
-            // Nueva: enlace desde el Dashboard (navegación normal) -> pestañas ocultas y formulario limpio.
-            // Se retoma: recarga / atrás-adelante / ?tab= / ?solo_lectura=1, o un INTERNAMIENTO en curso del mismo paciente.
+            // --- Sesión, turno y permisos ---
+            SESION = BelenStore.sesion();
+            if (!SESION) { window.location.replace('login.html'); return; }
             const params = new URLSearchParams(window.location.search);
-            const tipoNavegacion = (performance.getEntriesByType('navigation')[0] || {}).type;
-            const nombrePaciente = document.getElementById('paciente-nombre').innerText.trim();
-            let borrador = leerBorrador();
-            const mismoPaciente = !!borrador && borrador.paciente === nombrePaciente;
-            const internamientoEnCurso = mismoPaciente && borrador.etapa === 'internamiento';
-            const reanudar = params.get('nueva') !== '1' && mismoPaciente &&
-                (internamientoEnCurso || tipoNavegacion === 'reload' || tipoNavegacion === 'back_forward' || params.has('tab') || params.get('solo_lectura') === '1');
-            if (!reanudar) { limpiarSesionConsultaNueva(); borrador = null; }
-            // ?nueva=1 ya cumplió su función: se quita de la URL para que una recarga NO vuelva a borrar la captura
-            if (params.get('nueva') === '1') history.replaceState(null, '', window.location.pathname);
+            const turnoId = params.get('turno');
+            TURNO = turnoId ? BelenStore.obtenerTurno(turnoId) : null;
+            if (!turnoId) { bloquearAcceso('Abra el expediente desde el Dashboard, eligiendo a un paciente de su fila.', 'Falta seleccionar un paciente'); return; }
+            const acceso = BelenStore.accesoExpediente(SESION, TURNO);
+            if (!acceso.ok) { bloquearAcceso(acceso.motivo); return; }
+            MODO_ACCESO = acceso.modo;
+            document.body.dataset.rol = SESION.rol;
+            document.body.dataset.modo = MODO_ACCESO;
+
+            // --- ¿Consulta nueva o se retoma la captura en curso de ESTE turno? (borrador por turno en localStorage) ---
+            const borrador = leerBorrador();
+            if (MODO_ACCESO === 'lectura' && !borrador) { bloquearAcceso('Este episodio ya concluyó. Su historia se consulta desde "Expedientes Clínicos".', 'Consulta concluida'); return; }
+            const reanudar = !!borrador;
+            // Estado por turno: destino y bloqueo viajan dentro del borrador, nunca se heredan de otro paciente
+            ['belen_destino', 'belen_expediente_bloqueado', 'belen_paciente_dir', 'belen_paciente_civil'].forEach(k => sessionStorage.removeItem(k));
+            if (reanudar && borrador.destino) sessionStorage.setItem('belen_destino', borrador.destino);
+
+            aplicarContextoPaciente();
+            sincronizarSignosDesdeTurno(true);
 
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
@@ -876,16 +1172,7 @@
                 document.getElementById('seccion-ago').style.display = 'none';
             }
 
-            const civilGuardado = sessionStorage.getItem('belen_paciente_civil');
-            if (civilGuardado) {
-                document.getElementById('comp-civil').value = civilGuardado;
-            }
             sincronizarCivil();
-
-            const dirGuardada = sessionStorage.getItem('belen_paciente_dir');
-            if (dirGuardada && !document.getElementById('comp-dir').value) {
-                document.getElementById('comp-dir').value = dirGuardada;
-            }
 
             aplicarTipoIngreso(sessionStorage.getItem('belen_destino'));
             poblarEspecialidadesInterconsulta();
@@ -902,16 +1189,27 @@
             if (reanudar) {
                 try {
                     restaurarBorrador(borrador);
-                    if (internamientoEnCurso && tipoNavegacion === 'navigate') mostrarToast('Se retomó el internamiento en curso de ' + nombrePaciente + '.', 'info', 5500);
+                    if (borrador.etapa === 'internamiento' && MODO_ACCESO !== 'lectura') mostrarToast('Se retomó el internamiento en curso de ' + TURNO.paciente_nombre + '.', 'info', 5500);
                 } catch (err) {
                     console.error('No se pudo restaurar el borrador:', err);
                     mostrarToast('No se pudo restaurar toda la captura anterior.', 'error');
                 }
-            } else if (params.get('tab') === 'ingreso') {
+            } else if (MODO_ACCESO === 'medico') {
+                // Inteligencia longitudinal: precarga desde la última visita y detecta cirugías previas
+                try { aplicarAutollenadoLongitudinal(); } catch (err) { console.error('Autollenado longitudinal:', err); }
+            }
+            if (!reanudar && params.get('tab') === 'ingreso') {
                 // Compatibilidad con ingreso.html (redirige a expediente.html?tab=ingreso)
                 desbloquearModoIngreso();
                 cambiarPestana('ingreso');
             }
+
+            actualizarContadorHistorial();
+            aplicarModoAcceso();
+            sincronizarSignosDesdeTurno(false);
+
+            // Si enfermería (u otra pestaña) captura signos vitales mientras el expediente está abierto, se refleja de inmediato
+            window.addEventListener('storage', e => { if (e.key === BelenStore.CLAVES.turnos) sincronizarSignosDesdeTurno(false); });
 
             // Indicador de pendientes: se recalcula ante cualquier cambio en el formulario
             document.addEventListener('input', actualizarIndicadorPendientes);
@@ -922,6 +1220,7 @@
             ['input', 'change', 'click'].forEach(ev => document.addEventListener(ev, programarGuardadoBorrador));
             window.addEventListener('pagehide', guardarBorrador);
             document.addEventListener('focusout', limpiarCampoAlSalir);
+            programarGuardadoBorrador();
 
             // Modal: Escape cierra; Enter en el campo de texto confirma
             document.addEventListener('keydown', e => {
@@ -1441,11 +1740,14 @@
             const b = document.getElementById('banner-solo-lectura');
             b.classList.add('hidden'); b.classList.remove('flex');
             sessionStorage.removeItem('belen_expediente_bloqueado');
+            if (TURNO && TURNO.estatus === 'internado') TURNO = BelenStore.actualizarTurno(TURNO.turno_id, { estatus: 'internado_en_proceso' }) || TURNO;
+            if (MODO_ACCESO === 'lectura') MODO_ACCESO = 'medico';
             actualizarIndicadorPendientes();
         }
 
         // Botón final de la Nota Médica ('Guardar Destino'): valida todo y abre el modal de destino
         function validarYGuardar() {
+            if (!exigirPermiso('editar_nota_medica', 'La Nota Médica solo puede ser cerrada por el médico.')) return;
             const pendientes = obtenerCamposPendientes();
             if (pendientes.length > 0) {
                 resaltarYAvisar('Faltan datos obligatorios', pendientes);
@@ -1536,7 +1838,7 @@
             if(document.getElementById('chk-omitir-alarma').checked) { document.getElementById('bloque-print-alarma').style.display = 'none'; }
             else { document.getElementById('bloque-print-alarma').style.display = 'block'; document.getElementById('print-alarma').innerText = document.getElementById('val-alarma').value; }
 
-            document.getElementById('print-doctor-firma').innerText = sessionStorage.getItem('belen_rol_usuario') === 'admin' ? 'Médico Base' : 'Dr. Brandon Arguelles';
+            document.getElementById('print-doctor-firma').innerText = document.getElementById('val-medico').value;
 
             const dxPrin = diagnósticosAgregados[0] || 'Impactación Fecal (K56.4)';
             const grupoRh = (!document.getElementById('chk-sangre-omitir').checked && document.getElementById('val-sangre').value) ? document.getElementById('val-sangre').value : 'Desconoce';
@@ -1564,7 +1866,7 @@
 
             // Signos vitales en la nota impresa (triage + antropometría capturada)
             const antro = pesoTallaIMC();
-            let lineaSV = `Tensión Arterial: ${document.getElementById('sv-ta').innerText.trim()} | Frecuencia Respiratoria: ${document.getElementById('sv-fr').innerText.trim()} | Temperatura: ${document.getElementById('sv-temp').innerText.trim()}°C | Saturación de Oxígeno: ${document.getElementById('sv-spo2').innerText.trim()}`;
+            let lineaSV = `Tensión Arterial: ${document.getElementById('sv-ta').innerText.trim()} | Frecuencia Cardíaca: ${document.getElementById('sv-fc').innerText.trim()} | Frecuencia Respiratoria: ${document.getElementById('sv-fr').innerText.trim()} | Temperatura: ${document.getElementById('sv-temp').innerText.trim()}°C | Saturación de Oxígeno: ${document.getElementById('sv-spo2').innerText.trim()}`;
             if (antro.peso !== null) lineaSV += ` | Peso: ${antro.peso} kg`;
             if (antro.talla !== null) lineaSV += ` | Talla: ${antro.talla} m`;
             if (antro.imc !== null) lineaSV += ` | IMC: ${antro.imc}`;
@@ -1617,6 +1919,7 @@
         //   Alta ............................ imprime SOLO la nota, envía al backend y termina.
         //   Observacion / Hospitalizacion ... NO imprime: guarda, desbloquea el papeleo y abre la Hoja Frontal.
         function finalizarProceso(destino) {
+            if (!exigirPermiso('editar_nota_medica', 'La Nota Médica solo puede ser cerrada por el médico.')) return;
             document.getElementById('modal-destino').classList.add('opacity-0', 'pointer-events-none');
             sessionStorage.setItem('belen_destino', destino);
             persistirDatosNota();
@@ -1628,12 +1931,18 @@
             if (destino === 'Alta') {
                 document.getElementById('titulo-impresion-nota').innerText = tituloNotaSegunDestino(destino);
                 document.getElementById('print-nota').classList.remove('hidden');
-                window.print();
-                ocultarTodosLosPrints();
 
-                // SIMULACRO DE BACKEND: aquí irá el POST a la base de datos
+                // SIMULACRO DE BACKEND: aquí irá el POST a la base de datos.
+                // Se guarda ANTES de imprimir: si el almacenamiento falla, no se imprime ni se cierra la consulta.
                 const datosGenerados = recolectarExpediente();
                 console.log("ENVIANDO AL BACKEND:", datosGenerados);
+                if (!persistirConsultaConcluida(datosGenerados, 'alta')) {
+                    ocultarTodosLosPrints();
+                    avisar('No se pudo guardar la consulta', 'El almacenamiento local del navegador no está disponible o está lleno. La consulta NO se cerró; intente de nuevo.', 'error');
+                    return;
+                }
+                window.print();
+                ocultarTodosLosPrints();
 
                 descartarBorrador();
                 mostrarToast('Alta registrada. Regresando al Dashboard...', 'exito');
@@ -1642,6 +1951,7 @@
                 // SIMULACRO DE BACKEND: aquí irá el POST (la nota se guarda aunque todavía no se imprima)
                 const datosGenerados = recolectarExpediente();
                 console.log("ENVIANDO AL BACKEND:", datosGenerados);
+                actualizarTurnoClinico(datosGenerados, 'internado_en_proceso');   // aparece en Hospitalización (papeleo en curso)
 
                 desbloquearModoIngreso();
                 cambiarPestana('ingreso');
@@ -1719,6 +2029,7 @@
         // Botón gigante de la Historia Clínica: valida todo el expediente, lo guarda en el registro de
         // hospitalizados, imprime el paquete, bloquea (solo lectura) y abre Hospitalización en el Dashboard.
         function finalizarExpedienteCompleto() {
+            if (!exigirPermiso('finalizar_expediente', 'Solo el médico puede finalizar e imprimir el expediente completo.')) return;
             const yaBloqueado = document.body.classList.contains('solo-lectura');
             if (!yaBloqueado) {
                 const faltantes = validarExpedienteCompleto();
@@ -1732,7 +2043,7 @@
             // SIMULACRO DE BACKEND: aquí irá el POST a la base de datos
             const datosGenerados = recolectarExpediente();
             console.log("ENVIANDO AL BACKEND:", datosGenerados);
-            if (!guardarPacienteHospitalizado(datosGenerados)) {
+            if (!guardarPacienteHospitalizado(datosGenerados) || !persistirConsultaConcluida(datosGenerados, 'internado')) {
                 sessionStorage.removeItem('belen_expediente_bloqueado');
                 avisar('No se pudo guardar el expediente', 'El almacenamiento local del navegador no está disponible o está lleno. El expediente NO se bloqueó ni se imprimió; intente de nuevo.', 'error');
                 return;
@@ -1806,6 +2117,7 @@
                 signos_vitales: {
                     ta_sistolica: enteroONull(ta[0]),
                     ta_diastolica: enteroONull(ta[1]),
+                    frecuencia_cardiaca: enteroONull(textoDOM('sv-fc')),
                     frecuencia_respiratoria: enteroONull(textoDOM('sv-fr')),
                     temperatura_c: (v => Number.isFinite(v) ? v : null)(parseFloat(textoDOM('sv-temp'))),
                     spo2_porcentaje: enteroONull(textoDOM('sv-spo2')),
@@ -1999,7 +2311,18 @@
                     esquema_version: '1.0',
                     generado_en: new Date().toISOString(),
                     origen: 'expediente.html',
-                    usuario_rol: sessionStorage.getItem('belen_rol_usuario')
+                    usuario_rol: sessionStorage.getItem('belen_rol_usuario'),
+                    usuario_id: SESION ? SESION.usuario_id : null,
+                    usuario_nombre: SESION ? SESION.nombre : null,
+                    // Episodio: FK a turno, paciente (catálogo) y médico tratante
+                    turno_id: TURNO ? TURNO.turno_id : null,
+                    paciente_id: TURNO ? TURNO.paciente_id : null,
+                    medico_id: TURNO ? TURNO.medico_id : null,
+                    medico_nombre: TURNO ? TURNO.medico_nombre : null,
+                    especialidad_codigo: TURNO ? TURNO.especialidad_codigo : null,
+                    especialidad: TURNO ? TURNO.especialidad : null,
+                    numero_turno: TURNO ? TURNO.numero_turno : null,
+                    timestamp_llegada: TURNO ? TURNO.timestamp_llegada : null
                 },
                 paciente: paciente,
                 consulta: consulta,
@@ -2205,22 +2528,25 @@
                 paciente: document.getElementById('paciente-nombre').innerText.trim(),
                 guardado_en: new Date().toISOString(),
                 etapa: etapaActual(),
+                destino: sessionStorage.getItem('belen_destino') || null,
+                autollenado: textoAutollenadoActual || null,
                 pestana: pestanaActual,
                 campos: campos,
                 vacunas: Array.from(document.querySelectorAll('[data-vacuna-emb]:checked')).map(c => c.dataset.vacunaEmb),
                 diagnosticos: diagnósticosAgregados.slice(),
-                cirugias: cirugiasAgregadas.map(id => ({ nombre: valor('qx-nombre-' + id), fecha: valor('qx-fecha-' + id), comp: valor('qx-comp-' + id) })),
+                cirugias: cirugiasAgregadas.map(id => ({ nombre: valor('qx-nombre-' + id), fecha: valor('qx-fecha-' + id), comp: valor('qx-comp-' + id), auto: (document.getElementById('qx-row-' + id) || { dataset: {} }).dataset.auto || '' })),
                 consentimientos: consentimientosEspeciales.map(c => ({ procedimiento: c.procedimiento, riesgos: c.riesgos }))
             };
         }
 
+        // Borrador por turno en localStorage (así enfermería y médico trabajan sobre el mismo expediente)
         function leerBorrador() {
-            try { return JSON.parse(sessionStorage.getItem(CLAVE_BORRADOR) || 'null'); } catch (e) { return null; }
+            return TURNO ? BelenStore.leerBorrador(TURNO.turno_id) : null;
         }
 
         function guardarBorrador() {
-            if (borradorDescartado) return;
-            try { sessionStorage.setItem(CLAVE_BORRADOR, JSON.stringify(capturarBorrador())); } catch (e) { /* almacenamiento lleno o bloqueado */ }
+            if (borradorDescartado || !TURNO || MODO_ACCESO === 'lectura') return;
+            try { BelenStore.guardarBorrador(TURNO.turno_id, capturarBorrador()); } catch (e) { /* almacenamiento lleno o bloqueado */ }
         }
 
         function programarGuardadoBorrador() {
@@ -2231,17 +2557,20 @@
         function descartarBorrador() {
             borradorDescartado = true;
             clearTimeout(temporizadorBorrador);
-            sessionStorage.removeItem(CLAVE_BORRADOR);
+            if (TURNO) BelenStore.borrarBorrador(TURNO.turno_id);
         }
 
         function limpiarSesionConsultaNueva() {
-            ['belen_destino', 'belen_expediente_bloqueado', 'belen_paciente_dir', 'belen_paciente_civil', CLAVE_BORRADOR].forEach(k => sessionStorage.removeItem(k));
+            ['belen_destino', 'belen_expediente_bloqueado', 'belen_paciente_dir', 'belen_paciente_civil'].forEach(k => sessionStorage.removeItem(k));
         }
 
+        // "Iniciar consulta nueva": descarta lo capturado de ESTE turno y reabre la misma consulta en blanco (con autollenado)
         function iniciarNuevaConsultaDemo() {
+            const turnoId = TURNO.turno_id;
             descartarBorrador();
             limpiarSesionConsultaNueva();
-            window.location.href = 'expediente.html?nueva=1';
+            if (TURNO.estatus === 'internado_en_proceso') BelenStore.actualizarTurno(turnoId, { estatus: 'en_consulta', destino: null, area_destino: null, dx_principal: null });
+            window.location.href = 'expediente.html?turno=' + encodeURIComponent(turnoId);
         }
 
         function restaurarBorrador(b) {
@@ -2265,6 +2594,7 @@
                 agregarCirugiaDOM();
                 const id = cirugiasAgregadas[cirugiasAgregadas.length - 1];
                 $('qx-nombre-' + id).value = q.nombre || ''; $('qx-fecha-' + id).value = q.fecha || ''; $('qx-comp-' + id).value = q.comp || '';
+                if (q.auto) marcarCirugiaAutomatica(id, q.auto);
             });
             consentimientosEspeciales = (b.consentimientos || []).map(c => ({ id: ++contadorConsentimientos, procedimiento: c.procedimiento || '', riesgos: c.riesgos || '' }));
             renderizarConsentimientosEspeciales();
@@ -2296,6 +2626,7 @@
             }
             if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
             document.querySelectorAll('.custom-scrollbar').forEach(c => { c.scrollTop = 0; });
+            if (b.autollenado) mostrarBannerAutollenado(b.autollenado);
             actualizarIndicadorPendientes();
         }
 
@@ -2345,6 +2676,11 @@
             const add = (id, nombre, motivo, marca) => pend.push({ id: id, nombre: nombre, motivo: motivo || 'Campo obligatorio', marca: marca || id, tab: 'nota' });
             const generoFem = document.getElementById('paciente-genero').innerText.includes('Femenino');
             const MSG_OMITIR = (etq) => `Escriba algo o marque "${etq}"`;
+
+            // Candado de signos vitales: TA, FC, FR, Temp y SpO2 (los captura el médico o enfermería)
+            if (TURNO && MODO_ACCESO === 'medico' && !BelenStore.signosCompletos(TURNO.signos_vitales)) {
+                add('btn-capturar-signos', 'Signos Vitales (TA, FC, FR, Temp y SpO2)', 'Capture los signos vitales con el botón "Capturar / Editar Signos Vitales" o pida a Enfermería que los capture', 'btn-capturar-signos');
+            }
 
             // Datos complementarios
             const fn = valorCampo('comp-fn');
@@ -2405,7 +2741,7 @@
             const aunPendientes = new Set(pendientes.map(p => p.marca || p.id));
             document.querySelectorAll('.campo-pendiente').forEach(n => { if (!aunPendientes.has(n.id)) n.classList.remove('campo-pendiente'); });
 
-            if (pendientes.length === 0 || document.body.classList.contains('solo-lectura')) {
+            if (pendientes.length === 0 || document.body.classList.contains('solo-lectura') || MODO_ACCESO !== 'medico') {
                 btn.classList.add('hidden'); btn.classList.remove('flex');
                 return;
             }
@@ -2624,6 +2960,12 @@
             } else if (origen === 'consentimientos') {
                 const pend = validarConsentimientos();
                 if (pend.length) return resaltarYAvisar('Complete los consentimientos', pend);
+                if (MODO_ACCESO === 'enfermeria') {
+                    guardarBorrador();
+                    mostrarToast('Hoja Frontal y Consentimientos guardados. Regresando al Monitor de Camas...', 'exito');
+                    setTimeout(() => irAlDashboard('hospitalizacion'), 1200);
+                    return;
+                }
                 mostrarToast('Consentimientos guardados.', 'exito');
                 cambiarPestana('indicaciones');
             } else if (origen === 'indicaciones') {
@@ -2640,11 +2982,12 @@
         // Rellena la Nota Médica con LOREM IPSUM (y valores válidos donde hay validación).
         // ============================================================
         function llenarDatosDePrueba() {
+            if (!exigirPermiso('editar_nota_medica', 'Enfermería no puede editar la Nota Médica.')) return;
             const L = 'LOREM IPSUM';
             const poner = (id, v) => { const n = document.getElementById(id); if (!n) return; n.value = v; n.dispatchEvent(new Event('input', { bubbles: true })); n.dispatchEvent(new Event('change', { bubbles: true })); };
             const poner_check = (id, estado) => { const n = document.getElementById(id); if (!n || n.checked === estado) return; n.checked = estado; n.dispatchEvent(new Event('change', { bubbles: true })); };
 
-            poner('comp-fn', '1985-06-15'); poner('comp-civil', 'Casado(a)'); poner('comp-tel', '3221234567');
+            poner('comp-civil', 'Casado(a)'); poner('comp-tel', '3221234567');
             poner('comp-ocu', L); poner('comp-dir', L + ' 123, Col. Centro');
 
             poner_check('chk-ahf-neg', false); poner('val-ahf', L);
@@ -2670,6 +3013,10 @@
                 poner_check('chk-ago-higiene-nr', false); poner('ago-higiene-tipo', 'TOALLAS'); poner('ago-higiene-cant', L);
             }
 
+            if (!BelenStore.signosCompletos(TURNO.signos_vitales)) {
+                BelenStore.guardarSignos(TURNO.turno_id, { ta_sistolica: 120, ta_diastolica: 80, frecuencia_cardiaca: 76, frecuencia_respiratoria: 18, temperatura_c: 36.5, spo2_porcentaje: 98, peso_kg: 70, talla_m: 1.7 }, SESION);
+                sincronizarSignosDesdeTurno(true);
+            }
             poner('val-peso', 70); poner('val-talla', 1.70);
             poner('val-motivo', L); poner('val-padecimiento', L + ' dolor sit amet, consectetur adipiscing elit.');
             poner_check('chk-omitir-estudios', false); poner('val-estudios', L);
@@ -2909,6 +3256,7 @@
             const sv = p.signos_vitales;
             const partesSV = [];
             if (sv.ta_sistolica !== null) partesSV.push(`Tensión arterial: ${sv.ta_sistolica}/${sv.ta_diastolica} mmHg`);
+            if (sv.frecuencia_cardiaca !== null && sv.frecuencia_cardiaca !== undefined) partesSV.push(`Frecuencia cardíaca: ${sv.frecuencia_cardiaca} lpm`);
             if (sv.frecuencia_respiratoria !== null) partesSV.push(`Frecuencia respiratoria: ${sv.frecuencia_respiratoria} rpm`);
             if (sv.temperatura_c !== null) partesSV.push(`Temperatura: ${sv.temperatura_c} °C`);
             if (sv.spo2_porcentaje !== null) partesSV.push(`Saturación de oxígeno: ${sv.spo2_porcentaje}%`);
@@ -2949,7 +3297,7 @@
             html += seccion('Indicación terapéutica', terapeutica);
 
             // FIRMA DEL MÉDICO
-            const medicoFirma = d.meta.usuario_rol === 'admin' ? 'Médico Base' : 'Dr. Brandon Arguelles';
+            const medicoFirma = d.consulta.medico_tratante || d.meta.medico_nombre || 'Médico tratante';
             html += `<div class="hc-firma"><div><strong>${e(medicoFirma)}</strong><br>Cédula Profesional: 87654321<br>Médico Tratante</div></div>`;
             return html + '</div>';
         }

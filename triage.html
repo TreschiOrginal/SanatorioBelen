@@ -151,6 +151,7 @@
         </div>
     </main>
 
+    <script src="js/belen-ui.js"></script>
     <script>
         const basePacientes = [
             { id: 1, nombre: "Laura Méndez", edad: 34, diabetes: false, hta: false, alergias: "Penicilina" },
@@ -218,13 +219,24 @@
             document.getElementById('badge-paciente').classList.add('hidden');
         }
 
+        // Esta pantalla es una maqueta anterior: el registro real de pacientes y los signos vitales
+        // viven ahora en el Dashboard (Fila de Espera). Sin alert() nativos: se usan modales propios.
         function enviarAlMedico() {
             const nombre = document.getElementById('input-nombre').value;
-            if(!nombre) return alert("Falta capturar el nombre del paciente.");
-            alert(`✅ ${nombre} ha sido enviado a la Sala de Espera del Médico.`);
-            document.getElementById('buscador-paciente').value = '';
-            limpiarFicha();
-            window.location.href = 'dashboard.html';
+            if (!nombre) {
+                BelenUI.aviso('Falta el nombre', 'Falta capturar el nombre del paciente.', 'alerta');
+                return;
+            }
+            BelenUI.modal({
+                titulo: 'Registro actualizado', tipo: 'info', centrado: true, cerrable: false,
+                mensaje: 'El registro de pacientes, los turnos y los signos vitales ahora se manejan desde la Fila de Espera del Dashboard.',
+                botones: [{ texto: 'Ir a la Fila de Espera', estilo: 'primario', alPulsar: () => {
+                    document.getElementById('buscador-paciente').value = '';
+                    limpiarFicha();
+                    window.location.href = 'dashboard.html?vista=fila';
+                    return false;
+                } }]
+            });
         }
     </script>
 </body>
