@@ -31,9 +31,13 @@
         .fila { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px dotted #ccc; padding-bottom: 2px; }
 
         @media print {
+            /* Hojas con membrete pre-impreso: el espacio superior lo da la PAGINA (@page), no el contenedor.
+               Así, si un documento se desborda a la hoja 2, también respeta el membrete físico.
+               Los márgenes laterales/inferior también viven aquí; .zona-impresion NO lleva padding. */
+            @page { margin-top: 4.2cm; margin-bottom: 1.5cm; margin-left: 1.8cm; margin-right: 1.8cm; }
             .zona-impresion {
-                position: absolute; left: 0; top: 0; width: 100%;
-                background: white; padding-top: 4cm; padding-left: 2cm; padding-right: 2cm; padding-bottom: 2cm;
+                position: static; width: 100%;
+                background: white; padding: 0;
                 font-family: Arial, sans-serif; font-size: 11px; line-height: 1.5; color: black !important;
             }
             .linea-input { border-bottom: 1px solid black; display: inline-block; padding: 0 5px; font-weight: bold; }
@@ -45,6 +49,27 @@
            para que salto-pagina funcione. Solo se activa desde imprimirTodoElPaquete(). */
         @media print {
             body.modo-paquete .zona-impresion { position: static; }
+        }
+
+        /* Historia Clínica: pantalla (legible) e impresión (compacta, 9.5px, cuadrícula de 2 columnas) */
+        .hc-doc { font-family: Arial, sans-serif; font-size: 12px; line-height: 1.45; color: #0f172a; }
+        .hc-titulo { text-align: center; font-size: 15px; font-weight: bold; text-decoration: underline; margin: 0 0 8px 0; }
+        .hc-sec { margin: 0 0 7px 0; }
+        .hc-sec-t { font-size: 1.05em; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; margin: 0 0 3px 0; padding-bottom: 1px; break-after: avoid; page-break-after: avoid; }
+        .hc-p { margin: 1px 0; white-space: pre-wrap; break-inside: avoid; page-break-inside: avoid; }
+        .hc-subh { font-weight: bold; text-transform: uppercase; margin: 3px 0 1px 0; break-after: avoid; page-break-after: avoid; }
+        .hc-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 14px; row-gap: 0; margin: 1px 0; }
+        .hc-grid > div { margin: 0; break-inside: avoid; page-break-inside: avoid; }
+        .hc-grid > .hc-full { grid-column: 1 / -1; }
+        .hc-lista { margin: 1px 0 1px 16px; padding: 0; list-style: decimal; }
+        .hc-firma { margin-top: 22px; text-align: center; break-inside: avoid; page-break-inside: avoid; }
+        .hc-firma > div { display: inline-block; width: 220px; border-top: 1px solid #000; padding-top: 3px; }
+        @media print {
+            .hc-doc { font-size: 9.5px; line-height: 1.3; color: #000; }
+            .hc-titulo { font-size: 13px; margin-bottom: 5px; }
+            .hc-sec { margin-bottom: 5px; }
+            .hc-grid { column-gap: 12px; }
+            .hc-firma { margin-top: 16px; }
         }
 
         /* Campos obligatorios sin capturar (se marcan al intentar guardar o al pulsar el indicador) */
@@ -550,18 +575,17 @@
                         </div>
                     </div>
 
-                    <!-- 1. DIETA -->
+                    <!-- 1. DIETA (texto libre + machotes) -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                         <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-4 border-b border-slate-100 pb-2"><i class="fas fa-utensils text-cyan-500 mr-2"></i>Dieta</h3>
-                        <label for="ind-dieta" class="text-xs font-bold text-slate-500 uppercase block mb-1">Tipo de Dieta</label>
-                        <select id="ind-dieta" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold text-slate-700 focus:border-cyan-500 outline-none">
-                            <option value="">Seleccione...</option>
-                            <option value="AYUNO">Ayuno</option>
-                            <option value="LIQUIDA">Dieta Líquida</option>
-                            <option value="BLANDA">Dieta Blanda</option>
-                            <option value="NORMAL">Dieta Normal</option>
-                            <option value="DIABETICO">Dieta para Diabético</option>
-                        </select>
+                        <div class="flex flex-wrap items-center gap-2 mb-3">
+                            <label for="machote-sel-dieta" class="sr-only">Cargar machote</label>
+                            <select id="machote-sel-dieta" onchange="cargarMachote('dieta')" class="flex-1 min-w-[200px] bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-700 focus:border-cyan-500 outline-none"></select>
+                            <button type="button" onclick="guardarMachote('dieta')" class="bg-cyan-50 text-cyan-700 border border-cyan-200 px-3 py-2 rounded-lg text-xs font-bold hover:bg-cyan-100 transition inline-flex items-center gap-1.5"><i class="fas fa-bookmark"></i> Guardar como machote</button>
+                            <button type="button" onclick="borrarMachote('dieta')" class="text-red-400 hover:text-red-600 border border-slate-200 px-3 py-2 rounded-lg text-xs transition" title="Eliminar un machote guardado"><i class="fas fa-trash"></i></button>
+                        </div>
+                        <label for="ind-dieta" class="sr-only">Dieta</label>
+                        <textarea id="ind-dieta" rows="4" placeholder="Ej. Dieta blanda hiposódica, fraccionada en 5 tomas al día.&#10;Ayuno a partir de las 22:00 hrs." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed text-slate-800 focus:border-cyan-500 outline-none resize-y"></textarea>
                     </div>
 
                     <!-- SOLUCIONES PARENTERALES (texto libre + machotes) -->
@@ -638,7 +662,7 @@
                         </div>
                     </div>
                     <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-slate-200">
-                        <div id="historia-preview" style="font-family: Arial, sans-serif; font-size: 12px; line-height: 1.5; color: #0f172a;"></div>
+                        <div id="historia-preview"></div>
                     </div>
                     <div class="pb-10">
                         <button type="button" id="btn-finalizar-expediente" data-solo-lectura-ok onclick="finalizarExpedienteCompleto()" class="w-full bg-emerald-600 text-white px-8 py-7 rounded-2xl text-xl md:text-2xl font-extrabold shadow-2xl hover:bg-emerald-700 hover:-translate-y-1 transition-all inline-flex justify-center items-center gap-4"><i class="fas fa-print text-2xl"></i> Finalizar e Imprimir Expediente Completo</button>
@@ -781,7 +805,8 @@
 
         <div class="cuadro-datos">
             <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">INDICACIONES</h4>
-            <p style="margin: 0 0 10px 0;"><strong>1. DIETA:</strong> <span id="print-ind-dieta"></span></p>
+            <p style="margin: 0 0 2px 0;"><strong>1. DIETA:</strong></p>
+            <div id="print-ind-dieta" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
             <p style="margin: 0 0 2px 0;"><strong>2. SOLUCIONES PARENTERALES:</strong></p>
             <div id="print-ind-soluciones" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
             <p style="margin: 0 0 2px 0;"><strong>3. MEDICAMENTOS:</strong></p>
@@ -1563,7 +1588,7 @@
             document.getElementById('print-ind-nombre').innerText = document.getElementById('paciente-nombre').innerText.trim();
             document.getElementById('print-ind-edad').innerText = edadMatchInd ? edadMatchInd[1] + ' años' : 'No registrada';
             document.getElementById('print-ind-alergias').innerText = alergiasTxt;
-            document.getElementById('print-ind-dieta').innerText = ind.dieta.descripcion || 'No especificada';
+            document.getElementById('print-ind-dieta').textContent = ind.dieta.texto || 'No especificada.';
 
             // Texto libre: se imprime tal cual (saltos de línea respetados por white-space: pre-wrap)
             document.getElementById('print-ind-soluciones').textContent = ind.soluciones_parenterales.texto || 'No se indican.';
@@ -1673,6 +1698,26 @@
 
         // Botón gigante de la Historia Clínica: valida todo el expediente, imprime el paquete,
         // envía al backend, bloquea (solo lectura) y regresa al Dashboard.
+        // Registro local de pacientes internados (lo consumirá el Dashboard, vista Hospitalización)
+        const CLAVE_HOSPITALIZADOS = 'belen_pacientes_hospitalizados';
+
+        // Agrega el expediente completo al arreglo. Si ya existe la misma consulta (mismo paciente y fecha) la reemplaza.
+        // Devuelve false si el almacenamiento falla (para no bloquear el expediente sin haberlo guardado).
+        function guardarPacienteHospitalizado(expediente) {
+            let lista = [];
+            try {
+                const crudo = JSON.parse(localStorage.getItem(CLAVE_HOSPITALIZADOS) || '[]');
+                lista = Array.isArray(crudo) ? crudo : [];
+            } catch (err) { lista = []; }
+            const clave = x => ((x && x.paciente && x.paciente.nombre_completo) || '') + '|' + ((x && x.consulta && x.consulta.fecha_hora) || '');
+            const i = lista.findIndex(x => clave(x) === clave(expediente));
+            if (i >= 0) lista[i] = expediente; else lista.push(expediente);
+            try { localStorage.setItem(CLAVE_HOSPITALIZADOS, JSON.stringify(lista)); return true; }
+            catch (err) { return false; }
+        }
+
+        // Botón gigante de la Historia Clínica: valida todo el expediente, lo guarda en el registro de
+        // hospitalizados, imprime el paquete, bloquea (solo lectura) y abre Hospitalización en el Dashboard.
         function finalizarExpedienteCompleto() {
             const yaBloqueado = document.body.classList.contains('solo-lectura');
             if (!yaBloqueado) {
@@ -1680,19 +1725,24 @@
                 if (faltantes.length) return resaltarYAvisar('El expediente está incompleto', faltantes);
             }
             if (!validarResponsableMenor()) return;
-            imprimirPaquete();
-            if (yaBloqueado) return;   // ya estaba finalizado: solo era una reimpresión
+            if (yaBloqueado) { imprimirPaquete(); return; }   // ya estaba finalizado: solo es una reimpresión
 
             // El flag se fija ANTES de recolectar para que el JSON salga con estatus BLOQUEADO
             sessionStorage.setItem('belen_expediente_bloqueado', '1');
             // SIMULACRO DE BACKEND: aquí irá el POST a la base de datos
             const datosGenerados = recolectarExpediente();
             console.log("ENVIANDO AL BACKEND:", datosGenerados);
+            if (!guardarPacienteHospitalizado(datosGenerados)) {
+                sessionStorage.removeItem('belen_expediente_bloqueado');
+                avisar('No se pudo guardar el expediente', 'El almacenamiento local del navegador no está disponible o está lleno. El expediente NO se bloqueó ni se imprimió; intente de nuevo.', 'error');
+                return;
+            }
 
+            imprimirPaquete();
             activarModoSoloLectura();
             guardarBorrador();
-            mostrarToast('Expediente finalizado. Regresando al Dashboard...', 'exito');
-            setTimeout(() => { window.location.href = 'dashboard.html'; }, 1800);
+            mostrarToast('Expediente finalizado. Abriendo Hospitalización en el Dashboard...', 'exito');
+            setTimeout(() => { window.location.href = 'dashboard.html?vista=hospitalizacion'; }, 1800);
         }
 
         // ============================================================
@@ -1711,8 +1761,8 @@
         //   ingreso ......................... 1 fila (FK consulta)
         //   consentimientos.procedimientos[] . N filas por consulta (orden, procedimiento, riesgos)
         //   indicaciones.interconsulta ....... 0..1 fila (especialidad + medico: el medico es solo interno)
-        // Los catálogos (dieta, vía, medidas) viajan como `codigo` estable
-        // + `descripcion`, listos para ser FK a tablas de catálogo.
+        // Dieta, soluciones, medicamentos y medidas son texto libre (`texto` + `lineas[]`).
+        // Interconsulta e ingreso.area_destino viajan como `codigo` estable + `descripcion`.
         // ============================================================
         // Constructor PURO: lee el DOM y devuelve el objeto, sin console.log ni efectos.
         // Lo usan recolectarExpediente() (envío al backend) y la Historia Clínica.
@@ -1977,22 +2027,17 @@
 
         // Lee la vista de Indicaciones y devuelve JSON plano (sin efectos secundarios,
         // sin console.log). Lo consumen recolectarExpediente() y compilarDatosNota().
-        // Los tres bloques son texto libre: se guarda el `texto` completo (columna TEXT)
+        // Los cuatro bloques (dieta, soluciones, medicamentos, medidas) son texto libre: se guarda el `texto` completo (columna TEXT)
         // y `lineas[]` (una fila por renglón, por si backend desea normalizar).
         function recolectarIndicaciones() {
             const valor = id => { const n = document.getElementById(id); return n ? n.value.trim() : ''; };
-            const selDieta = document.getElementById('ind-dieta');
-            const dietaCodigo = selDieta && selDieta.value ? selDieta.value : null;
             const bloque = id => {
                 const t = valor(id);
                 return { texto: t || null, lineas: t ? t.split(/\r?\n/).map(l => l.trim()).filter(Boolean) : [] };
             };
 
             return {
-                dieta: {
-                    codigo: dietaCodigo,
-                    descripcion: dietaCodigo ? selDieta.options[selDieta.selectedIndex].text : null
-                },
+                dieta: bloque('ind-dieta'),
                 soluciones_parenterales: bloque('ind-soluciones'),
                 medicamentos: bloque('ind-medicamentos'),
                 medidas_generales: bloque('ind-medidas'),
@@ -2648,11 +2693,12 @@
         // MACHOTES (plantillas de indicaciones) — localStorage
         // ------------------------------------------------------------
         // Clave 'belen_machotes' -> [{ id, seccion, nombre, texto, creado_en }]
-        // seccion: 'soluciones' | 'medicamentos' | 'medidas'
+        // seccion: 'dieta' | 'soluciones' | 'medicamentos' | 'medidas'
         // Misma forma que una tabla `machotes_indicaciones` futura.
         // ============================================================
         const MACHOTES_CLAVE = 'belen_machotes';
         const MACHOTES_SECCIONES = {
+            dieta:        { textarea: 'ind-dieta',        etiqueta: 'Dieta' },
             soluciones:   { textarea: 'ind-soluciones',   etiqueta: 'Soluciones' },
             medicamentos: { textarea: 'ind-medicamentos', etiqueta: 'Medicamentos' },
             medidas:      { textarea: 'ind-medidas',      etiqueta: 'Medidas Generales' }
@@ -2756,47 +2802,58 @@
         function generarHTMLHistoriaClinica(d) {
             const e = escaparHTML;
             const vacio = v => v === null || v === undefined || String(v).trim() === '';
-            const val = v => vacio(v) ? 'No referido' : e(v);
+            const val = v => vacio(v) ? 'No referido' : e(v);                       // texto ya escapado
             const par = (etq, v) => `<strong>${e(etq)}:</strong> ${val(v)}`;
-            const linea = (...pares) => `<p style="margin: 2px 0;">${pares.map(p => par(p[0], p[1])).join('&nbsp;&nbsp;|&nbsp;&nbsp;')}</p>`;
-            const parrafo = v => `<p style="margin: 2px 0; white-space: pre-wrap;">${val(v)}</p>`;
-            const viñeta = items => `<ul style="margin: 2px 0 2px 18px; padding: 0; list-style: disc;">${items.map(i => `<li>${i}</li>`).join('')}</ul>`;
+            // Cuadrícula de 2 columnas para datos cortos: celda(etiqueta, valor[, ocupa todo el ancho])
+            const celda = (etq, v, completa) => `<div${completa ? ' class="hc-full"' : ''}>${par(etq, v)}</div>`;
+            const celdaHTML = (html, completa) => `<div${completa ? ' class="hc-full"' : ''}>${html}</div>`;
+            const grid = celdas => `<div class="hc-grid">${celdas.join('')}</div>`;
+            // Texto en prosa corrida (respeta saltos de línea del médico). Si es multilínea, empieza en renglón nuevo.
+            const prosa = (etq, texto) => `<p class="hc-p"><strong>${e(etq)}:</strong>${String(texto).includes('\n') ? '\n' : ' '}${e(texto)}</p>`;
+            const prosaHTML = html => `<p class="hc-p">${html}</p>`;
+
             const ROMANOS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
             let n = 0;
-            const seccion = (titulo, cuerpo) => `<div style="margin-bottom: 12px;"><h4 style="margin: 0 0 4px 0; font-size: 12px; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px;">${ROMANOS[n++]}. ${e(titulo)}</h4>${cuerpo}</div>`;
-            // Subsecciones del Interrogatorio (A, B, C...)
+            const seccion = (titulo, cuerpo) => `<div class="hc-sec"><div class="hc-sec-t">${ROMANOS[n++]}. ${e(titulo)}</div>${cuerpo}</div>`;
+            // Subsecciones del Interrogatorio (A, B, C...): título en línea con el texto (prosa corrida)
             let letraSub = 0;
-            const subInt = (titulo, cuerpo) => `<div style="margin: 6px 0 8px 0; page-break-inside: avoid;"><p style="margin: 0 0 2px 0; font-size: 11px; font-weight: bold; text-transform: uppercase;">${String.fromCharCode(65 + letraSub++)}) ${e(titulo)}</p>${cuerpo}</div>`;
+            const proximaLetra = () => String.fromCharCode(65 + letraSub++);
+            const subInt = (titulo, htmlTexto) => `<p class="hc-p"><strong>${proximaLetra()}) ${e(titulo)}:</strong> ${htmlTexto}</p>`;
+            const subEncabezado = titulo => `<div class="hc-subh">${proximaLetra()}) ${e(titulo)}</div>`;
 
             const p = d.paciente, c = d.consulta, a = d.antecedentes, app = a.personales_patologicos;
-            let html = '';
+            let html = '<div class="hc-doc">';
             let interrog = '';
 
-            html += '<div style="text-align: center; font-size: 15px; font-weight: bold; text-decoration: underline;">HISTORIA CLÍNICA</div>';
-            html += '<div style="text-align: center; font-size: 10px; margin-bottom: 14px;">Elaborada conforme a la NOM-004-SSA3-2012, del expediente clínico</div>';
+            html += '<div class="hc-titulo">HISTORIA CLÍNICA</div>';
 
-            // 1. FICHA DE IDENTIFICACIÓN
+            // I. FICHA DE IDENTIFICACIÓN
             const sexoTxt = p.sexo === 'F' ? 'Femenino' : (p.sexo === 'M' ? 'Masculino' : null);
-            let ficha = linea(['Nombre', p.nombre_completo], ['Edad', p.edad_anios !== null ? `${p.edad_anios} años` : null], ['Sexo', sexoTxt])
-                + linea(['Fecha de nacimiento', fechaLegible(p.fecha_nacimiento)], ['Estado civil', p.estado_civil], ['Ocupación', p.ocupacion])
-                + linea(['Teléfono', p.telefono], ['Domicilio', p.direccion])
-                + linea(['Grupo y Rh', p.grupo_sanguineo || 'Desconoce'], ['Fecha y hora de elaboración', fechaLegible(c.fecha_hora)])
-                + linea(['Médico tratante', c.medico_tratante]);
+            const celdasFicha = [
+                celda('Nombre', p.nombre_completo),
+                celdaHTML(`${par('Edad', p.edad_anios !== null ? `${p.edad_anios} años` : null)} &nbsp;|&nbsp; ${par('Sexo', sexoTxt)}`),
+                celda('Fecha de nacimiento', fechaLegible(p.fecha_nacimiento)),
+                celda('Estado civil', p.estado_civil),
+                celda('Ocupación', p.ocupacion),
+                celda('Teléfono', p.telefono),
+                celda('Domicilio', p.direccion, true),
+                celda('Grupo y Rh', p.grupo_sanguineo || 'Desconoce'),
+                celda('Fecha y hora de elaboración', fechaLegible(c.fecha_hora)),
+                celda('Médico tratante', c.medico_tratante)
+            ];
             if (d.ingreso.area_destino || c.destino === 'Observacion' || c.destino === 'Hospitalizacion') {
-                ficha += linea(['Tipo de ingreso', d.ingreso.tipo_ingreso], ['Área de destino', d.ingreso.area_destino ? d.ingreso.area_destino.descripcion : null]);
+                celdasFicha.push(celda('Tipo de ingreso', d.ingreso.tipo_ingreso));
+                celdasFicha.push(celda('Área de destino', d.ingreso.area_destino ? d.ingreso.area_destino.descripcion : null));
             }
-            html += seccion('Ficha de identificación', ficha);
+            html += seccion('Ficha de identificación', grid(celdasFicha));
 
-            // 2. ANTECEDENTES HEREDOFAMILIARES
-            interrog += subInt('Antecedentes heredofamiliares', parrafo(a.heredofamiliares.negado ? 'Interrogados y negados.' : a.heredofamiliares.detalle));
+            // II. INTERROGATORIO
+            interrog += subInt('Antecedentes heredofamiliares', a.heredofamiliares.negado ? 'Interrogados y negados.' : val(a.heredofamiliares.detalle));
+            interrog += subInt('Antecedentes personales no patológicos', a.no_patologicos.negado ? 'Interrogados y negados.' : val(a.no_patologicos.detalle));
 
-            // 3. ANTECEDENTES PERSONALES NO PATOLÓGICOS
-            interrog += subInt('Antecedentes personales no patológicos', parrafo(a.no_patologicos.negado ? 'Interrogados y negados.' : a.no_patologicos.detalle));
-
-            // 4. ANTECEDENTES PERSONALES PATOLÓGICOS
-            let cuerpoAPP;
+            let textoAPP;
             if (app.negado_todo) {
-                cuerpoAPP = parrafo('Interrogados y negados.');
+                textoAPP = 'Interrogados y negados.';
             } else {
                 const items = [];
                 const cronica = (nombre, x) => {
@@ -2805,48 +2862,50 @@
                 };
                 cronica('Hipertensión arterial', app.hipertension);
                 cronica('Diabetes mellitus tipo 2', app.diabetes_mellitus_2);
-                items.push(app.alergias.presente
-                    ? `<strong>Alergias:</strong> ${val(app.alergias.descripcion)}.`
-                    : '<strong>Alergias:</strong> negadas.');
+                items.push(app.alergias.presente ? `<strong>Alergias:</strong> ${val(app.alergias.descripcion)}.` : '<strong>Alergias:</strong> negadas.');
                 if (app.transfusiones.presente) items.push(`<strong>Transfusiones:</strong> ${val(app.transfusiones.detalle)}; complicaciones: ${val(app.transfusiones.complicaciones)}.`);
                 app.cirugias_previas.forEach(q => items.push(`<strong>Cirugía:</strong> ${val(q.procedimiento)} (${val(q.fecha_texto)}); complicaciones: ${val(q.complicaciones)}.`));
                 if (!vacio(app.otras_enfermedades)) items.push(`<strong>Otras enfermedades:</strong> ${e(app.otras_enfermedades)}.`);
-                cuerpoAPP = viñeta(items);
+                textoAPP = items.join(' ');
             }
-            interrog += subInt('Antecedentes personales patológicos', cuerpoAPP);
+            interrog += subInt('Antecedentes personales patológicos', textoAPP);
 
-            // 5. ANTECEDENTES GINECO-OBSTÉTRICOS (solo mujeres)
             if (p.sexo === 'F') {
                 const g = a.gineco_obstetricos;
                 if (!g) {
-                    interrog += subInt('Antecedentes gineco-obstétricos', parrafo('No se interrogaron / no aplican en esta valoración.'));
+                    interrog += subInt('Antecedentes gineco-obstétricos', 'No se interrogaron / no aplican en esta valoración.');
                 } else {
                     const nr = x => x.no_referido ? 'No referido' : (vacio(x.detalle) ? null : x.detalle);
                     const tiposHigiene = { TOALLAS: 'Toallas sanitarias', TAMPONES: 'Tampones', AMBOS: 'Toallas y tampones', COPA: 'Copa menstrual' };
-                    let cuerpo = linea(['Gestas', g.gestas], ['Partos', g.partos], ['Cesáreas', g.cesareas], ['Abortos', g.abortos])
-                        + linea(['Fecha de última menstruación', g.fum], ['Ritmo menstrual', g.ritmo_menstrual], ['Método de planificación', g.metodo_planificacion || 'Ninguno']);
+                    const higiene = g.higiene_menstrual.no_referido ? 'No referido' : (g.higiene_menstrual.tipo ? (tiposHigiene[g.higiene_menstrual.tipo] || g.higiene_menstrual.tipo) + (g.higiene_menstrual.cantidad ? ` (${g.higiene_menstrual.cantidad})` : '') : null);
+                    interrog += subEncabezado('Antecedentes gineco-obstétricos');
+                    interrog += grid([
+                        celdaHTML(`<strong>Gestas:</strong> ${val(g.gestas)} &nbsp;|&nbsp; <strong>Partos:</strong> ${val(g.partos)} &nbsp;|&nbsp; <strong>Cesáreas:</strong> ${val(g.cesareas)} &nbsp;|&nbsp; <strong>Abortos:</strong> ${val(g.abortos)}`, true),
+                        celda('Fecha de última menstruación', g.fum),
+                        celda('Ritmo menstrual', g.ritmo_menstrual),
+                        celda('Método de planificación', g.metodo_planificacion || 'Ninguno'),
+                        celda('Parejas sexuales', g.numero_parejas_sexuales.no_referido ? 'No referido' : g.numero_parejas_sexuales.valor),
+                        celda('Infecciones de vías urinarias', nr(g.ivus)),
+                        celda('Enfermedades de transmisión sexual', nr(g.ets)),
+                        celda('Higiene menstrual', higiene, true)
+                    ]);
                     if (!g.solo_formula) {
                         const det = g.detalle_gestas.filter(x => !x.omitir && !vacio(x.detalle));
-                        if (det.length) cuerpo += `<p style="margin: 2px 0;"><strong>Detalle de gestaciones:</strong></p>` + viñeta(det.map(x => `${e({ PARTO: 'Parto', CESAREA: 'Cesárea', ABORTO: 'Aborto' }[x.tipo] || x.tipo)} ${x.numero}: ${e(x.detalle)}`));
+                        if (det.length) interrog += prosaHTML('<strong>Detalle de gestaciones:</strong> ' + det.map(x => `${e({ PARTO: 'Parto', CESAREA: 'Cesárea', ABORTO: 'Aborto' }[x.tipo] || x.tipo)} ${x.numero}: ${e(x.detalle)}.`).join(' '));
                     }
-                    cuerpo += linea(['Infecciones de vías urinarias', nr(g.ivus)], ['Enfermedades de transmisión sexual', nr(g.ets)], ['Parejas sexuales', g.numero_parejas_sexuales.no_referido ? 'No referido' : g.numero_parejas_sexuales.valor]);
-                    cuerpo += linea(['Higiene menstrual', g.higiene_menstrual.no_referido ? 'No referido' : (g.higiene_menstrual.tipo ? (tiposHigiene[g.higiene_menstrual.tipo] || g.higiene_menstrual.tipo) + (g.higiene_menstrual.cantidad ? ` (${g.higiene_menstrual.cantidad})` : '') : null)]);
                     const emb = g.embarazo_actual;
                     if (emb.presente) {
-                        cuerpo += `<p style="margin: 4px 0 2px 0;"><strong>EMBARAZO ACTUAL:</strong> Sí. ${emb.sdg !== null ? emb.sdg + ' semanas de gestación' : 'Semanas de gestación sin capturar'} por ${e(emb.metodo_calculo_sdg === 'USG' ? 'ultrasonido' : 'fecha de última menstruación')}${emb.trimestre ? ` (${['primer', 'segundo', 'tercer'][emb.trimestre - 1]} trimestre)` : ''}.</p>`
-                            + linea(['Consultas prenatales', emb.consultas_prenatales], ['Ultrasonidos', emb.ultrasonidos], ['Vacunas aplicadas', emb.vacunas.length ? emb.vacunas.join(', ') : 'Ninguna referida']);
+                        interrog += prosaHTML(`<strong>Embarazo actual:</strong> Sí. ${emb.sdg !== null ? emb.sdg + ' semanas de gestación' : 'Semanas de gestación sin capturar'} por ${e(emb.metodo_calculo_sdg === 'USG' ? 'ultrasonido' : 'fecha de última menstruación')}${emb.trimestre ? ` (${['primer', 'segundo', 'tercer'][emb.trimestre - 1]} trimestre)` : ''}. Consultas prenatales: ${val(emb.consultas_prenatales)}; ultrasonidos: ${val(emb.ultrasonidos)}; vacunas aplicadas: ${emb.vacunas.length ? e(emb.vacunas.join(', ')) : 'ninguna referida'}.`);
                     } else {
-                        cuerpo += `<p style="margin: 4px 0 2px 0;"><strong>Embarazo actual:</strong> No.</p>`;
+                        interrog += prosaHTML('<strong>Embarazo actual:</strong> No.');
                     }
-                    interrog += subInt('Antecedentes gineco-obstétricos', cuerpo);
                 }
             }
 
-            // PADECIMIENTO ACTUAL (cierra el Interrogatorio)
-            interrog += subInt('Padecimiento actual', `<p style="margin: 2px 0;"><strong>Motivo de consulta:</strong> ${val(c.motivo_consulta)}</p>` + parrafo(c.padecimiento_actual));
+            interrog += subInt('Padecimiento actual', `<strong>Motivo de consulta:</strong> ${val(c.motivo_consulta)}.\n${val(c.padecimiento_actual)}`);
             html += seccion('Interrogatorio', interrog);
 
-            // EXPLORACIÓN FÍSICA
+            // III. EXPLORACIÓN FÍSICA
             const sv = p.signos_vitales;
             const partesSV = [];
             if (sv.ta_sistolica !== null) partesSV.push(`Tensión arterial: ${sv.ta_sistolica}/${sv.ta_diastolica} mmHg`);
@@ -2857,46 +2916,42 @@
             if (sv.talla_m !== null) partesSV.push(`Talla: ${sv.talla_m} m`);
             if (sv.imc !== null) partesSV.push(`IMC: ${sv.imc}`);
             const catalogoEF = obtenerSistemasEF();
-            const sistemasEF = d.exploracion_fisica.map(x => {
+            const celdasEF = d.exploracion_fisica.map(x => {
                 const base = catalogoEF.find(s => s.id === x.sistema_codigo);
                 const alterado = x.estatus === 'ALTERADO';
                 let t = alterado ? (x.hallazgo || 'Alteración sin descripción') : (base ? base.normal : '');
                 if (alterado && x.sistema_codigo === 'abdomen') t += sufijoFCF(x.hallazgo);
-                return `<p style="margin: 2px 0;"><strong>${e(x.sistema)}:</strong> ${e(t)}${alterado ? ' <strong>(ALTERADO)</strong>' : ''}</p>`;
-            }).join('');
-            html += seccion('Exploración física', `<p style="margin: 2px 0;"><strong>Signos vitales:</strong> ${partesSV.length ? e(partesSV.join(' | ')) : 'No registrados'}</p>${sistemasEF}`);
+                return celdaHTML(`<strong>${e(x.sistema)}:</strong> ${e(t)}${alterado ? ' <strong>(ALTERADO)</strong>' : ''}`, alterado && t.length > 60);
+            });
+            html += seccion('Exploración física', prosaHTML(`<strong>Signos vitales:</strong> ${partesSV.length ? e(partesSV.join(' | ')) : 'No registrados'}`) + grid(celdasEF));
 
-            // RESULTADOS DE ESTUDIOS
-            html += seccion('Resultados previos y actuales de estudios de laboratorio, gabinete y otros', parrafo(c.estudios_auxiliares || 'No se solicitan.'));
+            // IV. RESULTADOS PREVIOS Y ACTUALES
+            html += seccion('Resultados previos y actuales de estudios de laboratorio, gabinete y otros', prosaHTML(val(c.estudios_auxiliares || 'No se solicitan.')));
 
-            // DIAGNÓSTICOS O PROBLEMAS CLÍNICOS (con el análisis clínico que los sustenta)
+            // V. DIAGNÓSTICOS O PROBLEMAS CLÍNICOS (con el análisis clínico que los sustenta)
             const listaDx = d.diagnosticos.length
-                ? `<ol style="margin: 2px 0 2px 20px; padding: 0; list-style: decimal;">${d.diagnosticos.map(x => `<li>${x.cie10_codigo ? `<strong>${e(x.cie10_codigo)}</strong> — ` : ''}${e(x.descripcion)}${x.es_principal ? ' <em>(principal)</em>' : ''}</li>`).join('')}</ol>`
-                : parrafo(null);
-            html += seccion('Diagnósticos o problemas clínicos', listaDx + '<p style="margin: 6px 0 2px 0;"><strong>Análisis clínico:</strong></p>' + parrafo(c.analisis_clinico));
+                ? `<ol class="hc-lista">${d.diagnosticos.map(x => `<li>${x.cie10_codigo ? `<strong>${e(x.cie10_codigo)}</strong> — ` : ''}${e(x.descripcion)}${x.es_principal ? ' <em>(principal)</em>' : ''}</li>`).join('')}</ol>`
+                : prosaHTML(val(null));
+            html += seccion('Diagnósticos o problemas clínicos', listaDx + prosa('Análisis clínico', vacio(c.analisis_clinico) ? 'No referido' : c.analisis_clinico));
 
-            // PRONÓSTICO
-            html += seccion('Pronóstico', parrafo(c.pronostico));
+            // VI. PRONÓSTICO
+            html += seccion('Pronóstico', prosaHTML(val(c.pronostico)));
 
-            // INDICACIÓN TERAPÉUTICA
-            let terapeutica = '<p style="margin: 2px 0;"><strong>Plan y tratamiento:</strong></p>' + parrafo(c.plan_tratamiento);
+            // VII. INDICACIÓN TERAPÉUTICA
+            let terapeutica = prosa('Plan y tratamiento', vacio(c.plan_tratamiento) ? 'No referido' : c.plan_tratamiento);
             const ind = d.indicaciones;
-            const hayInd = ind.dieta.codigo || ind.soluciones_parenterales.texto || ind.medicamentos.texto || ind.medidas_generales.texto || ind.interconsulta.solicitada;
-            if (hayInd) {
-                terapeutica += '<p style="margin: 6px 0 2px 0;"><strong>Indicaciones médicas:</strong></p>';
-                if (ind.dieta.codigo) terapeutica += `<p style="margin: 2px 0;"><strong>Dieta:</strong> ${e(ind.dieta.descripcion)}</p>`;
-                if (ind.soluciones_parenterales.texto) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Soluciones parenterales:</strong></p>${parrafo(ind.soluciones_parenterales.texto)}`;
-                if (ind.medicamentos.texto) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Medicamentos:</strong></p>${parrafo(ind.medicamentos.texto)}`;
-                if (ind.medidas_generales.texto) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Medidas generales:</strong></p>${parrafo(ind.medidas_generales.texto)}`;
-                if (ind.interconsulta.solicitada) terapeutica += `<p style="margin: 2px 0 0 0;"><strong>Interconsulta:</strong> Solicitar Interconsulta a ${e(ind.interconsulta.especialidad.descripcion)}</p>`;
-            }
-            if (!vacio(c.signos_alarma_explicados)) terapeutica += '<p style="margin: 6px 0 2px 0;"><strong>Signos de alarma explicados:</strong></p>' + parrafo(c.signos_alarma_explicados);
+            if (ind.dieta.texto) terapeutica += prosa('Dieta', ind.dieta.texto);
+            if (ind.soluciones_parenterales.texto) terapeutica += prosa('Soluciones parenterales', ind.soluciones_parenterales.texto);
+            if (ind.medicamentos.texto) terapeutica += prosa('Medicamentos', ind.medicamentos.texto);
+            if (ind.medidas_generales.texto) terapeutica += prosa('Medidas generales', ind.medidas_generales.texto);
+            if (ind.interconsulta.solicitada) terapeutica += prosaHTML(`<strong>Interconsulta:</strong> Solicitar Interconsulta a ${e(ind.interconsulta.especialidad.descripcion)}`);
+            if (!vacio(c.signos_alarma_explicados)) terapeutica += prosa('Signos de alarma explicados', c.signos_alarma_explicados);
             html += seccion('Indicación terapéutica', terapeutica);
 
             // FIRMA DEL MÉDICO
             const medicoFirma = d.meta.usuario_rol === 'admin' ? 'Médico Base' : 'Dr. Brandon Arguelles';
-            html += `<div style="margin-top: 50px; text-align: center; page-break-inside: avoid;"><div style="display: inline-block; width: 240px; border-top: 1px solid #000; padding-top: 5px; font-size: 11px;"><strong>${e(medicoFirma)}</strong><br>Cédula Profesional: 87654321<br>Médico Tratante</div></div>`;
-            return html;
+            html += `<div class="hc-firma"><div><strong>${e(medicoFirma)}</strong><br>Cédula Profesional: 87654321<br>Médico Tratante</div></div>`;
+            return html + '</div>';
         }
 
         function compilarHistoriaClinica() {
