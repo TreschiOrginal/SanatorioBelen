@@ -1925,7 +1925,8 @@
             const btn = document.getElementById('btn-cargar-cuenta');
             const badge = document.getElementById('badge-cargos-consulta');
             if (!btn) return;
-            const visible = !!(TURNO && SESION && BelenStore.puede('cargar_cuenta_consulta') && TURNO.estatus === 'en_consulta' && MODO_ACCESO === 'medico');
+            const enNotaAmbulatoria = pestanaActual === 'nota' && !internamientoActivo();
+            const visible = !!(TURNO && SESION && BelenStore.puede('cargar_cuenta_consulta') && TURNO.estatus === 'en_consulta' && MODO_ACCESO === 'medico' && enNotaAmbulatoria);
             btn.classList.toggle('hidden', !visible);
             btn.classList.toggle('inline-flex', visible);
             const n = ((TURNO && TURNO.cargos) || []).length;
@@ -2376,6 +2377,7 @@
             if (idDestino === 'historia') compilarHistoriaClinica();
             if (idDestino === 'consentimientos') actualizarEstadoMenor();
             programarGuardadoBorrador();
+            actualizarBotonCargarCuenta();
         }
         // El médico elige el ÁREA; la cama exacta la asigna Enfermería desde el Dashboard.
         function seleccionarArea(elemento, codigo, descripcion) {
@@ -2772,6 +2774,7 @@
                 desbloquearModoIngreso();
                 cambiarPestana('ingreso');
                 guardarBorrador();
+                actualizarBotonCargarCuenta();
                 mostrarToast('Nota guardada. Continúe con la Hoja Frontal.', 'exito');
             }
         }

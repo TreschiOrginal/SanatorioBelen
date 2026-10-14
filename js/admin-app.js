@@ -20,7 +20,7 @@ const AdminController = {
         fila:            { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],      modulo: 'ver_consultas',      titulo: { admin: 'Fila de Espera' } },
         hospitalizacion: { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'], modulo: 'ver_hospitalizados', titulo: { admin: 'Monitor de Camas', administrador: 'Monitor de Camas', medico: 'Mis Pacientes Hospitalizados' } },
         cirugias:        { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],      modulo: 'ver_quirofano',      titulo: { admin: 'Próximas Cirugías' } },
-        expedientes:     { roles: ['admin', 'medico'],                                                            modulo: 'ver_consultas',      titulo: { admin: 'Expedientes Clínicos', medico: 'Expedientes Clínicos' } },
+        expedientes:     { roles: ['admin', 'medico'],                                                            modulo: 'ver_consultas',      titulo: { admin: 'Búsqueda Histórica', medico: 'Búsqueda Histórica' } },
         personal:        { roles: ['admin'],                                                                      modulo: 'gestionar_personal', titulo: { admin: 'Gestión de Personal' } }
     },
 
@@ -857,18 +857,47 @@ const AdminController = {
             const v = S.visitasDePaciente(p.paciente_id);
             const edad = S.calcularEdad(p.fecha_nacimiento);
             const ultima = v[0] && v[0].consulta && v[0].consulta.fecha_hora ? S.fechaLegibleISO(v[0].consulta.fecha_hora.slice(0, 10)) : '—';
-            return `<tr class="border-t border-slate-100 hover:bg-slate-50" data-paciente="${this.e(p.paciente_id)}">
+            const turnos = S.listarTurnos().filter(t => t.paciente_id === p.paciente_id)
+                .sort((a, b) => String(b.actualizado_en || b.timestamp_llegada || '').localeCompare(String(a.actualizado_en || a.timestamp_llegada || '')));
+            const ultimo = turnos[0];
+            const archivoHosp = turnos.find(t => (t.estatus === 'cerrado_historico' || t.estatus === 'alta_medica_pendiente_pago') && S.internamientoDeTurno(t.turno_id));
+            const badge = ultimo ? this.badgeEstatus(ultimo) : '<span class="text-slate-400">—</span>';
+            const portafolio = archivoHosp
+                ? `<a href="expediente.html?modo=hospitalizado&turno=${encodeURIComponent(archivoHosp.turno_id)}" class="text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5 transition inline-flex items-center gap-1"><i class="fas fa-folder-tree"></i> Portafolio</a>`
+                : '';
+            const buscar = S.normalizar([p.nombre_completo, p.paciente_id, ultimo && ultimo.dx_principal, ultimo && ultimo.medico_nombre, ultimo && ultimo.estatus, archivoHosp ? 'cerrado historico portafolio' : ''].filter(Boolean).join(' '));
+            return `<tr class="border-t border-slate-100 hover:bg-slate-50" data-paciente="${this.e(p.paciente_id)}" data-buscar="${this.e(buscar)}">
                 <td class="px-4 py-3 font-bold text-slate-800">${this.e(p.nombre_completo)}<span class="block text-[11px] font-normal text-slate-400">${this.e(p.paciente_id)}</span></td>
                 <td class="px-4 py-3 text-slate-600">${edad !== null ? edad + ' años' : '—'} · ${p.sexo === 'F' ? 'Femenino' : 'Masculino'}</td>
+                <td class="px-4 py-3 text-slate-600">${badge || '<span class="text-slate-400">—</span>'}</td>
                 <td class="px-4 py-3 text-slate-600 text-center">${v.length}</td>
                 <td class="px-4 py-3 text-slate-600">${ultima}</td>
-                <td class="px-4 py-3 text-right"><button type="button" data-accion="ver-visitas" onclick="AdminController.verVisitasPaciente('${this.e(p.paciente_id)}')" class="text-xs font-bold text-cyan-700 hover:text-cyan-900 bg-cyan-50 hover:bg-cyan-100 rounded-lg px-3 py-1.5 transition" ${v.length ? '' : 'disabled style="opacity:.4;cursor:not-allowed"'}>Ver visitas</button></td></tr>`;
+                <td class="px-4 py-3 text-right whitespace-nowrap"><div class="inline-flex flex-wrap justify-end gap-2">${portafolio}<button type="button" data-accion="ver-visitas" onclick="AdminController.verVisitasPaciente('${this.e(p.paciente_id)}')" class="text-xs font-bold text-cyan-700 hover:text-cyan-900 bg-cyan-50 hover:bg-cyan-100 rounded-lg px-3 py-1.5 transition" ${v.length ? '' : 'disabled style="opacity:.4;cursor:not-allowed"'}>Ver visitas</button></div></td></tr>`;
         }).join('');
-        return `<div class="mb-6"><h2 class="text-2xl font-extrabold text-slate-800">Expedientes Clínicos</h2>
-                    <p class="text-slate-500">${this.rolActual === 'medico' ? 'Pacientes que usted ha atendido o tiene asignados.' : 'Catálogo longitudinal de pacientes.'}</p></div>
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"><table class="w-full text-sm text-left">
-                    <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr><th class="px-4 py-3">Paciente</th><th class="px-4 py-3">Edad y sexo</th><th class="px-4 py-3 text-center">Visitas</th><th class="px-4 py-3">Última visita</th><th class="px-4 py-3"></th></tr></thead>
-                    <tbody>${filas || '<tr><td colspan="5" class="px-4 py-10 text-center text-slate-400">No hay expedientes para mostrar.</td></tr>'}</tbody></table></div>`;
+        return `<div class="mb-6"><h2 class="text-2xl font-extrabold text-slate-800">Búsqueda Histórica</h2>
+                    <p class="text-slate-500">${this.rolActual === 'medico' ? 'Archivo de los pacientes que usted ha atendido. Los expedientes cerrados ya no aparecen en los monitores activos.' : 'Archivo longitudinal. Un expediente cerrado sale de camas, fila y caja, y se consulta solo aquí.'}</p></div>
+                <div class="mb-4 relative max-w-xl">
+                    <i class="fas fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+                    <input id="busqueda-historica" type="search" autocomplete="off" placeholder="Buscar por nombre, expediente o diagnóstico" oninput="AdminController.filtrarHistorico(this.value)"
+                        class="w-full border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white">
+                </div>
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"><table class="w-full text-sm text-left" id="tabla-historico">
+                    <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr><th class="px-4 py-3">Paciente</th><th class="px-4 py-3">Edad y sexo</th><th class="px-4 py-3">Estatus</th><th class="px-4 py-3 text-center">Visitas</th><th class="px-4 py-3">Última visita</th><th class="px-4 py-3"></th></tr></thead>
+                    <tbody>${filas || '<tr><td colspan="6" class="px-4 py-10 text-center text-slate-400">No hay expedientes para mostrar.</td></tr>'}</tbody></table>
+                    <p id="historico-vacio" class="hidden px-4 py-10 text-center text-slate-400">Ningún expediente coincide con la búsqueda.</p></div>`;
+    },
+
+    filtrarHistorico: function (texto) {
+        const n = BelenStore.normalizar(texto);
+        const filas = Array.from(document.querySelectorAll('#tabla-historico tbody tr[data-buscar]'));
+        let visibles = 0;
+        filas.forEach(tr => {
+            const ok = !n || String(tr.getAttribute('data-buscar') || '').indexOf(n) >= 0;
+            tr.classList.toggle('hidden', !ok);
+            if (ok) visibles++;
+        });
+        const vacio = document.getElementById('historico-vacio');
+        if (vacio) vacio.classList.toggle('hidden', !filas.length || visibles !== 0);
     },
 
     verVisitasPaciente: function (pacienteId) {

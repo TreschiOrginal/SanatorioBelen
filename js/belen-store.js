@@ -94,7 +94,7 @@
         ver_expedientes_catalogo:  ['admin', 'medico'],
         // ---- MÓDULOS (interruptor por usuario en Gestión de Personal). El valor por defecto es el de esta matriz.
         ver_consultas:             ['admin', 'administrador', 'enf_triage', 'medico'],
-        ver_hospitalizados:        ['admin', 'enf_hospital', 'medico'],
+        ver_hospitalizados:        ['admin', 'administrador', 'enf_hospital', 'medico'],
         ver_quirofano:             ['admin', 'administrador', 'enf_quirofano'],
         ver_farmacia:              ['admin', 'enf_hospital', 'enf_quirofano'],   // módulo futuro
         // ----
@@ -102,7 +102,7 @@
         asignar_cama:              ['admin'].concat(ENFERMERIAS),
         programar_cirugia:         ['admin', 'administrador'],
         corregir_datos_paciente:   ['admin'],
-        dar_alta_hospital:         ['admin', 'medico'],                  // en la práctica solo el médico tratante
+        dar_alta_hospital:         ['medico'],                           // solo el médico tratante (se valida la relación)
         cargar_consumos:           ['admin', 'administrador'].concat(ENFERMERIAS),
         ver_cuentas_cobrar:        ['admin', 'administrador'],
         cerrar_expediente_pago:    ['admin', 'administrador'],
@@ -117,7 +117,7 @@
           descripcion: 'Dashboard central, fila de espera inteligente, triage y expedientes clínicos.' },
         { permiso: 'ver_hospitalizados', etiqueta: 'Hospitalización', icono: 'fa-bed-pulse',   vistas: ['hospitalizacion'],
           roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'],
-          descripcion: 'Monitor de camas y visor del expediente de hospitalización.' },
+          descripcion: 'Monitor de camas, cuenta del internamiento y visor del expediente.' },
         { permiso: 'ver_quirofano',      etiqueta: 'Quirófano',       icono: 'fa-kit-medical', vistas: ['cirugias'],
           roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano'],
           descripcion: 'Próximas cirugías: paciente, fecha y hora, cirujano y notas.' },
@@ -767,7 +767,9 @@
                   especialidad_codigo: t.especialidad_codigo, especialidad: t.especialidad, fecha_ingreso: new Date().toISOString(), cama: null, estatus: 'activo',
                   interconsultas: [], notas_evolucion: [], hojas_indicaciones: [], cargos: [], cuenta_actual: 0, nota_egreso: null };
         }
-        i.estatus = 'activo';
+        const estatusCerrado = i.estatus === ESTATUS.ALTA_PENDIENTE_PAGO || i.estatus === ESTATUS.CERRADO_HISTORICO
+            || t.estatus === ESTATUS.ALTA_PENDIENTE_PAGO || t.estatus === ESTATUS.CERRADO_HISTORICO;
+        if (!estatusCerrado) i.estatus = 'activo';
         const al = ((datos.antecedentes || {}).personales_patologicos || {}).alergias;
         if (al) i.alergias = (al.presente && al.descripcion) ? limpiarEspacios(al.descripcion) : null;
         else if (i.alergias === undefined) i.alergias = alergiasDeBorrador(turnoId);
@@ -775,6 +777,14 @@
         if (!(i.notas_evolucion || []).length) i.diagnostico_actual = i.diagnostico_ingreso;
         i.destino = (datos.consulta && datos.consulta.destino) || t.destino || null;
         i.area_destino = (datos.ingreso && datos.ingreso.area_destino && datos.ingreso.area_destino.descripcion) || t.area_destino || null;
+        if (!estatusCerrado) {
+            const ya = new Set((i.cargos || []).map(c => c.cargo_id));
+            const extraCargos = (t.cargos || []).filter(c => c && c.cargo_id && !ya.has(c.cargo_id));
+            if (extraCargos.length) {
+                i.cargos = (i.cargos || []).concat(extraCargos);
+                i.cuenta_actual = totalCargos(i.cargos);
+            }
+        }
         if (extra.finalizado) {
             i.finalizado_en = new Date().toISOString();
             if (extra.snapshot) i.snapshot_formulario = extra.snapshot;
@@ -849,6 +859,9 @@
         if (!hospitalizadoVisiblePara(t, s)) return { ok: false, motivo: 'Este paciente no está a su cargo ni le fue solicitado en interconsulta. Solo puede ver a sus propios pacientes hospitalizados.' };
         const visorOk = t.estatus === ESTATUS.INTERNADO || t.estatus === ESTATUS.ALTA_PENDIENTE_PAGO || t.estatus === ESTATUS.CERRADO_HISTORICO;
         if (!visorOk) return { ok: false, motivo: 'El papeleo de ingreso de este paciente sigue en curso. El visor se habilita cuando el médico finaliza el expediente.' };
+        if (t.estatus === ESTATUS.CERRADO_HISTORICO && s.rol !== 'admin' && s.rol !== 'medico') {
+            return { ok: false, motivo: 'Este expediente está cerrado. Solo se consulta en Búsqueda Histórica.' };
+        }
         const relacion = relacionMedico(i, t, s) || s.rol;
         const activo = t.estatus === ESTATUS.INTERNADO;
         const veCuenta = s.rol === 'admin' || s.rol === 'administrador' || esEnfermeria(s.rol);
@@ -1034,8 +1047,7 @@
         if (!i) return { ok: false, motivo: 'No se encontró el internamiento.' };
         const t = obtenerTurno(i.turno_id);
         if (!s || !t) return { ok: false, motivo: 'No se pudo validar la sesión.' };
-        if (!PERMISOS.dar_alta_hospital.includes(s.rol)) return { ok: false, motivo: 'Su perfil no puede dar de alta hospitalaria.' };
-        if (s.rol === 'medico' && relacionMedico(i, t, s) !== 'tratante') return { ok: false, motivo: 'Solo el médico tratante puede dar de alta al paciente.' };
+        if (!PERMISOS.dar_alta_hospital.includes(s.rol) || relacionMedico(i, t, s) !== 'tratante') return { ok: false, motivo: 'Solo el médico tratante puede dar de alta al paciente.' };
         if (t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El paciente no está en un internamiento activo.' };
         if (i.nota_egreso) return { ok: false, motivo: 'Ya existe una nota de egreso para este internamiento.' };
         const r = validarNotaEgreso(entrada);
@@ -1055,8 +1067,10 @@
     }
     function cargosDeEpisodio(turno) {
         const i = internamientoDeTurno(turno.turno_id);
-        if (i) return i.cargos || [];
-        return turno.cargos || [];
+        const deInternamiento = (i && i.cargos) || [];
+        if (!i) return turno.cargos || [];
+        const ya = new Set(deInternamiento.map(c => c.cargo_id));
+        return deInternamiento.concat((turno.cargos || []).filter(c => c && c.cargo_id && !ya.has(c.cargo_id)));
     }
     function cuentasPorCobrar(s) {
         if (!s || !PERMISOS.ver_cuentas_cobrar.includes(s.rol)) return [];
@@ -1088,6 +1102,12 @@
         const cerrado = actualizarTurno(turnoId, { estatus: ESTATUS.CERRADO_HISTORICO, cerrado_en: ahora, cerrado_por_id: s.usuario_id, cerrado_por_nombre: s.nombre });
         const i = internamientoDeTurno(turnoId);
         if (i) { i.estatus = ESTATUS.CERRADO_HISTORICO; i.cerrado_en = ahora; guardarInternamiento(i); }
+        const visitas = listarVisitas();
+        const vi = visitas.findIndex(v => v.meta && v.meta.turno_id === turnoId);
+        if (vi >= 0) {
+            visitas[vi].meta = Object.assign({}, visitas[vi].meta, { estatus_episodio: ESTATUS.CERRADO_HISTORICO, cerrado_en: ahora });
+            escribir(CLAVES.visitas, visitas);
+        }
         return { ok: true, turno: cerrado };
     }
 
