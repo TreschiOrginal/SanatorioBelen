@@ -60,16 +60,12 @@
             </a>
 
             <!-- Cirugías: módulo "Quirófano" (admin, administrador y enf_quirofano por defecto; interruptor por usuario) -->
-            <a href="?vista=cirugias" data-vista="cirugias" data-roles="admin,administrador,enf_triage,enf_hospital,enf_quirofano" data-modulo="ver_quirofano" onclick="AdminController.navegar('cirugias', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+            <a href="?vista=cirugias" data-vista="cirugias" data-roles="admin,administrador,enf_triage,enf_hospital,enf_quirofano,medico" data-modulo="ver_quirofano" onclick="AdminController.navegar('cirugias', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-kit-medical w-5"></i> Cirugías
             </a>
 
             <a href="?vista=expedientes" data-vista="expedientes" data-roles="admin,medico" data-modulo="ver_consultas" onclick="AdminController.navegar('expedientes', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-folder-open w-5"></i> Búsqueda Histórica
-            </a>
-
-            <a href="#" data-proximamente="Agenda y Quirófano" data-roles="medico" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
-                <i class="fas fa-calendar-alt w-5"></i> Agenda y Quirófano
             </a>
 
             <!-- EXCLUSIVO ADMIN -->
@@ -82,7 +78,7 @@
             </a>
 
             <!-- Farmacia: admin, caja y encargado por defecto. Hospital y quirófano solo si Alfonso enciende el módulo. -->
-            <a href="?vista=farmacia" data-vista="farmacia" data-roles="admin,administrador,enf_farmacia,enf_hospital,enf_quirofano" data-modulo="ver_farmacia" onclick="AdminController.navegar('farmacia', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+            <a href="?vista=farmacia" data-vista="farmacia" data-roles="admin,administrador,enf_farmacia,enf_hospital,enf_quirofano" data-modulo="ver_farmacia" title="Inventario con IVA, paquetes quirúrgicos, terminal de cargo y control COFEPRIS" onclick="AdminController.navegar('farmacia', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-pills w-5"></i> Farmacia e Inventario
             </a>
         </nav>

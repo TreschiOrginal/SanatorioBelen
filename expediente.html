@@ -472,7 +472,8 @@
                         <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Análisis Clínico <span class="text-red-500">*</span></label>
                     <textarea id="val-analisis" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Análisis del caso, integración diagnóstica..."></textarea>
                         <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Plan y Tratamiento <span class="text-red-500">*</span></label>
-                    <textarea id="val-plan" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Ej. Desimpactación manual, Paracetamol..."></textarea>
+                    <textarea id="val-plan" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28" placeholder="Ej. Desimpactación manual, Paracetamol..."></textarea>
+                    <div id="alerta-cofepris-plan" class="mb-6 mt-3 space-y-2"></div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-4">
                         <div>
                             <div class="flex justify-between items-center mb-2">
@@ -644,6 +645,7 @@
                         </div>
                         <label for="ind-soluciones" class="sr-only">Soluciones Parenterales</label>
                         <textarea id="ind-soluciones" rows="6" placeholder="Ej. Solución Salina 0.9% 1000 ml para 24 hrs.&#10;Solución Hartmann 1000 ml para 12 hrs." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed text-slate-800 focus:border-cyan-500 outline-none resize-y"></textarea>
+                        <div id="alerta-cofepris-sol" class="mt-3 space-y-2"></div>
                     </div>
 
                     <!-- MEDICAMENTOS (texto libre + machotes) -->
@@ -657,6 +659,7 @@
                         </div>
                         <label for="ind-medicamentos" class="sr-only">Medicamentos</label>
                         <textarea id="ind-medicamentos" rows="10" placeholder="Un medicamento por línea. Ej.&#10;Paracetamol 500 mg VO cada 8 hrs.&#10;Ketorolaco 30 mg IV cada 8 hrs." class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm leading-relaxed text-slate-800 focus:border-cyan-500 outline-none resize-y"></textarea>
+                        <div id="alerta-cofepris-med" class="mt-3 space-y-2"></div>
                     </div>
 
                     <!-- MEDIDAS GENERALES (texto libre + machotes) -->
@@ -1421,37 +1424,113 @@
             return zonaComoDocumento(z);
         }
 
+        function textoAtribucionCargo(c) {
+            const cuando = c && (c.fecha_hora || c.cargado_en);
+            const quien = c && c.cargado_por_nombre;
+            if (!cuando && !quien) return 'Sin registro';
+            return (cuando ? BelenStore.fechaHoraLegible(cuando) : 'Sin hora') + (quien ? ' · ' + quien : '');
+        }
         function htmlCuentaConsumos() {
             const e = BelenUI.esc, S = BelenStore;
             const cargos = INTERNAMIENTO.cargos || [];
             const puede = ACCESO_VISOR && ACCESO_VISOR.puede_cargar_cuenta;
             const filas = cargos.length ? cargos.map((c, i) => `<tr class="border-t border-slate-100">
                 <td class="px-3 py-2 text-slate-500">${i + 1}</td>
-                <td class="px-3 py-2 font-medium text-slate-800">${e(c.concepto)}</td>
-                <td class="px-3 py-2 text-right">${e(S.formatoMoneda(c.precio_unitario))}</td>
+                <td class="px-3 py-2 font-medium text-slate-800">${e(c.concepto)}${c.lote ? `<span class="block text-[11px] text-slate-400">Lote ${e(c.lote)}</span>` : ''}${c.aplica_iva ? '<span class="block text-[10px] text-slate-400">IVA 16% incluido</span>' : ''}</td>
+                <td class="px-3 py-2 text-right">${e(S.formatoMoneda(c.precio_con_iva || c.precio_unitario))}</td>
                 <td class="px-3 py-2 text-center">${c.cantidad || 1}</td>
                 <td class="px-3 py-2 text-right font-bold">${e(S.formatoMoneda(c.subtotal))}</td>
-            </tr>`).join('') : '<tr><td colspan="5" class="px-3 py-8 text-center text-slate-400">Aún no hay cargos en esta cuenta.</td></tr>';
+                <td class="px-3 py-2 text-xs text-slate-600">${e(textoAtribucionCargo(c))}</td>
+            </tr>`).join('') : '<tr><td colspan="6" class="px-3 py-8 text-center text-slate-400">Aún no hay cargos en esta cuenta.</td></tr>';
             return `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p class="text-sm font-extrabold text-slate-900">Cuenta y Consumos</p>
-                        <p class="text-xs text-slate-500">Acumulado del internamiento. Más adelante este modal conectará el lector de códigos de barras.</p>
+                        <p class="text-xs text-slate-500">Acumulado del internamiento. El paquete descuenta almacén y carga el desglose con IVA.</p>
                     </div>
-                    ${puede ? `<button type="button" onclick="abrirCargarInsumoHospital()" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition inline-flex items-center gap-1.5"><i class="fas fa-plus"></i> Cargar Insumo/Medicamento</button>` : ''}
+                    ${puede ? `<div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="abrirAplicarPaqueteHospital()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition inline-flex items-center gap-1.5"><i class="fas fa-kit-medical"></i> Aplicar Paquete</button>
+                        <button type="button" onclick="abrirCargarInsumoHospital()" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition inline-flex items-center gap-1.5"><i class="fas fa-plus"></i> Cargar Insumo/Medicamento</button>
+                    </div>` : ''}
                 </div>
-                <table class="w-full text-sm">
+                <div class="overflow-x-auto"><table class="w-full text-sm">
                     <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr>
                         <th class="px-3 py-2 text-left">#</th><th class="px-3 py-2 text-left">Concepto</th>
                         <th class="px-3 py-2 text-right">Precio unitario</th><th class="px-3 py-2 text-center">Cantidad</th>
-                        <th class="px-3 py-2 text-right">Subtotal</th></tr></thead>
+                        <th class="px-3 py-2 text-right">Subtotal</th>
+                        <th class="px-3 py-2 text-left">Fecha/Hora y Enfermera que cargó</th></tr></thead>
                     <tbody>${filas}</tbody>
                     <tfoot><tr class="border-t-2 border-slate-200 bg-slate-50">
                         <td colspan="4" class="px-3 py-3 text-right text-xs font-bold uppercase text-slate-500">Total</td>
                         <td class="px-3 py-3 text-right text-base font-extrabold text-slate-900">${e(S.formatoMoneda(INTERNAMIENTO.cuenta_actual || 0))}</td>
+                        <td></td>
                     </tr></tfoot>
-                </table>
+                </table></div>
             </div>`;
+        }
+        function abrirAplicarPaqueteHospital() {
+            if (!ACCESO_VISOR || !ACCESO_VISOR.puede_cargar_cuenta) { BelenUI.toast('Su perfil no puede cargar consumos.', 'alerta'); return; }
+            const S = BelenStore, e = BelenUI.esc;
+            const paquetes = S.listarPaquetes();
+            if (!paquetes.length) { BelenUI.aviso('Sin paquetes', 'Farmacia todavía no arma paquetes quirúrgicos.', 'info'); return; }
+            BelenUI.modal({
+                titulo: 'Aplicar paquete completo', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-kit-medical', ancho: 'md',
+                html: `<div class="flex flex-col gap-2 text-left">${paquetes.map(p => `<button type="button" data-paq="${e(p.paquete_id)}" class="text-left px-3 py-3 rounded-xl border border-slate-200 hover:bg-cyan-50"><span class="font-bold">${e(p.nombre)}</span><span class="block text-xs text-slate-500">${p.items.length} ítems</span></button>`).join('')}</div>`,
+                alMostrar: c => c.el.querySelectorAll('[data-paq]').forEach(b => b.addEventListener('click', () => {
+                    const r = S.aplicarPaqueteAPaciente(b.getAttribute('data-paq'), TURNO.turno_id, null, S.sesion());
+                    if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+                    c.cerrar();
+                    BelenUI.toast('Paquete cargado a la cuenta.', 'exito');
+                    const fresco = S.resolverInternamiento(TURNO.turno_id);
+                    if (fresco) INTERNAMIENTO = fresco;
+                    refrescarVisor('cuenta-consumos');
+                })),
+                botones: [{ texto: 'Cerrar', estilo: 'secundario' }]
+            });
+        }
+        function htmlAlertasCofepris(texto) {
+            const alertas = BelenStore.alertasCofeprisEnTexto(texto);
+            if (!alertas.length) return '';
+            return alertas.map(a => {
+                const btn = a.retenida ? `<button type="button" data-receta-sku="${BelenUI.esc(a.sku)}" data-receta-dosis="${BelenUI.esc(a.dosis)}" class="mt-2 bg-white border border-rose-300 text-rose-800 text-xs font-bold px-3 py-1.5 rounded-lg">Generar e Imprimir Receta de Respaldo</button>` : '';
+                const tono = a.estupefaciente ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-rose-300 bg-rose-50 text-rose-900';
+                return `<div class="rounded-xl border ${tono} px-3 py-2 text-xs"><p class="font-bold">${BelenUI.esc(a.nombre)}</p><p class="mt-1">${BelenUI.esc(a.etiqueta)}</p>${btn}</div>`;
+            }).join('');
+        }
+        function pintarAlertasCofepris(origen) {
+            const mapa = { 'ind-medicamentos': 'alerta-cofepris-med', 'ind-soluciones': 'alerta-cofepris-sol', 'val-plan': 'alerta-cofepris-plan' };
+            const id = mapa[origen.id];
+            const caja = id && document.getElementById(id);
+            if (!caja) return;
+            caja.innerHTML = htmlAlertasCofepris(origen.value || '');
+            caja.querySelectorAll('[data-receta-sku]').forEach(b => b.addEventListener('click', () => imprimirRecetaExpediente(b.getAttribute('data-receta-sku'), b.getAttribute('data-receta-dosis'))));
+        }
+        function enlazarAlertasCofepris() {
+            ['ind-medicamentos', 'ind-soluciones', 'val-plan'].forEach(id => {
+                const el = document.getElementById(id);
+                if (!el || el.dataset.cofepris) return;
+                el.dataset.cofepris = '1';
+                el.addEventListener('input', () => pintarAlertasCofepris(el));
+                pintarAlertasCofepris(el);
+            });
+        }
+        function imprimirRecetaExpediente(sku, dosis) {
+            const S = BelenStore;
+            const prod = S.productoPorSku(sku);
+            if (!prod || !TURNO) { BelenUI.toast('No se encontró el medicamento en el inventario.', 'alerta'); return; }
+            const pac = datosPacienteVigentes();
+            const medico = S.USUARIOS[SESION.usuario_id] && SESION.rol === 'medico' ? S.USUARIOS[SESION.usuario_id] : (S.USUARIOS[TURNO.medico_id] || null);
+            const datos = S.datosReceta({
+                tipo: 'respaldo', producto: prod, paciente: pac.nombre, edad: pac.edadTxt, cama: (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO && INTERNAMIENTO.cama) || TURNO.area_destino || 'Consulta',
+                medico: medico ? medico.nombre : (TURNO.medico_nombre || SESION.nombre), cedula: medico ? medico.cedula_profesional : '',
+                denominacion: prod.nombre, dosis: dosis || prod.nombre, lote: prod.lote, laboratorio: prod.laboratorio, fraccion: prod.fraccion_cofepris
+            });
+            const w = window.open('', '_blank', 'noopener,width=720,height=900');
+            if (!w) { BelenUI.toast('El navegador bloqueó la ventana de impresión.', 'alerta'); return; }
+            w.document.write(S.htmlRecetaImprimible(datos));
+            w.document.close();
+            w.focus();
+            setTimeout(() => { try { w.print(); } catch (err) { /* la receta queda visible en la ventana */ } }, 250);
         }
 
         // Árbol: carpeta Ingreso, carpeta Indicaciones Médicas (por fecha), carpeta Evolución (SOAP por fecha/hora)
@@ -1761,6 +1840,21 @@
                 <p data-err="general" class="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2 hidden"></p></div>`;
             BelenUI.modal({
                 titulo: 'Actualizar Indicaciones', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-prescription-bottle-medical', ancho: 'xl', html: html,
+                alMostrar: c => {
+                    const caja = document.createElement('div');
+                    caja.id = 'alerta-cofepris-modal';
+                    caja.className = 'mt-3 space-y-2';
+                    const med = c.el.querySelector('#indm-medicamentos');
+                    const sol = c.el.querySelector('#indm-soluciones_parenterales');
+                    med.parentElement.appendChild(caja);
+                    const pintar = () => {
+                        caja.innerHTML = htmlAlertasCofepris([med.value, sol.value].filter(Boolean).join('\n'));
+                        caja.querySelectorAll('[data-receta-sku]').forEach(b => b.addEventListener('click', () => imprimirRecetaExpediente(b.getAttribute('data-receta-sku'), b.getAttribute('data-receta-dosis'))));
+                    };
+                    med.addEventListener('input', pintar);
+                    sol.addEventListener('input', pintar);
+                    pintar();
+                },
                 botones: [
                     { texto: 'Cancelar', estilo: 'secundario' },
                     { texto: 'Guardar Nueva Hoja de Indicaciones', estilo: 'primario', id: 'indm-guardar', alPulsar: c => {
@@ -1958,7 +2052,7 @@
             SESION = BelenStore.sesion();
             if (!SESION) { window.location.replace('login.html'); return; }
             const params = new URLSearchParams(window.location.search);
-            if (params.get('modo') === 'hospitalizado') { initVisorHospitalizado(params); return; }   // visor longitudinal de hospitalización
+            if (params.get('modo') === 'hospitalizado') { initVisorHospitalizado(params); enlazarAlertasCofepris(); return; }   // visor longitudinal de hospitalización
             const turnoId = params.get('turno');
             TURNO = turnoId ? BelenStore.obtenerTurno(turnoId) : null;
             if (!turnoId) { bloquearAcceso('Abra el expediente desde el Dashboard, eligiendo a un paciente de su fila.', 'Falta seleccionar un paciente'); return; }
@@ -2029,6 +2123,7 @@
             document.addEventListener('input', actualizarIndicadorPendientes);
             document.addEventListener('change', actualizarIndicadorPendientes);
             actualizarIndicadorPendientes();
+            enlazarAlertasCofepris();
 
             // Borrador automático y limpieza de espacios sobrantes
             ['input', 'change', 'click'].forEach(ev => document.addEventListener(ev, programarGuardadoBorrador));

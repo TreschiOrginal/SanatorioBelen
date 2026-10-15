@@ -79,7 +79,7 @@
             <!-- Notas de Ayuda Demo -->
             <div class="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl">
                 <p class="text-[10px] font-bold text-blue-800 uppercase mb-2"><i class="fas fa-info-circle mr-1"></i> Para probar el Demo:</p>
-                <p class="text-xs text-blue-600 mb-3">Escriba uno de los usuarios o toque un perfil. La contraseña puede ser cualquiera. Cada perfil tiene permisos distintos.</p>
+                <p class="text-xs text-blue-600 mb-3">Escriba uno de los usuarios o toque un perfil. La contraseña de demostración es <b>demo</b>. Cada perfil tiene permisos distintos.</p>
                 <div id="perfiles-demo" class="grid grid-cols-2 gap-2"></div>
             </div>
 
@@ -119,13 +119,13 @@
 
         // Botones de perfiles
         const cont = document.getElementById('perfiles-demo');
-        Object.values(BelenStore.USUARIOS).forEach(u => {
+        Object.values(BelenStore.USUARIOS).filter(u => u.activo !== false).forEach(u => {
             const b = document.createElement('button');
             b.type = 'button';
             b.className = 'text-left bg-white border border-blue-100 hover:border-cyan-400 hover:bg-cyan-50 rounded-lg px-2.5 py-2 transition';
             b.innerHTML = '<span class="flex items-center gap-2 text-xs font-bold text-slate-700"><i class="fas ' + ICONOS_ROL[u.rol] + ' text-cyan-600"></i>' + u.id + '</span>' +
                           '<span class="block text-[10px] text-slate-500 mt-0.5 truncate">' + u.nombre + ' · ' + u.cargo + '</span>';
-            b.addEventListener('click', () => { inputUsuario.value = u.id; document.getElementById('password').value = document.getElementById('password').value || 'demo'; document.getElementById('login-form').requestSubmit(); });
+            b.addEventListener('click', () => { inputUsuario.value = u.id; document.getElementById('password').value = 'demo'; document.getElementById('login-form').requestSubmit(); });
             cont.appendChild(b);
         });
 
@@ -134,9 +134,10 @@
         document.getElementById('login-form').addEventListener('submit', function(e) {
             e.preventDefault(); // Evita que la página se recargue
 
-            const usuario = BelenStore.iniciarSesion(inputUsuario.value);
-            if (!usuario) {
-                mostrarError('Usuario no reconocido. Use: ' + Object.keys(BelenStore.USUARIOS).join(', ') + '.');
+            const usuario = BelenStore.iniciarSesion(inputUsuario.value, document.getElementById('password').value);
+            if (!usuario || !usuario.id) {
+                const textos = { password: 'La contraseña no coincide.', inactivo: 'Este usuario está desactivado. Pida a dirección que lo reactive.', usuario: 'Usuario no reconocido.' };
+                mostrarError(textos[usuario && usuario.motivo] || 'Usuario no reconocido.');
                 return;
             }
 
