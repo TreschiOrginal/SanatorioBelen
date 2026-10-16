@@ -21,6 +21,7 @@
 //   belen_cola_surtido ......... solicitudes de piso y de consulta pendientes de surtir
 //   belen_paquetes_farmacia .... paquetes quirúrgicos / clínicos (ítems y cantidades)
 //   belen_cajas_estupefacientes  cajas de fracción I (ámpulas usadas contra receta especial)
+//   belen_movimientos_farmacia . kárdex inmutable de entradas y salidas (movimiento_id PK)
 // ============================================================
 (function (global) {
     'use strict';
@@ -39,6 +40,9 @@
         surtido: 'belen_cola_surtido',
         paquetes: 'belen_paquetes_farmacia',
         cajasEstupefacientes: 'belen_cajas_estupefacientes',
+        salidasFarmacia: 'belen_bitacora_salidas',
+        movimientosFarmacia: 'belen_movimientos_farmacia',
+        ivaDiferido: 'belen_iva_diferido_v1',
         farmaciaAmpliada: 'belen_farmacia_ampliada_v2',
         usuarios: 'belen_usuarios',
         papeleria: 'belen_papeleria_personal',
@@ -80,17 +84,17 @@
     // Catálogo vivo. Se llena desde belen_usuarios (localStorage) al arrancar; el código ya no es la fuente de verdad.
     const USUARIOS = {};
     const SEMILLA_USUARIOS = [
-        { id: 'admin',         rol: 'admin',         nombre: 'Alfonso',            cargo: 'Dirección General',              cedula_profesional: '',        especialidad_codigo: null,                    color_distintivo: 'slate',   etiqueta_admin: 'Dirección' },
-        { id: 'administrador', rol: 'administrador', nombre: 'Adm. Sofía',         cargo: 'Caja y Recepción',               cedula_profesional: '',        especialidad_codigo: null,                    color_distintivo: 'amber',   etiqueta_admin: 'Caja' },
-        { id: 'enf_triage',    rol: 'enf_triage',    nombre: 'Enf. Lupita',        cargo: 'Enfermería de Triage',           cedula_profesional: 'ENF-2201', especialidad_codigo: null,                   color_distintivo: 'cyan',    etiqueta_admin: 'Triage matutino' },
-        { id: 'enf_hospital',  rol: 'enf_hospital',  nombre: 'Enf. Carmen',        cargo: 'Enfermería de Hospitalización',  cedula_profesional: 'ENF-2202', especialidad_codigo: null,                   color_distintivo: 'cyan',    etiqueta_admin: 'Piso' },
-        { id: 'enf_quirofano', rol: 'enf_quirofano', nombre: 'Enf. Rosa',          cargo: 'Enfermería de Quirófano',        cedula_profesional: 'ENF-2203', especialidad_codigo: null,                   color_distintivo: 'violet',  etiqueta_admin: 'Sala' },
-        { id: 'enf_farmacia',  rol: 'enf_farmacia',  nombre: 'Enf. Patricia',      cargo: 'Encargado de Farmacia',          cedula_profesional: 'ENF-2204', especialidad_codigo: null,                   color_distintivo: 'emerald', etiqueta_admin: 'Farmacia' },
-        { id: 'dr_juan',       rol: 'medico',        nombre: 'Dr. Juan Pérez',     cargo: 'Medicina General',               cedula_profesional: 'MG-11021', especialidad_codigo: 'MEDICINA_GENERAL',     color_distintivo: 'emerald', etiqueta_admin: 'Consulta general' },
-        { id: 'dr_roberto',    rol: 'medico',        nombre: 'Dr. Roberto Flores', cargo: 'Angiología',                     cedula_profesional: 'ANG-3340', especialidad_codigo: 'ANGIOLOGIA',           color_distintivo: 'amber',   etiqueta_admin: 'Vascular' },
-        { id: 'dr_arturo',     rol: 'medico',        nombre: 'Dr. Arturo Gómez',   cargo: 'Cirugía General',                cedula_profesional: 'CG-7781',  especialidad_codigo: 'CIRUGIA_GENERAL',      color_distintivo: 'violet',  etiqueta_admin: 'Cirujano' },
-        { id: 'dr_internista', rol: 'medico',        nombre: 'Dr. Carlos Méndez',  cargo: 'Medicina Interna',               cedula_profesional: 'MI-5520',  especialidad_codigo: 'MEDICINA_INTERNA',     color_distintivo: 'cyan',    etiqueta_admin: 'Internista' },
-        { id: 'dra_elena',     rol: 'medico',        nombre: 'Dra. Elena Ríos',    cargo: 'Anestesiología',                 cedula_profesional: 'AE-45821', especialidad_codigo: 'ANESTESIOLOGIA',       color_distintivo: 'rose',    etiqueta_admin: 'Anestesia' }
+        { id: 'admin',         rol: 'admin',         nombre: 'Alfonso',            cargo: 'Dirección General',              cedula_profesional: '',        codigo_rapido: '1111', especialidad_codigo: null,                    color_distintivo: 'slate',   etiqueta_admin: 'Dirección' },
+        { id: 'administrador', rol: 'administrador', nombre: 'Adm. Sofía',         cargo: 'Caja y Recepción',               cedula_profesional: '',        codigo_rapido: '3301', especialidad_codigo: null,                    color_distintivo: 'amber',   etiqueta_admin: 'Caja' },
+        { id: 'enf_triage',    rol: 'enf_triage',    nombre: 'Enf. Lupita',        cargo: 'Enfermería de Triage',           cedula_profesional: 'ENF-2201', codigo_rapido: '2201', especialidad_codigo: null,                   color_distintivo: 'cyan',    etiqueta_admin: 'Triage matutino' },
+        { id: 'enf_hospital',  rol: 'enf_hospital',  nombre: 'Enf. Carmen',        cargo: 'Enfermería de Hospitalización',  cedula_profesional: 'ENF-2202', codigo_rapido: '2202', especialidad_codigo: null,                   color_distintivo: 'cyan',    etiqueta_admin: 'Piso' },
+        { id: 'enf_quirofano', rol: 'enf_quirofano', nombre: 'Enf. Rosa',          cargo: 'Enfermería de Quirófano',        cedula_profesional: 'ENF-2203', codigo_rapido: '2203', especialidad_codigo: null,                   color_distintivo: 'violet',  etiqueta_admin: 'Sala' },
+        { id: 'enf_farmacia',  rol: 'enf_farmacia',  nombre: 'Enf. Patricia',      cargo: 'Encargado de Farmacia',          cedula_profesional: 'ENF-2204', codigo_rapido: '2204', especialidad_codigo: null,                   color_distintivo: 'emerald', etiqueta_admin: 'Farmacia' },
+        { id: 'dr_juan',       rol: 'medico',        nombre: 'Dr. Juan Pérez',     cargo: 'Medicina General',               cedula_profesional: 'MG-11021', codigo_rapido: '1021', especialidad_codigo: 'MEDICINA_GENERAL',     color_distintivo: 'emerald', etiqueta_admin: 'Consulta general' },
+        { id: 'dr_roberto',    rol: 'medico',        nombre: 'Dr. Roberto Flores', cargo: 'Angiología',                     cedula_profesional: 'ANG-3340', codigo_rapido: '3340', especialidad_codigo: 'ANGIOLOGIA',           color_distintivo: 'amber',   etiqueta_admin: 'Vascular' },
+        { id: 'dr_arturo',     rol: 'medico',        nombre: 'Dr. Arturo Gómez',   cargo: 'Cirugía General',                cedula_profesional: 'CG-7781',  codigo_rapido: '7781', especialidad_codigo: 'CIRUGIA_GENERAL',      color_distintivo: 'violet',  etiqueta_admin: 'Cirujano' },
+        { id: 'dr_internista', rol: 'medico',        nombre: 'Dr. Carlos Méndez',  cargo: 'Medicina Interna',               cedula_profesional: 'MI-5520',  codigo_rapido: '5520', especialidad_codigo: 'MEDICINA_INTERNA',     color_distintivo: 'cyan',    etiqueta_admin: 'Internista' },
+        { id: 'dra_elena',     rol: 'medico',        nombre: 'Dra. Elena Ríos',    cargo: 'Anestesiología',                 cedula_profesional: 'AE-45821', codigo_rapido: '4582', especialidad_codigo: 'ANESTESIOLOGIA',       color_distintivo: 'rose',    etiqueta_admin: 'Anestesia' }
     ];
     const COLORES_DISTINTIVO = {
         emerald: { clase: 'bg-emerald-100 text-emerald-800', etiqueta: 'Esmeralda' },
@@ -100,7 +104,7 @@
         amber:   { clase: 'bg-amber-100 text-amber-800',     etiqueta: 'Ámbar' },
         slate:   { clase: 'bg-slate-800 text-white',         etiqueta: 'Pizarra' }
     };
-    const ACCIONES_PERSONAL = ['capturar_signos', 'pasar_a_medico', 'cargar_consumos', 'asignar_cama', 'programar_cirugia', 'gestionar_farmacia'];
+    const ACCIONES_PERSONAL = ['capturar_signos', 'pasar_a_medico', 'cargar_consumos', 'asignar_cama', 'programar_cirugia', 'gestionar_farmacia', 'ver_bitacora_farmacia'];
     // Alias de versiones anteriores del demo (el rol genérico 'enfermeria' se dividió en tres roles específicos)
     const ALIAS_USUARIO = { doctor: 'dr_juan', medico: 'dr_juan', enfermera: 'enf_triage', enfermeria: 'enf_triage', recepcion: 'administrador', caja: 'administrador' };
 
@@ -136,7 +140,8 @@
         ver_cuentas_cobrar:        ['admin', 'administrador'],
         cerrar_expediente_pago:    ['admin', 'administrador'],
         cargar_cuenta_consulta:    ['admin', 'medico'],
-        gestionar_farmacia:        ['admin', 'administrador', 'enf_farmacia']
+        gestionar_farmacia:        ['admin', 'administrador', 'enf_farmacia'],
+        ver_bitacora_farmacia:     ['admin']
     };
 
     // Módulos que Alfonso puede encender/apagar por usuario. 'roles' = perfiles a los que el módulo puede aplicar (un switch fuera de
@@ -304,9 +309,33 @@
         const lista = listaUsuariosCruda();
         const ids = new Set(lista.map(u => u.id));
         const faltan = SEMILLA_USUARIOS.filter(u => !ids.has(u.id)).map(u => Object.assign({ password_hash: hash, activo: true }, u));
-        if (faltan.length) return guardarListaUsuarios(lista.concat(faltan));
-        publicarUsuarios(lista);
+        if (faltan.length) guardarListaUsuarios(lista.concat(faltan));
+        else publicarUsuarios(lista);
+        completarCodigosRapidos();
         return true;
+    }
+    function completarCodigosRapidos() {
+        const lista = listaUsuariosCruda();
+        let cambio = false;
+        lista.forEach(u => {
+            if (u.codigo_rapido) return;
+            const semilla = SEMILLA_USUARIOS.find(x => x.id === u.id);
+            if (semilla && semilla.codigo_rapido) { u.codigo_rapido = semilla.codigo_rapido; cambio = true; }
+        });
+        if (cambio) guardarListaUsuarios(lista);
+    }
+    function identificarOperadorFarmacia(codigo) {
+        const c = String(codigo || '').trim();
+        if (!c) return { ok: false, motivo: 'Escriba su código personal.' };
+        const activos = Object.values(USUARIOS).filter(u => u.activo !== false);
+        const porPin = activos.filter(u => u.codigo_rapido && String(u.codigo_rapido) === c);
+        if (porPin.length === 1) return { ok: true, usuario: porPin[0] };
+        if (porPin.length > 1) return { ok: false, motivo: 'Ese código está repetido. Pida a dirección que lo corrija.' };
+        const hash = hashContrasena(c);
+        const porPass = activos.filter(u => u.password_hash === hash);
+        if (porPass.length === 1) return { ok: true, usuario: porPass[0] };
+        if (porPass.length > 1) return { ok: false, motivo: 'Esa contraseña la comparten varias cuentas. Use su código personal.' };
+        return { ok: false, motivo: 'Código o contraseña no reconocidos.' };
     }
     function usuarioPorId(id) { return USUARIOS[id] || null; }
     function colorDeUsuario(u) {
@@ -421,6 +450,7 @@
             cargo: limpiarEspacios(entrada.cargo), cedula_profesional: limpiarEspacios(entrada.cedula_profesional).toUpperCase(),
             especialidad_codigo: entrada.rol === 'medico' ? (entrada.especialidad_codigo || '') : null,
             color_distintivo: entrada.color_distintivo || 'slate', etiqueta_admin: limpiarEspacios(entrada.etiqueta_admin),
+            codigo_rapido: String(entrada.codigo_rapido || '').trim(),
             password: String(entrada.password || '')
         };
         const errores = {};
@@ -435,6 +465,8 @@
         if (v.etiqueta_admin.length > 80) errores.etiqueta_admin = 'La etiqueta admite hasta 80 caracteres.';
         if (!idActual && v.password.length < 4) errores.password = 'La contraseña debe tener al menos 4 caracteres.';
         if (idActual && v.password && v.password.length < 4) errores.password = 'La contraseña nueva debe tener al menos 4 caracteres.';
+        if (!/^\d{4,8}$/.test(v.codigo_rapido)) errores.codigo_rapido = 'El código rápido es de 4 a 8 dígitos.';
+        else if (Object.values(USUARIOS).some(u => u.id !== (idActual || v.id) && String(u.codigo_rapido) === v.codigo_rapido)) errores.codigo_rapido = 'Ese código rápido ya lo usa otra persona.';
         return { ok: Object.keys(errores).length === 0, errores: errores, valores: v };
     }
     function reasignarIdUsuario(antes, despues) {
@@ -471,7 +503,8 @@
         if (idActual && !previo) return { ok: false, motivo: 'No se encontró al empleado.' };
         const registro = Object.assign({}, previo || { activo: true }, {
             id: v.id, nombre: v.nombre, rol: v.rol, cargo: v.cargo, cedula_profesional: v.cedula_profesional,
-            especialidad_codigo: v.especialidad_codigo, color_distintivo: v.color_distintivo, etiqueta_admin: v.etiqueta_admin
+            especialidad_codigo: v.especialidad_codigo, color_distintivo: v.color_distintivo, etiqueta_admin: v.etiqueta_admin,
+            codigo_rapido: v.codigo_rapido
         });
         if (v.password) registro.password_hash = hashContrasena(v.password);
         if (!registro.password_hash) registro.password_hash = hashContrasena('demo');
@@ -1254,11 +1287,13 @@
         const n = Number(crudo);
         if (!Number.isFinite(n) || n < 0.01 || n > 999999.99) errores.precio_unitario = 'Indique un precio entre $0.01 y $999,999.99.';
         const precio = Math.round(n * 100) / 100;
-        return { ok: Object.keys(errores).length === 0, errores: errores, valores: { concepto: concepto, precio_unitario: precio, cantidad: 1, subtotal: precio } };
+        const aplica = entrada.aplica_iva === true || entrada.aplica_iva === 'true' || entrada.aplica_iva === '1';
+        return { ok: Object.keys(errores).length === 0, errores: errores, valores: { concepto: concepto, precio_unitario: precio, cantidad: 1, subtotal: precio, aplica_iva: aplica } };
     }
     function nuevoCargo(valores, origen, s) {
         return {
             cargo_id: uid('CG'), concepto: valores.concepto, precio_unitario: valores.precio_unitario, cantidad: 1, subtotal: valores.subtotal,
+            aplica_iva: !!valores.aplica_iva,
             origen: origen, cargado_por_id: s.usuario_id, cargado_por_nombre: s.nombre, cargado_en: new Date().toISOString()
         };
     }
@@ -1359,15 +1394,17 @@
             egreso_en: (i && i.egreso_en) || turno.actualizado_en || null
         };
     }
-    function cerrarExpedientePagado(turnoId, s) {
+    function cerrarExpedientePagado(turnoId, s, opciones) {
         if (!s || !PERMISOS.cerrar_expediente_pago.includes(s.rol)) return { ok: false, motivo: 'Solo Administración puede cerrar el expediente por pago.' };
         const t = obtenerTurno(turnoId);
         if (!t) return { ok: false, motivo: 'No se encontró el episodio.' };
         if (t.estatus !== ESTATUS.ALTA_PENDIENTE_PAGO) return { ok: false, motivo: 'Este expediente no está pendiente de pago.' };
         const ahora = new Date().toISOString();
-        const cerrado = actualizarTurno(turnoId, { estatus: ESTATUS.CERRADO_HISTORICO, cerrado_en: ahora, cerrado_por_id: s.usuario_id, cerrado_por_nombre: s.nombre });
+        const fiscal = desgloseFiscal(cargosDeEpisodio(t), !!(opciones && opciones.requirio_factura));
+        const pago = { requirio_factura: fiscal.requirio_factura, iva_cobrado: fiscal.iva, total_pagado: fiscal.total, subtotal_base: fiscal.subtotal };
+        const cerrado = actualizarTurno(turnoId, Object.assign({ estatus: ESTATUS.CERRADO_HISTORICO, cerrado_en: ahora, cerrado_por_id: s.usuario_id, cerrado_por_nombre: s.nombre }, pago));
         const i = internamientoDeTurno(turnoId);
-        if (i) { i.estatus = ESTATUS.CERRADO_HISTORICO; i.cerrado_en = ahora; guardarInternamiento(i); }
+        if (i) { i.estatus = ESTATUS.CERRADO_HISTORICO; i.cerrado_en = ahora; Object.assign(i, pago); guardarInternamiento(i); }
         const visitas = listarVisitas();
         const vi = visitas.findIndex(v => v.meta && v.meta.turno_id === turnoId);
         if (vi >= 0) {
@@ -1707,6 +1744,48 @@
     ];
     const FRACCIONES_RECETA = ['II', 'III', 'IV_ANTIBIOTICO'];
     const CATEGORIAS_FISICAS = ['MEDICAMENTO', 'MATERIAL_CURACION'];
+    const FORMAS_FARMACEUTICAS = [
+        { codigo: 'TABLETA', nombre: 'Tableta' },
+        { codigo: 'CAPSULA', nombre: 'Cápsula' },
+        { codigo: 'SOLUCION_INYECTABLE', nombre: 'Solución Inyectable / Ámpula' },
+        { codigo: 'SUSPENSION', nombre: 'Suspensión' },
+        { codigo: 'FRASCO', nombre: 'Frasco / Ampolleta' },
+        { codigo: 'MATERIAL', nombre: 'Material de Curación' },
+        { codigo: 'ESTUDIO', nombre: 'Estudio / Servicio' }
+    ];
+    const VIAS_ADMINISTRACION = [
+        { codigo: 'VO', nombre: 'VO' }, { codigo: 'IV', nombre: 'IV' }, { codigo: 'IM', nombre: 'IM' },
+        { codigo: 'SC', nombre: 'SC' }, { codigo: 'TOPICA', nombre: 'Tópica' }, { codigo: 'INHALADA', nombre: 'Inhalada' },
+        { codigo: 'NA', nombre: 'N/A' }
+    ];
+    const CONSERVACIONES = [
+        { codigo: 'AMBIENTE', nombre: 'Ambiente (<30°C)' },
+        { codigo: 'REFRIGERACION', nombre: 'Refrigeración (2°C-8°C)' }
+    ];
+    const LABORATORIOS_FRECUENTES = ['Pisa', 'Pfizer', 'Bayer', 'Sanofi', 'Roche', 'AstraZeneca', 'Sophía', 'B. Braun'];
+    const FEUM_SKU = {
+        'CEF-1G': { forma_farmaceutica: 'SOLUCION_INYECTABLE', concentracion: '1 g', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'SOL-1000': { forma_farmaceutica: 'FRASCO', concentracion: '1000 ml', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'FIS-1000': { forma_farmaceutica: 'FRASCO', concentracion: '1000 ml', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'PAR-1G': { forma_farmaceutica: 'SOLUCION_INYECTABLE', concentracion: '1 g', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'FEN-50': { nombre_comercial: 'Fenodid', forma_farmaceutica: 'SOLUCION_INYECTABLE', concentracion: '0.5 mg / 10 ml', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'DIA-10': { nombre_comercial: 'Valium', forma_farmaceutica: 'TABLETA', concentracion: '10 mg', via_administracion: 'VO', conservacion: 'AMBIENTE', proveedor: 'Nadro' },
+        'GUA-M': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Dimsa' },
+        'JER-10': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Dimsa' },
+        'VEN-18': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'PUN-18': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Dimsa' },
+        'CUR-01': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE' },
+        'MAT-01': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE' },
+        'SUT-01': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Dimsa' },
+        'EKG-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'NA', conservacion: 'AMBIENTE' },
+        'DEX-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Nadro' },
+        'LAB-BH': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'NA', conservacion: 'AMBIENTE' },
+        'RX-ABD': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'NA', conservacion: 'AMBIENTE' },
+        'INY-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'IM', conservacion: 'AMBIENTE' },
+        'CON-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'NA', conservacion: 'AMBIENTE' },
+        'NEB-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'INHALADA', conservacion: 'AMBIENTE' },
+        'IM-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'IM', conservacion: 'AMBIENTE' }
+    };
     const META_SKU_FARMACIA = {
         'CEF-1G': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'IV_ANTIBIOTICO', piezas_por_caja: 1, aplica_iva: false },
         'SOL-1000': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'VI', piezas_por_caja: 1, aplica_iva: false },
@@ -1739,23 +1818,55 @@
     function montosProducto(p, cantidad) {
         const cant = cantidad || 1;
         const base = redondearMoneda(p.precio_unitario);
-        const con = precioConIvaDe(base, !!p.aplica_iva);
-        const iva = redondearMoneda(con - base);
-        return { precio_unitario: base, iva_unitario: iva, precio_con_iva: con, cantidad: cant, subtotal: redondearMoneda(con * cant), iva_total: redondearMoneda(iva * cant) };
+        return { precio_unitario: base, aplica_iva: !!p.aplica_iva, cantidad: cant, subtotal: redondearMoneda(base * cant), iva_unitario: 0, iva_total: 0 };
+    }
+    function desgloseFiscal(cargos, conFactura) {
+        const lista = cargos || [];
+        const subtotal = redondearMoneda(lista.reduce((s, c) => s + Number(c.subtotal || 0), 0));
+        const baseGravable = redondearMoneda(lista.reduce((s, c) => s + (c && c.aplica_iva ? Number(c.subtotal || 0) : 0), 0));
+        const iva = conFactura ? redondearMoneda(baseGravable * 0.16) : 0;
+        return { subtotal: subtotal, base_gravable: baseGravable, iva: iva, total: redondearMoneda(subtotal + iva), requirio_factura: !!conFactura };
+    }
+    function codigoDeLista(lista, valor, fallback) { return lista.some(x => x.codigo === valor) ? valor : fallback; }
+    function formaPorCategoria(categoria) {
+        if (categoria === 'MATERIAL_CURACION') return 'MATERIAL';
+        if (categoria === 'LABORATORIO' || categoria === 'IMAGENOLOGIA' || categoria === 'PROCEDIMIENTO') return 'ESTUDIO';
+        return 'TABLETA';
     }
     function completarLote(p) {
-        const meta = META_SKU_FARMACIA[p.sku] || {};
+        const meta = Object.assign({}, META_SKU_FARMACIA[p.sku] || {}, FEUM_SKU[p.sku] || {});
         const categoria = CATEGORIAS_FARMACIA.some(c => c.codigo === p.categoria) ? p.categoria : (meta.categoria || 'MEDICAMENTO');
         const fraccion = FRACCIONES_COFEPRIS.some(f => f.codigo === p.fraccion_cofepris) ? p.fraccion_cofepris : (meta.fraccion_cofepris || 'NA');
         const aplica = typeof p.aplica_iva === 'boolean' ? p.aplica_iva : (typeof meta.aplica_iva === 'boolean' ? meta.aplica_iva : categoria !== 'MEDICAMENTO');
         const piezas = parseInt(p.piezas_por_caja, 10);
         const base = redondearMoneda(p.precio_unitario);
         return Object.assign({}, p, {
+            nombre_comercial: limpiarEspacios(p.nombre_comercial || meta.nombre_comercial || ''),
             laboratorio: limpiarEspacios(p.laboratorio || meta.laboratorio || 'Sin laboratorio'),
+            proveedor: limpiarEspacios(p.proveedor || meta.proveedor || ''),
+            numero_factura: limpiarEspacios(p.numero_factura || ''),
+            forma_farmaceutica: codigoDeLista(FORMAS_FARMACEUTICAS, p.forma_farmaceutica, meta.forma_farmaceutica || formaPorCategoria(categoria)),
+            concentracion: limpiarEspacios(p.concentracion || meta.concentracion || ''),
+            via_administracion: codigoDeLista(VIAS_ADMINISTRACION, p.via_administracion, meta.via_administracion || 'NA'),
+            conservacion: codigoDeLista(CONSERVACIONES, p.conservacion, meta.conservacion || 'AMBIENTE'),
             categoria: categoria, fraccion_cofepris: fraccion,
             piezas_por_caja: Number.isInteger(piezas) && piezas > 0 ? piezas : (meta.piezas_por_caja || 1),
             aplica_iva: aplica, precio_con_iva: precioConIvaDe(base, aplica), precio_unitario: base
         });
+    }
+    function nombreFormaFarmaceutica(codigo) { const f = FORMAS_FARMACEUTICAS.find(x => x.codigo === codigo); return f ? f.nombre : (codigo || ''); }
+    function nombreConservacion(codigo) { const c = CONSERVACIONES.find(x => x.codigo === codigo); return c ? c.nombre : (codigo || ''); }
+    function textoStockFarmacia(p) {
+        const piezas = p.piezas_por_caja > 0 ? p.piezas_por_caja : 1;
+        const cajas = Math.floor((p.stock || 0) / piezas);
+        const sueltas = (p.stock || 0) % piezas;
+        let eq = cajas + (cajas === 1 ? ' caja' : ' cajas') + ' de ' + piezas;
+        if (sueltas) eq += ' + ' + sueltas + (sueltas === 1 ? ' suelta' : ' sueltas');
+        return { piezas: (p.stock || 0) + ' pzas', cajas: eq };
+    }
+    function denominacionProducto(p) {
+        if (!p) return '';
+        return p.nombre_comercial ? p.nombre + ' (' + p.nombre_comercial + ')' : p.nombre;
     }
     function nombreCategoriaFarmacia(codigo) { const c = CATEGORIAS_FARMACIA.find(x => x.codigo === codigo); return c ? c.nombre : codigo || ''; }
     function nombreFraccionCofepris(codigo) { const f = FRACCIONES_COFEPRIS.find(x => x.codigo === codigo); return f ? f.nombre : (codigo || 'No aplica'); }
@@ -1790,34 +1901,56 @@
     function buscarLotesFarmacia(texto) {
         const n = normalizar(texto);
         if (n.length < 2) return [];
-        return listarFarmacia().filter(p => p.stock > 0 && String(p.caducidad) >= hoyLocal() && (normalizar(p.sku).indexOf(n) >= 0 || normalizar(p.nombre).indexOf(n) >= 0 || normalizar(p.lote).indexOf(n) >= 0))
+        return listarFarmacia().filter(p => p.stock > 0 && String(p.caducidad) >= hoyLocal() && (normalizar(p.sku).indexOf(n) >= 0 || normalizar(p.nombre).indexOf(n) >= 0 || normalizar(p.nombre_comercial).indexOf(n) >= 0 || normalizar(p.lote).indexOf(n) >= 0))
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es') || String(a.caducidad).localeCompare(String(b.caducidad))).slice(0, 12);
     }
     function validarIngresoFarmacia(entrada) {
         const sku = limpiarEspacios(entrada.sku).toUpperCase();
         const nombre = limpiarEspacios(entrada.nombre);
+        const nombreComercial = limpiarEspacios(entrada.nombre_comercial);
         const laboratorio = limpiarEspacios(entrada.laboratorio);
+        const proveedor = limpiarEspacios(entrada.proveedor);
+        const factura = limpiarEspacios(entrada.numero_factura).toUpperCase();
         const categoria = String(entrada.categoria || '').trim();
+        const forma = String(entrada.forma_farmaceutica || '').trim();
+        const concentracion = limpiarEspacios(entrada.concentracion);
+        const via = String(entrada.via_administracion || 'NA').trim();
+        const conservacion = String(entrada.conservacion || 'AMBIENTE').trim();
         const fraccion = String(entrada.fraccion_cofepris || 'NA').trim();
         const piezas = parseInt(String(entrada.piezas_por_caja || '1').trim(), 10);
         const lote = limpiarEspacios(entrada.lote).toUpperCase();
         const caducidad = String(entrada.caducidad || '').trim();
-        const stock = parseInt(String(entrada.stock || '').trim(), 10);
+        const modoCajas = entrada.modo_stock === 'cajas';
+        const cajas = parseInt(String(entrada.numero_cajas || '').trim(), 10);
+        const piezasSueltas = parseInt(String(entrada.stock || '').trim(), 10);
+        const stock = modoCajas && Number.isInteger(piezas) && Number.isInteger(cajas) ? piezas * cajas : piezasSueltas;
         const precioCrudo = String(entrada.precio_unitario === undefined || entrada.precio_unitario === null ? '' : entrada.precio_unitario).trim().replace(',', '.');
         const precio = redondearMoneda(precioCrudo);
         const aplica = entrada.aplica_iva === true || entrada.aplica_iva === '1' || entrada.aplica_iva === 'true';
         const errores = {};
         if (!/^[A-Z0-9][A-Z0-9-]{1,19}$/.test(sku)) errores.sku = 'Use un código de 2 a 20 letras, números o guiones.';
-        if (nombre.length < 2 || nombre.length > 80) errores.nombre = 'Escriba el nombre del producto (2 a 80 caracteres).';
+        if (nombre.length < 2 || nombre.length > 80) errores.nombre = 'Escriba el principio activo (2 a 80 caracteres).';
+        if (nombreComercial.length > 80) errores.nombre_comercial = 'El nombre comercial admite hasta 80 caracteres.';
         if (laboratorio.length < 2 || laboratorio.length > 40) errores.laboratorio = 'Escriba el laboratorio (2 a 40 caracteres).';
+        if (proveedor.length > 60) errores.proveedor = 'El proveedor admite hasta 60 caracteres.';
+        if (factura && !/^[A-Z0-9][A-Z0-9-]{0,29}$/.test(factura)) errores.numero_factura = 'El folio usa letras, números o guiones.';
         if (!CATEGORIAS_FARMACIA.some(c => c.codigo === categoria)) errores.categoria = 'Seleccione la categoría.';
+        if (!FORMAS_FARMACEUTICAS.some(f => f.codigo === forma)) errores.forma_farmaceutica = 'Seleccione la forma farmacéutica.';
+        if (concentracion.length > 40) errores.concentracion = 'La concentración admite hasta 40 caracteres.';
+        if (!VIAS_ADMINISTRACION.some(v => v.codigo === via)) errores.via_administracion = 'Seleccione la vía.';
+        if (!CONSERVACIONES.some(c => c.codigo === conservacion)) errores.conservacion = 'Seleccione la conservación.';
         if (!FRACCIONES_COFEPRIS.some(f => f.codigo === fraccion)) errores.fraccion_cofepris = 'Seleccione la fracción COFEPRIS.';
         if (!Number.isInteger(piezas) || piezas < 1 || piezas > 100) errores.piezas_por_caja = 'Indique de 1 a 100 piezas por caja.';
+        if (modoCajas && (!Number.isInteger(cajas) || cajas < 1 || cajas > 9999)) errores.numero_cajas = 'Indique de 1 a 9,999 cajas.';
         if (!/^[A-Z0-9][A-Z0-9-]{0,29}$/.test(lote)) errores.lote = 'Escriba el lote (letras, números o guiones).';
         if (!parseFechaISO(caducidad)) errores.caducidad = 'Indique una fecha de caducidad válida.';
-        if (!Number.isInteger(stock) || stock < 1 || stock > 99999) errores.stock = 'Indique unidades enteras entre 1 y 99,999.';
+        if (!Number.isInteger(stock) || stock < 1 || stock > 99999) errores.stock = 'El total de piezas debe quedar entre 1 y 99,999.';
         if (!Number.isFinite(precio) || precio < 0.01 || precio > 999999.99) errores.precio_unitario = 'Indique un precio entre $0.01 y $999,999.99.';
-        const valores = completarLote({ sku: sku, nombre: nombre, laboratorio: laboratorio, categoria: categoria, fraccion_cofepris: fraccion, piezas_por_caja: piezas, lote: lote, caducidad: caducidad, stock: stock, precio_unitario: precio, aplica_iva: aplica });
+        const valores = completarLote({
+            sku: sku, nombre: nombre, nombre_comercial: nombreComercial, laboratorio: laboratorio, proveedor: proveedor, numero_factura: factura,
+            categoria: categoria, forma_farmaceutica: forma, concentracion: concentracion, via_administracion: via, conservacion: conservacion,
+            fraccion_cofepris: fraccion, piezas_por_caja: piezas, lote: lote, caducidad: caducidad, stock: stock, precio_unitario: precio, aplica_iva: aplica
+        });
         return { ok: Object.keys(errores).length === 0, errores: errores, valores: valores };
     }
     function ingresarInsumo(entrada, s) {
@@ -1826,13 +1959,21 @@
         if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
         const lista = listarFarmacia();
         const v = r.valores;
+        const snap = JSON.stringify(lista);
         const ya = lista.find(p => normalizar(p.sku) === normalizar(v.sku) && normalizar(p.lote) === normalizar(v.lote));
         if (ya) {
             Object.assign(ya, v, { lote_id: ya.lote_id, stock: ya.stock + v.stock });
         } else {
             lista.push(Object.assign({ lote_id: uid('LOT') }, v));
         }
-        return escribir(CLAVES.farmacia, lista) ? { ok: true, producto: ya || lista[lista.length - 1] } : { ok: false, motivo: 'No se pudo guardar el ingreso.' };
+        if (!escribir(CLAVES.farmacia, lista)) return { ok: false, motivo: 'No se pudo guardar el ingreso.' };
+        const quien = USUARIOS[entrada.operador_id] || USUARIOS[s.usuario_id];
+        const mov = movimientoEntrada(v, quien, entrada.modo_stock === 'cajas', parseInt(entrada.numero_cajas, 10));
+        if (!anexarMovimientos([mov])) {
+            escribir(CLAVES.farmacia, JSON.parse(snap));
+            return { ok: false, motivo: 'No se pudo registrar la bitácora. El ingreso no se guardó.' };
+        }
+        return { ok: true, producto: ya || lista[lista.length - 1] };
     }
     function resolverEscaneo(codigo) {
         const n = normalizar(codigo);
@@ -1853,7 +1994,8 @@
         if (!producto) return null;
         const hoy = hoyLocal();
         const sku = normalizar(producto.sku), nombre = normalizar(producto.nombre);
-        return listarFarmacia().filter(p => p.lote_id !== producto.lote_id && p.stock > 0 && String(p.caducidad) >= hoy && String(p.caducidad) < String(producto.caducidad) && (normalizar(p.sku) === sku || normalizar(p.nombre) === nombre))
+        const comercial = normalizar(producto.nombre_comercial);
+        return listarFarmacia().filter(p => p.lote_id !== producto.lote_id && p.stock > 0 && String(p.caducidad) >= hoy && String(p.caducidad) < String(producto.caducidad) && (normalizar(p.sku) === sku || normalizar(p.nombre) === nombre || (comercial && normalizar(p.nombre_comercial) === comercial)))
             .sort((a, b) => String(a.caducidad).localeCompare(String(b.caducidad)))[0] || null;
     }
     function prepararLineaCarrito(codigo, opciones) {
@@ -1895,7 +2037,7 @@
     function cargoDesdeProducto(producto, cantidad, quien, extra) {
         const montos = montosProducto(producto, cantidad);
         return Object.assign({
-            cargo_id: uid('CG'), concepto: producto.nombre + (extra && extra.paquete_nombre ? ' · ' + extra.paquete_nombre : ''),
+            cargo_id: uid('CG'), concepto: denominacionProducto(producto) + (extra && extra.paquete_nombre ? ' · ' + extra.paquete_nombre : ''),
             sku: producto.sku, lote: producto.lote, lote_id: producto.lote_id, laboratorio: producto.laboratorio || null,
             categoria: producto.categoria || null, fraccion_cofepris: producto.fraccion_cofepris || 'NA', aplica_iva: !!producto.aplica_iva,
             origen: 'farmacia', origen_precio: 'farmacia',
@@ -1981,17 +2123,35 @@
         const catalogo = listarFarmacia();
         const row = catalogo.find(p => p.lote_id === lote.lote_id);
         if (!row || row.stock < 1) return { ok: false, motivo: 'No hay stock disponible de ese código.' };
+        const snapCat = JSON.stringify(catalogo);
+        const snapCola = JSON.stringify(cola);
+        const snapTurnos = localStorage.getItem(CLAVES.turnos);
+        const snapInts = localStorage.getItem(CLAVES.internamientos);
+        const snapHosp = localStorage.getItem(CLAVES.hospitalizados);
+        const revertirSurtido = () => {
+            escribir(CLAVES.farmacia, JSON.parse(snapCat));
+            escribir(CLAVES.surtido, JSON.parse(snapCola));
+            if (snapTurnos === null) localStorage.removeItem(CLAVES.turnos); else localStorage.setItem(CLAVES.turnos, snapTurnos);
+            if (snapInts === null) localStorage.removeItem(CLAVES.internamientos); else localStorage.setItem(CLAVES.internamientos, snapInts);
+            if (snapHosp === null) localStorage.removeItem(CLAVES.hospitalizados); else localStorage.setItem(CLAVES.hospitalizados, snapHosp);
+        };
         row.stock -= 1;
         if (!escribir(CLAVES.farmacia, catalogo)) return { ok: false, motivo: 'No se pudo actualizar el inventario.' };
         const ajustar = !!(mejor.facturado && mejor.cargo_id && !(mejor.cantidad_surtida > 0));
         const cobro = cobrarUnidadFarmacia(sol.turno_id, row, s, ajustar ? mejor.cargo_id : null);
-        if (!cobro.ok) { row.stock += 1; escribir(CLAVES.farmacia, catalogo); return cobro; }
+        if (!cobro.ok) { revertirSurtido(); return cobro; }
         mejor.cantidad_surtida = (mejor.cantidad_surtida || 0) + 1;
         mejor.sku = row.sku;
         if (mejor.cantidad_surtida >= mejor.cantidad) mejor.estatus = 'surtida';
         const completa = sol.lineas.every(l => l.estatus === 'surtida');
         if (completa) { sol.estatus = 'surtida'; sol.surtida_en = new Date().toISOString(); sol.surtida_por = s.nombre; }
-        if (!escribir(CLAVES.surtido, cola)) return { ok: false, motivo: 'El cargo se registró, pero no se pudo cerrar la solicitud.' };
+        if (!escribir(CLAVES.surtido, cola)) { revertirSurtido(); return { ok: false, motivo: 'No se pudo cerrar la solicitud. El inventario no se modificó.' }; }
+        const destino = fichaDestinoKardex(t);
+        const quien = USUARIOS[s.usuario_id] || { id: s.usuario_id, nombre: s.nombre, cedula_profesional: '' };
+        if (!anexarMovimientos([movimientoSalida(row, 1, quien, destino)])) {
+            revertirSurtido();
+            return { ok: false, motivo: 'No se pudo registrar la bitácora. El surtido no se guardó.' };
+        }
         return { ok: true, solicitud: sol, producto: row, total: cobro.total, completa: completa };
     }
 
@@ -2087,8 +2247,11 @@
             grupos[area].push({
                 turno_id: t.turno_id, paciente_id: t.paciente_id,
                 nombre: (p && p.nombre_completo) || t.paciente_nombre || 'Paciente',
+                edad: p ? calcularEdad(p.fecha_nacimiento) : calcularEdad(t.fecha_nacimiento),
                 cama: (i && i.cama) || (area === 'consulta' ? 'Consulta' : 'Sin cama'),
-                area: area, medico: t.medico_nombre || '', estatus: t.estatus
+                area: area,
+                area_txt: area === 'consulta' ? 'Consulta' : area === 'observacion' ? 'Observación' : area === 'quirofano' ? 'Quirófano / Recuperación' : 'Hospitalización',
+                medico: t.medico_nombre || '', estatus: t.estatus
             });
         });
         return grupos;
@@ -2120,11 +2283,16 @@
         const t = obtenerTurno(entrada.turno_id);
         if (!t) return { ok: false, motivo: 'No se encontró al paciente.' };
         if ([ESTATUS.EN_CONSULTA, ESTATUS.INTERNADO, ESTATUS.INTERNADO_EN_PROCESO].indexOf(t.estatus) < 0) return { ok: false, motivo: 'Ese paciente ya no está activo.' };
+        const operador = entrada.operador_id ? USUARIOS[entrada.operador_id] : null;
         const enf = entrada.atribuir_sesion ? null : USUARIOS[entrada.enfermera_id];
-        const quien = entrada.atribuir_sesion
+        const quien = operador && operador.activo !== false
+            ? { id: operador.id, nombre: operador.nombre }
+            : entrada.atribuir_sesion
             ? (puedeCargarConsumos(s) ? { id: s.usuario_id, nombre: s.nombre } : null)
             : (enf && enf.activo !== false && (ENFERMERIAS.indexOf(enf.rol) >= 0 || enf.rol === 'enf_farmacia') ? enf : null);
-        if (!quien) return { ok: false, motivo: entrada.atribuir_sesion ? 'Su perfil no puede cargar consumos.' : 'Seleccione a la enfermera que retira y carga.' };
+        if (!quien) return { ok: false, motivo: entrada.operador_id ? 'Identifíquese con su código personal para operar.' : (entrada.atribuir_sesion ? 'Su perfil no puede cargar consumos.' : 'Seleccione a la enfermera que retira y carga.') };
+        const fichaQuien = USUARIOS[quien.id];
+        quien.cedula_profesional = (fichaQuien && fichaQuien.cedula_profesional) || quien.cedula_profesional || '';
         const lineas = entrada.lineas || [];
         if (!lineas.length) return { ok: false, motivo: 'El carrito está vacío.' };
         const catalogo = listarFarmacia();
@@ -2181,13 +2349,258 @@
             escribir(CLAVES.farmacia, JSON.parse(snapCat));
             return { ok: false, motivo: 'No se pudo registrar la receta de la caja.' };
         }
+        const snapTurnos = localStorage.getItem(CLAVES.turnos);
+        const snapInts = localStorage.getItem(CLAVES.internamientos);
+        const snapHosp = localStorage.getItem(CLAVES.hospitalizados);
         const guardado = anexarCargosFarmacia(t.turno_id, cargos);
         if (!guardado) {
             escribir(CLAVES.farmacia, JSON.parse(snapCat));
             if (usos.length) escribir(CLAVES.cajasEstupefacientes, JSON.parse(snapCajas));
             return { ok: false, motivo: 'No se pudo cargar la cuenta. El inventario no se modificó.' };
         }
+        const destino = fichaDestinoKardex(t);
+        const movs = [];
+        lineas.forEach(lin => {
+            if (lin.servicio) return;
+            const prod = catalogo.find(p => p.lote_id === lin.lote_id);
+            if (prod) movs.push(movimientoSalida(prod, parseInt(lin.cantidad, 10), quien, destino));
+        });
+        if (movs.length && !anexarMovimientos(movs)) {
+            escribir(CLAVES.farmacia, JSON.parse(snapCat));
+            if (usos.length) escribir(CLAVES.cajasEstupefacientes, JSON.parse(snapCajas));
+            if (snapTurnos === null) localStorage.removeItem(CLAVES.turnos); else localStorage.setItem(CLAVES.turnos, snapTurnos);
+            if (snapInts === null) localStorage.removeItem(CLAVES.internamientos); else localStorage.setItem(CLAVES.internamientos, snapInts);
+            if (snapHosp === null) localStorage.removeItem(CLAVES.hospitalizados); else localStorage.setItem(CLAVES.hospitalizados, snapHosp);
+            return { ok: false, motivo: 'No se pudo registrar la bitácora. La cuenta y el inventario no se modificaron.' };
+        }
         return { ok: true, cargos: cargos, total: guardado.total, recetas: recetas };
+    }
+    function listarMovimientosFarmacia() { return leer(CLAVES.movimientosFarmacia, []); }
+    function anexarMovimientos(nuevos) {
+        if (!nuevos || !nuevos.length) return true;
+        return escribir(CLAVES.movimientosFarmacia, listarMovimientosFarmacia().concat(nuevos));
+    }
+    function identidadMovimiento(quien) {
+        const ficha = quien && (USUARIOS[quien.id] || quien);
+        return {
+            usuario_id: ficha ? (ficha.id || '') : '',
+            nombre: ficha ? (ficha.nombre || '') : '',
+            cedula_profesional: ficha ? (ficha.cedula_profesional || '') : ''
+        };
+    }
+    function movimientoEntrada(valores, quien, porCajas, numeroCajas) {
+        const idn = identidadMovimiento(quien);
+        const cajas = porCajas && Number.isInteger(numeroCajas) ? numeroCajas : '';
+        return Object.assign({
+            movimiento_id: uid('MOV'), tipo: 'ENTRADA', fecha_hora: new Date().toISOString(),
+            sku: valores.sku, principio_activo: valores.nombre, nombre_comercial: valores.nombre_comercial || '',
+            laboratorio: valores.laboratorio || '', proveedor: valores.proveedor || '', numero_factura: valores.numero_factura || '',
+            forma_farmaceutica: valores.forma_farmaceutica || '', concentracion: valores.concentracion || '',
+            fraccion_cofepris: valores.fraccion_cofepris || 'NA', lote: valores.lote, caducidad: valores.caducidad,
+            cajas_ingresadas: cajas, piezas_por_caja: valores.piezas_por_caja, total_piezas: valores.stock, cantidad_piezas: '',
+            precio_unitario: valores.precio_unitario, aplica_iva: !!valores.aplica_iva,
+            paciente_id: '', paciente_nombre: '', paciente_edad: '', area_paciente: '', cama: '', medico_tratante: ''
+        }, idn);
+    }
+    function etiquetaAreaKardex(turno) {
+        const area = clasificarAreaFarmacia(turno);
+        if (area === 'consulta') return 'Consulta Actual';
+        if (area === 'observacion') return 'Observación';
+        if (area === 'hospital') return 'Hospitalización';
+        if (area !== 'quirofano') return 'Hospitalización';
+        const i = internamientoDeTurno(turno.turno_id);
+        const blob = normalizar([i && i.area_destino, i && i.destino, turno.area_destino, turno.destino].filter(Boolean).join(' '));
+        if (blob.indexOf('recuper') >= 0 && blob.indexOf('quirof') < 0) return 'Recuperación';
+        return 'Quirófano / Operándose';
+    }
+    function fichaDestinoKardex(turno) {
+        const p = buscarPacientePorId(turno.paciente_id);
+        const i = internamientoDeTurno(turno.turno_id);
+        const area = clasificarAreaFarmacia(turno);
+        return {
+            paciente_id: turno.paciente_id || '',
+            paciente_nombre: (p && p.nombre_completo) || turno.paciente_nombre || '',
+            paciente_edad: p ? calcularEdad(p.fecha_nacimiento) : calcularEdad(turno.fecha_nacimiento),
+            area_paciente: etiquetaAreaKardex(turno),
+            cama: (i && i.cama) || (area === 'consulta' ? 'Consulta' : ''),
+            medico_tratante: turno.medico_nombre || ''
+        };
+    }
+    function movimientoSalida(prod, cantidad, quien, destino) {
+        const idn = identidadMovimiento(quien);
+        const d = destino || {};
+        return Object.assign({
+            movimiento_id: uid('MOV'), tipo: 'SALIDA', fecha_hora: new Date().toISOString(),
+            sku: prod.sku, principio_activo: prod.nombre, nombre_comercial: prod.nombre_comercial || '',
+            laboratorio: prod.laboratorio || '', proveedor: prod.proveedor || '', numero_factura: prod.numero_factura || '',
+            forma_farmaceutica: prod.forma_farmaceutica || '', concentracion: prod.concentracion || '',
+            fraccion_cofepris: prod.fraccion_cofepris || 'NA', lote: prod.lote, caducidad: prod.caducidad,
+            cajas_ingresadas: '', piezas_por_caja: prod.piezas_por_caja || '', total_piezas: '', cantidad_piezas: cantidad,
+            precio_unitario: prod.precio_unitario, aplica_iva: !!prod.aplica_iva,
+            paciente_id: d.paciente_id || '', paciente_nombre: d.paciente_nombre || '',
+            paciente_edad: d.paciente_edad === 0 ? 0 : (d.paciente_edad || ''),
+            area_paciente: d.area_paciente || '', cama: d.cama || '', medico_tratante: d.medico_tratante || ''
+        }, idn);
+    }
+    function fechaLocalDeIso(iso) {
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function filtrarMovimientosFarmacia(s, filtros) {
+        if (!s || !permisoAccionDe(s.usuario_id, 'ver_bitacora_farmacia')) return [];
+        const f = filtros || {};
+        const tipo = f.tipo === 'ENTRADA' || f.tipo === 'SALIDA' ? f.tipo : '';
+        const persona = normalizar(f.persona || '');
+        const med = normalizar(f.medicamento || '');
+        return listarMovimientosFarmacia().filter(m => {
+            if (tipo && m.tipo !== tipo) return false;
+            const dia = fechaLocalDeIso(m.fecha_hora);
+            if (f.desde && dia < f.desde) return false;
+            if (f.hasta && dia > f.hasta) return false;
+            if (persona && normalizar(m.nombre).indexOf(persona) < 0 && normalizar(m.usuario_id).indexOf(persona) < 0) return false;
+            if (med && normalizar(m.principio_activo).indexOf(med) < 0 && normalizar(m.nombre_comercial).indexOf(med) < 0 && normalizar(m.sku).indexOf(med) < 0) return false;
+            return true;
+        });
+    }
+    const MESES_KARDEX = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    function carpetasMovimientosFarmacia(lista) {
+        const anios = {};
+        (lista || []).forEach(m => {
+            const d = new Date(m.fecha_hora);
+            if (isNaN(d.getTime())) return;
+            const anio = String(d.getFullYear());
+            const mes = d.getMonth() + 1;
+            const semana = Math.min(5, Math.ceil(d.getDate() / 7));
+            anios[anio] = anios[anio] || {};
+            anios[anio][mes] = anios[anio][mes] || {};
+            anios[anio][mes][semana] = anios[anio][mes][semana] || [];
+            anios[anio][mes][semana].push(m);
+        });
+        return Object.keys(anios).sort((a, b) => Number(b) - Number(a)).map(anio => ({
+            anio: anio,
+            meses: Object.keys(anios[anio]).sort((a, b) => Number(b) - Number(a)).map(mes => {
+                const ultimo = new Date(Number(anio), Number(mes), 0).getDate();
+                return {
+                    mes: Number(mes), nombre: MESES_KARDEX[Number(mes) - 1],
+                    semanas: Object.keys(anios[anio][mes]).sort((a, b) => Number(b) - Number(a)).map(sem => ({
+                        semana: Number(sem),
+                        etiqueta: 'Semana ' + sem + ' · días ' + ((Number(sem) - 1) * 7 + 1) + '–' + Math.min(Number(sem) * 7, ultimo),
+                        movimientos: anios[anio][mes][sem].slice().sort((a, b) => String(b.fecha_hora).localeCompare(String(a.fecha_hora)))
+                    }))
+                };
+            })
+        }));
+    }
+    function csvCelda(valor) {
+        const s = valor === null || valor === undefined ? '' : String(valor);
+        return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+    function csvMovimientosFarmacia(s, filtros) {
+        if (!s || !permisoAccionDe(s.usuario_id, 'ver_bitacora_farmacia')) return '';
+        const f = Object.assign({}, filtros || {});
+        if (f.tipoExport === 'ENTRADA' || f.tipoExport === 'SALIDA') f.tipo = f.tipoExport;
+        else if (f.tipoExport === 'AMBOS') f.tipo = '';
+        const filas = filtrarMovimientosFarmacia(s, f);
+        const encabezado = ['Tipo', 'Fecha y hora', 'Usuario', 'Nombre', 'Cédula', 'SKU', 'Principio activo', 'Nombre comercial', 'Laboratorio', 'Proveedor', 'Número de factura', 'Forma farmacéutica', 'Concentración', 'Fracción COFEPRIS', 'Lote', 'Caducidad', 'Cajas ingresadas', 'Piezas por caja', 'Total de piezas ingresadas', 'Cantidad de piezas retiradas', 'Precio unitario', 'Grava IVA', 'Paciente', 'Edad', 'Área', 'Cama', 'Médico tratante'];
+        const lineas = filas.slice().sort((a, b) => String(a.fecha_hora).localeCompare(String(b.fecha_hora))).map(m => [
+            m.tipo, m.fecha_hora, m.usuario_id, m.nombre, m.cedula_profesional, m.sku, m.principio_activo, m.nombre_comercial,
+            m.laboratorio, m.proveedor, m.numero_factura, nombreFormaFarmaceutica(m.forma_farmaceutica), m.concentracion,
+            nombreFraccionCofepris(m.fraccion_cofepris), m.lote, m.caducidad, m.cajas_ingresadas, m.piezas_por_caja, m.total_piezas,
+            m.cantidad_piezas, m.precio_unitario, m.aplica_iva ? 'Sí' : 'No', m.paciente_nombre, m.paciente_edad, m.area_paciente, m.cama, m.medico_tratante
+        ].map(csvCelda).join(','));
+        return '\uFEFF' + encabezado.join(',') + '\r\n' + lineas.join('\r\n');
+    }
+    function cargoBaseSinIva(c) {
+        if (!c || typeof c !== 'object') return false;
+        const cant = Number(c.cantidad || 1);
+        const base = redondearMoneda(c.precio_unitario);
+        const sub = redondearMoneda(c.subtotal);
+        const con = c.precio_con_iva == null ? base : redondearMoneda(c.precio_con_iva);
+        let cambio = false;
+        if (c.aplica_iva && con > base && sub === redondearMoneda(con * cant)) {
+            c.subtotal = redondearMoneda(base * cant);
+            c.iva_unitario = 0;
+            c.iva_total = 0;
+            cambio = true;
+        }
+        if (typeof c.aplica_iva !== 'boolean') { c.aplica_iva = false; cambio = true; }
+        return cambio;
+    }
+    function normalizarIvaDiferido() {
+        if (localStorage.getItem(CLAVES.ivaDiferido) === '1') return;
+        listarInternamientos().forEach(i => {
+            let cambio = false;
+            (i.cargos || []).forEach(c => { if (cargoBaseSinIva(c)) cambio = true; });
+            if (!cambio) return;
+            i.cuenta_actual = totalCargos(i.cargos);
+            i.cuenta_actual_total = i.cuenta_actual;
+            guardarInternamiento(i);
+        });
+        listarTurnos().forEach(t => {
+            let cambio = false;
+            (t.cargos || []).forEach(c => { if (cargoBaseSinIva(c)) cambio = true; });
+            const fresco = obtenerTurno(t.turno_id) || t;
+            const total = totalCargos(cargosDeEpisodio(fresco));
+            if (cambio || redondearMoneda(fresco.cuenta_actual) !== total) actualizarTurno(t.turno_id, { cargos: t.cargos, cuenta_actual: total, cuenta_actual_total: total });
+        });
+        escribir(CLAVES.ivaDiferido, '1');
+    }
+    function sugerirIvaConcepto(concepto) {
+        const n = normalizar(concepto);
+        if (n.length < 2) return null;
+        const prod = listarFarmacia().find(p => normalizar(p.sku) === n || normalizar(p.nombre) === n || normalizar(p.nombre_comercial) === n);
+        return prod ? !!prod.aplica_iva : null;
+    }
+
+    function listarSalidasFarmacia() { return leer(CLAVES.salidasFarmacia, []); }
+    function listarCajasEstupefacientes(s) {
+        if (!s || (s.rol !== 'admin' && s.rol !== 'administrador')) return [];
+        return listarCajas();
+    }
+    function registrarRetiroAdministracion(entrada, s) {
+        if (!puedeGestionarFarmacia(s)) return { ok: false, motivo: 'Su perfil no puede registrar salidas de almacén.' };
+        const op = USUARIOS[entrada.operador_id];
+        if (!op || op.activo === false || op.rol !== 'admin') return { ok: false, motivo: 'Solo dirección, identificada con su código, puede retirar sin paciente.' };
+        const lineas = entrada.lineas || [];
+        if (!lineas.length) return { ok: false, motivo: 'El carrito está vacío.' };
+        const catalogo = listarFarmacia();
+        const descuentos = {};
+        const salidas = [];
+        for (let k = 0; k < lineas.length; k++) {
+            const lin = lineas[k];
+            const prod = catalogo.find(p => p.lote_id === lin.lote_id);
+            if (!prod) return { ok: false, motivo: 'Un lote del carrito ya no está en el inventario.' };
+            if (prod.fraccion_cofepris === 'I') return { ok: false, motivo: 'La fracción I se retira ligada a un paciente y a su receta individual.' };
+            const cant = parseInt(lin.cantidad, 10);
+            if (!Number.isInteger(cant) || cant < 1 || cant > 99) return { ok: false, motivo: 'Cantidad inválida de ' + prod.nombre + '.' };
+            const previo = descuentos[prod.lote_id] || 0;
+            if (prod.stock < previo + cant) return { ok: false, motivo: 'No hay stock suficiente de ' + prod.nombre + ' (lote ' + prod.lote + ').' };
+            descuentos[prod.lote_id] = previo + cant;
+            salidas.push({
+                salida_id: uid('SAL'), lote_id: prod.lote_id, sku: prod.sku, nombre: denominacionProducto(prod), lote: prod.lote,
+                cantidad: cant, fecha_hora: new Date().toISOString(), operador_id: op.id, operador_nombre: op.nombre, tipo: 'retiro_administracion'
+            });
+        }
+        const snap = JSON.stringify(catalogo);
+        Object.keys(descuentos).forEach(id => { catalogo.find(p => p.lote_id === id).stock -= descuentos[id]; });
+        if (!escribir(CLAVES.farmacia, catalogo)) return { ok: false, motivo: 'No se pudo actualizar el inventario.' };
+        const bitacora = listarSalidasFarmacia().concat(salidas);
+        if (!escribir(CLAVES.salidasFarmacia, bitacora)) {
+            escribir(CLAVES.farmacia, JSON.parse(snap));
+            return { ok: false, motivo: 'No se pudo guardar la bitácora. El inventario no se modificó.' };
+        }
+        const destinoAdmin = { paciente_id: '', paciente_nombre: '', paciente_edad: '', area_paciente: 'RETIRO DIRECTO ADMINISTRACIÓN', cama: '', medico_tratante: '' };
+        const movs = salidas.map(sal => {
+            const prod = catalogo.find(p => p.lote_id === sal.lote_id);
+            return movimientoSalida(prod, sal.cantidad, op, destinoAdmin);
+        });
+        if (!anexarMovimientos(movs)) {
+            escribir(CLAVES.farmacia, JSON.parse(snap));
+            escribir(CLAVES.salidasFarmacia, listarSalidasFarmacia().filter(x => !salidas.some(s => s.salida_id === x.salida_id)));
+            return { ok: false, motivo: 'No se pudo registrar la bitácora. El inventario no se modificó.' };
+        }
+        return { ok: true, salidas: salidas };
     }
     function aplicarPaqueteAPaciente(paqueteId, turnoId, enfermeraId, s) {
         const armado = lineasDePaquete(paqueteId);
@@ -2202,8 +2615,9 @@
         listarFarmacia().forEach(p => {
             if (vistos[p.sku]) return;
             if (p.fraccion_cofepris !== 'I' && FRACCIONES_RECETA.indexOf(p.fraccion_cofepris) < 0) return;
-            const token = normalizar(p.nombre).split(' ').find(w => w.length >= 6);
-            if (!token || n.indexOf(token) < 0) return;
+            const tokens = [p.nombre, p.nombre_comercial].join(' ').split(/\s+/).map(normalizar).filter(w => w.length >= 6);
+            const token = tokens.find(w => n.indexOf(w) >= 0);
+            if (!token) return;
             vistos[p.sku] = true;
             const hoy = hoyLocal();
             const vigente = listarFarmacia().filter(x => normalizar(x.sku) === normalizar(p.sku) && x.stock > 0 && String(x.caducidad) >= hoy).sort((a, b) => String(a.caducidad).localeCompare(String(b.caducidad)))[0] || p;
@@ -2391,14 +2805,14 @@
 
     // Borra TODA la información operativa del demo (no toca los machotes) y vuelve a sembrar
     function restablecerDemo() {
-        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.farmaciaAmpliada, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
+        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
         return sembrarDemoSiHaceFalta();
     }
 
     global.BelenStore = {
         CLAVES, ESPECIALIDADES, ROLES, ENFERMERIAS, PERSONAL_OPERATIVO, USUARIOS, COLORES_DISTINTIVO, ACCIONES_PERSONAL, PERMISOS, MODULOS, ESTATUS, ETIQUETA_ESTATUS, ESTATUS_EN_FILA, RANGOS_SIGNOS, SIGNOS_OBLIGATORIOS,
         leer, escribir, normalizar, limpiarEspacios, hoyLocal, parseFechaISO, calcularEdad, fechaLegibleISO, iniciales, formatoReloj, hashContrasena, colorDeUsuario,
-        iniciarSesion, sesion, cerrarSesion, puede, esEnfermeria, moduloAplicaARol, permisoModuloDe, permisoModuloExplicito, establecerPermisoModulo, permisoAccionDe, establecerPermisoAccion, restablecerPermisosPersonal, leerPermisosPersonal, especialidadPorCodigo, medicosDeEspecialidad,
+        iniciarSesion, sesion, cerrarSesion, puede, esEnfermeria, moduloAplicaARol, permisoModuloDe, permisoModuloExplicito, establecerPermisoModulo, permisoAccionDe, establecerPermisoAccion, restablecerPermisosPersonal, leerPermisosPersonal, especialidadPorCodigo, medicosDeEspecialidad, identificarOperadorFarmacia,
         guardarUsuario, desactivarUsuario, reactivarUsuario, eliminarUsuario, listarPapeleria, agregarDocumentoPersonal, eliminarDocumentoPersonal,
         listarPacientes, buscarPacientePorIdentidad, buscarPacientesPorNombre, buscarPacientePorId, homonimos, guardarPaciente,
         listarTurnos, obtenerTurno, actualizarTurno, siguienteNumeroTurno, crearTurno, ordenarPorLlegada, turnoVisiblePara, filaDe, colaEspera, pacientesEnConsulta, posicionEnCola, posicionNuevaEnCola, siguienteEnCola, corteDiario, metricas24h,
@@ -2411,18 +2825,20 @@
         listarInternamientos, internamientoDeTurno, obtenerInternamiento, resolverInternamiento, asegurarInternamiento, sincronizarInternamiento, descartarInternamiento,
         fichaHospitalizado, accesoVisorHospitalizado, relacionMedico, tieneInterconsulta, medicosParaInterconsulta, solicitarInterconsulta,
         validarNotaEvolucion, agregarNotaEvolucion, indicacionesVigentes, agregarHojaIndicaciones, asignarCama,
-        CONCEPTOS_HOSPITAL, CONCEPTOS_AMBULATORIO, formatoMoneda, validarCargo, puedeCargarConsumos,
+        CONCEPTOS_HOSPITAL, CONCEPTOS_AMBULATORIO, formatoMoneda, validarCargo, puedeCargarConsumos, desgloseFiscal, sugerirIvaConcepto,
         agregarCargoInternamiento, agregarCargoTurno, validarNotaEgreso, registrarEgreso,
         cargosDeEpisodio, cuentasPorCobrar, fichaCuenta, cerrarExpedientePagado,
         listarInventarioFarmacia, productoPorSku, buscarLotesFarmacia, validarIngresoFarmacia, ingresarInsumo, fichasSurtidoPendiente, surtirLinea, parsearLineasSurtido,
-        CATEGORIAS_FARMACIA, FRACCIONES_COFEPRIS, nombreCategoriaFarmacia, nombreFraccionCofepris, etiquetaNormativa,
+        CATEGORIAS_FARMACIA, FRACCIONES_COFEPRIS, FORMAS_FARMACEUTICAS, VIAS_ADMINISTRACION, CONSERVACIONES, LABORATORIOS_FRECUENTES,
+        nombreCategoriaFarmacia, nombreFraccionCofepris, nombreFormaFarmaceutica, nombreConservacion, textoStockFarmacia, denominacionProducto, etiquetaNormativa,
         listarPaquetes, guardarPaquete, eliminarPaquete, lineasDePaquete, aplicarPaqueteAPaciente,
         enfermerasActivas, pacientesTerminalFarmacia, prepararLineaCarrito, loteMasProximo, confirmarCarritoFarmacia,
-        cajasAbiertasDe, abrirCajaEstupefaciente, alertasCofeprisEnTexto, datosReceta, htmlRecetaImprimible,
+        cajasAbiertasDe, abrirCajaEstupefaciente, listarCajasEstupefacientes, listarSalidasFarmacia, registrarRetiroAdministracion, filtrarMovimientosFarmacia, carpetasMovimientosFarmacia, csvMovimientosFarmacia, alertasCofeprisEnTexto, datosReceta, htmlRecetaImprimible,
         validarCorreccionPaciente, corregirDatosPaciente, fechaNacimientoParaEdad, fechaHoraLegible,
         sembrarDemoSiHaceFalta, restablecerDemo
     };
     sembrarUsuariosSiHaceFalta();
     completarAnestesiologoCirugias();
     sembrarFarmaciaSiHaceFalta();
+    normalizarIvaDiferido();
 })(window);

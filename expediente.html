@@ -1436,8 +1436,8 @@
             const puede = ACCESO_VISOR && ACCESO_VISOR.puede_cargar_cuenta;
             const filas = cargos.length ? cargos.map((c, i) => `<tr class="border-t border-slate-100">
                 <td class="px-3 py-2 text-slate-500">${i + 1}</td>
-                <td class="px-3 py-2 font-medium text-slate-800">${e(c.concepto)}${c.lote ? `<span class="block text-[11px] text-slate-400">Lote ${e(c.lote)}</span>` : ''}${c.aplica_iva ? '<span class="block text-[10px] text-slate-400">IVA 16% incluido</span>' : ''}</td>
-                <td class="px-3 py-2 text-right">${e(S.formatoMoneda(c.precio_con_iva || c.precio_unitario))}</td>
+                <td class="px-3 py-2 font-medium text-slate-800">${e(c.concepto)}${c.lote ? `<span class="block text-[11px] text-slate-400">Lote ${e(c.lote)}</span>` : ''}${c.aplica_iva ? '<span class="block text-[10px] font-bold text-amber-700">Grava IVA al facturar</span>' : ''}</td>
+                <td class="px-3 py-2 text-right">${e(S.formatoMoneda(c.precio_unitario))}</td>
                 <td class="px-3 py-2 text-center">${c.cantidad || 1}</td>
                 <td class="px-3 py-2 text-right font-bold">${e(S.formatoMoneda(c.subtotal))}</td>
                 <td class="px-3 py-2 text-xs text-slate-600">${e(textoAtribucionCargo(c))}</td>
@@ -1446,7 +1446,7 @@
                 <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <p class="text-sm font-extrabold text-slate-900">Cuenta y Consumos</p>
-                        <p class="text-xs text-slate-500">Acumulado del internamiento. El paquete descuenta almacén y carga el desglose con IVA.</p>
+                        <p class="text-xs text-slate-500">Acumulado sin IVA. Si el paciente solicita factura, Caja suma 16% solo a los conceptos gravables.</p>
                     </div>
                     ${puede ? `<div class="flex flex-wrap gap-2">
                         <button type="button" onclick="abrirAplicarPaqueteHospital()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition inline-flex items-center gap-1.5"><i class="fas fa-kit-medical"></i> Aplicar Paquete</button>
@@ -1461,7 +1461,7 @@
                         <th class="px-3 py-2 text-left">Fecha/Hora y Enfermera que cargó</th></tr></thead>
                     <tbody>${filas}</tbody>
                     <tfoot><tr class="border-t-2 border-slate-200 bg-slate-50">
-                        <td colspan="4" class="px-3 py-3 text-right text-xs font-bold uppercase text-slate-500">Total</td>
+                        <td colspan="4" class="px-3 py-3 text-right text-xs font-bold uppercase text-slate-500">Total sin IVA</td>
                         <td class="px-3 py-3 text-right text-base font-extrabold text-slate-900">${e(S.formatoMoneda(INTERNAMIENTO.cuenta_actual || 0))}</td>
                         <td></td>
                     </tr></tfoot>
@@ -1943,6 +1943,15 @@
             });
         }
 
+        function enlazarIvaConcepto(c) {
+            const concepto = c.el.querySelector('#cg-concepto');
+            const caja = c.el.querySelector('#cg-aplica_iva');
+            if (!concepto || !caja) return;
+            concepto.addEventListener('input', () => {
+                const sugerido = BelenStore.sugerirIvaConcepto(concepto.value);
+                if (sugerido !== null) caja.checked = sugerido;
+            });
+        }
         function htmlModalCargo(listaConceptos, origen) {
             const e = BelenUI.esc;
             const opts = (listaConceptos || []).map(x => `<option value="${e(x)}"></option>`).join('');
@@ -1954,6 +1963,7 @@
                 ${campoModal('cg', 'concepto', 'Concepto', `<input id="cg-concepto" type="text" list="cg-conceptos" maxlength="80" autocomplete="off" placeholder="Ej. ${e((listaConceptos || [])[0] || 'Concepto')}" class="${CLASE_CAMPO}" data-autofoco>
                     <datalist id="cg-conceptos">${opts}</datalist>`)}
                 ${campoModal('cg', 'precio_unitario', 'Precio unitario', `<input id="cg-precio_unitario" type="number" inputmode="decimal" step="0.01" min="0.01" max="999999.99" placeholder="0.00" class="${CLASE_CAMPO}">`)}
+                <label class="flex items-start gap-2 text-sm text-slate-700"><input id="cg-aplica_iva" type="checkbox" class="mt-1 rounded border-slate-300 text-cyan-700"> <span>Grava 16% de IVA en caso de facturación. El cargo entra a la cuenta con el precio base; Caja suma el impuesto solo si solicitan factura.</span></label>
             </div>`;
         }
         function abrirCargarInsumoHospital() {
@@ -1961,10 +1971,13 @@
             BelenUI.modal({
                 titulo: 'Cargar Insumo o Medicamento', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-pills', ancho: 'md',
                 html: htmlModalCargo(BelenStore.CONCEPTOS_HOSPITAL, 'hospitalizacion'),
+                alMostrar: c => enlazarIvaConcepto(c),
                 botones: [
                     { texto: 'Cancelar', estilo: 'secundario' },
                     { texto: 'Agregar a la cuenta', estilo: 'primario', id: 'cg-guardar', alPulsar: c => {
-                        const r = BelenStore.agregarCargoInternamiento(INTERNAMIENTO.internamiento_id, leerCamposModal(c, 'cg', ['concepto', 'precio_unitario']), BelenStore.sesion());
+                        const datos = leerCamposModal(c, 'cg', ['concepto', 'precio_unitario']);
+                        datos.aplica_iva = c.el.querySelector('#cg-aplica_iva').checked;
+                        const r = BelenStore.agregarCargoInternamiento(INTERNAMIENTO.internamiento_id, datos, BelenStore.sesion());
                         if (!r.ok) {
                             if (r.errores) marcarErroresModal(c, 'cg', ['concepto', 'precio_unitario'], r.errores); else BelenUI.toast(r.motivo, 'peligro');
                             return false;
@@ -2031,10 +2044,13 @@
             BelenUI.modal({
                 titulo: 'Cargar a Cuenta', subtitulo: TURNO.paciente_nombre, icono: 'fa-file-invoice-dollar', ancho: 'md',
                 html: htmlModalCargo(BelenStore.CONCEPTOS_AMBULATORIO, 'ambulatorio'),
+                alMostrar: c => enlazarIvaConcepto(c),
                 botones: [
                     { texto: 'Cancelar', estilo: 'secundario' },
                     { texto: 'Agregar a la cuenta', estilo: 'primario', id: 'cg-guardar', alPulsar: c => {
-                        const r = BelenStore.agregarCargoTurno(TURNO.turno_id, leerCamposModal(c, 'cg', ['concepto', 'precio_unitario']), BelenStore.sesion());
+                        const datos = leerCamposModal(c, 'cg', ['concepto', 'precio_unitario']);
+                        datos.aplica_iva = c.el.querySelector('#cg-aplica_iva').checked;
+                        const r = BelenStore.agregarCargoTurno(TURNO.turno_id, datos, BelenStore.sesion());
                         if (!r.ok) {
                             if (r.errores) marcarErroresModal(c, 'cg', ['concepto', 'precio_unitario'], r.errores); else BelenUI.toast(r.motivo, 'peligro');
                             return false;

@@ -73,12 +73,12 @@
                 <i class="fas fa-users-gear w-5"></i> Gestión de Personal
             </a>
 
-            <a href="#" data-proximamente="Tarifario y Caja" data-roles="admin,administrador" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+            <a href="#" data-proximamente="Tarifario y Caja" data-roles="admin,administrador" title="El cobro muestra el total sin IVA. El 16% se suma en el desglose solo si el paciente solicita factura." class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-file-invoice-dollar w-5"></i> Tarifario y Caja
             </a>
 
             <!-- Farmacia: admin, caja y encargado por defecto. Hospital y quirófano solo si Alfonso enciende el módulo. -->
-            <a href="?vista=farmacia" data-vista="farmacia" data-roles="admin,administrador,enf_farmacia,enf_hospital,enf_quirofano" data-modulo="ver_farmacia" title="Inventario con IVA, paquetes quirúrgicos, terminal de cargo y control COFEPRIS" onclick="AdminController.navegar('farmacia', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+            <a href="?vista=farmacia" data-vista="farmacia" data-roles="admin,administrador,enf_farmacia,enf_hospital,enf_quirofano" data-modulo="ver_farmacia" title="Inventario, cargo sin IVA y bitácora kárdex. El 16% se aplica en Caja solo si solicitan factura." onclick="AdminController.navegar('farmacia', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-pills w-5"></i> Farmacia e Inventario
             </a>
         </nav>
