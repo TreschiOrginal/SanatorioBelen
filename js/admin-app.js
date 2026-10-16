@@ -30,7 +30,7 @@ const AdminController = {
         cirugias:        { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'], modulo: 'ver_quirofano', titulo: { admin: 'Próximas Cirugías', medico: 'Mis cirugías' } },
         expedientes:     { roles: ['admin', 'medico'],                                                            modulo: 'ver_consultas',      titulo: { admin: 'Búsqueda Histórica', medico: 'Búsqueda Histórica' } },
         personal:        { roles: ['admin'],                                                                      modulo: 'gestionar_personal', titulo: { admin: 'Gestión de Personal' } },
-        farmacia:        { roles: ['admin', 'administrador', 'enf_farmacia', 'enf_hospital', 'enf_quirofano'], modulo: 'ver_farmacia', titulo: { admin: 'Farmacia e Inventario' } }
+        farmacia:        { roles: ['admin', 'administrador', 'enf_farmacia'], modulo: 'ver_farmacia', titulo: { admin: 'Farmacia e Inventario', administrador: 'Farmacia e Inventario', enf_farmacia: 'Terminal de Farmacia' } }
     },
 
     init: async function () {
@@ -38,11 +38,14 @@ const AdminController = {
         if (!this.verificarSesion()) return;
         this.aplicarPermisosUI();
 
-        const pedida = new URLSearchParams(window.location.search).get('vista');
-        this.vista = this.vistaPermitida(pedida) ? pedida : this.vistaInicial();
-        if (pedida && !this.vistaPermitida(pedida)) {
-            BelenUI.toast('Su perfil no tiene acceso a esa sección.', 'alerta');
-            if (this.vista) history.replaceState(null, '', '?vista=' + this.vista);
+        if (this.rolActual === 'enf_farmacia') this.vista = 'farmacia';
+        else {
+            const pedida = new URLSearchParams(window.location.search).get('vista');
+            this.vista = this.vistaPermitida(pedida) ? pedida : this.vistaInicial();
+            if (pedida && !this.vistaPermitida(pedida)) {
+                BelenUI.toast('Su perfil no tiene acceso a esa sección.', 'alerta');
+                if (this.vista) history.replaceState(null, '', '?vista=' + this.vista);
+            }
         }
         await this.render();
 
@@ -58,6 +61,8 @@ const AdminController = {
     verificarSesion: function () {
         const s = BelenStore.sesion();
         if (!s) { window.location.href = 'login.html'; return false; }
+        const vivo = BelenStore.USUARIOS[s.usuario_id];
+        if (vivo) { s.nombre = vivo.nombre; s.cargo = vivo.cargo; s.rol = vivo.rol; }
         this.sesion = s;
         this.rolActual = s.rol;
         document.getElementById('user-name').innerText = s.nombre;
@@ -89,12 +94,14 @@ const AdminController = {
     vistaPermitida: function (v) {
         const d = v && this.VISTAS[v];
         if (!d) return false;
+        if (v === 'farmacia' && this.rolActual !== 'admin' && this.rolActual !== 'administrador' && this.rolActual !== 'enf_farmacia') return false;
         const concedido = d.modulo && BelenStore.permisoModuloExplicito(this.sesion.usuario_id, d.modulo) === true;
         if (!d.roles.includes(this.rolActual) && !concedido) return false;
         return !d.modulo || BelenStore.puede(d.modulo) || concedido;
     },
     // Primera vista disponible para el usuario (null si el administrador le apagó todos los módulos)
     vistaInicial: function () {
+        if (this.rolActual === 'enf_farmacia') return 'farmacia';
         return ['central', 'fila', 'hospitalizacion', 'cirugias', 'expedientes', 'personal', 'farmacia'].find(v => this.vistaPermitida(v)) || null;
     },
 
@@ -118,6 +125,7 @@ const AdminController = {
         if (!this.sesion) return;
         const cont = document.getElementById('admin-content');
         this.aplicarPermisosUI();
+        this.pintarBarraKiosco();
         if (!this.vistaPermitida(this.vista)) {
             const antes = this.vista, nueva = this.vistaInicial();
             if (antes && nueva !== antes) BelenUI.toast('La administración modificó sus permisos: esa sección ya no está disponible.', 'alerta', 5000);
@@ -853,18 +861,43 @@ const AdminController = {
     // ======================================================================
     // VISTA: FARMACIA E INVENTARIO
     // ======================================================================
+    esKioscoFarmacia: function () { return this.rolActual === 'enf_farmacia'; },
+    sesionPersonalFarmacia: function () { return this.rolActual === 'admin' || this.rolActual === 'administrador'; },
+
     operadorFarmacia: function () {
+        if (this.sesionPersonalFarmacia()) return BelenStore.USUARIOS[this.sesion.usuario_id] || null;
         return this.operadorFarmaciaId ? BelenStore.USUARIOS[this.operadorFarmaciaId] : null;
     },
 
+    contextoOperadorFarmacia: function () {
+        const op = this.operadorFarmacia();
+        return op ? { usuario_id: op.id, rol: op.rol, nombre: op.nombre } : null;
+    },
+
+    pintarBarraKiosco: function () {
+        const aside = document.querySelector('aside');
+        const cerrar = document.getElementById('kiosco-cerrar');
+        const barra = document.getElementById('kiosco-operador');
+        const kiosco = this.esKioscoFarmacia();
+        if (aside) aside.classList.toggle('hidden', kiosco);
+        if (cerrar) cerrar.classList.toggle('hidden', !kiosco);
+        if (!barra) return;
+        const op = kiosco ? this.operadorFarmacia() : null;
+        if (!op) { barra.className = 'hidden'; barra.innerHTML = ''; return; }
+        const cedula = op.cedula_profesional || 'Sin cédula';
+        barra.className = 'flex flex-wrap items-center gap-3';
+        barra.innerHTML = `<p class="text-sm font-extrabold text-emerald-900">Operando como: ${this.e(op.nombre)} (${this.e(op.cargo)} - Cédula: ${this.e(cedula)})</p>
+            <button type="button" onclick="AdminController.cerrarTurnoFarmacia()" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-2 rounded-lg">Terminar turno / Bloquear terminal</button>`;
+    },
+
     pestanasVisiblesFarmacia: function () {
-        const rol = this.sesion && this.sesion.rol;
+        const op = this.operadorFarmacia();
         const tabs = [['terminal', 'Cargar a Paciente'], ['inventario', 'Inventario / Almacén']];
-        if (rol === 'admin' || rol === 'administrador') {
-            tabs.push(['paquetes', 'Paquetes y Kits']);
-            tabs.push(['estupefacientes', 'Estupefacientes Fracción I']);
-        }
-        if (BelenStore.puede('ver_bitacora_farmacia')) tabs.push(['bitacora', 'Bitácora de Entradas y Salidas']);
+        if (!op) return tabs;
+        const puede = accion => BelenStore.permisoAccionDe(op.id, accion);
+        if (puede('farmacia_paquetes')) tabs.push(['paquetes', 'Paquetes y Kits']);
+        if (puede('farmacia_estupefacientes')) tabs.push(['estupefacientes', 'Estupefacientes Fracción I']);
+        if (puede('ver_bitacora_farmacia')) tabs.push(['bitacora', 'Bitácora de Entradas y Salidas']);
         return tabs;
     },
 
@@ -874,26 +907,7 @@ const AdminController = {
         this.render();
     },
 
-    htmlIdentidadFarmacia: function () {
-        const e = t => this.e(t);
-        const op = this.operadorFarmacia();
-        if (!op) {
-            return `<form id="kiosco-farmacia" class="mb-5 rounded-2xl border-2 border-amber-400 bg-amber-50 p-5" onsubmit="return false">
-                <p class="text-lg font-extrabold text-amber-950">Identifíquese con su Código Personal para operar</p>
-                <p class="text-sm text-amber-800 mb-3">La computadora permanece abierta en farmacia. Su código o su contraseña abren el turno de quien retira.</p>
-                <div class="flex flex-wrap gap-2">
-                    <label for="kiosco-codigo" class="sr-only">Código personal</label>
-                    <input id="kiosco-codigo" type="password" inputmode="numeric" autocomplete="off" placeholder="Código rápido o contraseña" class="flex-1 min-w-[220px] border border-amber-300 rounded-xl p-3 text-lg tracking-widest bg-white">
-                    <button type="button" onclick="AdminController.entrarKioscoFarmacia()" class="bg-amber-600 hover:bg-amber-500 text-white font-bold px-5 rounded-xl">Entrar</button>
-                </div>
-            </form>`;
-        }
-        const cedula = op.cedula_profesional || 'Sin cédula';
-        return `<div class="mb-5 rounded-2xl border-2 border-emerald-500 bg-emerald-50 px-5 py-4 flex flex-wrap items-center justify-between gap-3">
-            <p class="text-lg font-extrabold text-emerald-950">Operando como: ${e(op.nombre)} (${e(op.cargo)} - Cédula: ${e(cedula)})</p>
-            <button type="button" onclick="AdminController.cerrarTurnoFarmacia()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-4 py-2.5 rounded-lg">Cambiar Operador / Cerrar Turno</button>
-        </div>`;
-    },
+    htmlIdentidadFarmacia: function () { return ''; },
 
     entrarKioscoFarmacia: function () {
         const input = document.getElementById('kiosco-codigo');
@@ -927,14 +941,32 @@ const AdminController = {
             ? '<button type="button" onclick="AdminController.abrirIngresoFarmacia()" class="bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-plus"></i> Nuevo Ingreso de Insumo / Servicio</button>' : '';
         const nuevoPaq = this.pestanaFarmacia === 'paquetes' && this.operadorFarmacia() && S.puede('gestionar_farmacia')
             ? '<button type="button" onclick="AdminController.abrirEditorPaquete()" class="bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-plus"></i> Nuevo paquete</button>' : '';
-        return `<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+        const nota = this.esKioscoFarmacia()
+            ? 'La terminal permanece abierta. Cada movimiento queda a nombre de quien se identificó.'
+            : 'Su sesión registra las entradas y salidas a su nombre.';
+        const cuerpoHtml = `<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                     <div><h2 class="text-2xl font-extrabold text-slate-800">Farmacia e Inventario</h2>
-                    <p class="text-slate-500">Terminal de cargo y almacén FEUM. Quien opera se identifica con su código.</p></div>
+                    <p class="text-slate-500">${nota}</p></div>
                     ${ingreso}${nuevoPaq}
                 </div>
-                ${this.htmlIdentidadFarmacia()}
                 <div class="inline-flex flex-wrap bg-slate-100 rounded-xl p-1 mb-5 gap-1">${visibles.map(t => tab(t[0], t[1])).join('')}</div>
                 ${cuerpo}`;
+        if (this.esKioscoFarmacia() && !this.operadorFarmacia()) {
+            return `<div class="relative min-h-[70vh]">
+                <div class="filter blur-md pointer-events-none select-none" aria-hidden="true">${cuerpoHtml}</div>
+                <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 backdrop-blur-md p-6">
+                    <form id="kiosco-farmacia" class="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8" onsubmit="return false">
+                        <p class="text-xs font-extrabold uppercase tracking-widest text-teal-700">Terminal de Farmacia</p>
+                        <h3 class="text-2xl font-extrabold text-slate-900 mt-2 leading-tight">Identifíquese con su Código Personal para operar</h3>
+                        <p class="text-sm text-slate-500 mt-2 mb-5">El almacén permanece bloqueado hasta que el personal ingrese su código o su contraseña.</p>
+                        <label for="kiosco-codigo" class="sr-only">Código personal</label>
+                        <input id="kiosco-codigo" type="password" inputmode="numeric" autocomplete="off" placeholder="Código rápido o contraseña" class="w-full border border-slate-300 rounded-xl p-3 text-lg tracking-widest mb-3">
+                        <button type="button" onclick="AdminController.entrarKioscoFarmacia()" class="w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3 rounded-xl">Entrar</button>
+                    </form>
+                </div>
+            </div>`;
+        }
+        return cuerpoHtml;
     },
 
     htmlInventarioFarmacia: function () {
@@ -1083,7 +1115,7 @@ const AdminController = {
                         laboratorio: val('far-laboratorio'), proveedor: val('far-proveedor'), numero_factura: val('far-factura'),
                         categoria: val('far-categoria'), fraccion_cofepris: val('far-fraccion'), modo_stock: val('far-modo'),
                         piezas_por_caja: val('far-piezas'), numero_cajas: val('far-cajas'), lote: val('far-lote'), caducidad: val('far-caducidad'),
-                        stock: val('far-stock'), precio_unitario: val('far-precio'), aplica_iva: c.el.querySelector('#far-iva').checked, operador_id: this.operadorFarmaciaId
+                        stock: val('far-stock'), precio_unitario: val('far-precio'), aplica_iva: c.el.querySelector('#far-iva').checked, operador_id: (this.operadorFarmacia() || {}).id
                     }, this.sesion);
                     const mapa = { 'far-sku': 'sku', 'far-nombre': 'nombre', 'far-comercial': 'nombre_comercial', 'far-forma': 'forma_farmaceutica', 'far-concentracion': 'concentracion', 'far-via': 'via_administracion', 'far-conservacion': 'conservacion', 'far-laboratorio': 'laboratorio', 'far-proveedor': 'proveedor', 'far-factura': 'numero_factura', 'far-categoria': 'categoria', 'far-fraccion': 'fraccion_cofepris', 'far-piezas': 'piezas_por_caja', 'far-cajas': 'numero_cajas', 'far-stock': 'stock', 'far-lote': 'lote', 'far-caducidad': 'caducidad', 'far-precio': 'precio_unitario' };
                     Object.keys(mapa).forEach(id => {
@@ -1250,6 +1282,7 @@ const AdminController = {
                 esperaPin = setTimeout(() => { if (valor && BelenStore.identificarOperadorFarmacia(valor).ok) this.entrarKioscoFarmacia(); }, 140);
             });
             kiosco.focus();
+            return;
         }
         const scan = document.getElementById('terminal-scan');
         if (!scan) return;
@@ -1473,7 +1506,7 @@ const AdminController = {
     ejecutarCargoPaciente: function () {
         const r = BelenStore.confirmarCarritoFarmacia({
             turno_id: this.pacienteCargoId,
-            operador_id: this.operadorFarmaciaId,
+            operador_id: (this.operadorFarmacia() || {}).id,
             lineas: this.carritoFarmacia
         }, this.sesion);
         if (r.fefo) { this.avisarFefo(r, elegido => { const lin = this.carritoFarmacia.find(l => l.lote_id === r.lote.lote_id); if (lin) { lin.lote_id = elegido.lote_id; lin.ignorar_fefo = true; } this.ejecutarCargoPaciente(); }); return; }
@@ -1487,7 +1520,7 @@ const AdminController = {
     },
 
     ejecutarRetiroAdmin: function () {
-        const r = BelenStore.registrarRetiroAdministracion({ operador_id: this.operadorFarmaciaId, lineas: this.carritoFarmacia }, this.sesion);
+        const r = BelenStore.registrarRetiroAdministracion({ operador_id: (this.operadorFarmacia() || {}).id, lineas: this.carritoFarmacia }, this.sesion);
         if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
         this.carritoFarmacia = [];
         BelenUI.toast('Salida registrada en la bitácora a nombre de ' + this.operadorFarmacia().nombre + '.', 'exito');
@@ -1524,7 +1557,8 @@ const AdminController = {
     },
 
     htmlBitacoraFarmacia: function () {
-        if (!BelenStore.puede('ver_bitacora_farmacia')) return '<div class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">Su perfil no tiene la bitácora de farmacia.</div>';
+        const op = this.operadorFarmacia();
+        if (!op || !BelenStore.permisoAccionDe(op.id, 'ver_bitacora_farmacia')) return '<div class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">Su perfil no tiene la bitácora de farmacia.</div>';
         const f = this.filtrosBitacora, e = t => this.e(t);
         return `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-4">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -1558,11 +1592,13 @@ const AdminController = {
 
     htmlCarpetasBitacora: function () {
         const S = BelenStore, e = t => this.e(t);
-        const lista = S.filtrarMovimientosFarmacia(this.sesion, this.filtrosBitacora);
+        const lista = S.filtrarMovimientosFarmacia(this.contextoOperadorFarmacia(), this.filtrosBitacora);
         const anios = S.carpetasMovimientosFarmacia(lista);
         if (!anios.length) return '<div class="text-center py-16 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">No hay movimientos con esos filtros.</div>';
         const fila = m => {
             const piezas = m.tipo === 'ENTRADA' ? (m.total_piezas + ' pzas ingresadas' + (m.cajas_ingresadas ? ' · ' + m.cajas_ingresadas + ' cajas' : '')) : (m.cantidad_piezas + ' pzas retiradas');
+            const contacto = m.tipo === 'SALIDA' && m.area_paciente !== 'RETIRO DIRECTO ADMINISTRACIÓN'
+                ? `<span class="block text-[11px] text-slate-500">${e(m.paciente_telefono || 'Sin teléfono')} · ${e(m.paciente_direccion || 'Sin dirección')}</span>` : '';
             const destino = m.tipo === 'SALIDA' ? (m.area_paciente === 'RETIRO DIRECTO ADMINISTRACIÓN' ? 'Retiro directo de administración' : (m.paciente_nombre + ' · ' + m.area_paciente + (m.cama ? ' · ' + m.cama : '') + (m.medico_tratante ? ' · ' + m.medico_tratante : ''))) : (m.numero_factura ? 'Factura ' + m.numero_factura : 'Ingreso a almacén');
             return `<tr class="border-t border-slate-100">
                 <td class="px-3 py-2 whitespace-nowrap">${e(S.fechaHoraLegible(m.fecha_hora))}</td>
@@ -1570,7 +1606,7 @@ const AdminController = {
                 <td class="px-3 py-2">${e(m.nombre)}<span class="block text-[11px] text-slate-400">${e(m.cedula_profesional || 'Sin cédula')}</span></td>
                 <td class="px-3 py-2">${e(m.principio_activo)}${m.nombre_comercial ? '<span class="block text-[11px] text-slate-400">' + e(m.nombre_comercial) + '</span>' : ''}<span class="block text-[11px] text-slate-400">${e(m.sku)} · lote ${e(m.lote)}</span></td>
                 <td class="px-3 py-2">${e(piezas)}</td>
-                <td class="px-3 py-2">${e(destino)}</td>
+                <td class="px-3 py-2">${e(destino)}${contacto}</td>
             </tr>`;
         };
         return anios.map(anio => {
@@ -1591,7 +1627,7 @@ const AdminController = {
     },
 
     descargarBitacora: function (tipo) {
-        const csv = BelenStore.csvMovimientosFarmacia(this.sesion, Object.assign({}, this.filtrosBitacora, { tipoExport: tipo || 'AMBOS' }));
+        const csv = BelenStore.csvMovimientosFarmacia(this.contextoOperadorFarmacia(), Object.assign({}, this.filtrosBitacora, { tipoExport: tipo || 'AMBOS' }));
         if (!csv) { BelenUI.toast('Su perfil no puede descargar la bitácora.', 'alerta'); return; }
         const nombre = tipo === 'ENTRADA' ? 'kardex-ingresos.csv' : (tipo === 'SALIDA' ? 'kardex-egresos.csv' : 'kardex-completo.csv');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
@@ -1606,7 +1642,7 @@ const AdminController = {
 
     htmlEstupefacientesFarmacia: function () {
         const S = BelenStore, e = t => this.e(t);
-        const cajas = S.listarCajasEstupefacientes(this.sesion);
+        const cajas = S.listarCajasEstupefacientes(this.contextoOperadorFarmacia());
         if (!cajas.length) return '<div class="text-center py-16 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">No hay cajas de fracción I registradas.</div>';
         return `<div class="flex flex-col gap-4">${cajas.map(c => {
             const usos = (c.usos || []).map(u => `<li class="py-1">${e(S.fechaHoraLegible(u.fecha_hora))} · ${e(u.paciente_nombre)} · receta ${u.numero}/${u.de} · ${e(u.datos_postanestesicos || '')}</li>`).join('');
@@ -1867,7 +1903,7 @@ const AdminController = {
         const S = BelenStore, u = S.USUARIOS[id];
         if (!u || u.rol === 'admin') return;
         const e = t => this.e(t);
-        const etiquetas = { capturar_signos: 'Capturar signos', pasar_a_medico: 'Pasar a médico', cargar_consumos: 'Cargar consumos', asignar_cama: 'Asignar cama', programar_cirugia: 'Programar cirugía', gestionar_farmacia: 'Gestionar farmacia', ver_bitacora_farmacia: 'Ver bitácora de farmacia' };
+        const etiquetas = { capturar_signos: 'Capturar signos', pasar_a_medico: 'Pasar a médico', cargar_consumos: 'Cargar consumos', asignar_cama: 'Asignar cama', programar_cirugia: 'Programar cirugía', gestionar_farmacia: 'Gestionar farmacia', farmacia_paquetes: 'Pestaña Paquetes y Kits', farmacia_estupefacientes: 'Pestaña Estupefacientes Fracción I', ver_bitacora_farmacia: 'Pestaña Bitácora de Entradas y Salidas' };
         const filas = S.ACCIONES_PERSONAL.map(a => {
             const on = S.permisoAccionDe(id, a);
             return `<div class="flex items-center justify-between gap-3 py-2 border-b border-slate-100">

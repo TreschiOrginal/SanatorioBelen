@@ -74,7 +74,7 @@
         enf_triage:    { codigo: 'enf_triage',    etiqueta: 'Enfermería de Triage',          corta: 'Enfermería · Triage', color: 'bg-cyan-100 text-cyan-700' },
         enf_hospital:  { codigo: 'enf_hospital',  etiqueta: 'Enfermería de Hospitalización', corta: 'Enfermería · Hospital', color: 'bg-indigo-100 text-indigo-700' },
         enf_quirofano: { codigo: 'enf_quirofano', etiqueta: 'Enfermería de Quirófano',       corta: 'Enfermería · Quirófano', color: 'bg-violet-100 text-violet-700' },
-        enf_farmacia:  { codigo: 'enf_farmacia',  etiqueta: 'Encargado de Farmacia',         corta: 'Farmacia', color: 'bg-teal-100 text-teal-800' },
+        enf_farmacia:  { codigo: 'enf_farmacia',  etiqueta: 'Terminal de Farmacia (Kiosco)', corta: 'Kiosco', color: 'bg-teal-100 text-teal-800' },
         medico:        { codigo: 'medico',        etiqueta: 'Médico',                        corta: 'Médico', color: 'bg-emerald-100 text-emerald-700' }
     };
     const ENFERMERIAS = ['enf_triage', 'enf_hospital', 'enf_quirofano'];
@@ -89,7 +89,7 @@
         { id: 'enf_triage',    rol: 'enf_triage',    nombre: 'Enf. Lupita',        cargo: 'Enfermería de Triage',           cedula_profesional: 'ENF-2201', codigo_rapido: '2201', especialidad_codigo: null,                   color_distintivo: 'cyan',    etiqueta_admin: 'Triage matutino' },
         { id: 'enf_hospital',  rol: 'enf_hospital',  nombre: 'Enf. Carmen',        cargo: 'Enfermería de Hospitalización',  cedula_profesional: 'ENF-2202', codigo_rapido: '2202', especialidad_codigo: null,                   color_distintivo: 'cyan',    etiqueta_admin: 'Piso' },
         { id: 'enf_quirofano', rol: 'enf_quirofano', nombre: 'Enf. Rosa',          cargo: 'Enfermería de Quirófano',        cedula_profesional: 'ENF-2203', codigo_rapido: '2203', especialidad_codigo: null,                   color_distintivo: 'violet',  etiqueta_admin: 'Sala' },
-        { id: 'enf_farmacia',  rol: 'enf_farmacia',  nombre: 'Enf. Patricia',      cargo: 'Encargado de Farmacia',          cedula_profesional: 'ENF-2204', codigo_rapido: '2204', especialidad_codigo: null,                   color_distintivo: 'emerald', etiqueta_admin: 'Farmacia' },
+        { id: 'enf_farmacia',  rol: 'enf_farmacia',  nombre: 'Terminal de Farmacia', cargo: 'Terminal de Farmacia (Kiosco)', cedula_profesional: '', codigo_rapido: '9001', especialidad_codigo: null, color_distintivo: 'emerald', etiqueta_admin: 'Computadora fija de farmacia' },
         { id: 'dr_juan',       rol: 'medico',        nombre: 'Dr. Juan Pérez',     cargo: 'Medicina General',               cedula_profesional: 'MG-11021', codigo_rapido: '1021', especialidad_codigo: 'MEDICINA_GENERAL',     color_distintivo: 'emerald', etiqueta_admin: 'Consulta general' },
         { id: 'dr_roberto',    rol: 'medico',        nombre: 'Dr. Roberto Flores', cargo: 'Angiología',                     cedula_profesional: 'ANG-3340', codigo_rapido: '3340', especialidad_codigo: 'ANGIOLOGIA',           color_distintivo: 'amber',   etiqueta_admin: 'Vascular' },
         { id: 'dr_arturo',     rol: 'medico',        nombre: 'Dr. Arturo Gómez',   cargo: 'Cirugía General',                cedula_profesional: 'CG-7781',  codigo_rapido: '7781', especialidad_codigo: 'CIRUGIA_GENERAL',      color_distintivo: 'violet',  etiqueta_admin: 'Cirujano' },
@@ -104,7 +104,7 @@
         amber:   { clase: 'bg-amber-100 text-amber-800',     etiqueta: 'Ámbar' },
         slate:   { clase: 'bg-slate-800 text-white',         etiqueta: 'Pizarra' }
     };
-    const ACCIONES_PERSONAL = ['capturar_signos', 'pasar_a_medico', 'cargar_consumos', 'asignar_cama', 'programar_cirugia', 'gestionar_farmacia', 'ver_bitacora_farmacia'];
+    const ACCIONES_PERSONAL = ['capturar_signos', 'pasar_a_medico', 'cargar_consumos', 'asignar_cama', 'programar_cirugia', 'gestionar_farmacia', 'farmacia_paquetes', 'farmacia_estupefacientes', 'ver_bitacora_farmacia'];
     // Alias de versiones anteriores del demo (el rol genérico 'enfermeria' se dividió en tres roles específicos)
     const ALIAS_USUARIO = { doctor: 'dr_juan', medico: 'dr_juan', enfermera: 'enf_triage', enfermeria: 'enf_triage', recepcion: 'administrador', caja: 'administrador' };
 
@@ -141,6 +141,8 @@
         cerrar_expediente_pago:    ['admin', 'administrador'],
         cargar_cuenta_consulta:    ['admin', 'medico'],
         gestionar_farmacia:        ['admin', 'administrador', 'enf_farmacia'],
+        farmacia_paquetes:         ['admin'],
+        farmacia_estupefacientes:  ['admin'],
         ver_bitacora_farmacia:     ['admin']
     };
 
@@ -157,8 +159,8 @@
           roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'enf_farmacia', 'medico'],
           descripcion: 'Próximas cirugías. El médico solo ve en las que participa como cirujano, anestesiólogo o interconsultado.' },
         { permiso: 'ver_farmacia',       etiqueta: 'Farmacia',        icono: 'fa-pills',       vistas: ['farmacia'],
-          roles: ['admin', 'administrador', 'enf_farmacia', 'enf_hospital', 'enf_quirofano'],
-          descripcion: 'Inventario central y surtido de indicaciones y cargos de consulta.' }
+          roles: ['admin', 'administrador', 'enf_farmacia'],
+          descripcion: 'La terminal de farmacia y las sesiones de dirección y caja. El personal clínico no abre este módulo en su computadora.' }
     ];
     const PERMISOS_MODULO = MODULOS.map(m => m.permiso);
     // Alfonso puede encender cualquier módulo en cualquier perfil. El arreglo roles de MODULOS solo documenta el público habitual.
@@ -312,8 +314,21 @@
         if (faltan.length) guardarListaUsuarios(lista.concat(faltan));
         else publicarUsuarios(lista);
         completarCodigosRapidos();
+        etiquetarKioscoFarmacia();
         return true;
     }
+    function etiquetarKioscoFarmacia() {
+        const lista = listaUsuariosCruda();
+        const u = lista.find(x => x.id === 'enf_farmacia');
+        if (!u) return;
+        let cambio = false;
+        if (u.nombre === 'Enf. Patricia') { u.nombre = 'Terminal de Farmacia'; cambio = true; }
+        if (u.cargo === 'Encargado de Farmacia') { u.cargo = 'Terminal de Farmacia (Kiosco)'; cambio = true; }
+        if (u.codigo_rapido === '2204') { u.codigo_rapido = '9001'; cambio = true; }
+        if (u.cedula_profesional === 'ENF-2204') { u.cedula_profesional = ''; cambio = true; }
+        if (cambio) guardarListaUsuarios(lista);
+    }
+    function esCuentaKioscoFarmacia(u) { return !!u && (u.id === 'enf_farmacia' || u.rol === 'enf_farmacia'); }
     function completarCodigosRapidos() {
         const lista = listaUsuariosCruda();
         let cambio = false;
@@ -327,7 +342,7 @@
     function identificarOperadorFarmacia(codigo) {
         const c = String(codigo || '').trim();
         if (!c) return { ok: false, motivo: 'Escriba su código personal.' };
-        const activos = Object.values(USUARIOS).filter(u => u.activo !== false);
+        const activos = Object.values(USUARIOS).filter(u => u.activo !== false && !esCuentaKioscoFarmacia(u));
         const porPin = activos.filter(u => u.codigo_rapido && String(u.codigo_rapido) === c);
         if (porPin.length === 1) return { ok: true, usuario: porPin[0] };
         if (porPin.length > 1) return { ok: false, motivo: 'Ese código está repetido. Pida a dirección que lo corrija.' };
@@ -2421,6 +2436,8 @@
             paciente_id: turno.paciente_id || '',
             paciente_nombre: (p && p.nombre_completo) || turno.paciente_nombre || '',
             paciente_edad: p ? calcularEdad(p.fecha_nacimiento) : calcularEdad(turno.fecha_nacimiento),
+            paciente_telefono: (p && p.telefono) || turno.telefono || (i && i.telefono) || '',
+            paciente_direccion: (p && p.direccion) || turno.direccion || (i && i.direccion) || '',
             area_paciente: etiquetaAreaKardex(turno),
             cama: (i && i.cama) || (area === 'consulta' ? 'Consulta' : ''),
             medico_tratante: turno.medico_nombre || ''
@@ -2439,6 +2456,8 @@
             precio_unitario: prod.precio_unitario, aplica_iva: !!prod.aplica_iva,
             paciente_id: d.paciente_id || '', paciente_nombre: d.paciente_nombre || '',
             paciente_edad: d.paciente_edad === 0 ? 0 : (d.paciente_edad || ''),
+            paciente_telefono: d.paciente_telefono || '',
+            paciente_direccion: d.paciente_direccion || '',
             area_paciente: d.area_paciente || '', cama: d.cama || '', medico_tratante: d.medico_tratante || ''
         }, idn);
     }
@@ -2502,13 +2521,18 @@
         if (f.tipoExport === 'ENTRADA' || f.tipoExport === 'SALIDA') f.tipo = f.tipoExport;
         else if (f.tipoExport === 'AMBOS') f.tipo = '';
         const filas = filtrarMovimientosFarmacia(s, f);
-        const encabezado = ['Tipo', 'Fecha y hora', 'Usuario', 'Nombre', 'Cédula', 'SKU', 'Principio activo', 'Nombre comercial', 'Laboratorio', 'Proveedor', 'Número de factura', 'Forma farmacéutica', 'Concentración', 'Fracción COFEPRIS', 'Lote', 'Caducidad', 'Cajas ingresadas', 'Piezas por caja', 'Total de piezas ingresadas', 'Cantidad de piezas retiradas', 'Precio unitario', 'Grava IVA', 'Paciente', 'Edad', 'Área', 'Cama', 'Médico tratante'];
-        const lineas = filas.slice().sort((a, b) => String(a.fecha_hora).localeCompare(String(b.fecha_hora))).map(m => [
-            m.tipo, m.fecha_hora, m.usuario_id, m.nombre, m.cedula_profesional, m.sku, m.principio_activo, m.nombre_comercial,
-            m.laboratorio, m.proveedor, m.numero_factura, nombreFormaFarmaceutica(m.forma_farmaceutica), m.concentracion,
-            nombreFraccionCofepris(m.fraccion_cofepris), m.lote, m.caducidad, m.cajas_ingresadas, m.piezas_por_caja, m.total_piezas,
-            m.cantidad_piezas, m.precio_unitario, m.aplica_iva ? 'Sí' : 'No', m.paciente_nombre, m.paciente_edad, m.area_paciente, m.cama, m.medico_tratante
-        ].map(csvCelda).join(','));
+        const incluyePaciente = f.tipo !== 'ENTRADA';
+        const encabezado = ['Tipo', 'Fecha y hora', 'Usuario', 'Nombre', 'Cédula', 'SKU', 'Principio activo', 'Nombre comercial', 'Laboratorio', 'Proveedor', 'Número de factura', 'Forma farmacéutica', 'Concentración', 'Fracción COFEPRIS', 'Lote', 'Caducidad', 'Cajas ingresadas', 'Piezas por caja', 'Total de piezas ingresadas', 'Cantidad de piezas retiradas', 'Precio unitario', 'Grava IVA', 'Paciente', 'Edad', 'Área', 'Cama', 'Médico tratante'].concat(incluyePaciente ? ['Teléfono / Celular Paciente', 'Dirección Paciente'] : []);
+        const lineas = filas.slice().sort((a, b) => String(a.fecha_hora).localeCompare(String(b.fecha_hora))).map(m => {
+            const celdas = [
+                m.tipo, m.fecha_hora, m.usuario_id, m.nombre, m.cedula_profesional, m.sku, m.principio_activo, m.nombre_comercial,
+                m.laboratorio, m.proveedor, m.numero_factura, nombreFormaFarmaceutica(m.forma_farmaceutica), m.concentracion,
+                nombreFraccionCofepris(m.fraccion_cofepris), m.lote, m.caducidad, m.cajas_ingresadas, m.piezas_por_caja, m.total_piezas,
+                m.cantidad_piezas, m.precio_unitario, m.aplica_iva ? 'Sí' : 'No', m.paciente_nombre, m.paciente_edad, m.area_paciente, m.cama, m.medico_tratante
+            ];
+            if (incluyePaciente) celdas.push(m.paciente_telefono || '', m.paciente_direccion || '');
+            return celdas.map(csvCelda).join(',');
+        });
         return '\uFEFF' + encabezado.join(',') + '\r\n' + lineas.join('\r\n');
     }
     function cargoBaseSinIva(c) {
@@ -2555,7 +2579,7 @@
 
     function listarSalidasFarmacia() { return leer(CLAVES.salidasFarmacia, []); }
     function listarCajasEstupefacientes(s) {
-        if (!s || (s.rol !== 'admin' && s.rol !== 'administrador')) return [];
+        if (!s || !permisoAccionDe(s.usuario_id, 'farmacia_estupefacientes')) return [];
         return listarCajas();
     }
     function registrarRetiroAdministracion(entrada, s) {

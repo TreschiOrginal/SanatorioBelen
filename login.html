@@ -14,14 +14,16 @@
             background-size: cover;
             background-position: center;
         }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
     </style>
 </head>
 <body class="bg-slate-50 h-screen flex overflow-hidden">
 
     <!-- LADO IZQUIERDO: Formulario de Login -->
-    <div class="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-16 lg:px-24 bg-white z-10 shadow-2xl">
+    <div class="w-full md:w-1/2 h-full overflow-y-auto custom-scrollbar bg-white z-10 shadow-2xl px-8 sm:px-16 lg:px-24">
         
-        <div class="max-w-sm w-full mx-auto">
+        <div class="max-w-sm w-full mx-auto min-h-full flex flex-col justify-center py-10">
             <!-- Regresar a la página pública -->
             <a href="index.html" class="inline-flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-cyan-600 transition mb-12">
                 <i class="fas fa-arrow-left"></i> Volver al inicio
@@ -80,7 +82,7 @@
             <div class="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl">
                 <p class="text-[10px] font-bold text-blue-800 uppercase mb-2"><i class="fas fa-info-circle mr-1"></i> Para probar el Demo:</p>
                 <p class="text-xs text-blue-600 mb-3">Escriba uno de los usuarios o toque un perfil. La contraseña de demostración es <b>demo</b>. Cada perfil tiene permisos distintos.</p>
-                <div id="perfiles-demo" class="grid grid-cols-2 gap-2"></div>
+                <div id="perfiles-demo" class="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar"></div>
             </div>
 
         </div>
