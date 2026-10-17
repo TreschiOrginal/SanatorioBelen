@@ -281,5 +281,91 @@
         });
     }
 
-    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, resumenVisitaHTML, TIPOS };
+    function abrirTerminalEstudios(op) {
+        const S = global.BelenStore;
+        if (!S) { toast('No se encontró el catálogo de estudios.', 'peligro'); return null; }
+        const s = S.sesion();
+        const turnoId = op && op.turnoId;
+        const t = turnoId && S.obtenerTurno(turnoId);
+        if (!s || !S.permisoAccionDe(s.usuario_id, 'cargar_consumos')) { toast('Su perfil no puede cargar estudios.', 'alerta'); return null; }
+        if (!t || !S.episodioAbiertoParaEstudios(t)) { toast('Este paciente no tiene un episodio activo para cargar estudios.', 'alerta'); return null; }
+        const estudios = S.listarEstudios();
+        if (!estudios.length) { toast('El catálogo de estudios está vacío.', 'alerta'); return null; }
+        const admin = S.puedeAlterarMontoEstudio(s);
+        const bloques = [
+            { id: 'lab', titulo: '🧪 Laboratorios y Tubos', cats: ['LABORATORIO'] },
+            { id: 'img', titulo: '🩻 Rayos X e Imagen', cats: ['IMAGENOLOGIA'] },
+            { id: 'proc', titulo: '🩺 Procedimientos de Enfermería', cats: ['PROCEDIMIENTO'] },
+            { id: 'hosp', titulo: '🏨 Estancia y hospitalización', cats: ['HOSPITALIZACION'] }
+        ];
+        const chip = est => {
+            const tubo = est.tubo_muestra && est.tubo_muestra !== 'N/A' ? est.tubo_muestra : '';
+            const emoji = tubo ? S.resumenTubosEstudios([est.estudio_id]).texto.split(' ')[0] : '';
+            const precio = admin
+                ? `<input data-precio="${esc(est.estudio_id)}" type="number" min="0.01" step="0.01" value="${est.precio_unitario}" class="mt-1 w-28 border border-slate-300 rounded-lg px-2 py-1 text-xs">`
+                : `<input data-precio="${esc(est.estudio_id)}" type="text" readonly disabled value="${esc(S.formatoMoneda(est.precio_unitario))}" class="mt-1 w-28 border border-slate-200 rounded-lg px-2 py-1 text-xs bg-slate-100 text-slate-600">`;
+            return `<label class="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:border-cyan-400">
+                <input type="checkbox" data-est="${esc(est.estudio_id)}" class="mt-1 rounded border-slate-300 text-cyan-700">
+                <span class="min-w-0 flex-1">
+                    <span class="block text-sm font-extrabold text-slate-900">${esc(est.codigo)} · ${esc(est.nombre)}</span>
+                    ${tubo ? `<span class="block text-[11px] font-bold text-violet-800">${emoji ? esc(emoji) + ' ' : ''}${esc(tubo)}</span>` : '<span class="block text-[11px] text-slate-400">Sin tubo</span>'}
+                    ${precio}
+                </span>
+            </label>`;
+        };
+        const paneles = bloques.map((b, i) => {
+            const items = estudios.filter(est => b.cats.indexOf(est.categoria) >= 0);
+            return `<div data-bloque="${b.id}" class="${i === 0 ? '' : 'hidden'} grid grid-cols-1 sm:grid-cols-2 gap-2">${items.length ? items.map(chip).join('') : '<p class="text-sm text-slate-400">No hay conceptos en este bloque.</p>'}</div>`;
+        }).join('');
+        const tabs = bloques.map((b, i) => `<button type="button" data-tab="${b.id}" class="px-3 py-2 rounded-lg text-xs font-extrabold ${i === 0 ? 'bg-white text-cyan-800 shadow-sm' : 'text-slate-500'}">${esc(b.titulo)}</button>`).join('');
+        return modal({
+            titulo: '🧪 Cargar Laboratorios / Estudios / Procedimientos',
+            subtitulo: t.paciente_nombre || '',
+            icono: 'fa-vial',
+            ancho: 'xxl',
+            html: `<div class="space-y-3 text-left">
+                <div id="tubos-resumen" class="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-bold text-violet-950">Tubos requeridos/tomados para esta orden: ninguno todavía.</div>
+                <div class="inline-flex flex-wrap gap-1 bg-slate-100 rounded-xl p-1">${tabs}</div>
+                ${paneles}
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Observaciones de toma / Laboratorio externo al que se envía</label>
+                <textarea id="toma-obs" maxlength="240" rows="2" placeholder="Opcional. Ej. Se envía a Laboratorio Patología del Puerto." class="w-full border border-slate-300 rounded-lg p-2.5 text-sm"></textarea>
+                <p class="text-[11px] text-slate-500">${admin ? 'Dirección puede corregir un monto en esta orden. El catálogo no cambia.' : 'Precio oficial bloqueado. Enfermería, caja y el resto del personal no pueden modificarlo.'}</p>
+                <p id="toma-error" class="text-xs text-red-600 hidden"></p>
+            </div>`,
+            alMostrar: c => {
+                const pintarTubos = () => {
+                    const ids = Array.from(c.el.querySelectorAll('[data-est]:checked')).map(x => x.getAttribute('data-est'));
+                    const r = S.resumenTubosEstudios(ids);
+                    c.el.querySelector('#tubos-resumen').textContent = r.texto
+                        ? 'Tubos requeridos/tomados para esta orden: ' + r.texto
+                        : (ids.length ? 'Tubos requeridos/tomados para esta orden: ninguno. Los conceptos marcados no piden tubo.' : 'Tubos requeridos/tomados para esta orden: ninguno todavía.');
+                };
+                c.el.querySelectorAll('[data-tab]').forEach(btn => btn.addEventListener('click', () => {
+                    const id = btn.getAttribute('data-tab');
+                    c.el.querySelectorAll('[data-tab]').forEach(b => {
+                        const on = b.getAttribute('data-tab') === id;
+                        b.classList.toggle('bg-white', on); b.classList.toggle('text-cyan-800', on); b.classList.toggle('shadow-sm', on); b.classList.toggle('text-slate-500', !on);
+                    });
+                    c.el.querySelectorAll('[data-bloque]').forEach(p => p.classList.toggle('hidden', p.getAttribute('data-bloque') !== id));
+                }));
+                c.el.querySelectorAll('[data-est]').forEach(chk => chk.addEventListener('change', pintarTubos));
+                pintarTubos();
+            },
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Cargar a la cuenta', estilo: 'primario', alPulsar: c => {
+                    const ids = Array.from(c.el.querySelectorAll('[data-est]:checked')).map(x => x.getAttribute('data-est'));
+                    const precios = {};
+                    if (admin) ids.forEach(id => { const inp = c.el.querySelector('[data-precio="' + id + '"]'); if (inp) precios[id] = inp.value; });
+                    const r = S.cargarEstudiosACuenta(turnoId, { estudio_ids: ids, precios: admin ? precios : null, observaciones: c.el.querySelector('#toma-obs').value }, s);
+                    const error = c.el.querySelector('#toma-error');
+                    if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                    toast(r.cargos.length + (r.cargos.length === 1 ? ' estudio cargado' : ' estudios cargados') + ' · ' + S.formatoMoneda(r.total) + ' en la cuenta.', 'exito');
+                    if (op && typeof op.alGuardar === 'function') op.alGuardar(r);
+                } }
+            ]
+        });
+    }
+
+    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, resumenVisitaHTML, abrirTerminalEstudios, TIPOS };
 })(window);

@@ -1,7 +1,7 @@
 // Archivo: js/admin-app.js
 // ============================================================
 // CONTROLADOR DEL DASHBOARD (vistas por rol y por médico)
-// Vistas: central | fila | hospitalizacion | cirugias | expedientes | personal | farmacia   (?vista=...)
+// Vistas: central | fila | hospitalizacion | cirugias | expedientes | personal | tarifario | farmacia   (?vista=...)
 // Datos: BelenStore (js/belen-store.js). Interfaz: BelenUI (js/belen-ui.js).
 // CERO alert()/prompt()/confirm() nativos: todo con modales Tailwind.
 // ============================================================
@@ -12,6 +12,9 @@ const AdminController = {
     vista: 'central',
     filtroEspecialidad: '',
     pestanaFarmacia: 'terminal',
+    pestanaTarifario: 'catalogo',
+    filtroCategoriaEstudio: '',
+    buscaEstudio: '',
     carritoFarmacia: [],
     pacienteCargoId: null,
     enfermeraCargoId: '',
@@ -30,6 +33,7 @@ const AdminController = {
         cirugias:        { roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'medico'], modulo: 'ver_quirofano', titulo: { admin: 'Próximas Cirugías', medico: 'Mis cirugías' } },
         expedientes:     { roles: ['admin', 'medico'],                                                            modulo: 'ver_consultas',      titulo: { admin: 'Búsqueda Histórica', medico: 'Búsqueda Histórica' } },
         personal:        { roles: ['admin'],                                                                      modulo: 'gestionar_personal', titulo: { admin: 'Gestión de Personal' } },
+        tarifario:       { roles: ['admin', 'administrador'],                                                                     titulo: { admin: 'Tarifario y Caja', administrador: 'Tarifario y Caja' } },
         farmacia:        { roles: ['admin', 'administrador', 'enf_farmacia'], modulo: 'ver_farmacia', titulo: { admin: 'Farmacia e Inventario', administrador: 'Farmacia e Inventario', enf_farmacia: 'Terminal de Farmacia' } }
     },
 
@@ -102,7 +106,7 @@ const AdminController = {
     // Primera vista disponible para el usuario (null si el administrador le apagó todos los módulos)
     vistaInicial: function () {
         if (this.rolActual === 'enf_farmacia') return 'farmacia';
-        return ['central', 'fila', 'hospitalizacion', 'cirugias', 'expedientes', 'personal', 'farmacia'].find(v => this.vistaPermitida(v)) || null;
+        return ['central', 'fila', 'hospitalizacion', 'cirugias', 'expedientes', 'personal', 'tarifario', 'farmacia'].find(v => this.vistaPermitida(v)) || null;
     },
 
     navegar: function (vista, ev) {
@@ -152,6 +156,7 @@ const AdminController = {
         else if (this.vista === 'cirugias') cont.innerHTML = this.htmlCirugias();
         else if (this.vista === 'expedientes') cont.innerHTML = this.htmlExpedientes();
         else if (this.vista === 'personal') cont.innerHTML = this.htmlPersonal();
+        else if (this.vista === 'tarifario') cont.innerHTML = this.htmlTarifario();
         else if (this.vista === 'farmacia') { cont.innerHTML = this.htmlFarmacia(); this.enlazarTerminalFarmacia(); }
         this.actualizarRelojes();
     },
@@ -287,6 +292,7 @@ const AdminController = {
         const botones = `
             ${puedeSignos ? `<button type="button" data-accion="signos" onclick="AdminController.abrirSignos('${id}')" class="bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center gap-1.5">
                 <i class="fas fa-heart-pulse"></i> ${t.signos_vitales ? 'Editar Signos' : 'Capturar Signos'}</button>` : ''}
+            ${BelenStore.permisoAccionDe(this.sesion.usuario_id, 'cargar_consumos') ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${id}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Laboratorios / Estudios / Procedimientos</button>` : ''}
             ${enConsulta
                 ? `<span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"><i class="fas fa-user-doctor mr-1"></i> Con el médico</span>`
                 : (BelenStore.puede('pasar_a_medico') ? `<button type="button" data-accion="pasar" onclick="AdminController.confirmarPase('${id}')" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition flex items-center gap-1.5"><i class="fas fa-arrow-right"></i> Enviar a Médico</button>` : '')}`;
@@ -549,27 +555,51 @@ const AdminController = {
     // ======================================================================
     htmlTarjetaCirugia: function (c) {
         const e = t => this.e(t);
+        const S = BelenStore;
         const d = new Date(c.fecha_hora), hoy = new Date();
         const dias = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())) / 86400000);
-        const cuando = dias === 0 ? ['Hoy', 'bg-red-100 text-red-700'] : (dias === 1 ? ['Mañana', 'bg-amber-100 text-amber-700'] : ['En ' + dias + ' días', 'bg-slate-100 text-slate-600']);
+        const cuando = dias === 0 ? ['Hoy', 'bg-red-100 text-red-700'] : (dias === 1 ? ['Mañana', 'bg-amber-100 text-amber-700'] : (dias > 1 ? ['En ' + dias + ' días', 'bg-slate-100 text-slate-600'] : ['En curso', 'bg-violet-100 text-violet-700']));
         const dato = (et, v) => `<div class="min-w-0"><p class="text-[10px] font-bold text-slate-400 uppercase leading-none">${et}</p><p class="text-sm text-slate-800 mt-1 leading-snug">${v}</p></div>`;
+        const tipo = c.tipo_estancia === 'AMBULATORIA'
+            ? '<span class="inline-flex text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300">Ambulatoria</span>'
+            : '<span class="inline-flex text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">Hospitalaria</span>';
+        const anestesia = c.anestesiologo
+            ? `<span class="font-semibold" data-campo="anestesiologo">${e(c.anestesiologo)}</span>`
+            : '<span class="font-extrabold text-rose-700" data-campo="anestesiologo">Pendiente (Asignará Administración)</span>';
+        const asignar = (this.rolActual === 'admin' || this.rolActual === 'administrador') && c.anestesiologo_pendiente
+            ? `<button type="button" onclick="AdminController.abrirAsignarAnestesiologo('${e(c.cirugia_id)}')" class="mt-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold py-2 px-3 rounded-lg shadow-sm">Asignar Anestesiólogo</button>` : '';
+        const ingresar = S.puedeIngresarAmbulatorio(this.sesion) && c.tipo_estancia === 'AMBULATORIA' && !c.ingresada && !c.ya_internado
+            ? `<button type="button" onclick="AdminController.confirmarIngresoAmbulatorio('${e(c.cirugia_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">Ingresar Paciente Ambulatorio a Quirófano</button>` : '';
+        const turnoQx = S.turnoActivoParaEstudios({ turno_id: c.turno_id, paciente_id: c.paciente_id });
+        const cargarQx = turnoQx && S.permisoAccionDe(this.sesion.usuario_id, 'cargar_consumos')
+            ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${e(turnoQx.turno_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Laboratorios / Estudios / Procedimientos</button>` : '';
+        const ya = c.ingresada
+            ? '<span class="inline-flex text-[10px] font-extrabold uppercase px-2 py-1 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300">CIRUGÍA AMBULATORIA · ingresado</span>'
+            : (c.ya_internado && c.tipo_estancia === 'AMBULATORIA' ? '<span class="text-[11px] font-semibold text-slate-500">El paciente ya tiene un episodio activo.</span>' : '');
         return `<div data-cirugia="${e(c.cirugia_id)}" class="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-violet-500 shadow-sm p-4">
             <div class="flex flex-wrap items-start justify-between gap-2">
-                <div class="min-w-0"><h4 class="text-base font-extrabold text-slate-900" data-campo="paciente">${e(c.nombre)}</h4>
-                    <p class="text-sm font-semibold text-violet-700 mt-0.5" data-campo="procedimiento"><i class="fas fa-kit-medical mr-1 text-xs"></i>${e(c.procedimiento)}</p></div>
+                <div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-1">${tipo}</div>
+                    <h4 class="text-base font-extrabold text-slate-900" data-campo="paciente">${e(c.nombre)}</h4>
+                    <p class="text-sm font-semibold text-violet-700 mt-0.5" data-campo="procedimiento"><i class="fas fa-kit-medical mr-1 text-xs"></i>${e(c.procedimiento)}</p>
+                    <p class="text-[11px] text-slate-500 mt-1" data-campo="sala">${e(c.sala_nombre || '')}</p></div>
                 <div class="text-right shrink-0"><span class="inline-block text-[10px] font-bold uppercase px-2 py-0.5 rounded ${cuando[1]}">${cuando[0]}</span>
-                    <p class="text-sm font-bold text-slate-800 mt-1" data-campo="fecha">${e(c.fecha_texto.charAt(0).toUpperCase() + c.fecha_texto.slice(1))}</p>
-                    <p class="text-lg font-extrabold text-slate-900 leading-none" data-campo="hora">${e(c.hora_texto)}</p></div>
+                    <p class="text-sm font-bold text-slate-800 mt-1" data-campo="fecha">${e((c.fecha_texto || '').charAt(0).toUpperCase() + (c.fecha_texto || '').slice(1))}</p>
+                    <p class="text-lg font-extrabold text-slate-900 leading-none" data-campo="hora">${e(c.hora_texto)}</p>
+                    ${c.duracion_texto ? `<p class="text-[11px] text-slate-400">${e(c.duracion_texto)}</p>` : ''}</div>
             </div>
             <div class="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
-                ${dato('Fecha de nacimiento', `<span data-campo="nacimiento">${e(BelenStore.fechaLegibleISO(c.fecha_nacimiento))}</span>`)}
+                ${dato('Fecha de nacimiento', `<span data-campo="nacimiento">${e(S.fechaLegibleISO(c.fecha_nacimiento))}</span>`)}
                 ${dato('Edad', `<span data-campo="edad">${c.edad !== null ? c.edad + ' años' : '—'}</span>`)}
                 ${dato('Médico cirujano', `<span class="font-semibold" data-campo="cirujano">${e(c.medico_cirujano)}</span>${c.medico_especialidad ? `<span class="block text-[11px] text-slate-400">${e(c.medico_especialidad)}</span>` : ''}`)}
-                ${dato('Anestesiólogo', `<span class="font-semibold" data-campo="anestesiologo">${c.anestesiologo ? e(c.anestesiologo) : '<span class="text-slate-400">Sin asignar</span>'}</span>`)}
+                ${dato('Anestesiólogo', anestesia + asignar)}
             </div>
-            <div class="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-                <p class="text-[10px] font-bold text-yellow-700 uppercase leading-none mb-1"><i class="fas fa-note-sticky mr-1"></i>Notas</p>
+            <div class="mt-3 bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2">
+                <p class="text-[10px] font-bold text-cyan-800 uppercase leading-none mb-1"><i class="fas fa-clipboard-list mr-1"></i>Indicaciones preoperatorias</p>
+                <p class="text-xs text-slate-800" data-campo="indicaciones">${c.indicaciones_preoperatorias ? e(c.indicaciones_preoperatorias) : '<span class="text-slate-400 italic">Sin indicaciones preoperatorias.</span>'}</p></div>
+            <div class="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
+                <p class="text-[10px] font-bold text-yellow-700 uppercase leading-none mb-1"><i class="fas fa-note-sticky mr-1"></i>Notas privadas</p>
                 <p class="text-xs text-slate-800" data-campo="notas">${c.notas ? e(c.notas) : '<span class="text-slate-400 italic">Sin notas registradas.</span>'}</p></div>
+            ${(ingresar || ya || cargarQx) ? `<div class="mt-3 flex flex-wrap items-center gap-2">${cargarQx}${ingresar}${ya}</div>` : ''}
         </div>`;
     },
 
@@ -579,46 +609,117 @@ const AdminController = {
         const boton = S.puede('programar_cirugia')
             ? `<button type="button" id="btn-programar-cirugia" onclick="AdminController.abrirProgramarCirugia()" class="bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2"><i class="fas fa-plus-circle"></i> + Programar Cirugía</button>` : '';
         const aviso = this.sesion.especialidad_codigo === 'ANESTESIOLOGIA'
-            ? 'Solo aparecen las cirugías en las que usted es la anestesióloga o el anestesiólogo asignado.'
+            ? 'Solo aparecen las cirugías en las que usted está asignado como anestesiólogo.'
             : (this.rolActual === 'medico'
-                ? 'Solo aparecen las cirugías en las que usted es el cirujano o le solicitaron interconsulta.'
-                : (this.rolActual === 'enf_quirofano'
-                    ? 'Enfermería de Quirófano: consulte la agenda quirúrgica para preparar sala, material y paciente.'
-                    : 'Agenda quirúrgica ordenada por fecha y hora exacta.'));
+                ? 'Solo aparecen sus cirugías y aquellas en las que está interconsultado. Las de otros médicos permanecen ocultas.'
+                : (this.rolActual === 'enf_hospital'
+                    ? 'Se muestran las cirugías de los pacientes que ya están a su cargo en hospitalización.'
+                    : (this.rolActual === 'enf_quirofano'
+                        ? 'Enfermería de Quirófano: agenda completa de Quirófano Grande y Quirófano Chico.'
+                        : 'Agenda de las dos salas, ordenada por fecha y hora de inicio.')));
         return `<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
                     <div><h2 class="text-2xl font-extrabold text-slate-800">Próximas Cirugías</h2><p class="text-slate-500">${this.e(aviso)}</p></div>${boton}</div>
                 ${this.htmlPanelEstupefacientes('QUIROFANO')}
                 <div id="lista-cirugias" class="grid grid-cols-1 xl:grid-cols-2 gap-4">${lista.length ? lista.map(c => this.htmlTarjetaCirugia(c)).join('') : '<div class="xl:col-span-2 text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-kit-medical text-4xl mb-3 text-slate-300"></i><p>No hay cirugías programadas.</p></div>'}</div>`;
     },
 
-    abrirProgramarCirugia: function () {
+    pintarDisponibilidadQx: function (raiz) {
+        const S = BelenStore, e = t => this.e(t);
+        const box = raiz.querySelector('#cx-disponibilidad');
+        const sala = raiz.querySelector('#cx-sala').value, fecha = raiz.querySelector('#cx-fecha').value;
+        if (!sala || !fecha) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+        const d = S.disponibilidadQuirofano(sala, fecha, this.sesion);
+        if (!d.ok) { box.classList.add('hidden'); return; }
+        box.classList.remove('hidden');
+        const seg = t => {
+            const cls = t.tipo === 'libre' ? 'bg-emerald-500' : (t.tipo === 'ocupado' ? 'bg-rose-500' : 'bg-slate-300');
+            return `<div class="${cls} h-9 min-w-[4px]" style="width:${t.porcentaje}%" title="${e(t.etiqueta)}"></div>`;
+        };
+        const libres = (d.libres || []).map(t => `<button type="button" data-libre="${e(t.inicio)}" class="text-left text-xs font-bold text-emerald-900 bg-emerald-50 border border-emerald-300 rounded-lg px-3 py-2 hover:bg-emerald-100">Libre: ${e(t.inicio)} - ${e(t.fin)}</button>`).join('');
+        const ocupados = (d.ocupados || []).map(t => `<div class="text-xs font-bold text-rose-900 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">${e(t.etiqueta)}</div>`).join('');
+        box.innerHTML = `<p class="text-[11px] font-bold text-slate-500 uppercase mb-2">Disponibilidad del día · 07:00 a 22:00</p>
+            <div class="flex w-full rounded-lg overflow-hidden border border-slate-200 mb-2">${(d.tramos || []).map(seg).join('')}</div>
+            <div class="flex flex-col gap-1.5">${libres}${ocupados || '<p class="text-xs text-emerald-700">Toda la jornada está libre en esta sala.</p>'}</div>
+            <p class="text-[11px] text-slate-400 mt-1">Toque un tramo libre para usarlo como hora de inicio.</p>`;
+        box.querySelectorAll('[data-libre]').forEach(b => b.addEventListener('click', () => {
+            raiz.querySelector('#cx-hora_inicio').value = b.getAttribute('data-libre');
+            this.actualizarHoraFinQx(raiz);
+        }));
+    },
+    actualizarHoraFinQx: function (raiz) {
+        const ini = raiz.querySelector('#cx-hora_inicio').value;
+        const dur = Number(raiz.querySelector('#cx-duracion').value);
+        const out = raiz.querySelector('#cx-hora_fin');
+        const m = String(ini || '').match(/^(\d{2}):(\d{2})$/);
+        if (!m || !dur) { out.value = ''; return; }
+        const total = (+m[1]) * 60 + (+m[2]) + dur;
+        out.value = total >= 24 * 60 ? 'Pasa de medianoche' : String(Math.floor(total / 60)).padStart(2, '0') + ':' + String(total % 60).padStart(2, '0');
+    },
+    abrirProgramarCirugia: function (preset) {
         const S = BelenStore;
+        preset = preset && preset.paciente_id ? preset : {};
         if (!S.puede('programar_cirugia')) { BelenUI.toast('Su perfil no puede programar cirugías.', 'alerta'); return; }
         const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none bg-white';
         const err = k => `<p data-err="${k}" class="text-[11px] text-red-600 mt-1 hidden"></p>`;
         const lab = (id, t, req) => `<label for="${id}" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">${t}${req ? ' <span class="text-red-500">*</span>' : ''}</label>`;
-        const ahora = new Date(), pad = n => String(n).padStart(2, '0');
-        const minimo = `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())}T${pad(ahora.getHours())}:${pad(ahora.getMinutes())}`;
-        const medicos = S.cirujanos().map(m => `<option value="${m.id}">${this.e(m.nombre)} · ${this.e(m.cargo)}</option>`).join('');
+        const propio = this.rolActual === 'medico' && S.cirujanos().some(m => m.id === this.sesion.medico_id);
+        const listaCirujanos = propio ? S.cirujanos().filter(m => m.id === this.sesion.medico_id) : S.cirujanos();
+        const medicos = listaCirujanos.map(m => `<option value="${m.id}" ${propio || preset.medico_id === m.id ? 'selected' : ''}>${this.e(m.nombre)} · ${this.e(m.cargo)}</option>`).join('');
         const anests = S.anestesiologos().map(m => `<option value="${m.id}">${this.e(m.nombre)} · ${this.e(m.cargo)}</option>`).join('');
+        const salas = S.SALAS_QUIROFANO.map(x => `<option value="${x.codigo}">${this.e(x.nombre)}</option>`).join('');
+        const tipos = S.TIPOS_ESTANCIA_QX.map(x => `<option value="${x.codigo}">${this.e(x.etiqueta)}</option>`).join('');
+        const duraciones = S.DURACIONES_CIRUGIA.map(x => `<option value="${x.minutos}">${this.e(x.etiqueta)}</option>`).join('');
+        const bloqueado = !!preset.paciente_id;
+        const self = this;
         BelenUI.modal({
-            titulo: 'Programar Cirugía', subtitulo: 'Todos los datos se mostrarán en la tarjeta de la agenda quirúrgica.', icono: 'fa-kit-medical', ancho: 'lg',
+            titulo: 'Programar Cirugía', subtitulo: bloqueado ? 'Paciente ya internado. La cirugía queda en la agenda de la sala elegida.' : 'Busque al paciente o capture uno que todavía no esté en el catálogo.', icono: 'fa-kit-medical', ancho: 'xl',
             html: `<div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
-                <div class="sm:col-span-6">${lab('cx-nombre', 'Nombre completo del paciente', true)}<input id="cx-nombre" type="text" autocomplete="off" placeholder="Nombre y apellidos" class="${cls}" data-autofoco>${err('nombre')}</div>
-                <div class="sm:col-span-3">${lab('cx-fecha_nacimiento', 'Fecha de nacimiento', true)}<input id="cx-fecha_nacimiento" type="date" min="1900-01-01" max="${S.hoyLocal()}" class="${cls}">${err('fecha_nacimiento')}</div>
+                ${bloqueado ? '' : `<div class="sm:col-span-6 relative"><label for="cx-buscar" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Buscar en el catálogo</label><input id="cx-buscar" type="text" autocomplete="off" placeholder="Escriba el nombre…" class="${cls}" data-autofoco><div id="cx-sugerencias" class="mt-1 flex flex-col gap-1"></div></div>`}
+                <div class="sm:col-span-6">${lab('cx-nombre', 'Nombre completo del paciente', true)}<input id="cx-nombre" type="text" autocomplete="off" value="${this.e(preset.nombre || '')}" ${bloqueado ? 'readonly' : ''} placeholder="Nombre y apellidos" class="${cls} ${bloqueado ? 'bg-slate-50' : ''}" ${bloqueado ? '' : 'data-autofoco'}>${err('nombre')}<input id="cx-paciente_id" type="hidden" value="${this.e(preset.paciente_id || '')}"></div>
+                <div class="sm:col-span-3">${lab('cx-fecha_nacimiento', 'Fecha de nacimiento', true)}<input id="cx-fecha_nacimiento" type="date" min="1900-01-01" max="${S.hoyLocal()}" value="${this.e(preset.fecha_nacimiento || '')}" ${bloqueado ? 'readonly' : ''} class="${cls} ${bloqueado ? 'bg-slate-50' : ''}">${err('fecha_nacimiento')}</div>
                 <div class="sm:col-span-3">${lab('cx-edad', 'Edad')}<input id="cx-edad" type="text" readonly tabindex="-1" placeholder="Se calcula sola" class="${cls} bg-slate-50 text-slate-500"></div>
+                <div class="sm:col-span-6">${lab('cx-tipo_estancia', 'Tipo de estancia quirúrgica', true)}<select id="cx-tipo_estancia" class="${cls}"><option value="">Seleccione…</option>${tipos}</select>${err('tipo_estancia')}</div>
                 <div class="sm:col-span-6">${lab('cx-procedimiento', 'Nombre de la cirugía', true)}<input id="cx-procedimiento" type="text" maxlength="120" placeholder="Ej. Colecistectomía laparoscópica" class="${cls}">${err('procedimiento')}</div>
-                <div class="sm:col-span-3">${lab('cx-fecha_hora', 'Fecha y hora exacta', true)}<input id="cx-fecha_hora" type="datetime-local" min="${minimo}" step="300" class="${cls}">${err('fecha_hora')}</div>
-                <div class="sm:col-span-3">${lab('cx-medico_cirujano_id', 'Médico cirujano', true)}<select id="cx-medico_cirujano_id" class="${cls}"><option value="">Seleccione…</option>${medicos}</select>${err('medico_cirujano_id')}</div>
-                <div class="sm:col-span-3">${lab('cx-anestesiologo_id', 'Anestesiólogo', true)}<select id="cx-anestesiologo_id" class="${cls}"><option value="">Seleccione…</option>${anests}</select>${err('anestesiologo_id')}</div>
-                <div class="sm:col-span-6">${lab('cx-notas', 'Notas')}<textarea id="cx-notas" rows="2" maxlength="600" placeholder="Preparación, alergias, pendientes administrativos…" class="${cls} resize-none"></textarea>${err('notas')}</div>
+                <div class="sm:col-span-6">${lab('cx-sala', 'Sala solicitada', true)}<select id="cx-sala" class="${cls}"><option value="">Seleccione…</option>${salas}</select>${err('sala')}</div>
+                <div class="sm:col-span-6">${lab('cx-fecha', 'Fecha de la cirugía', true)}<input id="cx-fecha" type="date" min="${S.hoyLocal()}" class="${cls}">${err('fecha')}</div>
+                <div id="cx-disponibilidad" class="sm:col-span-6 hidden"></div>
+                <div class="sm:col-span-2">${lab('cx-hora_inicio', 'Hora de inicio', true)}<input id="cx-hora_inicio" type="time" min="07:00" max="21:30" step="300" class="${cls}">${err('hora_inicio')}</div>
+                <div class="sm:col-span-2">${lab('cx-duracion', 'Duración estimada', true)}<select id="cx-duracion" class="${cls}"><option value="">Seleccione…</option>${duraciones}</select>${err('duracion_minutos')}</div>
+                <div class="sm:col-span-2">${lab('cx-hora_fin', 'Hora de fin')}<input id="cx-hora_fin" type="text" readonly tabindex="-1" placeholder="Se calcula sola" class="${cls} bg-slate-50 text-slate-500"></div>
+                <div class="sm:col-span-3">${lab('cx-medico_cirujano_id', 'Médico cirujano', true)}<select id="cx-medico_cirujano_id" class="${cls}" ${propio ? 'disabled' : ''}><option value="">Seleccione…</option>${medicos}</select>${err('medico_cirujano_id')}</div>
+                <div class="sm:col-span-3">${lab('cx-anestesiologo_id', 'Anestesiólogo')}<select id="cx-anestesiologo_id" class="${cls}"><option value="">Pendiente (Asignará Administración)</option>${anests}</select>${err('anestesiologo_id')}</div>
+                <div class="sm:col-span-6">${lab('cx-indicaciones', 'Indicaciones preoperatorias')}<textarea id="cx-indicaciones" rows="2" maxlength="600" placeholder="Ej. ayuno de 8 hrs, tricotomía, laboratorios previos" class="${cls} resize-none"></textarea>${err('indicaciones_preoperatorias')}</div>
+                <div class="sm:col-span-6">${lab('cx-notas', 'Notas privadas')}<textarea id="cx-notas" rows="2" maxlength="600" placeholder="Notas que no salen en la indicación preoperatoria" class="${cls} resize-none"></textarea>${err('notas')}</div>
             </div>`,
             alMostrar: c => {
-                const fn = c.el.querySelector('#cx-fecha_nacimiento'), ed = c.el.querySelector('#cx-edad');
+                const q = sel => c.el.querySelector(sel);
+                const fn = q('#cx-fecha_nacimiento'), ed = q('#cx-edad');
                 const calc = () => { const x = S.calcularEdad(fn.value); ed.value = x !== null ? x + ' años' : ''; };
-                fn.addEventListener('input', calc); fn.addEventListener('change', calc);
+                fn.addEventListener('input', calc); fn.addEventListener('change', calc); calc();
+                const refrescar = () => self.pintarDisponibilidadQx(c.el);
+                q('#cx-sala').addEventListener('change', refrescar);
+                q('#cx-fecha').addEventListener('change', refrescar);
+                const fin = () => self.actualizarHoraFinQx(c.el);
+                q('#cx-hora_inicio').addEventListener('input', fin);
+                q('#cx-duracion').addEventListener('change', fin);
+                const buscar = q('#cx-buscar');
+                if (buscar) buscar.addEventListener('input', () => {
+                    const lista = S.buscarPacientesPorNombre(buscar.value, 6);
+                    q('#cx-sugerencias').innerHTML = lista.map(p => `<button type="button" data-pac="${self.e(p.paciente_id)}" class="text-left text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 hover:border-violet-400"><b>${self.e(p.nombre_completo)}</b><span class="block text-slate-400">${self.e(S.fechaLegibleISO(p.fecha_nacimiento))} · ${S.calcularEdad(p.fecha_nacimiento) === null ? 'Edad no registrada' : S.calcularEdad(p.fecha_nacimiento) + ' años'}</span></button>`).join('');
+                    q('#cx-sugerencias').querySelectorAll('[data-pac]').forEach(b => b.addEventListener('click', () => {
+                        const p = S.buscarPacientePorId(b.getAttribute('data-pac'));
+                        if (!p) return;
+                        q('#cx-paciente_id').value = p.paciente_id;
+                        q('#cx-nombre').value = p.nombre_completo;
+                        fn.value = p.fecha_nacimiento;
+                        calc();
+                        q('#cx-sugerencias').innerHTML = '';
+                        buscar.value = p.nombre_completo;
+                    }));
+                });
                 c.el.querySelectorAll('input,select,textarea').forEach(i => i.addEventListener('input', () => {
-                    const p = c.el.querySelector(`[data-err="${i.id.replace('cx-', '')}"]`); if (p) p.classList.add('hidden'); i.classList.remove('border-red-500');
+                    const clave = i.id === 'cx-duracion' ? 'duracion_minutos' : (i.id === 'cx-indicaciones' ? 'indicaciones_preoperatorias' : i.id.replace('cx-', ''));
+                    const p = c.el.querySelector(`[data-err="${clave}"]`); if (p) p.classList.add('hidden'); i.classList.remove('border-red-500');
                 }));
             },
             botones: [
@@ -626,22 +727,61 @@ const AdminController = {
                 { texto: 'Guardar Cirugía', estilo: 'primario', id: 'cx-guardar', alPulsar: c => {
                     const q = sel => c.el.querySelector(sel);
                     const r = S.programarCirugia({
-                        nombre: q('#cx-nombre').value, fecha_nacimiento: q('#cx-fecha_nacimiento').value, procedimiento: q('#cx-procedimiento').value,
-                        fecha_hora: q('#cx-fecha_hora').value, medico_cirujano_id: q('#cx-medico_cirujano_id').value, anestesiologo_id: q('#cx-anestesiologo_id').value, notas: q('#cx-notas').value
+                        paciente_id: q('#cx-paciente_id').value, nombre: q('#cx-nombre').value, fecha_nacimiento: q('#cx-fecha_nacimiento').value,
+                        tipo_estancia: q('#cx-tipo_estancia').value, procedimiento: q('#cx-procedimiento').value, sala: q('#cx-sala').value,
+                        fecha: q('#cx-fecha').value, hora_inicio: q('#cx-hora_inicio').value, duracion_minutos: q('#cx-duracion').value,
+                        medico_cirujano_id: q('#cx-medico_cirujano_id').value, anestesiologo_id: q('#cx-anestesiologo_id').value,
+                        indicaciones_preoperatorias: q('#cx-indicaciones').value, notas: q('#cx-notas').value
                     }, this.sesion);
                     if (!r.ok) {
                         c.el.querySelectorAll('[data-err]').forEach(p => p.classList.add('hidden'));
                         Object.keys(r.errores || {}).forEach(k => {
                             const p = q(`[data-err="${k}"]`); if (p) { p.textContent = r.errores[k]; p.classList.remove('hidden'); }
-                            const i = q('#cx-' + k); if (i) i.classList.add('border-red-500');
+                            const mapa = { duracion_minutos: 'cx-duracion', indicaciones_preoperatorias: 'cx-indicaciones' };
+                            const i = q('#' + (mapa[k] || ('cx-' + k))); if (i) i.classList.add('border-red-500');
                         });
                         if (!r.errores) BelenUI.toast(r.motivo, 'peligro');
                         return false;
                     }
-                    BelenUI.toast('Cirugía programada: ' + r.cirugia.procedimiento + '.', 'exito');
+                    const finTxt = r.cirugia.hora_inicio && r.cirugia.hora_fin ? ' (' + r.cirugia.hora_inicio + ' a ' + r.cirugia.hora_fin + ')' : '';
+                    BelenUI.toast('Cirugía programada: ' + r.cirugia.procedimiento + finTxt + '.', 'exito');
                     this.render();
                 } }
             ]
+        });
+    },
+    abrirAsignarAnestesiologo: function (cirugiaId) {
+        const S = BelenStore, c = S.cirugiaPara(cirugiaId, this.sesion);
+        if (!c || (this.rolActual !== 'admin' && this.rolActual !== 'administrador')) { BelenUI.toast('No puede asignar al anestesiólogo.', 'alerta'); return; }
+        const anests = S.anestesiologos();
+        if (!anests.length) { BelenUI.toast('No hay anestesiólogos activos.', 'alerta'); return; }
+        BelenUI.modal({
+            titulo: 'Asignar Anestesiólogo', subtitulo: c.procedimiento + ' · ' + c.hora_texto, icono: 'fa-user-doctor', ancho: 'sm',
+            html: `<div class="flex flex-col gap-2">${anests.map(m => `<button type="button" data-an="${this.e(m.id)}" class="text-left px-3 py-3 rounded-xl border border-slate-200 hover:border-rose-400 hover:bg-rose-50"><span class="block font-extrabold text-slate-900">${this.e(m.nombre)}</span><span class="block text-xs text-slate-500">${this.e(m.cargo)}</span></button>`).join('')}</div>`,
+            alMostrar: modal => modal.el.querySelectorAll('[data-an]').forEach(b => b.addEventListener('click', () => {
+                const r = S.asignarAnestesiologo(cirugiaId, b.getAttribute('data-an'), this.sesion);
+                if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+                modal.cerrar();
+                BelenUI.toast('Anestesiólogo asignado: ' + r.cirugia.anestesiologo + '.', 'exito');
+                this.render();
+            })),
+            botones: [{ texto: 'Cancelar', estilo: 'secundario' }]
+        });
+    },
+    confirmarIngresoAmbulatorio: function (cirugiaId) {
+        const S = BelenStore, c = S.cirugiaPara(cirugiaId, this.sesion);
+        if (!c || !S.puedeIngresarAmbulatorio(this.sesion)) { BelenUI.toast('No puede ingresar a este paciente.', 'alerta'); return; }
+        BelenUI.confirmar({
+            titulo: '¿Ingresar a ' + c.nombre + ' a quirófano?',
+            mensaje: 'Entra directo a Quirófano / Recuperación Ambulatoria. No pasa por la fila de consulta ni exige nota de consulta. Se habilitan su Hoja Frontal, sus Consentimientos y su Cuenta de Consumos, con las indicaciones preoperatorias ya cargadas.',
+            textoConfirmar: 'Ingresar Paciente Ambulatorio',
+            tipo: 'info', icono: 'fa-kit-medical', ancho: 'md',
+            alConfirmar: () => {
+                const r = S.ingresarPacienteAmbulatorio(cirugiaId, this.sesion);
+                if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+                BelenUI.toast(c.nombre + ' quedó internado en quirófano ambulatorio.', 'exito');
+                this.render();
+            }
         });
     },
 
@@ -807,8 +947,8 @@ const AdminController = {
                 const cls = esEnf ? 'bg-cyan-700 hover:bg-cyan-800 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white';
                 accion = `<a href="expediente.html?turno=${encodeURIComponent(f.turno_id)}" data-accion="abrir-expediente" class="${cls} text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas ${ico}"></i> ${txt}</a>`;
             }
-            const botonEstudio = (f.finalizado && !pendientePago && S.permisoAccionDe(s.usuario_id, 'cargar_consumos'))
-                ? `<button type="button" onclick="AdminController.abrirCargarEstudio('${e(f.turno_id)}')" class="bg-white border border-cyan-300 text-cyan-800 text-xs font-bold py-2 px-3 rounded-lg">Cargar Insumo/Estudio</button>` : '';
+            const botonEstudio = (!pendientePago && (f.finalizado || f.estatus === 'internado_en_proceso') && S.permisoAccionDe(s.usuario_id, 'cargar_consumos'))
+                ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${e(f.turno_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Laboratorios / Estudios / Procedimientos</button>` : '';
             const botonCama = (!pendientePago && S.puede('asignar_cama'))
                 ? `<button type="button" data-accion="asignar-cama" onclick="AdminController.abrirAsignarCama('${e(f.turno_id)}')" class="bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-bed"></i> ${f.cama ? 'Cambiar cama' : 'Asignar cama'}</button>` : '';
             const ics = f.interconsultas.length
@@ -819,7 +959,7 @@ const AdminController = {
                     <div class="min-w-[4rem] max-w-[7rem] min-h-[4rem] py-1 rounded-xl ${f.cama ? (pendientePago ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white') : 'bg-slate-100 text-slate-400 border border-dashed border-slate-300'} flex flex-col items-center justify-center shrink-0 text-center px-1">
                         <i class="fas fa-bed text-sm"></i><span data-cama="1" class="text-[11px] font-extrabold leading-tight mt-0.5 break-words">${f.cama ? e(f.cama) : 'Sin cama'}</span></div>
                     <div class="flex-1 min-w-[240px]">
-                        <div class="flex flex-wrap items-center gap-2"><h4 class="text-lg font-bold text-slate-900">${e(f.nombre)}</h4>${this.badgeEstatus({ estatus: f.estatus })}${relacion}</div>
+                        <div class="flex flex-wrap items-center gap-2"><h4 class="text-lg font-bold text-slate-900">${e(f.nombre)}</h4>${this.badgeEstatus({ estatus: f.estatus })}${f.ambulatorio_qx ? '<span class="inline-flex items-center text-[10px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300 shadow-sm">CIRUGÍA AMBULATORIA</span>' : ''}${relacion}</div>
                         <p class="text-xs text-slate-500">${f.edad !== null ? f.edad + ' años' : ''}${sexoTxt(f) ? ' · ' + sexoTxt(f) : ''}${f.area ? ' · ' + e(f.area) : ''}${pendientePago ? ' · ' + e(S.formatoMoneda(f.cuenta_actual || 0)) : ''}</p>
                     </div>
                     <div class="flex flex-wrap gap-2 justify-end">${botonCama}${botonEstudio}${accion}</div>
@@ -838,67 +978,11 @@ const AdminController = {
                 <div class="flex flex-col gap-3" id="lista-hospitalizados">${lista.length ? lista.map(tarjeta).join('') : '<div class="text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-bed text-4xl mb-3 text-slate-300"></i><p>No hay pacientes hospitalizados.</p></div>'}</div>`;
     },
 
-    abrirCargarEstudio: function (turnoId) {
-        const S = BelenStore, e = t => this.e(t);
-        if (!S.permisoAccionDe(this.sesion.usuario_id, 'cargar_consumos')) { BelenUI.toast('Su perfil no puede cargar consumos.', 'alerta'); return; }
-        const estudios = S.listarEstudios();
-        if (!estudios.length) { BelenUI.toast('El catálogo de estudios está vacío.', 'alerta'); return; }
-        const enfermera = S.esEnfermeria(this.rolActual);
-        const admin = this.rolActual === 'admin';
-        const opciones = estudios.map(est => `<option value="${e(est.estudio_id)}" data-precio="${est.precio_unitario}" data-iva="${est.aplica_iva ? '1' : '0'}">${e(est.nombre)} · ${e(S.nombreTipoEstudio(est.tipo))} · ${e(S.formatoMoneda(est.precio_unitario))}</option>`).join('');
-        const alta = admin ? `<div id="est-alta" class="hidden border-t border-slate-100 pt-3 space-y-2">
-            <p class="text-[11px] font-bold uppercase text-slate-500">Nuevo estudio en el catálogo</p>
-            <input id="est-nuevo-nombre" placeholder="Nombre" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
-            <select id="est-nuevo-tipo" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white">${S.TIPOS_ESTUDIO.map(t => `<option value="${t.codigo}">${t.nombre}</option>`).join('')}</select>
-            <input id="est-nuevo-precio" type="number" min="0.01" step="0.01" placeholder="Precio unitario" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
-            <button type="button" id="est-guardar-nuevo" class="text-xs font-bold text-cyan-800">Guardar en el catálogo</button>
-        </div>` : '';
-        BelenUI.modal({
-            titulo: 'Cargar Insumo/Estudio', subtitulo: (S.obtenerTurno(turnoId) || {}).paciente_nombre || '', icono: 'fa-vial', ancho: 'md',
-            html: `<div class="space-y-3 text-left">
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Estudio o procedimiento</label>
-                <select id="est-id" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white">${opciones}</select>
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Precio unitario</label>
-                <input id="est-precio" type="number" min="0.01" step="0.01" ${enfermera ? 'readonly disabled' : ''} class="w-full border border-slate-300 rounded-lg p-2.5 text-sm ${enfermera ? 'bg-slate-100 text-slate-600' : ''}">
-                <p class="text-[11px] text-slate-500">${enfermera ? 'El precio oficial del catálogo queda bloqueado para enfermería.' : 'Si cambia el precio, queda como precio oficial del catálogo.'}</p>
-                ${admin ? '<button type="button" id="est-mostrar-alta" class="text-xs font-bold text-cyan-800">Agregar estudio al catálogo</button>' : ''}${alta}
-                <p id="est-error" class="text-xs text-red-600 hidden"></p>
-            </div>`,
-            alMostrar: c => {
-                const sel = c.el.querySelector('#est-id'), precio = c.el.querySelector('#est-precio');
-                const sync = () => { const o = sel.selectedOptions[0]; if (o) precio.value = o.getAttribute('data-precio'); };
-                sel.addEventListener('change', sync);
-                sync();
-                const mostrar = c.el.querySelector('#est-mostrar-alta');
-                if (mostrar) mostrar.addEventListener('click', () => c.el.querySelector('#est-alta').classList.remove('hidden'));
-                const guardar = c.el.querySelector('#est-guardar-nuevo');
-                if (guardar) guardar.addEventListener('click', () => {
-                    const r = S.guardarEstudio({ nombre: c.el.querySelector('#est-nuevo-nombre').value, tipo: c.el.querySelector('#est-nuevo-tipo').value, precio_unitario: c.el.querySelector('#est-nuevo-precio').value, aplica_iva: true }, this.sesion);
-                    const error = c.el.querySelector('#est-error');
-                    if (!r.ok) { error.textContent = (r.errores && (r.errores.nombre || r.errores.precio_unitario || r.errores.tipo)) || r.motivo; error.classList.remove('hidden'); return; }
-                    const opt = document.createElement('option');
-                    opt.value = r.estudio.estudio_id;
-                    opt.setAttribute('data-precio', r.estudio.precio_unitario);
-                    opt.textContent = r.estudio.nombre + ' · ' + S.nombreTipoEstudio(r.estudio.tipo) + ' · ' + S.formatoMoneda(r.estudio.precio_unitario);
-                    sel.appendChild(opt);
-                    sel.value = r.estudio.estudio_id;
-                    sync();
-                    BelenUI.toast(r.estudio.nombre + ' quedó en el catálogo.', 'exito');
-                });
-            },
-            botones: [
-                { texto: 'Cancelar', estilo: 'secundario' },
-                { texto: 'Agregar a la cuenta', estilo: 'primario', alPulsar: c => {
-                    const precio = c.el.querySelector('#est-precio').value;
-                    const r = S.cargarEstudioACuenta(turnoId, { estudio_id: c.el.querySelector('#est-id').value, precio_unitario: enfermera ? null : precio }, this.sesion);
-                    const error = c.el.querySelector('#est-error');
-                    if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
-                    BelenUI.toast(r.cargo.concepto + ' agregado · ' + S.formatoMoneda(r.cargo.subtotal), 'exito');
-                    this.render();
-                } }
-            ]
-        });
+    abrirTerminalEstudios: function (turnoId) {
+        BelenUI.abrirTerminalEstudios({ turnoId: turnoId, alGuardar: () => this.render() });
     },
+
+    abrirCargarEstudio: function (turnoId) { this.abrirTerminalEstudios(turnoId); },
 
     // Asignación de cama (Enfermería o Administración). Cama única por paciente activo.
     abrirAsignarCama: function (turnoId) {
@@ -1004,7 +1088,7 @@ const AdminController = {
         const cuerpos = { terminal: () => this.htmlTerminalFarmacia(), inventario: () => this.htmlInventarioFarmacia(), paquetes: () => this.htmlPaquetesFarmacia(), estupefacientes: () => this.htmlEstupefacientesFarmacia(), bitacora: () => this.htmlBitacoraFarmacia() };
         const cuerpo = (cuerpos[this.pestanaFarmacia] || cuerpos.terminal)();
         const ingreso = this.pestanaFarmacia === 'inventario' && this.operadorFarmacia() && S.puede('gestionar_farmacia')
-            ? '<button type="button" onclick="AdminController.abrirIngresoFarmacia()" class="bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-plus"></i> Nuevo Ingreso de Insumo / Servicio</button>' : '';
+            ? '<button type="button" onclick="AdminController.abrirIngresoFarmacia()" class="bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-plus"></i> Nuevo ingreso de insumo</button>' : '';
         const nuevoPaq = this.pestanaFarmacia === 'paquetes' && this.operadorFarmacia() && S.puede('gestionar_farmacia')
             ? '<button type="button" onclick="AdminController.abrirEditorPaquete()" class="bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-plus"></i> Nuevo paquete</button>' : '';
         const nota = this.esKioscoFarmacia()
@@ -1101,7 +1185,7 @@ const AdminController = {
                 ${campo('far-sku', 'Código de barras / SKU', 'text', 'data-autofoco maxlength="20" placeholder="Escanee el código. En material es opcional."')}
                 ${campo('far-nombre', 'Principio activo / denominación genérica', 'text', 'maxlength="80" placeholder="Ej. Dapagliflozina"')}
                 ${campo('far-comercial', 'Nombre comercial / distintivo', 'text', 'maxlength="80" placeholder="Opcional. Ej. Daposar"')}
-                ${sel('far-forma', 'Forma farmacéutica', S.FORMAS_FARMACEUTICAS.map(f => `<option value="${f.codigo}">${f.nombre}</option>`).join(''))}
+                ${sel('far-forma', 'Forma farmacéutica', S.FORMAS_FARMACEUTICAS.filter(f => f.codigo !== 'ESTUDIO').map(f => `<option value="${f.codigo}">${f.nombre}</option>`).join(''))}
                 ${campo('far-concentracion', 'Concentración', 'text', 'maxlength="40" placeholder="Ej. 10 mg, 1 g / 10 ml"')}
                 ${sel('far-via', 'Vía de administración', S.VIAS_ADMINISTRACION.map(v => `<option value="${v.codigo}" ${v.codigo === 'NA' ? 'selected' : ''}>${v.nombre}</option>`).join(''))}
                 ${sel('far-conservacion', 'Conservación', S.CONSERVACIONES.map(c => `<option value="${c.codigo}">${c.nombre}</option>`).join(''))}
@@ -2029,6 +2113,241 @@ const AdminController = {
         const quien = c && c.cargado_por_nombre;
         if (!cuando && !quien) return 'Sin registro';
         return (cuando ? BelenStore.fechaHoraLegible(cuando) : 'Sin hora') + (quien ? ' · ' + quien : '');
+    },
+
+    // ======================================================================
+    // VISTA: TARIFARIO Y CAJA (admin y administrador)
+    // ======================================================================
+    cambiarPestanaTarifario: function (pestana) {
+        this.pestanaTarifario = pestana === 'caja' ? 'caja' : 'catalogo';
+        this.render();
+    },
+    filtrarCategoriaEstudio: function (codigo) {
+        this.filtroCategoriaEstudio = codigo || '';
+        const caja = document.getElementById('cuerpo-estudios');
+        if (caja) caja.innerHTML = this.htmlFilasEstudios();
+        document.querySelectorAll('[data-filtro-est]').forEach(b => {
+            const on = b.getAttribute('data-filtro-est') === this.filtroCategoriaEstudio;
+            b.classList.toggle('bg-slate-900', on); b.classList.toggle('text-white', on); b.classList.toggle('border-slate-900', on);
+            b.classList.toggle('bg-white', !on); b.classList.toggle('text-slate-600', !on);
+        });
+    },
+    filtrarTextoEstudio: function () {
+        const q = document.getElementById('busca-estudio');
+        this.buscaEstudio = q ? q.value : '';
+        const caja = document.getElementById('cuerpo-estudios');
+        if (caja) caja.innerHTML = this.htmlFilasEstudios();
+    },
+    estudiosVisiblesTarifario: function () {
+        const S = BelenStore, n = S.normalizar(this.buscaEstudio || '');
+        return S.listarEstudios().filter(est => {
+            if (this.filtroCategoriaEstudio && est.categoria !== this.filtroCategoriaEstudio) return false;
+            if (!n) return true;
+            return S.normalizar(est.nombre + ' ' + est.codigo + ' ' + est.tubo_muestra).indexOf(n) >= 0;
+        });
+    },
+    htmlFilasEstudios: function () {
+        const S = BelenStore, e = t => this.e(t);
+        const filas = this.estudiosVisiblesTarifario();
+        if (!filas.length) return '<tr><td colspan="6" class="px-4 py-12 text-center text-slate-400">No hay estudios con ese filtro.</td></tr>';
+        return filas.map(est => `<tr class="border-t border-slate-100 hover:bg-slate-50/80">
+            <td class="px-3 py-3 font-mono text-xs font-bold">${e(est.codigo)}</td>
+            <td class="px-3 py-3 font-semibold text-slate-900">${e(est.nombre)}</td>
+            <td class="px-3 py-3 text-xs">${e(S.nombreTipoEstudio(est.categoria))}</td>
+            <td class="px-3 py-3 text-xs">${e(est.tubo_muestra || 'N/A')}</td>
+            <td class="px-3 py-3 font-bold">${e(S.formatoMoneda(est.precio_unitario))}${est.aplica_iva ? '<span class="block text-[10px] font-normal text-amber-700">Grava 16% al facturar</span>' : '<span class="block text-[10px] font-normal text-slate-400">Tasa 0%</span>'}</td>
+            <td class="px-3 py-3 text-right whitespace-nowrap">
+                <button type="button" onclick="AdminController.abrirEditorEstudio('${e(est.estudio_id)}')" class="text-xs font-bold text-cyan-800 px-2 py-1">Editar</button>
+                <button type="button" onclick="AdminController.confirmarEliminarEstudio('${e(est.estudio_id)}')" class="text-xs font-bold text-red-600 px-2 py-1">Eliminar</button>
+            </td></tr>`).join('');
+    },
+    htmlTarifario: function () {
+        const S = BelenStore, e = t => this.e(t);
+        const tab = (id, txt) => {
+            const on = this.pestanaTarifario === id;
+            return `<button type="button" onclick="AdminController.cambiarPestanaTarifario('${id}')" class="px-4 py-2 rounded-lg text-sm font-bold transition ${on ? 'bg-white text-amber-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">${txt}</button>`;
+        };
+        const cuerpo = this.pestanaTarifario === 'caja' ? this.htmlAuditoriaCaja() : this.htmlCatalogoEstudios();
+        return `<div class="mb-4"><h2 class="text-2xl font-extrabold text-slate-800">Tarifario y Caja</h2>
+            <p class="text-slate-500">Catálogo de estudios y auditoría de cuentas. El total se muestra sin IVA; el 16% se suma solo si piden factura.</p></div>
+            <div class="inline-flex flex-wrap bg-slate-100 rounded-xl p-1 mb-5 gap-1">${tab('catalogo', 'Catálogo de estudios')}${tab('caja', 'Auditoría de cuentas')}</div>
+            ${cuerpo}`;
+    },
+    htmlCatalogoEstudios: function () {
+        const S = BelenStore, e = t => this.e(t);
+        const chip = (codigo, texto) => {
+            const on = this.filtroCategoriaEstudio === codigo;
+            return `<button type="button" data-filtro-est="${e(codigo)}" onclick="AdminController.filtrarCategoriaEstudio('${e(codigo)}')" class="px-3 py-1.5 rounded-full text-xs font-bold border ${on ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-slate-200'}">${texto}</button>`;
+        };
+        return `<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div class="flex flex-wrap gap-2">${chip('', 'Todos')}${S.TIPOS_ESTUDIO.map(t => chip(t.codigo, t.nombre)).join('')}</div>
+            <div class="flex flex-wrap gap-2">
+                <input id="busca-estudio" value="${e(this.buscaEstudio)}" oninput="AdminController.filtrarTextoEstudio()" placeholder="Buscar estudio o código" class="border border-slate-300 rounded-lg px-3 py-2 text-sm w-64">
+                <button type="button" onclick="AdminController.abrirEditorEstudio()" class="bg-amber-600 hover:bg-amber-700 text-white text-sm font-bold px-4 py-2 rounded-lg">Nuevo estudio / servicio</button>
+            </div>
+        </div>
+        <p class="text-xs text-slate-500 mb-3">Estos códigos también se pueden incluir al armar un paquete quirúrgico en Farmacia.</p>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table class="w-full text-sm text-left">
+                <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr>
+                    <th class="px-3 py-3">Código</th><th class="px-3 py-3">Nombre</th><th class="px-3 py-3">Categoría</th><th class="px-3 py-3">Tubo / muestra</th><th class="px-3 py-3">Precio</th><th class="px-3 py-3"></th>
+                </tr></thead>
+                <tbody id="cuerpo-estudios">${this.htmlFilasEstudios()}</tbody>
+            </table>
+        </div>`;
+    },
+    abrirEditorEstudio: function (estudioId) {
+        const S = BelenStore, e = t => this.e(t);
+        const est = estudioId ? S.listarEstudios().find(x => x.estudio_id === estudioId) : null;
+        const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white';
+        BelenUI.modal({
+            titulo: est ? 'Editar estudio' : 'Nuevo estudio o servicio', icono: 'fa-file-invoice-dollar', ancho: 'md',
+            html: `<div class="space-y-3 text-left">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Código</label>
+                <input id="te-codigo" value="${e(est ? est.codigo : '')}" maxlength="20" placeholder="Ej. BH" class="${cls}">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Nombre</label>
+                <input id="te-nombre" value="${e(est ? est.nombre : '')}" maxlength="80" data-autofoco class="${cls}">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Categoría</label>
+                <select id="te-categoria" class="${cls}">${S.TIPOS_ESTUDIO.map(t => `<option value="${t.codigo}" ${est && est.categoria === t.codigo ? 'selected' : ''}>${e(t.nombre)}</option>`).join('')}</select>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Tubo / muestra</label>
+                <input id="te-tubo" value="${e(est ? est.tubo_muestra : 'N/A')}" maxlength="60" placeholder="Tubo Lila (EDTA), Tubo Rojo, N/A" class="${cls}">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Precio unitario</label>
+                <input id="te-precio" type="number" min="0.01" step="0.01" value="${est ? est.precio_unitario : ''}" class="${cls}">
+                <label class="flex items-center gap-2 text-sm text-slate-700"><input id="te-iva" type="checkbox" class="rounded border-slate-300 text-amber-600" ${!est || est.aplica_iva ? 'checked' : ''}> Grava 16% solo si en Caja piden factura</label>
+                <p id="te-error" class="text-xs text-red-600 hidden"></p>
+            </div>`,
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Guardar', estilo: 'exito', alPulsar: c => {
+                    const r = S.guardarEstudio({
+                        estudio_id: est ? est.estudio_id : null,
+                        codigo: c.el.querySelector('#te-codigo').value,
+                        nombre: c.el.querySelector('#te-nombre').value,
+                        categoria: c.el.querySelector('#te-categoria').value,
+                        tubo_muestra: c.el.querySelector('#te-tubo').value,
+                        precio_unitario: c.el.querySelector('#te-precio').value,
+                        aplica_iva: c.el.querySelector('#te-iva').checked
+                    }, this.sesion);
+                    const error = c.el.querySelector('#te-error');
+                    if (!r.ok) { error.textContent = (r.errores && (r.errores.nombre || r.errores.categoria || r.errores.codigo || r.errores.precio_unitario || r.errores.tubo_muestra)) || r.motivo; error.classList.remove('hidden'); return false; }
+                    BelenUI.toast(r.estudio.nombre + ' quedó en el tarifario.', 'exito');
+                    this.pestanaTarifario = 'catalogo';
+                    this.render();
+                } }
+            ]
+        });
+    },
+    confirmarEliminarEstudio: function (estudioId) {
+        const est = BelenStore.listarEstudios().find(x => x.estudio_id === estudioId);
+        if (!est) return;
+        BelenUI.confirmar({
+            titulo: 'Eliminar estudio', tipo: 'peligro', textoConfirmar: 'Eliminar',
+            mensaje: 'Se eliminará "' + est.nombre + '" del catálogo. Los cargos ya hechos no se modifican. Un paquete que lo incluya ya no podrá armarse hasta quitar ese código.',
+            alConfirmar: () => {
+                const r = BelenStore.eliminarEstudio(estudioId, this.sesion);
+                if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+                BelenUI.toast('Estudio eliminado.', 'info');
+                this.render();
+            }
+        });
+    },
+    htmlAuditoriaCaja: function () {
+        const S = BelenStore, e = t => this.e(t);
+        const cuentas = S.cuentasAuditoria(this.sesion);
+        if (!cuentas.length) return '<div class="text-center py-16 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">No hay cuentas activas ni pendientes de pago.</div>';
+        return `<div class="flex flex-col gap-4">${cuentas.map(f => {
+            const grupos = [];
+            f.lineas.forEach(c => {
+                const clave = c.dia + '|' + c.turno_horario + '|' + c.quien;
+                let g = grupos.find(x => x.clave === clave);
+                if (!g) { g = { clave: clave, dia: c.dia_txt, turno: c.turno_horario, quien: c.quien, lineas: [] }; grupos.push(g); }
+                g.lineas.push(c);
+            });
+            const bloques = grupos.length ? grupos.map(g => `<div class="mt-3">
+                <p class="text-[11px] font-extrabold uppercase text-slate-500">${e(g.dia)} · ${e(g.turno)} · ${e(g.quien)}</p>
+                <div class="overflow-x-auto"><table class="w-full text-sm mt-1"><tbody>${g.lineas.map(c => `<tr class="border-t border-slate-100">
+                    <td class="py-2 pr-3 font-medium text-slate-800">${e(c.concepto)}${c.tubo_muestra && c.tubo_muestra !== 'N/A' ? `<span class="block text-[11px] text-violet-700">${e(c.tubo_muestra)}</span>` : ''}${c.observaciones_toma ? `<span class="block text-[11px] text-slate-500">${e(c.observaciones_toma)}</span>` : ''}${c.ajustado_por_nombre ? `<span class="block text-[10px] text-amber-700">Ajustado por ${e(c.ajustado_por_nombre)}</span>` : ''}</td>
+                    <td class="py-2 text-right whitespace-nowrap">${e(S.formatoMoneda(c.precio_unitario))}</td>
+                    <td class="py-2 text-center">${c.cantidad || 1}</td>
+                    <td class="py-2 text-right font-bold whitespace-nowrap">${e(S.formatoMoneda(c.subtotal))}</td>
+                    <td class="py-2 text-right"><button type="button" onclick="AdminController.abrirAjusteLinea('${e(f.turno_id)}','${e(c.cargo_id)}')" class="text-xs font-bold text-cyan-800">Ajustar</button></td>
+                </tr>`).join('')}</tbody></table></div></div>`).join('') : '<p class="text-sm text-slate-400 mt-3">Sin conceptos cargados.</p>';
+            const fiscal = f.fiscal;
+            return `<article class="bg-white rounded-2xl border ${f.pendiente_pago ? 'border-amber-300' : 'border-slate-200'} shadow-sm p-5">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <div class="flex flex-wrap items-center gap-2"><h3 class="text-lg font-extrabold text-slate-900">${e(f.nombre)}</h3>${this.badgeEstatus({ estatus: f.estatus })}</div>
+                        <p class="text-xs text-slate-500 mt-1">${f.origen === 'hospitalizacion' ? 'Hospitalización' : 'Consulta / observación'}${f.cama ? ' · ' + e(f.cama) : ''} · ${e(f.medico_nombre || '')}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xl font-extrabold text-slate-900">${e(S.formatoMoneda(fiscal.total))}</p>
+                        <p class="text-[11px] text-slate-500">${f.requiere_factura ? 'Con factura · IVA ' + e(S.formatoMoneda(fiscal.iva)) : 'Sin IVA'}</p>
+                    </div>
+                </div>
+                ${bloques}
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <button type="button" role="switch" aria-checked="${f.requiere_factura ? 'true' : 'false'}" onclick="AdminController.alternarFacturaCuenta('${e(f.turno_id)}', ${f.requiere_factura ? 'false' : 'true'})" class="px-3 py-2 rounded-lg text-xs font-extrabold border ${f.requiere_factura ? 'bg-amber-50 border-amber-400 text-amber-900' : 'bg-white border-slate-300 text-slate-700'}">Factura +16% IVA: ${f.requiere_factura ? 'encendida' : 'apagada'}</button>
+                    <button type="button" onclick="AdminController.imprimirEstadoCuenta('${e(f.turno_id)}')" class="px-3 py-2 rounded-lg text-xs font-extrabold bg-slate-900 text-white">Imprimir estado de cuenta</button>
+                    ${f.pendiente_pago ? `<button type="button" onclick="AdminController.confirmarCerrarExpediente('${e(f.turno_id)}', ${f.requiere_factura ? 'true' : 'false'})" class="px-3 py-2 rounded-lg text-xs font-extrabold bg-emerald-700 text-white">Cerrar cuenta como pagada</button>` : '<span class="text-xs text-slate-400 px-2 py-2">El cierre de caja se habilita con el alta médica pendiente de pago.</span>'}
+                </div>
+            </article>`;
+        }).join('')}</div>`;
+    },
+    alternarFacturaCuenta: function (turnoId, encendida) {
+        const r = BelenStore.establecerFacturaCuenta(turnoId, encendida === true || encendida === 'true', this.sesion);
+        if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+        BelenUI.toast(r.requiere_factura ? 'Factura activada. El 16% se suma a lo gravable.' : 'Factura apagada. Se cobra sin IVA.', 'info');
+        this.render();
+    },
+    imprimirEstadoCuenta: function (turnoId) {
+        const html = BelenStore.htmlEstadoCuenta(turnoId);
+        if (!html) { BelenUI.toast('No se encontró la cuenta.', 'alerta'); return; }
+        const w = window.open('', '_blank', 'noopener,width=860,height=900');
+        if (!w) { BelenUI.toast('El navegador bloqueó la ventana de impresión.', 'alerta'); return; }
+        w.document.write(html);
+        w.document.close();
+        setTimeout(() => { try { w.focus(); w.print(); } catch (err) { /* el estado queda visible en la ventana */ } }, 250);
+    },
+    abrirAjusteLinea: function (turnoId, cargoId) {
+        const S = BelenStore, e = t => this.e(t);
+        const f = S.cuentasAuditoria(this.sesion).find(x => x.turno_id === turnoId);
+        const c = f && f.lineas.find(x => x.cargo_id === cargoId);
+        if (!c) { BelenUI.toast('Ese concepto ya no está en la cuenta.', 'info'); this.render(); return; }
+        const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white';
+        BelenUI.modal({
+            titulo: 'Ajuste manual', subtitulo: c.concepto, icono: 'fa-pen', ancho: 'md',
+            html: `<div class="space-y-3 text-left">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Concepto</label>
+                <input id="aj-concepto" value="${e(c.concepto)}" maxlength="80" class="${cls}">
+                <div class="grid grid-cols-2 gap-3">
+                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase">Precio unitario</label><input id="aj-precio" type="number" step="0.01" value="${c.precio_unitario}" class="${cls}"></div>
+                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase">Cantidad</label><input id="aj-cant" type="number" min="1" max="99" step="1" value="${c.cantidad || 1}" class="${cls}"></div>
+                </div>
+                <label class="flex items-center gap-2 text-sm"><input id="aj-iva" type="checkbox" ${c.aplica_iva ? 'checked' : ''} class="rounded border-slate-300"> Grava 16% si piden factura</label>
+                <p id="aj-error" class="text-xs text-red-600 hidden"></p>
+            </div>`,
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Quitar de la cuenta', estilo: 'peligro', alPulsar: ctrl => {
+                    const r = S.ajustarLineaCuenta(turnoId, cargoId, { eliminar: true }, this.sesion);
+                    if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return false; }
+                    BelenUI.toast('Concepto retirado de la cuenta.', 'info');
+                    this.render();
+                } },
+                { texto: 'Guardar ajuste', estilo: 'primario', alPulsar: ctrl => {
+                    const r = S.ajustarLineaCuenta(turnoId, cargoId, {
+                        concepto: ctrl.el.querySelector('#aj-concepto').value,
+                        precio_unitario: ctrl.el.querySelector('#aj-precio').value,
+                        cantidad: ctrl.el.querySelector('#aj-cant').value,
+                        aplica_iva: ctrl.el.querySelector('#aj-iva').checked
+                    }, this.sesion);
+                    const error = ctrl.el.querySelector('#aj-error');
+                    if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                    BelenUI.toast('Ajuste guardado. Cuenta: ' + S.formatoMoneda(r.total), 'exito');
+                    this.render();
+                } }
+            ]
+        });
     },
 
     // ======================================================================

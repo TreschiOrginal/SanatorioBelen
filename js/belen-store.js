@@ -15,7 +15,8 @@
 //   belen_internamientos ....... episodio hospitalario (internamiento_id PK, FK turno_id, paciente_id, medico_tratante_id)
 //                                con cama, interconsultas[], notas_evolucion[], hojas_indicaciones[], cargos[] y nota_egreso (inmutables: solo se agregan)
 //   belen_permisos_personal .... { [usuario_id]: { ver_consultas, ver_hospitalizados, ver_quirofano, ver_farmacia } } (interruptores de Alfonso)
-//   belen_cirugias ............. cirugías programadas (cirugia_id PK, FK paciente_id opcional, FK medico_cirujano_id)
+//   belen_cirugias ............. cirugías programadas (cirugia_id PK, FK paciente_id opcional, FK medico_cirujano_id,
+//                                sala QX_GRANDE|QX_CHICO, tipo_estancia AMBULATORIA|HOSPITALARIA, hora_inicio, hora_fin)
 //   belen_correcciones ......... bitácora de correcciones administrativas de datos del paciente
 //   belen_catalogo_farmacia .... lotes de medicamento y material de curación (sku, lote, caducidad, stock, precios)
 //   belen_catalogo_estudios .... laboratorio, imagenología y procedimientos (estudio_id PK, precio oficial)
@@ -48,7 +49,8 @@
         farmaciaAmpliada: 'belen_farmacia_ampliada_v2',
         usuarios: 'belen_usuarios',
         papeleria: 'belen_papeleria_personal',
-        demo: 'belen_demo_sembrado'
+        demo: 'belen_demo_sembrado',
+        estudiosV3: 'belen_catalogo_estudios_v3'
     };
 
     // ---------------------------------------------------------------- Catálogos
@@ -129,8 +131,8 @@
         ver_expedientes_catalogo:  ['admin', 'medico'],
         // ---- MÓDULOS (interruptor por usuario en Gestión de Personal). El valor por defecto es el de esta matriz.
         ver_consultas:             ['admin', 'administrador', 'enf_triage', 'medico'],
-        ver_hospitalizados:        ['admin', 'administrador', 'enf_hospital', 'medico'],
-        ver_quirofano:             ['admin', 'administrador', 'enf_quirofano', 'medico'],
+        ver_hospitalizados:        ['admin', 'administrador', 'enf_hospital', 'enf_quirofano', 'medico'],
+        ver_quirofano:             ['admin', 'administrador', 'enf_hospital', 'enf_quirofano', 'medico'],
         ver_farmacia:              ['admin', 'administrador', 'enf_farmacia'],
         // ----
         gestionar_personal:        ['admin'],
@@ -159,7 +161,7 @@
           descripcion: 'Monitor de camas, cuenta del internamiento y visor del expediente.' },
         { permiso: 'ver_quirofano',      etiqueta: 'Quirófano',       icono: 'fa-kit-medical', vistas: ['cirugias'],
           roles: ['admin', 'administrador', 'enf_triage', 'enf_hospital', 'enf_quirofano', 'enf_farmacia', 'medico'],
-          descripcion: 'Próximas cirugías. El médico solo ve en las que participa como cirujano, anestesiólogo o interconsultado.' },
+          descripcion: 'Agenda de Quirófano Grande y Quirófano Chico. El especialista solo ve sus cirugías; el anestesiólogo, solo las suyas.' },
         { permiso: 'ver_farmacia',       etiqueta: 'Farmacia',        icono: 'fa-pills',       vistas: ['farmacia'],
           roles: ['admin', 'administrador', 'enf_farmacia'],
           descripcion: 'La terminal de farmacia y las sesiones de dirección y caja. El personal clínico no abre este módulo en su computadora.' }
@@ -191,6 +193,56 @@
         cerrado_historico: 'Cerrado (histórico)'
     };
     const ESTATUS_EN_FILA = ['pendiente_signos', 'signos_capturados', 'en_consulta'];
+
+    // Dos salas físicas. El día quirúrgico va de 07:00 a 22:00; el cruce se evalúa en [inicio, fin).
+    const SALAS_QUIROFANO = [
+        { codigo: 'QX_GRANDE', nombre: 'Quirófano Grande (General / Especialidades)' },
+        { codigo: 'QX_CHICO', nombre: 'Quirófano Chico (Gineco-Obstetricia / Menor)' }
+    ];
+    const DURACIONES_CIRUGIA = [
+        { minutos: 30, etiqueta: '30 min' },
+        { minutos: 60, etiqueta: '1 hr' },
+        { minutos: 90, etiqueta: '1.5 hrs (90 min)' },
+        { minutos: 120, etiqueta: '2 hrs' },
+        { minutos: 150, etiqueta: '2.5 hrs' },
+        { minutos: 180, etiqueta: '3 hrs' },
+        { minutos: 240, etiqueta: '4+ hrs' }
+    ];
+    const TIPOS_ESTANCIA_QX = [
+        { codigo: 'AMBULATORIA', etiqueta: 'AMBULATORIA (Entra y sale el mismo día sin cama de piso)' },
+        { codigo: 'HOSPITALARIA', etiqueta: 'HOSPITALARIA (Requiere cama de hospitalización)' }
+    ];
+    const ESPECIALIDADES_QUIRURGICAS = ['CIRUGIA_GENERAL', 'GINECOLOGIA_OBSTETRICIA', 'TRAUMATOLOGIA_ORTOPEDIA', 'ANGIOLOGIA'];
+    const QX_DIA_INICIO = 7 * 60;
+    const QX_DIA_FIN = 22 * 60;
+    const AREA_AMBULATORIO_QX = 'Quirófano / Recuperación Ambulatoria';
+    const MODALIDAD_AMBULATORIO_QX = 'AMBULATORIO_QUIROFANO';
+    const QX_TRASLADO_MINUTOS = 40;
+    const UBICACION_QX = { PISO: 'PISO', EN_TRANSITO_QUIROFANO: 'EN_TRANSITO_QUIROFANO', QUIROFANO: 'QUIROFANO' };
+    const CAMAS_HOSPITAL = [
+        { codigo: 'CAMA_1', nombre: 'Cama 1', area: 'HOSPITALIZACION' },
+        { codigo: 'CAMA_2', nombre: 'Cama 2', area: 'HOSPITALIZACION' },
+        { codigo: 'CAMA_3', nombre: 'Cama 3', area: 'HOSPITALIZACION' },
+        { codigo: 'CAMA_4', nombre: 'Cama 4', area: 'HOSPITALIZACION' },
+        { codigo: 'AISLADO', nombre: 'Aislado', area: 'HOSPITALIZACION' },
+        { codigo: 'OBS_1', nombre: 'Observación 1', area: 'OBSERVACION' },
+        { codigo: 'CONS_EXTRA', nombre: 'Consultorio Extra', area: 'OBSERVACION' },
+        { codigo: 'REC_GEN_1', nombre: 'Recuperación General 1', area: 'QUIROFANO' },
+        { codigo: 'REC_GEN_2', nombre: 'Recuperación General 2', area: 'QUIROFANO' },
+        { codigo: 'REC_GINECO', nombre: 'Recuperación Gineco-Obstétrica', area: 'QUIROFANO' }
+    ];
+    const TECNICAS_ANESTESIA = [
+        { codigo: 'GENERAL', etiqueta: 'General balanceada' },
+        { codigo: 'NEUROAXIAL', etiqueta: 'Bloqueo neuroaxial/raquídeo' },
+        { codigo: 'SEDACION', etiqueta: 'Sedación' },
+        { codigo: 'LOCAL', etiqueta: 'Local' }
+    ];
+    const MEDS_ANESTESIA = [
+        { sku: 'FEN-50', nombre: 'Fentanilo Fracción I', fraccion: 'I' },
+        { sku: 'MID-5', nombre: 'Midazolam Fracción II', fraccion: 'II' },
+        { sku: 'PRO-200', nombre: 'Propofol', fraccion: 'IV' },
+        { sku: 'BUP-05', nombre: 'Bupivacaína', fraccion: 'VI' }
+    ];
 
     // ---------------------------------------------------------------- Utilidades
     function leer(clave, porDefecto) {
@@ -700,12 +752,20 @@
     // o a los que le hayan solicitado en interconsulta.
     function hospitalizadoVisiblePara(turno, s) {
         if (!s) return false;
+        if (s.rol === 'enf_quirofano') return pacienteEnFlujoQuirofano(turno);
         if (s.rol === 'admin' || s.rol === 'administrador' || esEnfermeria(s.rol)) return true;
         if (s.rol === 'medico') {
             if (turno.medico_id === s.medico_id || tieneInterconsulta(turno.turno_id, s.medico_id)) return true;
             return s.especialidad_codigo === 'ANESTESIOLOGIA' && pacienteAsignadoAnestesia(turno, s.medico_id);
         }
         return false;
+    }
+    function pacienteEnFlujoQuirofano(turno) {
+        if (!turno) return false;
+        const i = internamientoDeTurno(turno.turno_id);
+        if (turno.modalidad === MODALIDAD_AMBULATORIO_QX || (i && i.modalidad === MODALIDAD_AMBULATORIO_QX)) return true;
+        const u = ubicacionDe(i);
+        return u === UBICACION_QX.EN_TRANSITO_QUIROFANO || u === UBICACION_QX.QUIROFANO;
     }
     function hospitalizadosDe(s) {
         return listarTurnos()
@@ -769,7 +829,8 @@
         const turnos = listarTurnos();
         const inicioConsulta = t => Date.parse(t.pase_en || t.timestamp_llegada);
         const llego = t => Date.parse(t.timestamp_llegada) >= desde;
-        const consultas = turnos.filter(t => !ESTATUS_EN_ESPERA.includes(t.estatus) && inicioConsulta(t) >= desde);
+        const ingresoDirectoQx = t => t.modalidad === MODALIDAD_AMBULATORIO_QX || t.sin_nota_consulta;
+        const consultas = turnos.filter(t => !ingresoDirectoQx(t) && !ESTATUS_EN_ESPERA.includes(t.estatus) && inicioConsulta(t) >= desde);
         const porEsp = ESPECIALIDADES.map((esp, k) => ({ codigo: esp.codigo, nombre: esp.nombre, total: consultas.filter(t => t.especialidad_codigo === esp.codigo).length, orden: k }))
             .filter(x => x.total > 0)                                  // REGLA: solo especialidades con más de 0 consultas
             .sort((a, b) => b.total - a.total || a.orden - b.orden)
@@ -1153,7 +1214,10 @@
             pendiente_pago: turno.estatus === ESTATUS.ALTA_PENDIENTE_PAGO,
             cuenta_actual: i ? Number(i.cuenta_actual || 0) : Number(turno.cuenta_actual || 0),
             area: (i && i.area_destino) || turno.area_destino || null, destino: (i && i.destino) || turno.destino || null,
-            relacion: relacionMedico(i, turno, s)
+            modalidad: (i && i.modalidad) || turno.modalidad || null,
+            ambulatorio_qx: ((i && i.modalidad) || turno.modalidad) === MODALIDAD_AMBULATORIO_QX,
+            relacion: relacionMedico(i, turno, s),
+            flujo_qx: flujoQuirofanoDe(turno, i, s)
         };
     }
 
@@ -1164,7 +1228,9 @@
         const t = obtenerTurno(i.turno_id);
         if (!t) return { ok: false, motivo: 'No se encontró el episodio del paciente.' };
         const caja = s.rol === 'administrador' && (PERMISOS.cargar_consumos.includes(s.rol) || PERMISOS.ver_cuentas_cobrar.includes(s.rol));
-        if (s.rol !== 'admin' && !caja && !permisoModuloDe(s.usuario_id, 'ver_hospitalizados')) return { ok: false, motivo: 'Su perfil no tiene habilitado el módulo de Hospitalizados.' };
+        const ambQx = i.modalidad === MODALIDAD_AMBULATORIO_QX;
+        const enfQxAmb = s.rol === 'enf_quirofano' && ambQx;
+        if (s.rol !== 'admin' && !caja && !enfQxAmb && !permisoModuloDe(s.usuario_id, 'ver_hospitalizados')) return { ok: false, motivo: 'Su perfil no tiene habilitado el módulo de Hospitalizados.' };
         if (!hospitalizadoVisiblePara(t, s)) return { ok: false, motivo: 'Este paciente no está a su cargo ni le fue solicitado en interconsulta. Solo puede ver a sus propios pacientes hospitalizados.' };
         const visorOk = t.estatus === ESTATUS.INTERNADO || t.estatus === ESTATUS.ALTA_PENDIENTE_PAGO || t.estatus === ESTATUS.CERRADO_HISTORICO;
         if (!visorOk) return { ok: false, motivo: 'El papeleo de ingreso de este paciente sigue en curso. El visor se habilita cuando el médico finaliza el expediente.' };
@@ -1509,121 +1575,762 @@
     }
 
     // ================================================================ CIRUGÍAS PROGRAMADAS
-    // Estructura (tabla SQL futura): cirugia_id PK, paciente_id FK opcional, paciente_nombre, fecha_nacimiento, procedimiento,
-    // fecha_hora (ISO), medico_cirujano_id FK, medico_cirujano_nombre, notas, estatus (programada | realizada | cancelada).
-    // Si la cirugía está ligada a un paciente del catálogo, nombre y fecha de nacimiento se leen del catálogo (reflejan correcciones).
+    // cirugia_id PK, paciente_id FK opcional, sala (QX_GRANDE | QX_CHICO), tipo_estancia (AMBULATORIA | HOSPITALARIA),
+    // fecha (YYYY-MM-DD), hora_inicio, hora_fin, duracion_minutos, fecha_hora (ISO de inicio),
+    // medico_cirujano_id, anestesiologo_id opcional (null = pendiente), indicaciones_preoperatorias, notas, estatus.
+    // El rango ocupado es [hora_inicio, hora_fin). Nombre y fecha de nacimiento se leen del catálogo si hay paciente_id.
     function listarCirugias() { return leer(CLAVES.cirugias, []); }
+    function salaPorCodigo(codigo) { return SALAS_QUIROFANO.find(x => x.codigo === codigo) || null; }
+    function duracionPorMinutos(n) { return DURACIONES_CIRUGIA.find(x => x.minutos === Number(n)) || null; }
+    function fechaLocalDeDate(d) {
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function minutosDeHora(hhmm) {
+        const m = String(hhmm || '').match(/^(\d{2}):(\d{2})$/);
+        if (!m) return null;
+        const h = +m[1], min = +m[2];
+        if (h > 23 || min > 59) return null;
+        return h * 60 + min;
+    }
+    function horaDeMinutos(mins) {
+        const m = ((mins % 1440) + 1440) % 1440;
+        return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    }
+    function fechaDeCirugia(c) {
+        if (c && /^\d{4}-\d{2}-\d{2}$/.test(c.fecha || '')) return c.fecha;
+        const d = new Date(c && c.fecha_hora);
+        return isNaN(d.getTime()) ? '' : fechaLocalDeDate(d);
+    }
+    function minutosInicioCirugia(c) {
+        const directo = minutosDeHora(c && c.hora_inicio);
+        if (directo !== null) return directo;
+        const d = new Date(c && c.fecha_hora);
+        return isNaN(d.getTime()) ? null : d.getHours() * 60 + d.getMinutes();
+    }
+    function minutosFinCirugia(c) {
+        const directo = minutosDeHora(c && c.hora_fin);
+        if (directo !== null && c.hora_fin) return directo;
+        const ini = minutosInicioCirugia(c);
+        if (ini === null) return null;
+        return ini + (parseInt(c.duracion_minutos, 10) || 90);
+    }
+    function estructurarCirugia(c) {
+        const d = new Date(c.fecha_hora);
+        const valida = !isNaN(d.getTime());
+        if (!salaPorCodigo(c.sala)) c.sala = 'QX_GRANDE';
+        if (c.tipo_estancia !== 'AMBULATORIA' && c.tipo_estancia !== 'HOSPITALARIA') c.tipo_estancia = 'HOSPITALARIA';
+        if (!duracionPorMinutos(c.duracion_minutos)) c.duracion_minutos = 90;
+        if (!c.fecha && valida) c.fecha = fechaLocalDeDate(d);
+        if (!c.hora_inicio && valida) c.hora_inicio = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        const ini = minutosDeHora(c.hora_inicio);
+        if (ini !== null && !c.hora_fin) c.hora_fin = horaDeMinutos(ini + Number(c.duracion_minutos));
+        if (c.indicaciones_preoperatorias == null) c.indicaciones_preoperatorias = '';
+        if (c.notas == null) c.notas = '';
+        return c;
+    }
+    function finEpochCirugia(c) {
+        const base = Date.parse(c.fecha_hora);
+        if (!Number.isFinite(base)) return 0;
+        return base + (parseInt(c.duracion_minutos, 10) || 0) * 60000;
+    }
+    function mismoPacienteCirugia(c, t) {
+        if (!c || !t) return false;
+        if (c.paciente_id && t.paciente_id === c.paciente_id) return true;
+        const nombre = c.paciente_nombre || c.nombre;
+        return !!nombre && normalizar(t.paciente_nombre) === normalizar(nombre);
+    }
+    function pacienteInternadoActivo(c) {
+        return listarTurnos().some(t => (t.estatus === ESTATUS.INTERNADO || t.estatus === ESTATUS.INTERNADO_EN_PROCESO) && mismoPacienteCirugia(c, t));
+    }
+    function medicoInterconsultadoEnCirugia(c, medicoId) {
+        if (!c || !medicoId || !c.paciente_id) return false;
+        return listarInternamientos().some(i => i.paciente_id === c.paciente_id && i.estatus !== 'descartado' && (i.interconsultas || []).some(x => x.medico_id === medicoId));
+    }
     function fichaCirugia(c) {
         const p = c.paciente_id ? buscarPacientePorId(c.paciente_id) : null;
         const nombre = p ? p.nombre_completo : c.paciente_nombre, fn = p ? p.fecha_nacimiento : c.fecha_nacimiento;
         const m = USUARIOS[c.medico_cirujano_id];
-        const a = USUARIOS[c.anestesiologo_id];
+        const a = c.anestesiologo_id ? USUARIOS[c.anestesiologo_id] : null;
         const d = new Date(c.fecha_hora);
         const valida = !isNaN(d.getTime());
+        const sala = salaPorCodigo(c.sala);
+        const dur = duracionPorMinutos(c.duracion_minutos);
+        const horaIni = c.hora_inicio || (valida ? String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') : '');
+        const horaFin = c.hora_fin || '';
         return {
             cirugia_id: c.cirugia_id, paciente_id: c.paciente_id || null, nombre: nombre, fecha_nacimiento: fn, edad: calcularEdad(fn),
             procedimiento: c.procedimiento, fecha_hora: c.fecha_hora, estatus: c.estatus,
+            fecha: fechaDeCirugia(c),
             fecha_texto: valida ? d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : '',
-            hora_texto: valida ? d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : '',
+            hora_texto: horaIni && horaFin ? horaIni + ' a ' + horaFin : (valida ? d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) : ''),
+            hora_inicio: horaIni, hora_fin: horaFin, duracion_minutos: Number(c.duracion_minutos) || null, duracion_texto: dur ? dur.etiqueta : '',
+            sala: c.sala || null, sala_nombre: sala ? sala.nombre : '',
+            tipo_estancia: c.tipo_estancia || null,
             medico_cirujano_id: c.medico_cirujano_id, medico_cirujano: m ? m.nombre : c.medico_cirujano_nombre,
             medico_especialidad: m ? m.cargo : null,
             anestesiologo_id: c.anestesiologo_id || null, anestesiologo: a ? a.nombre : (c.anestesiologo_nombre || ''),
-            notas: c.notas || ''
+            anestesiologo_pendiente: !c.anestesiologo_id,
+            indicaciones_preoperatorias: c.indicaciones_preoperatorias || '', notas: c.notas || '',
+            turno_id: c.turno_id || null, ingresado_en: c.ingresado_en || null,
+            ingresada: !!(c.turno_id || c.ingresado_en), ya_internado: pacienteInternadoActivo(c),
+            en_cirugia: enCirugiaDeProgramacion(c)
         };
     }
     function pacienteAsignadoAnestesia(turno, medicoId) {
         if (!turno || !medicoId) return false;
-        return listarCirugias().some(c => c.estatus !== 'cancelada' && c.anestesiologo_id === medicoId && (
-            (c.paciente_id && c.paciente_id === turno.paciente_id) || normalizar(c.paciente_nombre) === normalizar(turno.paciente_nombre)));
+        return listarCirugias().some(c => c.estatus !== 'cancelada' && c.anestesiologo_id === medicoId && mismoPacienteCirugia(c, turno));
     }
+    // admin, administrador y enf_quirofano ven toda la agenda. enf_hospital, solo las de sus pacientes internados.
+    // El especialista ve las suyas o donde está interconsultado. Anestesiología solo donde está asignada.
     function cirugiaVisiblePara(c, s) {
         if (!s || !c) return false;
-        if (s.rol !== 'medico') return true;
-        if (c.medico_cirujano_id === s.medico_id || c.anestesiologo_id === s.medico_id) return true;
-        if (s.especialidad_codigo === 'ANESTESIOLOGIA' || !c.paciente_id) return false;
-        return listarInternamientos().some(i => i.paciente_id === c.paciente_id && i.estatus !== 'descartado' && (i.interconsultas || []).some(x => x.medico_id === s.medico_id));
+        if (s.rol === 'admin' || s.rol === 'administrador' || s.rol === 'enf_quirofano') return true;
+        if (s.rol === 'enf_hospital') return pacienteInternadoActivo(c);
+        if (s.rol !== 'medico') return false;
+        if (s.especialidad_codigo === 'ANESTESIOLOGIA') return c.anestesiologo_id === s.medico_id;
+        if (c.medico_cirujano_id === s.medico_id) return true;
+        return medicoInterconsultadoEnCirugia(c, s.medico_id);
     }
     function cirugiasVisibles(s, ahora) {
         return proximasCirugias(ahora).filter(c => cirugiaVisiblePara(c, s));
     }
-    // Próximas = programadas con fecha y hora de hoy en adelante (más cercana primero)
+    function cirugiaPara(id, s) {
+        const c = listarCirugias().find(x => x.cirugia_id === id);
+        if (!c || !cirugiaVisiblePara(c, s)) return null;
+        return fichaCirugia(c);
+    }
+    // Sigue en agenda mientras no haya terminado la duración estimada.
     function proximasCirugias(ahora) {
         const t0 = (ahora ? new Date(ahora) : new Date()).getTime();
-        return listarCirugias().filter(c => c.estatus === 'programada' && Date.parse(c.fecha_hora) >= t0)
+        return listarCirugias().filter(c => c.estatus === 'programada' && finEpochCirugia(c) >= t0)
             .sort((a, b) => Date.parse(a.fecha_hora) - Date.parse(b.fecha_hora)).map(fichaCirugia);
     }
     function cirujanos() { return medicosActivos().filter(u => u.especialidad_codigo !== 'ANESTESIOLOGIA'); }
     function anestesiologos() { return medicosDeEspecialidad('ANESTESIOLOGIA'); }
-    // entrada.fecha_hora: 'YYYY-MM-DDTHH:mm' (hora local del navegador)
-    function validarCirugia(entrada, ahora) {
+    function puedeIngresarAmbulatorio(s) {
+        return !!s && (s.rol === 'admin' || s.rol === 'administrador' || s.rol === 'enf_quirofano');
+    }
+    // Tramos de 07:00 a 22:00. Si quien programa es médico, el ocupado no lleva paciente, cirujano ni procedimiento.
+    function disponibilidadQuirofano(sala, fecha, s) {
+        if (!salaPorCodigo(sala) || !parseFechaISO(fecha)) return { ok: false, tramos: [] };
+        const ocultar = !s || s.rol === 'medico';
+        const crudos = listarCirugias().filter(c => c.estatus === 'programada' && c.sala === sala && fechaDeCirugia(c) === fecha).map(c => {
+            const a = minutosInicioCirugia(c), b = minutosFinCirugia(c);
+            if (a === null || b === null || b <= a) return null;
+            const inicio = Math.max(a, QX_DIA_INICIO), fin = Math.min(b, QX_DIA_FIN);
+            if (fin <= inicio) return null;
+            const hi = horaDeMinutos(inicio), hf = horaDeMinutos(fin);
+            const f = ocultar ? null : fichaCirugia(c);
+            const etiqueta = ocultar
+                ? 'Horario Ocupado (' + hi + ' - ' + hf + ')'
+                : 'Ocupado: ' + hi + ' - ' + hf + (f ? ' · ' + f.nombre + ' · ' + f.procedimiento + ' · ' + f.medico_cirujano : '');
+            return { tipo: 'ocupado', inicio: hi, fin: hf, inicio_min: inicio, fin_min: fin, etiqueta: etiqueta };
+        }).filter(Boolean).sort((a, b) => a.inicio_min - b.inicio_min);
+        const fusion = [];
+        crudos.forEach(iv => {
+            const ultimo = fusion[fusion.length - 1];
+            if (!ultimo || iv.inicio_min > ultimo.fin_min) fusion.push({ inicio_min: iv.inicio_min, fin_min: iv.fin_min });
+            else ultimo.fin_min = Math.max(ultimo.fin_min, iv.fin_min);
+        });
+        const ahora = new Date();
+        const hoy = fecha === fechaLocalDeDate(ahora);
+        const corte = hoy ? ahora.getHours() * 60 + ahora.getMinutes() : null;
+        const piezas = [];
+        let cursor = QX_DIA_INICIO;
+        const empujarLibre = (desde, hasta) => {
+            if (hasta <= desde) return;
+            const partir = (a, b, tipo) => {
+                if (b <= a) return;
+                piezas.push({ tipo: tipo, inicio: horaDeMinutos(a), fin: horaDeMinutos(b), inicio_min: a, fin_min: b, etiqueta: tipo === 'libre' ? 'Libre: ' + horaDeMinutos(a) + ' - ' + horaDeMinutos(b) : 'Horario pasado' });
+            };
+            if (corte !== null && corte > desde && corte < hasta) {
+                partir(desde, corte, 'pasado');
+                partir(Math.max(corte, desde), hasta, 'libre');
+            } else if (corte !== null && corte >= hasta) partir(desde, hasta, 'pasado');
+            else partir(desde, hasta, 'libre');
+        };
+        const ancho = QX_DIA_FIN - QX_DIA_INICIO;
+        const barra = [];
+        const meter = (desde, hasta, tipo, etiqueta) => {
+            if (hasta <= desde) return;
+            barra.push({ tipo: tipo, inicio: horaDeMinutos(desde), fin: horaDeMinutos(hasta), inicio_min: desde, fin_min: hasta, etiqueta: etiqueta, porcentaje: Math.max(0.8, ((hasta - desde) / ancho) * 100) });
+        };
+        fusion.forEach(iv => {
+            empujarLibre(cursor, iv.inicio_min);
+            const et = ocultar
+                ? 'Horario Ocupado (' + horaDeMinutos(iv.inicio_min) + ' - ' + horaDeMinutos(iv.fin_min) + ')'
+                : crudos.filter(x => x.inicio_min < iv.fin_min && iv.inicio_min < x.fin_min).map(x => x.etiqueta).join(' · ');
+            meter(iv.inicio_min, iv.fin_min, 'ocupado', et);
+            cursor = Math.max(cursor, iv.fin_min);
+        });
+        empujarLibre(cursor, QX_DIA_FIN);
+        piezas.forEach(p => meter(p.inicio_min, p.fin_min, p.tipo, p.etiqueta));
+        barra.sort((a, b) => a.inicio_min - b.inicio_min || (a.tipo === 'ocupado' ? 1 : 0));
+        const ocupadosVisibles = crudos.map(iv => ({ tipo: 'ocupado', inicio: iv.inicio, fin: iv.fin, inicio_min: iv.inicio_min, fin_min: iv.fin_min, etiqueta: iv.etiqueta }));
+        return { ok: true, tramos: barra, ocupados: ocupadosVisibles, libres: piezas.filter(t => t.tipo === 'libre') };
+    }
+    function validarCirugia(entrada, ahora, s) {
         const v = {
-            nombre: limpiarEspacios(entrada.nombre), fecha_nacimiento: entrada.fecha_nacimiento || '', procedimiento: limpiarEspacios(entrada.procedimiento),
-            fecha_hora: entrada.fecha_hora || '', medico_cirujano_id: entrada.medico_cirujano_id || '', anestesiologo_id: entrada.anestesiologo_id || '', notas: String(entrada.notas || '').trim()
+            nombre: limpiarEspacios(entrada.nombre), fecha_nacimiento: entrada.fecha_nacimiento || '', paciente_id: entrada.paciente_id || '',
+            procedimiento: limpiarEspacios(entrada.procedimiento), tipo_estancia: entrada.tipo_estancia || '', sala: entrada.sala || '',
+            fecha: entrada.fecha || '', hora_inicio: entrada.hora_inicio || '', duracion_minutos: Number(entrada.duracion_minutos),
+            medico_cirujano_id: entrada.medico_cirujano_id || '', anestesiologo_id: entrada.anestesiologo_id || '',
+            indicaciones_preoperatorias: String(entrada.indicaciones_preoperatorias || '').trim(), notas: String(entrada.notas || '').trim()
         };
         const errores = {};
         if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]{5,}$/.test(v.nombre) || v.nombre.split(' ').filter(w => w.length > 1).length < 2) errores.nombre = 'Escriba el nombre completo (nombre y apellido, solo letras).';
         if (!parseFechaISO(v.fecha_nacimiento)) errores.fecha_nacimiento = 'Seleccione la fecha de nacimiento.';
         else if (v.fecha_nacimiento > hoyLocal() || v.fecha_nacimiento < '1900-01-01') errores.fecha_nacimiento = 'La fecha de nacimiento no es válida.';
         if (contarLetrasTxt(v.procedimiento) < 4) errores.procedimiento = 'Escriba el nombre de la cirugía.';
-        const d = new Date(v.fecha_hora);
-        if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v.fecha_hora) || isNaN(d.getTime())) errores.fecha_hora = 'Seleccione la fecha y la hora exacta de la cirugía.';
-        else if (d.getTime() < (ahora ? new Date(ahora) : new Date()).getTime()) errores.fecha_hora = 'La fecha y la hora deben ser posteriores al momento actual.';
+        if (v.tipo_estancia !== 'AMBULATORIA' && v.tipo_estancia !== 'HOSPITALARIA') errores.tipo_estancia = 'Seleccione si la cirugía es ambulatoria u hospitalaria.';
+        if (!salaPorCodigo(v.sala)) errores.sala = 'Seleccione el quirófano.';
+        const dur = duracionPorMinutos(v.duracion_minutos);
+        if (!dur) errores.duracion_minutos = 'Seleccione la duración estimada.';
+        const ini = minutosDeHora(v.hora_inicio);
+        if (!parseFechaISO(v.fecha)) errores.fecha = 'Seleccione la fecha de la cirugía.';
+        else if (v.fecha < hoyLocal()) errores.fecha = 'La fecha no puede ser anterior a hoy.';
+        if (ini === null) errores.hora_inicio = 'Seleccione la hora de inicio.';
+        else if (ini < QX_DIA_INICIO || ini >= QX_DIA_FIN) errores.hora_inicio = 'El quirófano opera de 07:00 a 22:00.';
+        let fin = null;
+        if (!errores.hora_inicio && dur) {
+            fin = ini + dur.minutos;
+            v.hora_fin = horaDeMinutos(fin);
+            v.duracion_minutos = dur.minutos;
+            if (fin > QX_DIA_FIN) errores.hora_inicio = 'Con esa duración la cirugía pasaría de las 22:00. Elija una hora más temprana o una duración menor.';
+        }
+        const marca = v.fecha && v.hora_inicio ? new Date(v.fecha + 'T' + v.hora_inicio) : null;
+        const reloj = ahora ? new Date(ahora) : new Date();
+        if (marca && !isNaN(marca.getTime()) && marca.getTime() < reloj.getTime()) errores.hora_inicio = errores.hora_inicio || 'La hora de inicio debe ser posterior al momento actual.';
         const m = USUARIOS[v.medico_cirujano_id];
-        const an = USUARIOS[v.anestesiologo_id];
-        if (!m || m.rol !== 'medico' || m.activo === false) errores.medico_cirujano_id = 'Seleccione al médico cirujano.';
-        if (!an || an.rol !== 'medico' || an.activo === false || an.especialidad_codigo !== 'ANESTESIOLOGIA') errores.anestesiologo_id = 'Seleccione al anestesiólogo.';
-        else if (an.id === (m && m.id)) errores.anestesiologo_id = 'El anestesiólogo debe ser distinto del cirujano.';
+        const an = v.anestesiologo_id ? USUARIOS[v.anestesiologo_id] : null;
+        if (!m || m.rol !== 'medico' || m.activo === false || m.especialidad_codigo === 'ANESTESIOLOGIA') errores.medico_cirujano_id = 'Seleccione al médico cirujano.';
+        if (v.anestesiologo_id && (!an || an.rol !== 'medico' || an.activo === false || an.especialidad_codigo !== 'ANESTESIOLOGIA')) errores.anestesiologo_id = 'Seleccione un anestesiólogo o déjelo pendiente.';
+        else if (an && m && an.id === m.id) errores.anestesiologo_id = 'El anestesiólogo debe ser distinto del cirujano.';
+        if (!errores.sala && !errores.fecha && fin !== null && !errores.hora_inicio) {
+            const choque = listarCirugias().find(c => {
+                if (c.estatus !== 'programada' || c.sala !== v.sala || fechaDeCirugia(c) !== v.fecha) return false;
+                const a0 = minutosInicioCirugia(c), a1 = minutosFinCirugia(c);
+                return a0 !== null && a1 !== null && a0 < fin && ini < a1;
+            });
+            if (choque) {
+                const detalle = (!s || s.rol === 'medico') ? '' : ' (' + horaDeMinutos(minutosInicioCirugia(choque)) + ' - ' + horaDeMinutos(minutosFinCirugia(choque)) + ')';
+                errores.hora_inicio = 'Ese horario se cruza con otra cirugía activa en la misma sala' + detalle + '.';
+            }
+        }
+        if (v.indicaciones_preoperatorias.length > 600) errores.indicaciones_preoperatorias = 'Máximo 600 caracteres.';
         if (v.notas.length > 600) errores.notas = 'Máximo 600 caracteres.';
         return { ok: Object.keys(errores).length === 0, errores: errores, valores: v };
     }
     function programarCirugia(entrada, s) {
         if (!s || !permisoAccionDe(s.usuario_id, 'programar_cirugia')) return { ok: false, motivo: 'Su perfil no puede programar cirugías.' };
-        const r = validarCirugia(entrada);
+        const r = validarCirugia(entrada, null, s);
         if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
-        const v = r.valores, m = USUARIOS[v.medico_cirujano_id], an = USUARIOS[v.anestesiologo_id];
-        const pac = buscarPacientePorIdentidad(v.nombre, v.fecha_nacimiento);
+        const v = r.valores, m = USUARIOS[v.medico_cirujano_id], an = v.anestesiologo_id ? USUARIOS[v.anestesiologo_id] : null;
+        const pac = (v.paciente_id && buscarPacientePorId(v.paciente_id)) || buscarPacientePorIdentidad(v.nombre, v.fecha_nacimiento);
+        const inicio = new Date(v.fecha + 'T' + v.hora_inicio);
         const c = {
-            cirugia_id: uid('CX'), paciente_id: pac ? pac.paciente_id : null, paciente_nombre: pac ? pac.nombre_completo : v.nombre, fecha_nacimiento: v.fecha_nacimiento,
-            procedimiento: v.procedimiento, fecha_hora: new Date(v.fecha_hora).toISOString(), medico_cirujano_id: m.id, medico_cirujano_nombre: m.nombre,
-            anestesiologo_id: an.id, anestesiologo_nombre: an.nombre,
-            notas: v.notas, estatus: 'programada', programada_por_id: s.usuario_id, programada_por_nombre: s.nombre, creado_en: new Date().toISOString()
+            cirugia_id: uid('CX'), paciente_id: pac ? pac.paciente_id : (v.paciente_id || null), paciente_nombre: pac ? pac.nombre_completo : v.nombre, fecha_nacimiento: v.fecha_nacimiento,
+            procedimiento: v.procedimiento, tipo_estancia: v.tipo_estancia, sala: v.sala, fecha: v.fecha,
+            hora_inicio: v.hora_inicio, hora_fin: v.hora_fin, duracion_minutos: v.duracion_minutos, fecha_hora: inicio.toISOString(),
+            medico_cirujano_id: m.id, medico_cirujano_nombre: m.nombre,
+            anestesiologo_id: an ? an.id : null, anestesiologo_nombre: an ? an.nombre : '',
+            indicaciones_preoperatorias: v.indicaciones_preoperatorias, notas: v.notas,
+            turno_id: null, ingresado_en: null,
+            estatus: 'programada', programada_por_id: s.usuario_id, programada_por_nombre: s.nombre, creado_en: new Date().toISOString()
         };
         const lista = listarCirugias().concat([c]);
-        return escribir(CLAVES.cirugias, lista) ? { ok: true, cirugia: c } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+        return escribir(CLAVES.cirugias, lista) ? { ok: true, cirugia: fichaCirugia(c) } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
     }
-    // Datos de demostración (fechas relativas a hoy, para que siempre sean "próximas")
+    function asignarAnestesiologo(cirugiaId, anestesiologoId, s) {
+        if (!s || (s.rol !== 'admin' && s.rol !== 'administrador')) return { ok: false, motivo: 'Solo Administración puede asignar al anestesiólogo.' };
+        const lista = listarCirugias();
+        const c = lista.find(x => x.cirugia_id === cirugiaId);
+        if (!c || c.estatus === 'cancelada') return { ok: false, motivo: 'No se encontró la cirugía.' };
+        const an = USUARIOS[anestesiologoId];
+        if (!an || an.rol !== 'medico' || an.activo === false || an.especialidad_codigo !== 'ANESTESIOLOGIA') return { ok: false, motivo: 'Seleccione un anestesiólogo activo.' };
+        if (an.id === c.medico_cirujano_id) return { ok: false, motivo: 'El anestesiólogo debe ser distinto del cirujano.' };
+        c.anestesiologo_id = an.id;
+        c.anestesiologo_nombre = an.nombre;
+        c.anestesiologo_asignado_en = new Date().toISOString();
+        c.anestesiologo_asignado_por_id = s.usuario_id;
+        c.anestesiologo_asignado_por_nombre = s.nombre;
+        return escribir(CLAVES.cirugias, lista) ? { ok: true, cirugia: fichaCirugia(c) } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+    }
+    function ingresarPacienteAmbulatorio(cirugiaId, s) {
+        if (!puedeIngresarAmbulatorio(s)) return { ok: false, motivo: 'Su perfil no puede ingresar pacientes ambulatorios a quirófano.' };
+        const lista = listarCirugias();
+        const c = lista.find(x => x.cirugia_id === cirugiaId);
+        if (!c || c.estatus !== 'programada') return { ok: false, motivo: 'La cirugía no está programada.' };
+        if (c.tipo_estancia !== 'AMBULATORIA') return { ok: false, motivo: 'Solo las cirugías ambulatorias entran directo a quirófano.' };
+        if (c.ingresado_en || c.turno_id) return { ok: false, motivo: 'Este paciente ya fue ingresado a quirófano.' };
+        let pac = c.paciente_id ? buscarPacientePorId(c.paciente_id) : buscarPacientePorIdentidad(c.paciente_nombre, c.fecha_nacimiento);
+        if (!pac) pac = guardarPaciente({ nombre_completo: c.paciente_nombre, fecha_nacimiento: c.fecha_nacimiento });
+        if (pacienteInternadoActivo(Object.assign({}, c, { paciente_id: pac.paciente_id, paciente_nombre: pac.nombre_completo }))) return { ok: false, motivo: 'Este paciente ya tiene un episodio hospitalario activo.' };
+        const medico = USUARIOS[c.medico_cirujano_id];
+        if (!medico || !medico.medico_id) return { ok: false, motivo: 'No se encontró al cirujano de esta programación.' };
+        const esp = especialidadPorCodigo(medico.especialidad_codigo);
+        const ahoraIso = new Date().toISOString();
+        const turnos = listarTurnos();
+        const turno = {
+            turno_id: uid('T'), paciente_id: pac.paciente_id, paciente_nombre: pac.nombre_completo, fecha_nacimiento: pac.fecha_nacimiento, sexo: pac.sexo || null,
+            especialidad_codigo: medico.especialidad_codigo, especialidad: esp ? esp.nombre : medico.cargo,
+            medico_id: medico.medico_id, medico_nombre: medico.nombre, motivo: c.procedimiento, fecha_turno: hoyLocal(),
+            numero_turno: siguienteNumeroTurno(medico.especialidad_codigo), timestamp_llegada: ahoraIso,
+            estatus: ESTATUS.INTERNADO, modalidad: MODALIDAD_AMBULATORIO_QX, sin_nota_consulta: true,
+            area_destino: AREA_AMBULATORIO_QX, destino: 'Quirofano', signos_vitales: null, cargos: [], cuenta_actual: 0, cuenta_actual_total: 0,
+            cirugia_id: c.cirugia_id, registrado_por: s.usuario_id
+        };
+        turnos.push(turno);
+        if (!escribir(CLAVES.turnos, turnos)) return { ok: false, motivo: 'No se pudo crear el episodio.' };
+        const hoja = nuevaHojaIndicaciones([], 'preoperatorio', {
+            dieta: 'Ayuno según indicación preoperatoria.', soluciones_parenterales: '', medicamentos: '',
+            medidas_generales: c.indicaciones_preoperatorias || 'Sin indicaciones preoperatorias registradas.'
+        }, { id: medico.id, nombre: medico.nombre, relacion: 'tratante' }, ahoraIso);
+        const internamiento = {
+            internamiento_id: uid('INT'), turno_id: turno.turno_id, paciente_id: pac.paciente_id,
+            medico_tratante_id: medico.medico_id, medico_tratante_nombre: medico.nombre,
+            especialidad_codigo: medico.especialidad_codigo, especialidad: turno.especialidad,
+            fecha_ingreso: ahoraIso, cama: null, estatus: 'activo', modalidad: MODALIDAD_AMBULATORIO_QX, sin_nota_consulta: true,
+            hoja_frontal_habilitada: true, consentimientos_habilitados: true,
+            area_destino: AREA_AMBULATORIO_QX, destino: 'Quirofano',
+            diagnostico_ingreso: c.procedimiento, diagnostico_actual: c.procedimiento, alergias: null,
+            interconsultas: [], notas_evolucion: [], hojas_indicaciones: [hoja], cargos: [], cuenta_actual: 0, cuenta_actual_total: 0,
+            nota_egreso: null, cirugia_id: c.cirugia_id,
+            ubicacion: UBICACION_QX.EN_TRANSITO_QUIROFANO, cama_origen_piso: null,
+            notas_postanestesicas: [], notas_postoperatorias: [], recetas_controlados: []
+        };
+        if (!guardarInternamiento(internamiento)) return { ok: false, motivo: 'No se pudo abrir el internamiento.' };
+        c.paciente_id = pac.paciente_id;
+        c.paciente_nombre = pac.nombre_completo;
+        c.turno_id = turno.turno_id;
+        c.internamiento_id = internamiento.internamiento_id;
+        c.ingresado_en = ahoraIso;
+        if (!escribir(CLAVES.cirugias, lista)) return { ok: false, motivo: 'El episodio se creó, pero no se pudo marcar la cirugía.' };
+        return { ok: true, turno: turno, internamiento: internamiento, cirugia: fichaCirugia(c) };
+    }
+
+    function camaPorCodigo(codigo) { return CAMAS_HOSPITAL.find(c => c.codigo === codigo) || null; }
+    function camaPorNombre(nombre) { return CAMAS_HOSPITAL.find(c => normalizar(c.nombre) === normalizar(nombre)) || null; }
+    function camasDeArea(area) { return CAMAS_HOSPITAL.filter(c => c.area === area); }
+    function ubicacionDe(i) {
+        if (!i) return UBICACION_QX.PISO;
+        if (i.ubicacion) return i.ubicacion;
+        if (i.modalidad === MODALIDAD_AMBULATORIO_QX) return i.cama && camaPorNombre(i.cama) && camaPorNombre(i.cama).area === 'QUIROFANO' ? UBICACION_QX.QUIROFANO : UBICACION_QX.EN_TRANSITO_QUIROFANO;
+        return UBICACION_QX.PISO;
+    }
+    function camaOcupadaPor(nombre, exceptoId) {
+        const clave = normalizar(nombre);
+        if (!clave) return null;
+        return listarInternamientos().find(x => x.internamiento_id !== exceptoId && x.estatus === 'activo' && normalizar(x.cama) === clave
+            && ['internado', 'internado_en_proceso'].includes((obtenerTurno(x.turno_id) || {}).estatus)) || null;
+    }
+    function camasLibres(area, exceptoId) {
+        return camasDeArea(area).filter(c => !camaOcupadaPor(c.nombre, exceptoId)).map(c => ({ codigo: c.codigo, nombre: c.nombre, area: c.area }));
+    }
+    function cirugiaRawDePaciente(turno, ahora) {
+        if (!turno) return null;
+        const t0 = (ahora ? new Date(ahora) : new Date()).getTime();
+        const lista = listarCirugias().filter(c => c.estatus === 'programada' && mismoPacienteCirugia(c, turno))
+            .sort((a, b) => Date.parse(a.fecha_hora) - Date.parse(b.fecha_hora));
+        return lista.find(c => finEpochCirugia(c) >= t0) || lista[lista.length - 1] || null;
+    }
+    function minutosParaInicioCirugia(c, ahora) {
+        if (!c) return null;
+        const t0 = (ahora ? new Date(ahora) : new Date()).getTime();
+        return Math.round((Date.parse(c.fecha_hora) - t0) / 60000);
+    }
+    function enCirugiaDeProgramacion(c, ahora) {
+        if (!c) return false;
+        const turno = (c.turno_id && obtenerTurno(c.turno_id)) || listarTurnos().find(t => t.estatus === ESTATUS.INTERNADO && mismoPacienteCirugia(c, t));
+        const i = turno ? internamientoDeTurno(turno.turno_id) : null;
+        if (!i || ubicacionDe(i) !== UBICACION_QX.QUIROFANO) return false;
+        const t0 = (ahora ? new Date(ahora) : new Date()).getTime();
+        return t0 >= Date.parse(c.fecha_hora) && t0 < finEpochCirugia(c);
+    }
+    function puedePasarAQuirofano(s) { return !!s && (s.rol === 'enf_hospital' || s.rol === 'admin' || s.rol === 'administrador'); }
+    function puedeAdelantarTraslado(s) { return !!s && (s.rol === 'admin' || s.rol === 'administrador'); }
+    function puedeRecibirQuirofano(s) { return !!s && (s.rol === 'enf_quirofano' || s.rol === 'admin' || s.rol === 'administrador'); }
+    function puedeRegresarAPiso(s) { return !!s && (s.rol === 'enf_quirofano' || s.rol === 'enf_hospital' || s.rol === 'admin' || s.rol === 'administrador'); }
+    function cirugiaDeInternamiento(i) {
+        if (!i) return null;
+        const porId = i.cirugia_id ? listarCirugias().find(c => c.cirugia_id === i.cirugia_id && c.estatus !== 'cancelada') : null;
+        return porId || cirugiaRawDePaciente(obtenerTurno(i.turno_id));
+    }
+    function esCirujanoDelInternamiento(i, s) {
+        if (!s || s.rol !== 'medico') return false;
+        const t = obtenerTurno(i.turno_id);
+        if (relacionMedico(i, t, s) === 'tratante') return true;
+        const c = cirugiaDeInternamiento(i);
+        return !!(c && (c.medico_cirujano_id === s.medico_id || c.medico_cirujano_id === s.usuario_id));
+    }
+    function esAnestesiologoDelInternamiento(i, s) {
+        if (!s || s.rol !== 'medico' || s.especialidad_codigo !== 'ANESTESIOLOGIA') return false;
+        const c = cirugiaDeInternamiento(i);
+        return !!(c && (c.anestesiologo_id === s.medico_id || c.anestesiologo_id === s.usuario_id));
+    }
+    function puedeNotaPostanestesica(s, i) {
+        return !!s && !!i && (s.rol === 'admin' || esAnestesiologoDelInternamiento(i, s) || esCirujanoDelInternamiento(i, s));
+    }
+    function puedeNotaPostoperatoria(s, i) {
+        return !!s && !!i && (s.rol === 'admin' || esCirujanoDelInternamiento(i, s));
+    }
+    function puedeImprimirHojaTrans(s) {
+        return !!s && (s.rol === 'admin' || s.rol === 'enf_quirofano' || (s.rol === 'medico' && s.especialidad_codigo === 'ANESTESIOLOGIA'));
+    }
+    function puedeAltaAmbulatoria(s, i) {
+        if (!s || !i || i.modalidad !== MODALIDAD_AMBULATORIO_QX) return false;
+        const t = obtenerTurno(i.turno_id);
+        if (!t || t.estatus !== ESTATUS.INTERNADO || !(i.notas_postoperatorias || []).length) return false;
+        return s.rol === 'admin' || esCirujanoDelInternamiento(i, s);
+    }
+    function puedeConvertirAPiso(s, i) {
+        if (!s || !i || i.modalidad !== MODALIDAD_AMBULATORIO_QX) return false;
+        const t = obtenerTurno(i.turno_id);
+        if (!t || t.estatus !== ESTATUS.INTERNADO) return false;
+        return s.rol === 'admin' || s.rol === 'administrador' || s.rol === 'enf_quirofano' || s.rol === 'enf_hospital' || esCirujanoDelInternamiento(i, s);
+    }
+    function flujoQuirofanoDe(turno, i, s, ahora) {
+        const c = cirugiaRawDePaciente(turno, ahora);
+        const ficha = c ? fichaCirugia(c) : null;
+        const ubicacion = ubicacionDe(i);
+        const minutos = c ? minutosParaInicioCirugia(c, ahora) : null;
+        const enPiso = ubicacion === UBICACION_QX.PISO;
+        const ambulatorio = ((i && i.modalidad) || (turno && turno.modalidad)) === MODALIDAD_AMBULATORIO_QX;
+        const cuando = ficha ? ((ficha.fecha_texto || '') + ' ' + (ficha.hora_texto || '')).trim() : '';
+        const aviso = ficha ? ('Cirugía Programada: ' + ficha.procedimiento + ' — ' + cuando + ' (' + (ficha.sala_nombre || 'Sala') + ') — Cirujano: ' + (ficha.medico_cirujano || 'Sin cirujano')) : '';
+        return {
+            cirugia_id: c ? c.cirugia_id : null,
+            procedimiento: ficha ? ficha.procedimiento : '',
+            cuando: cuando,
+            sala_nombre: ficha ? ficha.sala_nombre : '',
+            cirujano: ficha ? ficha.medico_cirujano : '',
+            aviso: aviso,
+            minutos_para_inicio: minutos,
+            traslado_habilitado: !!(c && minutos !== null && minutos <= QX_TRASLADO_MINUTOS),
+            ubicacion: ubicacion,
+            cama_origen_piso: (i && i.cama_origen_piso) || '',
+            en_transito: ubicacion === UBICACION_QX.EN_TRANSITO_QUIROFANO,
+            en_quirofano: ubicacion === UBICACION_QX.QUIROFANO,
+            en_cirugia: enCirugiaDeProgramacion(c, ahora),
+            puede_pasar: !!(s && puedePasarAQuirofano(s) && c && enPiso && !ambulatorio && turno && turno.estatus === ESTATUS.INTERNADO),
+            puede_adelantar: !!(s && puedeAdelantarTraslado(s) && c && enPiso && !ambulatorio),
+            puede_recibir: !!(s && puedeRecibirQuirofano(s) && (ubicacion === UBICACION_QX.EN_TRANSITO_QUIROFANO)),
+            tiene_postoperatoria: !!((i && i.notas_postoperatorias) || []).length,
+            puede_regresar: !!(s && i && puedeRegresarAPiso(s) && (i.notas_postoperatorias || []).length && !ambulatorio && ubicacion === UBICACION_QX.QUIROFANO),
+            puede_alta_ambulatoria: puedeAltaAmbulatoria(s, i),
+            puede_convertir: puedeConvertirAPiso(s, i)
+        };
+    }
+    function pasarPacienteAQuirofano(turnoId, s, opciones) {
+        opciones = opciones || {};
+        if (!puedePasarAQuirofano(s)) return { ok: false, motivo: 'Su perfil no puede pasar pacientes a quirófano.' };
+        const t = obtenerTurno(turnoId);
+        const i = t && asegurarInternamiento(turnoId);
+        if (!t || !i || t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El paciente no está hospitalizado.' };
+        if (i.modalidad === MODALIDAD_AMBULATORIO_QX) return { ok: false, motivo: 'El paciente ambulatorio ya entra directo a quirófano.' };
+        if (ubicacionDe(i) !== UBICACION_QX.PISO) return { ok: false, motivo: 'Este paciente ya salió de su cama de piso.' };
+        const c = cirugiaRawDePaciente(t);
+        if (!c) return { ok: false, motivo: 'Este paciente no tiene una cirugía programada.' };
+        const minutos = minutosParaInicioCirugia(c);
+        if (minutos > QX_TRASLADO_MINUTOS && !opciones.adelantar) return { ok: false, motivo: 'El traslado se habilita cuando faltan 40 minutos o menos. Faltan ' + minutos + ' min.' };
+        if (opciones.adelantar && !puedeAdelantarTraslado(s)) return { ok: false, motivo: 'Solo Administración puede adelantar el traslado.' };
+        i.cama_origen_piso = i.cama || i.cama_origen_piso || null;
+        i.cama = null;
+        i.ubicacion = UBICACION_QX.EN_TRANSITO_QUIROFANO;
+        i.area_destino = 'Quirófano';
+        i.cirugia_id = c.cirugia_id;
+        i.traslado_qx_en = new Date().toISOString();
+        i.traslado_adelantado = !!opciones.adelantar;
+        if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo guardar el traslado.' };
+        actualizarTurno(t.turno_id, { area_destino: 'Quirófano', destino: 'Quirofano' });
+        return { ok: true, internamiento: obtenerInternamiento(i.internamiento_id), cirugia: fichaCirugia(c) };
+    }
+    function recibirEnQuirofano(turnoId, camaCodigo, s) {
+        if (!puedeRecibirQuirofano(s)) return { ok: false, motivo: 'Su perfil no puede recibir pacientes en quirófano.' };
+        const i = asegurarInternamiento(turnoId);
+        const t = obtenerTurno(turnoId);
+        if (!i || !t || t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El paciente no está en un episodio activo.' };
+        if (ubicacionDe(i) !== UBICACION_QX.EN_TRANSITO_QUIROFANO) return { ok: false, motivo: 'Este paciente no está en tránsito a quirófano.' };
+        const cama = camaPorCodigo(camaCodigo) || camaPorNombre(camaCodigo);
+        if (!cama || cama.area !== 'QUIROFANO') return { ok: false, motivo: 'Seleccione una cama de recuperación.' };
+        const ocupada = camaOcupadaPor(cama.nombre, i.internamiento_id);
+        if (ocupada) { const o = obtenerTurno(ocupada.turno_id); return { ok: false, motivo: cama.nombre + ' ya está ocupada' + (o ? ' por ' + o.paciente_nombre : '') + '.' }; }
+        i.cama = cama.nombre;
+        i.ubicacion = UBICACION_QX.QUIROFANO;
+        i.area_destino = 'Quirófano / Recuperación';
+        i.recibido_qx_en = new Date().toISOString();
+        if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo asignar la cama de recuperación.' };
+        actualizarTurno(t.turno_id, { area_destino: i.area_destino, destino: 'Quirofano' });
+        return { ok: true, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+    function regresarAHospitalizacion(turnoId, camaCodigo, s) {
+        if (!puedeRegresarAPiso(s)) return { ok: false, motivo: 'Su perfil no puede regresar pacientes a hospitalización.' };
+        const i = asegurarInternamiento(turnoId);
+        const t = obtenerTurno(turnoId);
+        if (!i || !t || t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El paciente no está hospitalizado.' };
+        if (!(i.notas_postoperatorias || []).length) return { ok: false, motivo: 'Falta la nota post-operatoria para salir de recuperación.' };
+        if (i.modalidad === MODALIDAD_AMBULATORIO_QX) return { ok: false, motivo: 'El paciente ambulatorio no regresa a una cama de piso.' };
+        if (ubicacionDe(i) !== UBICACION_QX.QUIROFANO) return { ok: false, motivo: 'El paciente no está en recuperación.' };
+        let nombreDestino = camaCodigo || i.cama_origen_piso || '';
+        let destino = camaPorCodigo(nombreDestino) || camaPorNombre(nombreDestino);
+        if (destino && destino.area !== 'HOSPITALIZACION' && destino.area !== 'OBSERVACION') return { ok: false, motivo: 'Seleccione una cama de piso.' };
+        if (!destino && nombreDestino && !camaCodigo) destino = { nombre: nombreDestino, area: 'HOSPITALIZACION' };
+        if (!destino) return { ok: false, motivo: 'Seleccione una cama de piso.' };
+        const ocupada = camaOcupadaPor(destino.nombre, i.internamiento_id);
+        if (ocupada) return { ok: false, motivo: destino.nombre + ' está ocupada. Elija otra cama de piso.', ocupada: true };
+        i.cama = destino.nombre;
+        i.ubicacion = UBICACION_QX.PISO;
+        i.area_destino = destino.area === 'OBSERVACION' ? 'Observación' : 'Hospitalización';
+        i.regreso_piso_en = new Date().toISOString();
+        if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo registrar el regreso.' };
+        actualizarTurno(t.turno_id, { area_destino: i.area_destino, destino: 'Hospitalizacion' });
+        return { ok: true, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+    function datosHojaTransanestesica(turnoId) {
+        const t = obtenerTurno(turnoId);
+        const i = t && internamientoDeTurno(turnoId);
+        if (!t || !i) return null;
+        const p = buscarPacientePorId(t.paciente_id) || {};
+        const c = cirugiaDeInternamiento(i);
+        const ficha = c ? fichaCirugia(c) : null;
+        const fuentes = [];
+        if (t.signos_vitales) fuentes.push(t.signos_vitales);
+        ((i.notas_evolucion) || []).forEach(n => { if (n.objetivo && n.objetivo.signos_vitales) fuentes.push(n.objetivo.signos_vitales); });
+        let peso = null, talla = null;
+        fuentes.forEach(sv => { if (sv && sv.peso_kg != null) peso = sv.peso_kg; if (sv && sv.talla_m != null) talla = sv.talla_m; });
+        const imc = peso && talla ? Math.round((peso / (talla * talla)) * 10) / 10 : null;
+        const snap = i.snapshot_formulario || {};
+        const grupo = (((snap.antecedentes || {}).no_patologicos || {}).grupo_rh || {}).valor || i.grupo_rh || 'No registrado';
+        return {
+            nombre: p.nombre_completo || t.paciente_nombre, nacimiento: fechaLegibleISO(p.fecha_nacimiento || t.fecha_nacimiento),
+            edad: calcularEdad(p.fecha_nacimiento || t.fecha_nacimiento), sexo: p.sexo === 'F' ? 'Femenino' : (p.sexo === 'M' ? 'Masculino' : 'No registrado'),
+            peso: peso, talla: talla, imc: imc, alergias: i.alergias || 'Ninguna referida', grupo_rh: grupo,
+            diagnostico: i.diagnostico_actual || i.diagnostico_ingreso || (ficha && ficha.procedimiento) || '',
+            cirugia: ficha ? ficha.procedimiento : (i.diagnostico_ingreso || ''),
+            cirujano: ficha ? ficha.medico_cirujano : (i.medico_tratante_nombre || ''),
+            anestesiologo: ficha && ficha.anestesiologo ? ficha.anestesiologo : 'Pendiente',
+            sala: ficha ? ficha.sala_nombre : '', cuando: ficha ? ficha.hora_texto : ''
+        };
+    }
+    function guardarNotaPostanestesica(turnoId, entrada, s) {
+        const i = asegurarInternamiento(turnoId);
+        const t = obtenerTurno(turnoId);
+        if (!i || !t || t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El internamiento no está activo.' };
+        if (!puedeNotaPostanestesica(s, i)) return { ok: false, motivo: 'Solo el anestesiólogo, el cirujano o Dirección pueden registrar la nota post-anestésica.' };
+        const tecnica = TECNICAS_ANESTESIA.find(x => x.codigo === entrada.tecnica);
+        const errores = {};
+        if (!tecnica) errores.tecnica = 'Seleccione la técnica anestésica.';
+        const aldrete = parseInt(entrada.aldrete, 10);
+        if (!Number.isInteger(aldrete) || aldrete < 0 || aldrete > 10) errores.aldrete = 'Aldrete va de 0 a 10.';
+        const sangrado = limpiarEspacios(entrada.sangrado);
+        const incidentes = String(entrada.incidentes || '').trim();
+        const evolucion = String(entrada.evolucion || '').trim();
+        if (contarLetrasTxt(evolucion) < 10) errores.evolucion = 'Escriba la evolución post-anestésica (mínimo 10 letras).';
+        const meds = Array.isArray(entrada.medicamentos) ? entrada.medicamentos : [];
+        const usos = [];
+        meds.forEach(m => {
+            const cat = MEDS_ANESTESIA.find(x => x.sku === m.sku);
+            const cant = parseInt(m.cantidad, 10);
+            if (!cat || !Number.isInteger(cant) || cant < 1 || cant > 5) errores.medicamentos = 'Revise los medicamentos y las cantidades (1 a 5).';
+            else usos.push({ sku: cat.sku, nombre: cat.nombre, fraccion: cat.fraccion, cantidad: cant });
+        });
+        if (Object.keys(errores).length) return { ok: false, motivo: 'Revise los campos marcados.', errores: errores };
+        const resumen = tecnica.etiqueta + '. Aldrete ' + aldrete + '. ' + evolucion;
+        const recetas = [];
+        usos.filter(u => u.fraccion === 'I').forEach(u => {
+            const area = 'QUIROFANO';
+            const muestra = listarFarmacia().find(p => normalizar(p.sku) === normalizar(u.sku) && p.fraccion_cofepris === 'I');
+            const caja = listarCajas().filter(c => c.area_destino === area && normalizar(c.sku) === normalizar(u.sku) && c.usadas < c.piezas_por_caja)
+                .sort((a, b) => String(a.creada_en).localeCompare(String(b.creada_en)))[0];
+            if (!muestra || !caja || (caja.piezas_por_caja - caja.usadas) < u.cantidad || (listarFarmacia().find(p => p.lote_id === caja.lote_id) || {}).stock < u.cantidad) {
+                errores.medicamentos = 'No hay ámpulas suficientes de ' + u.nombre + ' en la caja activa de Quirófano.';
+            }
+        });
+        if (errores.medicamentos) return { ok: false, motivo: errores.medicamentos, errores: errores };
+        for (let k = 0; k < usos.length; k++) {
+            const u = usos[k];
+            if (u.fraccion !== 'I') continue;
+            for (let n = 0; n < u.cantidad; n++) {
+                const r = usarAmpulaDesdeNota(t.turno_id, u.sku, s, resumen, 'QUIROFANO');
+                if (!r.ok) return { ok: false, motivo: r.motivo };
+                recetas.push({
+                    receta_id: r.uso.uso_id, sku: u.sku, nombre: r.caja.nombre, cantidad: 1, fraccion: 'I',
+                    numero: r.uso.numero, de: r.uso.de, lote: r.uso.lote, folio_receta_especial: r.uso.folio_receta_especial,
+                    fecha_hora: r.uso.fecha_hora
+                });
+            }
+        }
+        const nota = {
+            nota_id: uid('PA'), folio: 'PA-' + pad3((i.notas_postanestesicas || []).length + 1), fecha_hora: new Date().toISOString(),
+            autor_id: s.usuario_id, autor_nombre: s.nombre, tecnica: tecnica.codigo, tecnica_texto: tecnica.etiqueta,
+            aldrete: aldrete, sangrado: sangrado, incidentes: incidentes, evolucion: evolucion,
+            medicamentos: usos, recetas: recetas
+        };
+        const vigente = obtenerInternamiento(i.internamiento_id);
+        vigente.notas_postanestesicas = (vigente.notas_postanestesicas || []).concat([nota]);
+        vigente.recetas_controlados = (vigente.recetas_controlados || []).concat(recetas);
+        if (!guardarInternamiento(vigente)) return { ok: false, motivo: 'No se pudo guardar la nota.' };
+        return { ok: true, nota: nota, recetas: recetas, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+    function guardarNotaPostoperatoria(turnoId, entrada, s) {
+        const i = asegurarInternamiento(turnoId);
+        const t = obtenerTurno(turnoId);
+        if (!i || !t || t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El internamiento no está activo.' };
+        if (!puedeNotaPostoperatoria(s, i)) return { ok: false, motivo: 'Solo el cirujano o Dirección pueden registrar la nota post-operatoria.' };
+        const v = {
+            dx_pre: limpiarEspacios(entrada.dx_pre), dx_post: limpiarEspacios(entrada.dx_post),
+            operacion: limpiarEspacios(entrada.operacion), tecnica: String(entrada.tecnica || '').trim(),
+            hallazgos: String(entrada.hallazgos || '').trim(), pronostico: limpiarEspacios(entrada.pronostico),
+            sangrado_ml: parseInt(entrada.sangrado_ml, 10), patologia: entrada.patologia === 'si' || entrada.patologia === true ? 'si' : (entrada.patologia === 'no' ? 'no' : ''),
+            entrada: !!entrada.entrada, pausa: !!entrada.pausa, salida: !!entrada.salida, conteo: !!entrada.conteo,
+            indicaciones: String(entrada.indicaciones || '').trim()
+        };
+        const errores = {};
+        if (!v.entrada || !v.pausa || !v.salida || !v.conteo) errores.segura = 'Marque entrada, pausa, salida y el conteo completo.';
+        if (contarLetrasTxt(v.dx_pre) < 3) errores.dx_pre = 'Escriba el diagnóstico preoperatorio.';
+        if (contarLetrasTxt(v.dx_post) < 3) errores.dx_post = 'Escriba el diagnóstico postoperatorio.';
+        if (contarLetrasTxt(v.operacion) < 3) errores.operacion = 'Escriba la operación realizada.';
+        if (contarLetrasTxt(v.tecnica) < 10) errores.tecnica = 'Describa la técnica quirúrgica.';
+        if (contarLetrasTxt(v.hallazgos) < 5) errores.hallazgos = 'Describa los hallazgos.';
+        if (!Number.isInteger(v.sangrado_ml) || v.sangrado_ml < 0 || v.sangrado_ml > 20000) errores.sangrado_ml = 'Indique el sangrado en mililitros.';
+        if (v.patologia !== 'si' && v.patologia !== 'no') errores.patologia = 'Indique si se envió pieza a patología.';
+        if (contarLetrasTxt(v.pronostico) < 3) errores.pronostico = 'Escriba el pronóstico.';
+        if (Object.keys(errores).length) return { ok: false, motivo: 'Revise los campos marcados.', errores: errores };
+        const nota = {
+            nota_id: uid('PO'), folio: 'PO-' + pad3((i.notas_postoperatorias || []).length + 1), fecha_hora: new Date().toISOString(),
+            autor_id: s.usuario_id, autor_nombre: s.nombre,
+            cirugia_segura: { entrada: true, pausa: true, salida: true, conteo: true },
+            dx_pre: v.dx_pre, dx_post: v.dx_post, operacion: v.operacion, tecnica: v.tecnica, hallazgos: v.hallazgos,
+            sangrado_ml: v.sangrado_ml, patologia: v.patologia, pronostico: v.pronostico
+        };
+        i.notas_postoperatorias = (i.notas_postoperatorias || []).concat([nota]);
+        i.diagnostico_actual = v.dx_post;
+        let hoja = null;
+        if (v.indicaciones) {
+            const vig = indicacionesVigentes(i) || {};
+            const textoHoja = k => { const x = vig[k]; return typeof x === 'string' ? x : ((x && x.texto) || ''); };
+            hoja = nuevaHojaIndicaciones(i.hojas_indicaciones || [], 'postquirurgica', {
+                dieta: textoHoja('dieta'), soluciones_parenterales: textoHoja('soluciones_parenterales'), medicamentos: textoHoja('medicamentos'),
+                medidas_generales: v.indicaciones
+            }, { id: s.usuario_id, nombre: s.nombre, relacion: 'tratante' });
+            i.hojas_indicaciones = (i.hojas_indicaciones || []).concat([hoja]);
+        }
+        if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo guardar la nota.' };
+        if (hoja) encolarSurtidoIndicacion(obtenerInternamiento(i.internamiento_id), hoja, indicacionesVigentes(i));
+        return { ok: true, nota: nota, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+    function altaAmbulatoriaQx(turnoId, s) {
+        const i = asegurarInternamiento(turnoId);
+        const t = obtenerTurno(turnoId);
+        if (!puedeAltaAmbulatoria(s, i)) return { ok: false, motivo: 'El cirujano puede dar el alta ambulatoria cuando ya existe la nota post-operatoria.' };
+        if (i.nota_egreso) return { ok: false, motivo: 'Ya existe una nota de egreso.' };
+        const post = i.notas_postoperatorias[i.notas_postoperatorias.length - 1];
+        const nota = {
+            nota_id: uid('EG'), folio: 'EG-001', tipo: 'nota_egreso', fecha_hora: new Date().toISOString(),
+            autor_id: s.usuario_id, autor_nombre: s.nombre, autor_especialidad: s.especialidad || null, relacion: 'tratante',
+            motivo_egreso: 'Alta ambulatoria desde recuperación de quirófano.',
+            resumen_clinico: post.tecnica + ' Hallazgos: ' + post.hallazgos,
+            diagnostico_final: post.dx_post, pronostico: post.pronostico,
+            plan_alta: 'Egreso el mismo día, sin cama de piso. ' + (post.operacion || ''),
+            copias: 2, origen: 'alta_ambulatoria_qx'
+        };
+        i.nota_egreso = nota;
+        i.diagnostico_actual = post.dx_post;
+        i.estatus = ESTATUS.ALTA_PENDIENTE_PAGO;
+        i.egreso_en = nota.fecha_hora;
+        i.cama = null;
+        i.ubicacion = UBICACION_QX.PISO;
+        if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo guardar el alta.' };
+        actualizarTurno(t.turno_id, { estatus: ESTATUS.ALTA_PENDIENTE_PAGO, dx_principal: post.dx_post, cuenta_actual: i.cuenta_actual || 0, cuenta_actual_total: i.cuenta_actual || 0 });
+        return { ok: true, nota: nota, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+    function convertirAmbulatorioAPiso(turnoId, camaCodigo, s) {
+        const i = asegurarInternamiento(turnoId);
+        const t = obtenerTurno(turnoId);
+        if (!puedeConvertirAPiso(s, i)) return { ok: false, motivo: 'Su perfil no puede convertir este ambulatorio a piso.' };
+        const cama = camaPorCodigo(camaCodigo) || camaPorNombre(camaCodigo);
+        if (!cama || cama.area !== 'HOSPITALIZACION') return { ok: false, motivo: 'Seleccione una cama de piso (Cama 1 a 4 o Aislado).' };
+        const ocupada = camaOcupadaPor(cama.nombre, i.internamiento_id);
+        if (ocupada) return { ok: false, motivo: cama.nombre + ' está ocupada.' };
+        i.modalidad = 'HOSPITALIZACION';
+        i.cama = cama.nombre;
+        i.cama_origen_piso = cama.nombre;
+        i.ubicacion = UBICACION_QX.PISO;
+        i.area_destino = 'Hospitalización';
+        i.convertido_a_piso_en = new Date().toISOString();
+        if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo convertir el internamiento.' };
+        actualizarTurno(t.turno_id, { modalidad: 'HOSPITALIZACION', area_destino: 'Hospitalización', destino: 'Hospitalizacion' });
+        return { ok: true, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+    function citaQuirurgica(dias, h, min, duracion) {
+        const base = new Date();
+        const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dias, h, min, 0, 0);
+        return {
+            fecha_hora: d.toISOString(), fecha: fechaLocalDeDate(d),
+            hora_inicio: String(h).padStart(2, '0') + ':' + String(min).padStart(2, '0'),
+            hora_fin: horaDeMinutos(h * 60 + min + duracion), duracion_minutos: duracion
+        };
+    }
+    // Datos de demostración dentro de la jornada 07:00–22:00, en las dos salas.
     function sembrarCirugiasSiHaceFalta() {
         if (localStorage.getItem(CLAVES.cirugias) !== null) return false;
-        const base = new Date();
-        const cuando = (dias, h, min) => { const d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dias, h, min, 0, 0); return d.toISOString(); };
-        const pronto = new Date(base.getTime() + 3 * 3600000); pronto.setMinutes(pronto.getMinutes() < 30 ? 30 : 60, 0, 0);
         const enCatalogo = id => !!buscarPacientePorId(id);
+        const ana = USUARIOS.dra_elena;
+        const conAna = ana ? { anestesiologo_id: ana.id, anestesiologo_nombre: ana.nombre } : { anestesiologo_id: null, anestesiologo_nombre: '' };
         const lista = [
-            { paciente_id: enCatalogo('PAC-000001') ? 'PAC-000001' : null, paciente_nombre: 'Carlos Ruiz Herrera', fecha_nacimiento: '1979-03-14', procedimiento: 'Colecistectomía laparoscópica',
-              fecha_hora: pronto.toISOString(), medico_cirujano_id: 'dr_arturo', notas: 'Ayuno de 8 horas confirmado. Alergia a penicilina: avisar al anestesiólogo.' },
-            { paciente_id: null, paciente_nombre: 'María Fernández Lozano', fecha_nacimiento: '1984-02-09', procedimiento: 'Safenectomía de miembro inferior derecho',
-              fecha_hora: cuando(1, 8, 0), medico_cirujano_id: 'dr_roberto', notas: 'Prefiere anestesia regional. Pendiente pago del deducible.' },
-            { paciente_id: enCatalogo('PAC-000002') ? 'PAC-000002' : null, paciente_nombre: 'Laura Méndez Olvera', fecha_nacimiento: '1991-07-22', procedimiento: 'Hernioplastía umbilical',
-              fecha_hora: cuando(2, 10, 30), medico_cirujano_id: 'dr_arturo', notas: 'Valoración preanestésica pendiente. Acompañante: esposo.' },
-            { paciente_id: null, paciente_nombre: 'Héctor Salas Mejía', fecha_nacimiento: '1962-11-30', procedimiento: 'Creación de fístula arteriovenosa en antebrazo',
-              fecha_hora: cuando(4, 13, 0), medico_cirujano_id: 'dr_roberto', notas: 'Paciente en hemodiálisis. Requiere cama en hospitalización posterior.' }
+            Object.assign({ paciente_id: enCatalogo('PAC-000001') ? 'PAC-000001' : null, paciente_nombre: 'Carlos Ruiz Herrera', fecha_nacimiento: '1979-03-14', procedimiento: 'Colecistectomía laparoscópica', medico_cirujano_id: 'dr_arturo', sala: 'QX_GRANDE', tipo_estancia: 'HOSPITALARIA', indicaciones_preoperatorias: 'Ayuno de 8 horas. Tricotomía. Laboratorios previos.', notas: 'Alergia a penicilina: avisar al anestesiólogo.' }, citaQuirurgica(1, 7, 0, 90), conAna),
+            Object.assign({ paciente_id: null, paciente_nombre: 'María Fernández Lozano', fecha_nacimiento: '1984-02-09', procedimiento: 'Safenectomía de miembro inferior derecho', medico_cirujano_id: 'dr_roberto', sala: 'QX_CHICO', tipo_estancia: 'AMBULATORIA', indicaciones_preoperatorias: 'Ayuno de 8 horas. Ingreso y egreso el mismo día, sin cama de piso.', notas: 'Prefiere anestesia regional.' }, citaQuirurgica(1, 9, 0, 60), conAna),
+            Object.assign({ paciente_id: enCatalogo('PAC-000002') ? 'PAC-000002' : null, paciente_nombre: 'Laura Méndez Olvera', fecha_nacimiento: '1991-07-22', procedimiento: 'Hernioplastía umbilical', medico_cirujano_id: 'dr_arturo', sala: 'QX_GRANDE', tipo_estancia: 'HOSPITALARIA', indicaciones_preoperatorias: 'Valoración preanestésica pendiente. Ayuno de 8 horas.', notas: 'Acompañante: esposo.', anestesiologo_id: null, anestesiologo_nombre: '' }, citaQuirurgica(2, 10, 30, 90)),
+            Object.assign({ paciente_id: null, paciente_nombre: 'Héctor Salas Mejía', fecha_nacimiento: '1962-11-30', procedimiento: 'Creación de fístula arteriovenosa en antebrazo', medico_cirujano_id: 'dr_roberto', sala: 'QX_GRANDE', tipo_estancia: 'HOSPITALARIA', indicaciones_preoperatorias: 'Paciente en hemodiálisis. Requiere cama de hospitalización posterior.', notas: 'Pendiente pago del deducible.' }, citaQuirurgica(4, 13, 0, 120), conAna)
         ].map((c, k) => Object.assign({
-            cirugia_id: 'CX-DEMO-' + (k + 1), medico_cirujano_nombre: USUARIOS[c.medico_cirujano_id].nombre,
-            anestesiologo_id: 'dra_elena', anestesiologo_nombre: (USUARIOS.dra_elena || {}).nombre || 'Dra. Elena Ríos',
-            estatus: 'programada', programada_por_id: 'administrador', programada_por_nombre: USUARIOS.administrador.nombre, creado_en: new Date().toISOString()
+            cirugia_id: 'CX-DEMO-' + (k + 1), medico_cirujano_nombre: (USUARIOS[c.medico_cirujano_id] || {}).nombre || '',
+            estatus: 'programada', programada_por_id: 'administrador', programada_por_nombre: (USUARIOS.administrador || {}).nombre || 'Adm. Sofía', creado_en: new Date().toISOString(),
+            turno_id: null, ingresado_en: null
         }, c));
         return escribir(CLAVES.cirugias, lista);
     }
     function completarAnestesiologoCirugias() {
-        const ana = USUARIOS.dra_elena;
-        if (!ana) return false;
         const lista = listarCirugias();
         let cambio = false;
         lista.forEach(c => {
-            if (!c.anestesiologo_id) { c.anestesiologo_id = ana.id; c.anestesiologo_nombre = ana.nombre; cambio = true; }
+            if (c.anestesiologo_id && !c.anestesiologo_nombre && USUARIOS[c.anestesiologo_id]) { c.anestesiologo_nombre = USUARIOS[c.anestesiologo_id].nombre; cambio = true; }
             if (!c.medico_cirujano_nombre && USUARIOS[c.medico_cirujano_id]) { c.medico_cirujano_nombre = USUARIOS[c.medico_cirujano_id].nombre; cambio = true; }
         });
         return cambio ? escribir(CLAVES.cirugias, lista) : false;
+    }
+    // Una sola vez: completa sala, duración y jornada de las cirugías ya guardadas, y deja una demo sin anestesiólogo.
+    function migrarCirugiasFase1() {
+        const lista = listarCirugias();
+        if (!lista.length) return false;
+        const primera = localStorage.getItem('belen_qx_fase1') !== '1';
+        lista.forEach(c => {
+            estructurarCirugia(c);
+            if (!primera || String(c.cirugia_id).indexOf('CX-DEMO-') !== 0) return;
+            if (c.cirugia_id === 'CX-DEMO-1') {
+                c.sala = 'QX_GRANDE'; c.tipo_estancia = 'HOSPITALARIA';
+                c.indicaciones_preoperatorias = c.indicaciones_preoperatorias || 'Ayuno de 8 horas. Tricotomía. Laboratorios previos.';
+                const ini = minutosInicioCirugia(c), fin = minutosFinCirugia(c);
+                if (ini === null || ini < QX_DIA_INICIO || fin > QX_DIA_FIN) Object.assign(c, citaQuirurgica(1, 7, 0, 90));
+            }
+            if (c.cirugia_id === 'CX-DEMO-2' && !c.ingresado_en) {
+                Object.assign(c, citaQuirurgica(1, 9, 0, 60), { sala: 'QX_CHICO', tipo_estancia: 'AMBULATORIA' });
+                c.indicaciones_preoperatorias = c.indicaciones_preoperatorias || 'Ayuno de 8 horas. Ingreso y egreso el mismo día, sin cama de piso.';
+            }
+            if (c.cirugia_id === 'CX-DEMO-3') {
+                Object.assign(c, citaQuirurgica(2, 10, 30, 90), { sala: 'QX_GRANDE', tipo_estancia: 'HOSPITALARIA', anestesiologo_id: null, anestesiologo_nombre: '' });
+                c.indicaciones_preoperatorias = c.indicaciones_preoperatorias || 'Valoración preanestésica pendiente. Ayuno de 8 horas.';
+            }
+            if (c.cirugia_id === 'CX-DEMO-4') {
+                c.sala = 'QX_GRANDE'; c.tipo_estancia = 'HOSPITALARIA';
+                const ini = minutosInicioCirugia(c), fin = minutosFinCirugia(c);
+                if (ini === null || ini < QX_DIA_INICIO || fin > QX_DIA_FIN) Object.assign(c, citaQuirurgica(4, 13, 0, 120));
+                else c.duracion_minutos = c.duracion_minutos || 120;
+                c.indicaciones_preoperatorias = c.indicaciones_preoperatorias || 'Paciente en hemodiálisis. Requiere cama de hospitalización posterior.';
+            }
+        });
+        const ok = escribir(CLAVES.cirugias, lista);
+        localStorage.setItem('belen_qx_fase1', '1');
+        return ok;
     }
 
     // ---------------------------------------------------------------- Farmacia: inventario por lote y cola de surtido
@@ -1744,10 +2451,7 @@
     }
     const CATEGORIAS_FARMACIA = [
         { codigo: 'MEDICAMENTO', nombre: 'Medicamento' },
-        { codigo: 'MATERIAL_CURACION', nombre: 'Material de curación' },
-        { codigo: 'LABORATORIO', nombre: 'Laboratorio' },
-        { codigo: 'IMAGENOLOGIA', nombre: 'Imagenología' },
-        { codigo: 'PROCEDIMIENTO', nombre: 'Procedimiento' }
+        { codigo: 'MATERIAL_CURACION', nombre: 'Material de curación' }
     ];
     const FRACCIONES_COFEPRIS = [
         { codigo: 'I', nombre: 'I · Estupefaciente' },
@@ -1762,6 +2466,7 @@
     const FRACCIONES_RECETA = ['II', 'III', 'IV_ANTIBIOTICO'];
     const CATEGORIAS_FISICAS = ['MEDICAMENTO', 'MATERIAL_CURACION'];
     const CATEGORIAS_ALMACEN = CATEGORIAS_FARMACIA.filter(c => CATEGORIAS_FISICAS.indexOf(c.codigo) >= 0);
+    const SKUS_FUERA_DE_ALMACEN = ['INY-01', 'CON-01', 'NEB-01', 'EKG-01', 'DEX-01', 'LAB-BH', 'LAB-QS', 'LAB-ES', 'RX-ABD', 'RX-TORAX', 'IM-01', 'BH', 'QS6', 'ES', 'TP-TPT', 'EGO', 'GS-RH', 'PC', 'GAS', 'USG-ABD', 'USG-OBS', 'EKG', 'DEX', 'CUR-MEN', 'INY', 'NEB', 'QX-SALA', 'HOSP-NOCHE', 'OBS-HORA'];
     const CLASIFICACION_AWARE = [
         { codigo: 'ACCESO', nombre: 'Grupo Acceso' },
         { codigo: 'VIGILANCIA', nombre: 'Grupo Vigilancia' },
@@ -1799,38 +2504,25 @@
         'PUN-18': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Dimsa' },
         'CUR-01': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE' },
         'MAT-01': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE' },
-        'SUT-01': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Dimsa' },
-        'EKG-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'NA', conservacion: 'AMBIENTE' },
-        'DEX-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Nadro' },
-        'LAB-BH': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'NA', conservacion: 'AMBIENTE' },
-        'RX-ABD': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'NA', conservacion: 'AMBIENTE' },
-        'INY-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'IM', conservacion: 'AMBIENTE' },
-        'CON-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'NA', conservacion: 'AMBIENTE' },
-        'NEB-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'INHALADA', conservacion: 'AMBIENTE' },
-        'IM-01': { forma_farmaceutica: 'ESTUDIO', via_administracion: 'IM', conservacion: 'AMBIENTE' }
+        'SUT-01': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Dimsa' }
     };
     const META_SKU_FARMACIA = {
         'CEF-1G': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'IV_ANTIBIOTICO', clasificacion_aware: 'ACCESO', piezas_por_caja: 1, aplica_iva: false },
         'SOL-1000': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'VI', piezas_por_caja: 1, aplica_iva: false },
         'FIS-1000': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'VI', piezas_por_caja: 1, aplica_iva: false },
         'PAR-1G': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'VI', piezas_por_caja: 1, aplica_iva: false },
-        'INY-01': { laboratorio: 'Sanatorio Belén', categoria: 'PROCEDIMIENTO', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
         'CUR-01': { laboratorio: 'Genérico', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
         'MAT-01': { laboratorio: 'Genérico', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
         'SUT-01': { laboratorio: 'Ethicon', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
-        'CON-01': { laboratorio: 'Sanatorio Belén', categoria: 'PROCEDIMIENTO', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
-        'NEB-01': { laboratorio: 'Sanatorio Belén', categoria: 'PROCEDIMIENTO', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
-        'EKG-01': { laboratorio: 'Sanatorio Belén', categoria: 'PROCEDIMIENTO', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
-        'IM-01': { laboratorio: 'Sanatorio Belén', categoria: 'PROCEDIMIENTO', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
-        'FEN-50': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'I', piezas_por_caja: 5, aplica_iva: false },
+        'FEN-50': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'I', piezas_por_caja: 5, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'IV' },
+        'MID-5': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'II', piezas_por_caja: 1, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'IV' },
+        'PRO-200': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'IV', piezas_por_caja: 1, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'IV' },
+        'BUP-05': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'VI', piezas_por_caja: 1, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'NA' },
         'DIA-10': { laboratorio: 'Roche', categoria: 'MEDICAMENTO', fraccion_cofepris: 'II', piezas_por_caja: 1, aplica_iva: false },
         'GUA-M': { laboratorio: 'Ambiderm', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
         'JER-10': { laboratorio: 'BD', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
         'VEN-18': { laboratorio: 'Pisa', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
-        'PUN-18': { laboratorio: 'BD', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
-        'LAB-BH': { laboratorio: 'Laboratorio Belén', categoria: 'LABORATORIO', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
-        'RX-ABD': { laboratorio: 'Imagen Belén', categoria: 'IMAGENOLOGIA', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
-        'DEX-01': { laboratorio: 'Roche', categoria: 'PROCEDIMIENTO', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true }
+        'PUN-18': { laboratorio: 'BD', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true }
     };
 
     function redondearMoneda(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
@@ -1853,12 +2545,20 @@
     function codigoDeLista(lista, valor, fallback) { return lista.some(x => x.codigo === valor) ? valor : fallback; }
     function formaPorCategoria(categoria) {
         if (categoria === 'MATERIAL_CURACION') return 'MATERIAL';
-        if (categoria === 'LABORATORIO' || categoria === 'IMAGENOLOGIA' || categoria === 'PROCEDIMIENTO') return 'ESTUDIO';
         return 'TABLETA';
+    }
+    function loteFueraDeAlmacen(p) {
+        if (!p) return true;
+        const sku = String(p.sku || '').toUpperCase();
+        if (SKUS_FUERA_DE_ALMACEN.indexOf(sku) >= 0) return true;
+        if (p.forma_farmaceutica === 'ESTUDIO') return true;
+        const cat = String(p.categoria || '');
+        if (cat && CATEGORIAS_FISICAS.indexOf(cat) < 0) return true;
+        return false;
     }
     function completarLote(p) {
         const meta = Object.assign({}, META_SKU_FARMACIA[p.sku] || {}, FEUM_SKU[p.sku] || {});
-        const categoria = CATEGORIAS_FARMACIA.some(c => c.codigo === p.categoria) ? p.categoria : (meta.categoria || 'MEDICAMENTO');
+        const categoria = CATEGORIAS_FISICAS.indexOf(p.categoria) >= 0 ? p.categoria : (CATEGORIAS_FISICAS.indexOf(meta.categoria) >= 0 ? meta.categoria : 'MEDICAMENTO');
         const fraccion = FRACCIONES_COFEPRIS.some(f => f.codigo === p.fraccion_cofepris) ? p.fraccion_cofepris : (meta.fraccion_cofepris || 'NA');
         const aplica = typeof p.aplica_iva === 'boolean' ? p.aplica_iva : (typeof meta.aplica_iva === 'boolean' ? meta.aplica_iva : categoria !== 'MEDICAMENTO');
         const piezas = parseInt(p.piezas_por_caja, 10);
@@ -1894,7 +2594,7 @@
     }
     function nombreCategoriaFarmacia(codigo) { const c = CATEGORIAS_FARMACIA.find(x => x.codigo === codigo); return c ? c.nombre : codigo || ''; }
     function nombreFraccionCofepris(codigo) { const f = FRACCIONES_COFEPRIS.find(x => x.codigo === codigo); return f ? f.nombre : (codigo || 'No aplica'); }
-    function esInsumoFisico(p) { return !!p && CATEGORIAS_FISICAS.indexOf(p.categoria) >= 0; }
+    function esInsumoFisico(p) { return !!p && !loteFueraDeAlmacen(p); }
     function badgeRecetaMedica(fraccion) {
         if (fraccion === 'I') return '⚠️ Requiere Receta Médica — Fracción I';
         if (fraccion === 'II') return '⚠️ Requiere Receta Médica — Fracción II';
@@ -2191,51 +2891,113 @@
         return { ok: true, solicitud: sol, producto: row, total: cobro.total, completa: completa };
     }
 
-    const SEMILLA_ESTUDIOS = [
-        { estudio_id: 'EST-RX-TORAX', codigo: 'RX-TORAX', nombre: 'PA de Tórax', tipo: 'IMAGENOLOGIA', precio_unitario: 450, aplica_iva: true },
-        { estudio_id: 'EST-BH', codigo: 'LAB-BH', nombre: 'BH Completa', tipo: 'LABORATORIO', precio_unitario: 220, aplica_iva: true },
-        { estudio_id: 'EST-QS', codigo: 'LAB-QS', nombre: 'QS', tipo: 'LABORATORIO', precio_unitario: 280, aplica_iva: true },
-        { estudio_id: 'EST-ES', codigo: 'LAB-ES', nombre: 'ES', tipo: 'LABORATORIO', precio_unitario: 180, aplica_iva: true },
-        { estudio_id: 'EST-EKG', codigo: 'EKG-01', nombre: 'EKG', tipo: 'PROCEDIMIENTO', precio_unitario: 250, aplica_iva: true },
-        { estudio_id: 'EST-DEX', codigo: 'DEX-01', nombre: 'Toma de Dextrostix', tipo: 'PROCEDIMIENTO', precio_unitario: 65, aplica_iva: true }
-    ];
     const TIPOS_ESTUDIO = [
         { codigo: 'LABORATORIO', nombre: 'Laboratorio' },
         { codigo: 'IMAGENOLOGIA', nombre: 'Imagenología' },
-        { codigo: 'PROCEDIMIENTO', nombre: 'Procedimiento' }
+        { codigo: 'PROCEDIMIENTO', nombre: 'Procedimiento' },
+        { codigo: 'HOSPITALIZACION', nombre: 'Hospitalización' }
     ];
-    function listarEstudios() { return leer(CLAVES.estudios, []); }
+    const SEMILLA_ESTUDIOS = [
+        { estudio_id: 'EST-BH', codigo: 'BH', nombre: 'Biometría Hemática (BH)', categoria: 'LABORATORIO', tubo_muestra: 'Tubo Lila (EDTA)', precio_unitario: 350, aplica_iva: true },
+        { estudio_id: 'EST-QS6', codigo: 'QS6', nombre: 'Química Sanguínea 6 elem. (QS6)', categoria: 'LABORATORIO', tubo_muestra: 'Tubo Rojo/Amarillo', precio_unitario: 550, aplica_iva: true },
+        { estudio_id: 'EST-ES', codigo: 'ES', nombre: 'Electrolitos Séricos (ES)', categoria: 'LABORATORIO', tubo_muestra: 'Tubo Rojo', precio_unitario: 480, aplica_iva: true },
+        { estudio_id: 'EST-TP-TPT', codigo: 'TP-TPT', nombre: 'Tiempos de Coagulación (TP y TPT)', categoria: 'LABORATORIO', tubo_muestra: 'Tubo Azul', precio_unitario: 420, aplica_iva: true },
+        { estudio_id: 'EST-EGO', codigo: 'EGO', nombre: 'Examen General de Orina (EGO)', categoria: 'LABORATORIO', tubo_muestra: 'Frasco estéril', precio_unitario: 220, aplica_iva: true },
+        { estudio_id: 'EST-GS-RH', codigo: 'GS-RH', nombre: 'Grupo Sanguíneo y Rh', categoria: 'LABORATORIO', tubo_muestra: 'Tubo Lila (EDTA)', precio_unitario: 280, aplica_iva: true },
+        { estudio_id: 'EST-PC', codigo: 'PC', nombre: 'Prueba Cruzada', categoria: 'LABORATORIO', tubo_muestra: 'Tubo Lila (EDTA)', precio_unitario: 650, aplica_iva: true },
+        { estudio_id: 'EST-GAS', codigo: 'GAS', nombre: 'Gasometría Arterial', categoria: 'LABORATORIO', tubo_muestra: 'Jeringa heparinizada', precio_unitario: 850, aplica_iva: true },
+        { estudio_id: 'EST-RX-TORAX', codigo: 'RX-TORAX', nombre: 'Radiografía PA de Tórax', categoria: 'IMAGENOLOGIA', tubo_muestra: 'N/A', precio_unitario: 650, aplica_iva: true },
+        { estudio_id: 'EST-RX-ABD', codigo: 'RX-ABD', nombre: 'Rx Simple de Abdomen 2 posiciones', categoria: 'IMAGENOLOGIA', tubo_muestra: 'N/A', precio_unitario: 850, aplica_iva: true },
+        { estudio_id: 'EST-USG-ABD', codigo: 'USG-ABD', nombre: 'Ultrasonido (USG) Abdominal / Pélvico', categoria: 'IMAGENOLOGIA', tubo_muestra: 'N/A', precio_unitario: 1200, aplica_iva: true },
+        { estudio_id: 'EST-USG-OBS', codigo: 'USG-OBS', nombre: 'USG Obstétrico', categoria: 'IMAGENOLOGIA', tubo_muestra: 'N/A', precio_unitario: 1100, aplica_iva: true },
+        { estudio_id: 'EST-EKG', codigo: 'EKG', nombre: 'Electrocardiograma (EKG) de 12 derivaciones', categoria: 'PROCEDIMIENTO', tubo_muestra: 'N/A', precio_unitario: 600, aplica_iva: true },
+        { estudio_id: 'EST-DEX', codigo: 'DEX', nombre: 'Toma de Dextrostix / Glucemia capilar', categoria: 'PROCEDIMIENTO', tubo_muestra: 'N/A', precio_unitario: 80, aplica_iva: true },
+        { estudio_id: 'EST-CUR-MEN', codigo: 'CUR-MEN', nombre: 'Curación menor', categoria: 'PROCEDIMIENTO', tubo_muestra: 'N/A', precio_unitario: 350, aplica_iva: true },
+        { estudio_id: 'EST-INY', codigo: 'INY', nombre: 'Aplicación de inyección IM/IV', categoria: 'PROCEDIMIENTO', tubo_muestra: 'N/A', precio_unitario: 120, aplica_iva: true },
+        { estudio_id: 'EST-NEB', codigo: 'NEB', nombre: 'Nebulización', categoria: 'PROCEDIMIENTO', tubo_muestra: 'N/A', precio_unitario: 200, aplica_iva: true },
+        { estudio_id: 'EST-QX-SALA', codigo: 'QX-SALA', nombre: 'Uso de Quirófano / Sala', categoria: 'HOSPITALIZACION', tubo_muestra: 'N/A', precio_unitario: 4500, aplica_iva: true },
+        { estudio_id: 'EST-HOSP-NOCHE', codigo: 'HOSP-NOCHE', nombre: 'Noche de Hospitalización', categoria: 'HOSPITALIZACION', tubo_muestra: 'N/A', precio_unitario: 2500, aplica_iva: true },
+        { estudio_id: 'EST-OBS-HORA', codigo: 'OBS-HORA', nombre: 'Hora en Observación', categoria: 'HOSPITALIZACION', tubo_muestra: 'N/A', precio_unitario: 350, aplica_iva: true }
+    ];
+    const ALIAS_SKU_ESTUDIO = { 'LAB-BH': 'BH', 'LAB-QS': 'QS6', 'LAB-ES': 'ES', 'EKG-01': 'EKG', 'DEX-01': 'DEX', 'INY-01': 'INY', 'IM-01': 'INY', 'NEB-01': 'NEB' };
+    const CODIGOS_ESTUDIO_RETIRADOS = Object.keys(ALIAS_SKU_ESTUDIO).concat(['CON-01']);
+    function puedeGestionarTarifario(s) { return !!s && (s.rol === 'admin' || s.rol === 'administrador'); }
+    function puedeAlterarMontoEstudio(s) { return !!s && s.rol === 'admin'; }
+    function puedeAjustarCuenta(s) { return puedeGestionarTarifario(s); }
+    function fichaEstudio(e) {
+        const categoria = TIPOS_ESTUDIO.some(t => t.codigo === (e.categoria || e.tipo)) ? (e.categoria || e.tipo) : 'PROCEDIMIENTO';
+        const aplica = typeof e.aplica_iva === 'boolean' ? e.aplica_iva : true;
+        return {
+            estudio_id: e.estudio_id, codigo: String(e.codigo || '').toUpperCase(), nombre: e.nombre,
+            categoria: categoria, tipo: categoria, tubo_muestra: limpiarEspacios(e.tubo_muestra || 'N/A') || 'N/A',
+            precio_unitario: redondearMoneda(e.precio_unitario), aplica_iva: aplica
+        };
+    }
+    function listarEstudios() { return leer(CLAVES.estudios, []).map(fichaEstudio); }
     function estudioPorCodigo(codigo) { return listarEstudios().find(e => normalizar(e.codigo) === normalizar(codigo)) || null; }
     function estudioPorId(id) { return listarEstudios().find(e => e.estudio_id === id) || null; }
     function nombreTipoEstudio(codigo) { const t = TIPOS_ESTUDIO.find(x => x.codigo === codigo); return t ? t.nombre : (codigo || ''); }
-    function separarEstudiosDeAlmacen() {
-        let lista = listarEstudios();
-        SEMILLA_ESTUDIOS.forEach(e => { if (!lista.some(x => normalizar(x.codigo) === normalizar(e.codigo))) lista.push(Object.assign({}, e)); });
-        const far = listarFarmacia();
-        const quedan = [];
-        far.forEach(p => {
-            if (esInsumoFisico(p)) { quedan.push(p); return; }
-            if (!lista.some(x => normalizar(x.codigo) === normalizar(p.sku))) {
-                lista.push({ estudio_id: uid('EST'), codigo: p.sku, nombre: p.nombre, tipo: TIPOS_ESTUDIO.some(t => t.codigo === p.categoria) ? p.categoria : 'PROCEDIMIENTO', precio_unitario: p.precio_unitario, aplica_iva: !!p.aplica_iva });
-            }
+    function estudiosPorCategoria(categoria) {
+        const lista = listarEstudios();
+        if (!categoria) return lista;
+        return lista.filter(e => e.categoria === categoria);
+    }
+    function ivaExplicito(valor, porDefecto) {
+        if (valor === undefined || valor === null || valor === '') return porDefecto;
+        return valor === true || valor === 'true' || valor === '1' || valor === 'on';
+    }
+    function migrarPaquetesAEstudios() {
+        const lista = listarPaquetes();
+        let cambio = false;
+        lista.forEach(p => {
+            const antes = (p.items || []).length;
+            p.items = (p.items || []).map(it => {
+                const dest = ALIAS_SKU_ESTUDIO[String(it.sku || '').toUpperCase()];
+                if (!dest || dest === it.sku) return it;
+                cambio = true;
+                return Object.assign({}, it, { sku: dest });
+            }).filter(it => String(it.sku || '').toUpperCase() !== 'CON-01');
+            if (p.items.length !== antes) cambio = true;
         });
-        escribir(CLAVES.estudios, lista);
-        if (quedan.length !== far.length) escribir(CLAVES.farmacia, quedan);
+        if (cambio) escribir(CLAVES.paquetes, lista);
+    }
+    function consolidarCatalogoEstudios() {
+        const primera = localStorage.getItem(CLAVES.estudiosV3) === null;
+        const crudos = leer(CLAVES.estudios, []).map(fichaEstudio);
+        let lista = crudos.filter(e => CODIGOS_ESTUDIO_RETIRADOS.indexOf(e.codigo) < 0);
+        let cambio = lista.length !== crudos.length;
+        if (primera) {
+            SEMILLA_ESTUDIOS.forEach(s => {
+                const i = lista.findIndex(x => normalizar(x.codigo) === normalizar(s.codigo));
+                if (i >= 0) lista[i] = fichaEstudio(Object.assign({}, s, { estudio_id: lista[i].estudio_id }));
+                else lista.push(fichaEstudio(s));
+            });
+            escribir(CLAVES.estudios, lista);
+            escribir(CLAVES.estudiosV3, true);
+        } else {
+            SEMILLA_ESTUDIOS.forEach(s => {
+                if (!lista.some(x => normalizar(x.codigo) === normalizar(s.codigo))) { lista.push(fichaEstudio(s)); cambio = true; }
+            });
+            if (cambio) escribir(CLAVES.estudios, lista);
+        }
+        migrarPaquetesAEstudios();
     }
     function validarEstudio(entrada) {
         const nombre = limpiarEspacios(entrada.nombre);
-        const tipo = String(entrada.tipo || '').trim();
+        const categoria = String(entrada.categoria || entrada.tipo || '').trim();
         const codigo = limpiarEspacios(entrada.codigo).toUpperCase();
+        const tubo = limpiarEspacios(entrada.tubo_muestra || 'N/A') || 'N/A';
         const precio = redondearMoneda(String(entrada.precio_unitario == null ? '' : entrada.precio_unitario).trim().replace(',', '.'));
         const errores = {};
         if (nombre.length < 2 || nombre.length > 80) errores.nombre = 'Escriba el nombre del estudio (2 a 80 caracteres).';
-        if (!TIPOS_ESTUDIO.some(t => t.codigo === tipo)) errores.tipo = 'Seleccione laboratorio, imagen o procedimiento.';
+        if (!TIPOS_ESTUDIO.some(t => t.codigo === categoria)) errores.categoria = 'Seleccione laboratorio, imagen, procedimiento u hospitalización.';
         if (codigo && !/^[A-Z0-9][A-Z0-9-]{1,19}$/.test(codigo)) errores.codigo = 'El código usa de 2 a 20 letras, números o guiones.';
+        if (tubo.length > 60) errores.tubo_muestra = 'El tubo o la muestra admite hasta 60 caracteres.';
         if (!Number.isFinite(precio) || precio < 0.01 || precio > 999999.99) errores.precio_unitario = 'Indique un precio entre $0.01 y $999,999.99.';
-        return { ok: Object.keys(errores).length === 0, errores: errores, valores: { nombre: nombre, tipo: tipo, codigo: codigo, precio_unitario: precio, aplica_iva: entrada.aplica_iva === true || entrada.aplica_iva === 'true' || entrada.aplica_iva === '1' } };
+        return { ok: Object.keys(errores).length === 0, errores: errores, valores: { nombre: nombre, categoria: categoria, codigo: codigo, tubo_muestra: tubo, precio_unitario: precio, aplica_iva: ivaExplicito(entrada.aplica_iva, true) } };
     }
     function guardarEstudio(entrada, s) {
-        if (!s || s.rol !== 'admin') return { ok: false, motivo: 'Solo dirección puede modificar el catálogo de estudios.' };
+        if (!puedeGestionarTarifario(s)) return { ok: false, motivo: 'Solo dirección y caja pueden modificar el tarifario.' };
         const r = validarEstudio(entrada);
         if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
         const lista = listarEstudios();
@@ -2244,52 +3006,257 @@
         if (id && !ya) return { ok: false, motivo: 'No se encontró el estudio.' };
         const codigo = r.valores.codigo || (ya && ya.codigo) || ('EST-' + Date.now().toString(36).toUpperCase()).replace(/[^A-Z0-9-]/g, '').slice(0, 20);
         if (lista.some(e => e !== ya && normalizar(e.codigo) === normalizar(codigo))) return { ok: false, motivo: 'Ese código ya está en el catálogo.' };
-        const ficha = { estudio_id: ya ? ya.estudio_id : uid('EST'), codigo: codigo, nombre: r.valores.nombre, tipo: r.valores.tipo, precio_unitario: r.valores.precio_unitario, aplica_iva: r.valores.aplica_iva };
+        const ficha = fichaEstudio({ estudio_id: ya ? ya.estudio_id : uid('EST'), codigo: codigo, nombre: r.valores.nombre, categoria: r.valores.categoria, tubo_muestra: r.valores.tubo_muestra, precio_unitario: r.valores.precio_unitario, aplica_iva: r.valores.aplica_iva });
         if (ya) Object.assign(ya, ficha); else lista.push(ficha);
         return escribir(CLAVES.estudios, lista) ? { ok: true, estudio: ficha } : { ok: false, motivo: 'No se pudo guardar el estudio.' };
     }
+    function eliminarEstudio(id, s) {
+        if (!puedeGestionarTarifario(s)) return { ok: false, motivo: 'Solo dirección y caja pueden modificar el tarifario.' };
+        const lista = listarEstudios();
+        if (!lista.some(e => e.estudio_id === id)) return { ok: false, motivo: 'No se encontró el estudio.' };
+        return escribir(CLAVES.estudios, lista.filter(e => e.estudio_id !== id)) ? { ok: true } : { ok: false, motivo: 'No se pudo eliminar el estudio.' };
+    }
+    function colorTubo(tubo) {
+        const n = normalizar(tubo);
+        if (!n || n === 'n/a' || n === 'na') return '';
+        if (n.indexOf('lila') >= 0 || n.indexOf('edta') >= 0 || n.indexOf('morado') >= 0) return '🟣';
+        if (n.indexOf('azul') >= 0) return '🔵';
+        if (n.indexOf('rojo') >= 0 && n.indexOf('amarillo') >= 0) return '🟠';
+        if (n.indexOf('rojo') >= 0) return '🔴';
+        if (n.indexOf('amarillo') >= 0) return '🟡';
+        if (n.indexOf('frasco') >= 0) return '🧴';
+        if (n.indexOf('jeringa') >= 0) return '💉';
+        return '🧪';
+    }
+    function tuboCuenta(tubo) {
+        const t = limpiarEspacios(tubo || '');
+        const n = normalizar(t);
+        if (!t || n === 'n/a' || n === 'na') return null;
+        return t;
+    }
+    function resumenTubosEstudios(ids) {
+        const cuenta = {}, orden = [];
+        (ids || []).forEach(id => {
+            const est = estudioPorId(id) || estudioPorCodigo(id);
+            const tubo = est && tuboCuenta(est.tubo_muestra);
+            if (!tubo) return;
+            if (!cuenta[tubo]) { cuenta[tubo] = 0; orden.push(tubo); }
+            cuenta[tubo] += 1;
+        });
+        const tubos = orden.map(t => ({ tubo: t, cantidad: cuenta[t], emoji: colorTubo(t) }));
+        return { tubos: tubos, texto: tubos.map(t => (t.emoji ? t.emoji + ' ' : '') + t.cantidad + 'x ' + t.tubo).join(', ') };
+    }
     function cargoDesdeEstudio(est, cantidad, quien, extra) {
         const cant = cantidad || 1;
-        const base = redondearMoneda(est.precio_unitario);
+        const oficial = redondearMoneda(est.precio_unitario);
+        const alterado = !!(extra && extra.precio_alterado);
+        const base = alterado ? redondearMoneda(extra.precio_unitario) : oficial;
+        const cat = est.categoria || est.tipo;
         return {
             cargo_id: uid('CG'), concepto: est.nombre + (extra && extra.paquete_nombre ? ' · ' + extra.paquete_nombre : ''),
             sku: est.codigo, estudio_id: est.estudio_id, lote: null, lote_id: null, laboratorio: null,
-            categoria: est.tipo, fraccion_cofepris: 'NA', aplica_iva: !!est.aplica_iva,
-            origen: 'estudio', origen_precio: 'catalogo_estudios',
+            categoria: cat, tubo_muestra: est.tubo_muestra || 'N/A', fraccion_cofepris: 'NA', aplica_iva: !!est.aplica_iva,
+            origen: 'estudio', origen_precio: alterado ? 'ajuste_admin' : 'catalogo_estudios', precio_catalogo: oficial,
+            observaciones_toma: extra && extra.observaciones ? limpiarEspacios(extra.observaciones) : '',
             paquete_id: extra && extra.paquete_id || null, paquete_nombre: extra && extra.paquete_nombre || null,
             precio_unitario: base, cantidad: cant, subtotal: redondearMoneda(base * cant),
             fecha_hora: new Date().toISOString(), cargado_en: new Date().toISOString(),
             cargado_por_id: quien.id, cargado_por_nombre: quien.nombre
         };
     }
-    function cargarEstudioACuenta(turnoId, entrada, s) {
-        if (!s || !permisoAccionDe(s.usuario_id, 'cargar_consumos')) return { ok: false, motivo: 'Su perfil no puede cargar consumos.' };
-        const t = obtenerTurno(turnoId);
-        const i = t && internamientoDeTurno(turnoId);
-        if (!t || !i) return { ok: false, motivo: 'No se encontró el internamiento activo.' };
-        if (!puedeCargarConsumos(s, i)) return { ok: false, motivo: 'Solo se pueden cargar consumos mientras el internamiento está activo.' };
-        const est = estudioPorId(entrada.estudio_id) || estudioPorCodigo(entrada.codigo);
-        if (!est) return { ok: false, motivo: 'Seleccione un estudio del catálogo.' };
-        const enfermera = esEnfermeria(s.rol);
-        let precio = est.precio_unitario;
-        if (!enfermera && s.rol === 'admin' && entrada.precio_unitario != null && String(entrada.precio_unitario).trim() !== '') {
-            const n = redondearMoneda(String(entrada.precio_unitario).replace(',', '.'));
-            if (!Number.isFinite(n) || n < 0.01 || n > 999999.99) return { ok: false, motivo: 'Indique un precio entre $0.01 y $999,999.99.', errores: { precio_unitario: 'Indique un precio entre $0.01 y $999,999.99.' } };
-            precio = n;
-            if (redondearMoneda(precio) !== redondearMoneda(est.precio_unitario)) {
-                const guardado = guardarEstudio({ estudio_id: est.estudio_id, nombre: est.nombre, tipo: est.tipo, codigo: est.codigo, precio_unitario: precio, aplica_iva: est.aplica_iva }, s);
-                if (!guardado.ok) return guardado;
-            }
+    function episodioAbiertoParaEstudios(t) {
+        if (!t) return false;
+        return ESTATUS_EN_FILA.indexOf(t.estatus) >= 0 || t.estatus === ESTATUS.INTERNADO || t.estatus === ESTATUS.INTERNADO_EN_PROCESO;
+    }
+    function turnoActivoParaEstudios(pista) {
+        const p = pista || {};
+        if (p.turno_id) {
+            const directo = obtenerTurno(p.turno_id);
+            if (directo && episodioAbiertoParaEstudios(directo)) return directo;
         }
-        const vigente = estudioPorId(est.estudio_id);
-        const cargo = cargoDesdeEstudio(vigente, 1, { id: s.usuario_id, nombre: s.nombre });
-        i.cargos = (i.cargos || []).concat([cargo]);
-        i.cuenta_actual = totalCargos(i.cargos);
-        i.cuenta_actual_total = i.cuenta_actual;
-        if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo guardar el cargo.' };
-        const total = totalCargos(cargosDeEpisodio(obtenerTurno(turnoId)));
+        if (p.paciente_id) {
+            const porId = listarTurnos().find(t => t.paciente_id === p.paciente_id && episodioAbiertoParaEstudios(t));
+            if (porId) return porId;
+        }
+        return null;
+    }
+    function anexarCargosEstudios(turno, cargos) {
+        const i = internamientoDeTurno(turno.turno_id);
+        const enPiso = i && (turno.estatus === ESTATUS.INTERNADO || turno.estatus === ESTATUS.INTERNADO_EN_PROCESO);
+        if (enPiso) {
+            i.cargos = (i.cargos || []).concat(cargos);
+            i.cuenta_actual = totalCargos(i.cargos);
+            i.cuenta_actual_total = i.cuenta_actual;
+            if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo guardar el cargo.' };
+        } else {
+            const propios = (obtenerTurno(turno.turno_id).cargos || []).concat(cargos);
+            if (!actualizarTurno(turno.turno_id, { cargos: propios })) return { ok: false, motivo: 'No se pudo guardar el cargo.' };
+        }
+        const fresco = obtenerTurno(turno.turno_id);
+        const total = totalCargos(cargosDeEpisodio(fresco));
+        actualizarTurno(turno.turno_id, { cuenta_actual: total, cuenta_actual_total: total });
+        return { ok: true, cargos: cargos, total: total, internamiento: enPiso ? obtenerInternamiento(i.internamiento_id) : null };
+    }
+    function cargarEstudiosACuenta(turnoId, entrada, s) {
+        if (!s || !permisoAccionDe(s.usuario_id, 'cargar_consumos')) return { ok: false, motivo: 'Su perfil no puede cargar estudios.' };
+        const t = obtenerTurno(turnoId);
+        if (!t) return { ok: false, motivo: 'No se encontró al paciente.' };
+        if (!episodioAbiertoParaEstudios(t)) return { ok: false, motivo: 'Este episodio ya no admite cargos de estudios.' };
+        const entradaIds = Array.isArray(entrada.estudio_ids) ? entrada.estudio_ids : (entrada.estudio_id ? [entrada.estudio_id] : []);
+        if (!entradaIds.length) return { ok: false, motivo: 'Seleccione al menos un estudio o procedimiento.' };
+        const obs = limpiarEspacios(entrada.observaciones || '');
+        if (obs.length > 240) return { ok: false, motivo: 'Las observaciones admiten hasta 240 caracteres.' };
+        const alterar = puedeAlterarMontoEstudio(s);
+        const precios = (alterar && entrada.precios) || {};
+        const cargos = [];
+        const vistos = {};
+        for (let k = 0; k < entradaIds.length; k++) {
+            const est = estudioPorId(entradaIds[k]) || estudioPorCodigo(entradaIds[k]);
+            if (!est) return { ok: false, motivo: 'Un estudio seleccionado ya no está en el catálogo.' };
+            if (vistos[est.estudio_id]) continue;
+            vistos[est.estudio_id] = true;
+            let precio = redondearMoneda(est.precio_unitario);
+            let alterado = false;
+            const crudo = alterar ? (precios[est.estudio_id] != null ? precios[est.estudio_id] : (entradaIds.length === 1 ? entrada.precio_unitario : null)) : null;
+            if (alterar && crudo != null && String(crudo).trim() !== '') {
+                const n = redondearMoneda(String(crudo).trim().replace(',', '.'));
+                if (!Number.isFinite(n) || n < 0.01 || n > 999999.99) return { ok: false, motivo: 'Indique un precio entre $0.01 y $999,999.99.' };
+                if (n !== precio) { precio = n; alterado = true; }
+            }
+            cargos.push(cargoDesdeEstudio(est, 1, { id: s.usuario_id, nombre: s.nombre }, { precio_unitario: precio, precio_alterado: alterado, observaciones: obs }));
+        }
+        return anexarCargosEstudios(t, cargos);
+    }
+    function cargarEstudioACuenta(turnoId, entrada, s) {
+        const r = cargarEstudiosACuenta(turnoId, entrada || {}, s);
+        if (!r.ok) return r;
+        return { ok: true, cargo: r.cargos[0], cargos: r.cargos, total: r.total, internamiento: r.internamiento };
+    }
+    function metaCargoCuenta(c) {
+        const cuando = (c && (c.fecha_hora || c.cargado_en)) || '';
+        const d = new Date(cuando);
+        const valida = !isNaN(d.getTime());
+        const h = valida ? d.getHours() : -1;
+        const turno = !valida ? 'Sin turno' : (h >= 7 && h < 15 ? 'Matutino' : (h >= 15 && h < 22 ? 'Vespertino' : 'Nocturno'));
+        const dia = valida ? d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0') : '';
+        return {
+            dia: dia,
+            dia_txt: valida ? d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Sin fecha',
+            turno_horario: turno,
+            quien: (c && c.cargado_por_nombre) || 'Sin registro',
+            cuando: cuando
+        };
+    }
+    function facturaDeTurno(t) {
+        if (!t) return false;
+        if (t.requiere_factura) return true;
+        const i = internamientoDeTurno(t.turno_id);
+        return !!(i && i.requiere_factura);
+    }
+    function cuentasAuditoria(s) {
+        if (!puedeAjustarCuenta(s)) return [];
+        const abiertos = [ESTATUS.PENDIENTE_SIGNOS, ESTATUS.SIGNOS_CAPTURADOS, ESTATUS.EN_CONSULTA, ESTATUS.INTERNADO_EN_PROCESO, ESTATUS.INTERNADO, ESTATUS.ALTA_PENDIENTE_PAGO];
+        return listarTurnos().filter(t => abiertos.indexOf(t.estatus) >= 0).map(t => {
+            const f = fichaCuenta(t);
+            const on = facturaDeTurno(t);
+            const lineas = (f.cargos || []).map(c => Object.assign({}, c, metaCargoCuenta(c)));
+            return Object.assign(f, {
+                lineas: lineas, requiere_factura: on, fiscal: desgloseFiscal(f.cargos, on),
+                pendiente_pago: t.estatus === ESTATUS.ALTA_PENDIENTE_PAGO,
+                activa: t.estatus !== ESTATUS.ALTA_PENDIENTE_PAGO
+            });
+        }).sort((a, b) => Number(b.pendiente_pago) - Number(a.pendiente_pago) || String(b.egreso_en || '').localeCompare(String(a.egreso_en || '')));
+    }
+    function establecerFacturaCuenta(turnoId, requiere, s) {
+        if (!puedeAjustarCuenta(s)) return { ok: false, motivo: 'Solo dirección y caja pueden marcar la factura.' };
+        const t = obtenerTurno(turnoId);
+        if (!t || t.estatus === ESTATUS.CERRADO_HISTORICO) return { ok: false, motivo: 'Esta cuenta ya está cerrada.' };
+        const on = !!requiere;
+        if (!actualizarTurno(turnoId, { requiere_factura: on })) return { ok: false, motivo: 'No se pudo guardar la factura.' };
+        const i = internamientoDeTurno(turnoId);
+        if (i) { i.requiere_factura = on; guardarInternamiento(i); }
+        const fresco = obtenerTurno(turnoId);
+        return { ok: true, requiere_factura: on, fiscal: desgloseFiscal(cargosDeEpisodio(fresco), on) };
+    }
+    function recalcularCuentaTurno(turnoId) {
+        const i = internamientoDeTurno(turnoId);
+        if (i) {
+            i.cuenta_actual = totalCargos(i.cargos);
+            i.cuenta_actual_total = i.cuenta_actual;
+            guardarInternamiento(i);
+        }
+        const fresco = obtenerTurno(turnoId);
+        if (!fresco) return 0;
+        const total = totalCargos(cargosDeEpisodio(fresco));
         actualizarTurno(turnoId, { cuenta_actual: total, cuenta_actual_total: total });
-        return { ok: true, cargo: cargo, internamiento: obtenerInternamiento(i.internamiento_id) };
+        return total;
+    }
+    function ajustarLineaCuenta(turnoId, cargoId, entrada, s) {
+        if (!puedeAjustarCuenta(s)) return { ok: false, motivo: 'Solo dirección y caja pueden ajustar una cuenta.' };
+        const t = obtenerTurno(turnoId);
+        if (!t || t.estatus === ESTATUS.CERRADO_HISTORICO) return { ok: false, motivo: 'Esta cuenta ya está cerrada.' };
+        const i = internamientoDeTurno(turnoId);
+        const enInternamiento = i && (i.cargos || []).some(c => c.cargo_id === cargoId);
+        const lista = enInternamiento ? i.cargos : (t.cargos || []);
+        const idx = lista.findIndex(c => c.cargo_id === cargoId);
+        if (idx < 0) return { ok: false, motivo: 'No se encontró el concepto.' };
+        const op = entrada || {};
+        if (op.eliminar) lista.splice(idx, 1);
+        else {
+            const c = lista[idx];
+            if (op.concepto != null) {
+                const concepto = limpiarEspacios(op.concepto);
+                if (concepto.length < 2 || concepto.length > 80) return { ok: false, motivo: 'Escriba el concepto (2 a 80 caracteres).' };
+                c.concepto = concepto;
+            }
+            if (op.precio_unitario != null && String(op.precio_unitario).trim() !== '') {
+                const n = redondearMoneda(String(op.precio_unitario).trim().replace(',', '.'));
+                const descuento = c.origen === 'ajuste_paquete';
+                if (!Number.isFinite(n) || (!descuento && (n < 0.01 || n > 999999.99)) || (descuento && (n > -0.01 || n < -999999.99))) return { ok: false, motivo: 'Indique un monto válido.' };
+                c.precio_unitario = n;
+            }
+            if (op.cantidad != null && String(op.cantidad).trim() !== '') {
+                const cant = parseInt(op.cantidad, 10);
+                if (!Number.isInteger(cant) || cant < 1 || cant > 99) return { ok: false, motivo: 'La cantidad va de 1 a 99.' };
+                c.cantidad = cant;
+            }
+            if (op.aplica_iva != null) c.aplica_iva = ivaExplicito(op.aplica_iva, false);
+            c.subtotal = redondearMoneda(Number(c.precio_unitario) * Number(c.cantidad || 1));
+            c.ajustado_por_id = s.usuario_id;
+            c.ajustado_por_nombre = s.nombre;
+            c.ajustado_en = new Date().toISOString();
+        }
+        if (enInternamiento) {
+            if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo guardar el ajuste.' };
+        } else if (!actualizarTurno(turnoId, { cargos: lista })) return { ok: false, motivo: 'No se pudo guardar el ajuste.' };
+        return { ok: true, total: recalcularCuentaTurno(turnoId) };
+    }
+    function escHtmlCuenta(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function htmlEstadoCuenta(turnoId) {
+        const t = obtenerTurno(turnoId);
+        if (!t) return '';
+        const f = fichaCuenta(t);
+        const on = facturaDeTurno(t);
+        const fiscal = desgloseFiscal(f.cargos, on);
+        const e = escHtmlCuenta;
+        const grupos = [];
+        (f.cargos || []).forEach(c => {
+            const m = metaCargoCuenta(c);
+            const clave = m.dia + '|' + m.turno_horario + '|' + m.quien;
+            let g = grupos.find(x => x.clave === clave);
+            if (!g) { g = { clave: clave, dia: m.dia_txt, turno: m.turno_horario, quien: m.quien, lineas: [] }; grupos.push(g); }
+            g.lineas.push(c);
+        });
+        const cuerpo = grupos.map(g => {
+            const filas = g.lineas.map(c => '<tr><td>' + e(c.concepto) + (c.tubo_muestra && c.tubo_muestra !== 'N/A' ? '<div style="color:#64748b;font-size:11px">' + e(c.tubo_muestra) + '</div>' : '') + (c.observaciones_toma ? '<div style="color:#64748b;font-size:11px">Obs.: ' + e(c.observaciones_toma) + '</div>' : '') + '</td><td style="text-align:right">' + e(formatoMoneda(c.precio_unitario)) + '</td><td style="text-align:center">' + e(c.cantidad || 1) + '</td><td style="text-align:right">' + e(formatoMoneda(c.subtotal)) + '</td><td>' + (c.aplica_iva ? 'Gravable' : 'Tasa 0%') + '</td></tr>').join('');
+            return '<h3 style="margin:18px 0 6px;font-size:13px">' + e(g.dia) + ' · ' + e(g.turno) + ' · ' + e(g.quien) + '</h3><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:#f8fafc"><th style="text-align:left;padding:6px;border-bottom:1px solid #e2e8f0">Concepto</th><th style="padding:6px;border-bottom:1px solid #e2e8f0">Precio</th><th style="padding:6px;border-bottom:1px solid #e2e8f0">Cant.</th><th style="padding:6px;border-bottom:1px solid #e2e8f0">Subtotal</th><th style="padding:6px;border-bottom:1px solid #e2e8f0">IVA</th></tr></thead><tbody>' + filas + '</tbody></table>';
+        }).join('') || '<p>Sin conceptos cargados.</p>';
+        const iva = on
+            ? '<p style="display:flex;justify-content:space-between"><span>IVA 16% sobre gravables</span><span>' + e(formatoMoneda(fiscal.iva)) + '</span></p><p style="display:flex;justify-content:space-between;font-size:16px"><strong>Total con factura</strong><strong>' + e(formatoMoneda(fiscal.total)) + '</strong></p>'
+            : '<p style="display:flex;justify-content:space-between;font-size:16px"><strong>Total sin IVA</strong><strong>' + e(formatoMoneda(fiscal.subtotal)) + '</strong></p><p style="color:#64748b;font-size:12px">Factura no solicitada. El 16% no se suma.</p>';
+        return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Estado de cuenta</title></head><body style="margin:32px;font-family:Georgia,serif;color:#0f172a"><h1 style="margin:0;font-size:22px">Sanatorio Belén</h1><h2 style="margin:4px 0 16px;font-weight:normal;color:#64748b;font-size:14px">Estado de cuenta / comprobante desglosado</h2><p><strong>Paciente:</strong> ' + e(f.nombre) + (f.cama ? ' · ' + e(f.cama) : '') + '</p><p><strong>Médico:</strong> ' + e(f.medico_nombre || '') + '</p><p><strong>Estatus:</strong> ' + e(ETIQUETA_ESTATUS[f.estatus] || f.estatus) + '</p>' + cuerpo + '<div style="margin-top:16px;border-top:1px solid #cbd5e1;padding-top:10px;max-width:360px;margin-left:auto"><p style="display:flex;justify-content:space-between"><span>Subtotal</span><span>' + e(formatoMoneda(fiscal.subtotal)) + '</span></p>' + iva + '</div></body></html>';
     }
     function listarPaquetes() { return leer(CLAVES.paquetes, []); }
     function listarCajas() { return leer(CLAVES.cajasEstupefacientes, []); }
@@ -2499,11 +3466,11 @@
     function cajasDeArea(area, soloActivas) {
         return listarCajas().filter(c => c.area_destino === area && (!soloActivas || c.usadas < c.piezas_por_caja));
     }
-    function usarAmpulaDesdeNota(turnoId, sku, s, datosTexto) {
+    function usarAmpulaDesdeNota(turnoId, sku, s, datosTexto, areaForzada) {
         if (!s || (s.rol !== 'medico' && s.rol !== 'admin')) return { ok: false, motivo: 'Solo el médico puede generar la receta individual.' };
         const t = obtenerTurno(turnoId);
         if (!t) return { ok: false, motivo: 'No se encontró al paciente.' };
-        const area = areaResguardoDeTurno(t);
+        const area = areaForzada || areaResguardoDeTurno(t);
         if (!area) return { ok: false, motivo: 'Este paciente no está en quirófano, hospitalización ni observación.' };
         const catalogo = listarFarmacia();
         const muestra = catalogo.find(p => normalizar(p.sku) === normalizar(sku) && p.fraccion_cofepris === 'I');
@@ -2735,6 +3702,9 @@
     }
     function esMedicamentoMovimiento(m) {
         if (!m) return false;
+        if (SKUS_FUERA_DE_ALMACEN.indexOf(String(m.sku || '').toUpperCase()) >= 0) return false;
+        if (m.forma_farmaceutica === 'ESTUDIO') return false;
+        if (m.categoria && CATEGORIAS_FISICAS.indexOf(m.categoria) < 0) return false;
         if (m.categoria === 'MEDICAMENTO') return true;
         if (m.categoria && m.categoria !== 'MEDICAMENTO') return false;
         if (estudioPorCodigo(m.sku)) return false;
@@ -3012,12 +3982,15 @@
             datos_postanestesicos: op.datos_postanestesicos || ''
         };
     }
-    function htmlRecetaImprimible(op) {
+    function htmlCuerpoReceta(op) {
         const d = datosReceta(op);
         const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const conteo = d.numero ? '<p><strong>Receta individual:</strong> ' + e(d.numero) + ' de ' + e(d.de) + '</p><p><strong>Caja / lote:</strong> ' + e(d.lote) + ' · <strong>Receta especial:</strong> ' + e(d.folio_receta_especial) + '</p>' : '';
         const post = d.datos_postanestesicos ? '<p><strong>Datos post-anestésicos:</strong> ' + e(d.datos_postanestesicos) + '</p>' : '';
-        return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>' + e(d.titulo) + '</title><style>body{font-family:Georgia,serif;color:#1e293b;margin:32px;max-width:680px}h1{font-size:20px;margin:0}h2{font-size:14px;font-weight:normal;color:#64748b;margin:4px 0 16px}.caja{border:1px solid #cbd5e1;border-radius:8px;padding:16px;margin-top:12px}p{margin:6px 0;font-size:14px}.firma{margin-top:48px;border-top:1px solid #334155;width:240px;padding-top:6px;font-size:12px}</style></head><body><h1>Sanatorio Belén</h1><h2>' + e(d.titulo) + '</h2><div class="caja"><p><strong>Paciente:</strong> ' + e(d.paciente) + (d.edad ? ' · ' + e(d.edad) : '') + (d.cama ? ' · ' + e(d.cama) : '') + '</p><p><strong>Fecha:</strong> ' + e(fechaHoraLegible(d.fecha)) + '</p><p><strong>Médico:</strong> ' + e(d.medico) + ' · <strong>Cédula:</strong> ' + e(d.cedula || 'No registrada') + '</p></div><div class="caja"><p><strong>Denominación:</strong> ' + e(d.denominacion) + '</p><p><strong>Dosis / indicación:</strong> ' + e(d.dosis || d.denominacion) + '</p><p><strong>Laboratorio:</strong> ' + e(d.laboratorio) + ' · <strong>Lote:</strong> ' + e(d.lote) + '</p><p><strong>Control normativo:</strong> ' + e(d.etiqueta) + '</p>' + conteo + post + '</div><div class="firma">Firma del médico</div></body></html>';
+        return '<div style="font-family:Georgia,serif;color:#1e293b;max-width:680px"><h1 style="font-size:20px;margin:0">Sanatorio Belén</h1><h2 style="font-size:14px;font-weight:normal;color:#64748b;margin:4px 0 16px">' + e(d.titulo) + '</h2><div style="border:1px solid #cbd5e1;border-radius:8px;padding:16px"><p><strong>Paciente:</strong> ' + e(d.paciente) + (d.edad ? ' · ' + e(d.edad) : '') + (d.cama ? ' · ' + e(d.cama) : '') + '</p><p><strong>Fecha:</strong> ' + e(fechaHoraLegible(d.fecha)) + '</p><p><strong>Médico:</strong> ' + e(d.medico) + ' · <strong>Cédula:</strong> ' + e(d.cedula || 'No registrada') + '</p></div><div style="border:1px solid #cbd5e1;border-radius:8px;padding:16px;margin-top:12px"><p><strong>Denominación:</strong> ' + e(d.denominacion) + '</p><p><strong>Dosis / indicación:</strong> ' + e(d.dosis || d.denominacion) + '</p><p><strong>Laboratorio:</strong> ' + e(d.laboratorio) + ' · <strong>Lote:</strong> ' + e(d.lote) + '</p><p><strong>Control normativo:</strong> ' + e(d.etiqueta) + '</p>' + conteo + post + '</div><div style="margin-top:48px;border-top:1px solid #334155;width:240px;padding-top:6px;font-size:12px">Firma del médico</div></div>';
+    }
+    function htmlRecetaImprimible(op) {
+        return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Receta</title></head><body style="margin:32px">' + htmlCuerpoReceta(op) + '</body></html>';
     }
 
     function semillaLotesFarmacia() {
@@ -3029,37 +4002,32 @@
             { lote_id: 'LOT-FIS-1', sku: 'FIS-1000', nombre: 'Solución fisiológica 1000 ml', lote: 'L-FIS-26H', caducidad: isoMasDias(18), stock: 24, precio_unitario: 85 },
             { lote_id: 'LOT-PAR-1', sku: 'PAR-1G', nombre: 'Paracetamol 1g IV', lote: 'L-PAR-26C', caducidad: isoMasDias(200), stock: 3, precio_unitario: 45 },
             { lote_id: 'LOT-FEN-1', sku: 'FEN-50', nombre: 'Fentanilo 0.5 mg / 10 ml', lote: 'L-FEN-26A', caducidad: isoMasDias(500), stock: 5, precio_unitario: 180 },
+            { lote_id: 'LOT-MID-1', sku: 'MID-5', nombre: 'Midazolam 5 mg', lote: 'L-MID-26A', caducidad: isoMasDias(400), stock: 20, precio_unitario: 40 },
+            { lote_id: 'LOT-PRO-1', sku: 'PRO-200', nombre: 'Propofol 200 mg / 20 ml', lote: 'L-PRO-26A', caducidad: isoMasDias(300), stock: 20, precio_unitario: 95 },
+            { lote_id: 'LOT-BUP-1', sku: 'BUP-05', nombre: 'Bupivacaína 0.5%', lote: 'L-BUP-26A', caducidad: isoMasDias(400), stock: 20, precio_unitario: 55 },
             { lote_id: 'LOT-DIA-1', sku: 'DIA-10', nombre: 'Diazepam 10 mg', lote: 'L-DIA-26A', caducidad: isoMasDias(300), stock: 12, precio_unitario: 35 },
             { lote_id: 'LOT-GUA-1', sku: 'GUA-M', nombre: 'Guantes de látex talla M', lote: 'L-GUA-26A', caducidad: isoMasDias(700), stock: 40, precio_unitario: 8 },
             { lote_id: 'LOT-JER-1', sku: 'JER-10', nombre: 'Jeringa 10 ml', lote: 'L-JER-26A', caducidad: isoMasDias(700), stock: 50, precio_unitario: 6 },
             { lote_id: 'LOT-VEN-1', sku: 'VEN-18', nombre: 'Equipo de venoclisis', lote: 'L-VEN-26A', caducidad: isoMasDias(500), stock: 20, precio_unitario: 45 },
             { lote_id: 'LOT-PUN-1', sku: 'PUN-18', nombre: 'Punzocat 18G', lote: 'L-PUN-26A', caducidad: isoMasDias(500), stock: 30, precio_unitario: 18 },
-            { lote_id: 'LOT-INY-1', sku: 'INY-01', nombre: 'Inyección', lote: 'L-INY-26D', caducidad: isoMasDias(300), stock: 20, precio_unitario: 80 },
-            { lote_id: 'LOT-CUR-1', sku: 'CUR-01', nombre: 'Curación', lote: 'L-CUR-26E', caducidad: isoMasDias(90), stock: 15, precio_unitario: 150 },
-            { lote_id: 'LOT-MAT-1', sku: 'MAT-01', nombre: 'Material', lote: 'L-MAT-26F', caducidad: isoMasDias(60), stock: 12, precio_unitario: 90 },
-            { lote_id: 'LOT-SUT-1', sku: 'SUT-01', nombre: 'Material de sutura', lote: 'L-SUT-26G', caducidad: isoMasDias(120), stock: 8, precio_unitario: 210 },
-            { lote_id: 'LOT-CON-1', sku: 'CON-01', nombre: 'Consulta', lote: 'L-CON-26I', caducidad: isoMasDias(365), stock: 50, precio_unitario: 500 },
-            { lote_id: 'LOT-NEB-1', sku: 'NEB-01', nombre: 'Nebulización', lote: 'L-NEB-26J', caducidad: isoMasDias(180), stock: 20, precio_unitario: 180 },
-            { lote_id: 'LOT-EKG-1', sku: 'EKG-01', nombre: 'Electrocardiograma', lote: 'L-EKG-26K', caducidad: isoMasDias(365), stock: 15, precio_unitario: 250 },
-            { lote_id: 'LOT-DEX-1', sku: 'DEX-01', nombre: 'Dextrostix', lote: 'L-DEX-26A', caducidad: isoMasDias(180), stock: 25, precio_unitario: 65 },
-            { lote_id: 'LOT-LAB-1', sku: 'LAB-BH', nombre: 'Biometría hemática', lote: 'L-LAB-26A', caducidad: isoMasDias(365), stock: 99, precio_unitario: 220 },
-            { lote_id: 'LOT-RX-1', sku: 'RX-ABD', nombre: 'Rayos X de abdomen', lote: 'L-RX-26A', caducidad: isoMasDias(365), stock: 99, precio_unitario: 480 },
-            { lote_id: 'LOT-IM-1', sku: 'IM-01', nombre: 'Aplicación intramuscular', lote: 'L-IM-26L', caducidad: isoMasDias(300), stock: 20, precio_unitario: 90 }
+            { lote_id: 'LOT-CUR-1', sku: 'CUR-01', nombre: 'Gasas y material de curación', lote: 'L-CUR-26E', caducidad: isoMasDias(90), stock: 15, precio_unitario: 150 },
+            { lote_id: 'LOT-MAT-1', sku: 'MAT-01', nombre: 'Material de curación', lote: 'L-MAT-26F', caducidad: isoMasDias(60), stock: 12, precio_unitario: 90 },
+            { lote_id: 'LOT-SUT-1', sku: 'SUT-01', nombre: 'Material de sutura', lote: 'L-SUT-26G', caducidad: isoMasDias(120), stock: 8, precio_unitario: 210 }
         ].map(completarLote);
     }
     function semillaPaquetesFarmacia() {
         return [
             { paquete_id: 'PAQ-CESAREA', nombre: 'Paquete Cesárea', items: [
                 { sku: 'GUA-M', cantidad: 2 }, { sku: 'JER-10', cantidad: 4 }, { sku: 'VEN-18', cantidad: 1 }, { sku: 'PUN-18', cantidad: 2 },
-                { sku: 'CEF-1G', cantidad: 1 }, { sku: 'SOL-1000', cantidad: 1 }, { sku: 'LAB-BH', cantidad: 1 }, { sku: 'EKG-01', cantidad: 1 }
+                { sku: 'CEF-1G', cantidad: 1 }, { sku: 'SOL-1000', cantidad: 1 }, { sku: 'BH', cantidad: 1 }, { sku: 'EKG', cantidad: 1 }
             ] },
             { paquete_id: 'PAQ-COLE', nombre: 'Paquete Colecistectomía', items: [
                 { sku: 'GUA-M', cantidad: 2 }, { sku: 'JER-10', cantidad: 3 }, { sku: 'VEN-18', cantidad: 1 }, { sku: 'PUN-18', cantidad: 1 },
-                { sku: 'CEF-1G', cantidad: 1 }, { sku: 'SOL-1000', cantidad: 2 }, { sku: 'SUT-01', cantidad: 1 }, { sku: 'EKG-01', cantidad: 1 }
+                { sku: 'CEF-1G', cantidad: 1 }, { sku: 'SOL-1000', cantidad: 2 }, { sku: 'SUT-01', cantidad: 1 }, { sku: 'EKG', cantidad: 1 }
             ] },
             { paquete_id: 'PAQ-PARTO', nombre: 'Paquete Parto', items: [
                 { sku: 'GUA-M', cantidad: 2 }, { sku: 'VEN-18', cantidad: 1 }, { sku: 'JER-10', cantidad: 2 },
-                { sku: 'DEX-01', cantidad: 1 }, { sku: 'LAB-BH', cantidad: 1 }, { sku: 'SOL-1000', cantidad: 1 }
+                { sku: 'DEX', cantidad: 1 }, { sku: 'BH', cantidad: 1 }, { sku: 'SOL-1000', cantidad: 1 }
             ] }
         ];
     }
@@ -3074,18 +4042,34 @@
             creada_en: new Date().toISOString(), usos: []
         }];
     }
+    function asegurarMedsAnestesia() {
+        const extras = [
+            { lote_id: 'LOT-MID-1', sku: 'MID-5', nombre: 'Midazolam 5 mg', lote: 'L-MID-26A', caducidad: isoMasDias(400), stock: 20, precio_unitario: 40 },
+            { lote_id: 'LOT-PRO-1', sku: 'PRO-200', nombre: 'Propofol 200 mg / 20 ml', lote: 'L-PRO-26A', caducidad: isoMasDias(300), stock: 20, precio_unitario: 95 },
+            { lote_id: 'LOT-BUP-1', sku: 'BUP-05', nombre: 'Bupivacaína 0.5%', lote: 'L-BUP-26A', caducidad: isoMasDias(400), stock: 20, precio_unitario: 55 }
+        ].map(completarLote);
+        const lista = listarFarmacia();
+        let cambio = false;
+        extras.forEach(extra => { if (!lista.some(p => p.lote_id === extra.lote_id)) { lista.push(extra); cambio = true; } });
+        if (cambio) escribir(CLAVES.farmacia, lista);
+    }
     function sembrarFarmaciaSiHaceFalta() {
         if (localStorage.getItem(CLAVES.surtido) === null) escribir(CLAVES.surtido, []);
-        let lista = localStorage.getItem(CLAVES.farmacia) === null ? semillaLotesFarmacia() : listarFarmacia().map(completarLote);
+        let lista = localStorage.getItem(CLAVES.farmacia) === null ? semillaLotesFarmacia() : listarFarmacia();
         if (localStorage.getItem(CLAVES.farmaciaAmpliada) === null) {
             semillaLotesFarmacia().forEach(extra => { if (!lista.some(p => p.lote_id === extra.lote_id)) lista.push(extra); });
             escribir(CLAVES.farmaciaAmpliada, true);
         }
+        lista = lista.filter(p => !loteFueraDeAlmacen(p)).map(p => {
+            if (String(p.sku || '').toUpperCase() === 'CUR-01' && normalizar(p.nombre) === 'curacion') p.nombre = 'Gasas y material de curación';
+            return completarLote(p);
+        });
         escribir(CLAVES.farmacia, lista);
-        separarEstudiosDeAlmacen();
+        consolidarCatalogoEstudios();
         if (localStorage.getItem(CLAVES.paquetes) === null) escribir(CLAVES.paquetes, semillaPaquetesFarmacia());
         if (localStorage.getItem(CLAVES.cajasEstupefacientes) === null) escribir(CLAVES.cajasEstupefacientes, semillaCajaFentanilo());
         etiquetarAreaCajas();
+        asegurarMedsAnestesia();
         return true;
     }
 
@@ -3139,7 +4123,7 @@
         sembrarUsuariosSiHaceFalta();
         completarAnestesiologoCirugias();
         sembrarFarmaciaSiHaceFalta();
-        if (localStorage.getItem(CLAVES.catalogo) !== null || localStorage.getItem(CLAVES.visitas) !== null) { sembrarCirugiasSiHaceFalta(); return false; }
+        if (localStorage.getItem(CLAVES.catalogo) !== null || localStorage.getItem(CLAVES.visitas) !== null) { sembrarCirugiasSiHaceFalta(); migrarCirugiasFase1(); return false; }
         const carlos = { paciente_id: 'PAC-000001', nombre_completo: 'Carlos Ruiz Herrera', fecha_nacimiento: '1979-03-14', sexo: 'M', estado_civil: 'Casado(a)', telefono: '3221110001', ocupacion: 'Contador', direccion: 'Calle Morelos 120, Col. Centro', creado_en: '2026-03-12T09:00:00.000Z' };
         const laura = { paciente_id: 'PAC-000002', nombre_completo: 'Laura Méndez Olvera', fecha_nacimiento: '1991-07-22', sexo: 'F', estado_civil: 'Unión Libre', telefono: '3221110002', ocupacion: 'Maestra', direccion: 'Av. México 455, Col. Versalles', creado_en: '2026-08-02T09:00:00.000Z' };
         const visitaCarlos = expedienteDemo(carlos, {
@@ -3172,23 +4156,29 @@
         escribir(CLAVES.visitas, [visitaCarlos, visitaLaura]);
         escribir(CLAVES.demo, true);
         sembrarCirugiasSiHaceFalta();
+        migrarCirugiasFase1();
         return true;
     }
 
     // Borra TODA la información operativa del demo (no toca los machotes) y vuelve a sembrar
     function restablecerDemo() {
-        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.estudios, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
+        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.estudios, CLAVES.estudiosV3, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
         return sembrarDemoSiHaceFalta();
     }
 
     global.BelenStore = {
         CLAVES, ESPECIALIDADES, ROLES, ENFERMERIAS, PERSONAL_OPERATIVO, USUARIOS, COLORES_DISTINTIVO, ACCIONES_PERSONAL, PERMISOS, MODULOS, ESTATUS, ETIQUETA_ESTATUS, ESTATUS_EN_FILA, RANGOS_SIGNOS, SIGNOS_OBLIGATORIOS,
+        SALAS_QUIROFANO, DURACIONES_CIRUGIA, TIPOS_ESTANCIA_QX, ESPECIALIDADES_QUIRURGICAS, QX_DIA_INICIO, QX_DIA_FIN, AREA_AMBULATORIO_QX, MODALIDAD_AMBULATORIO_QX,
+        CAMAS_HOSPITAL, QX_TRASLADO_MINUTOS, TECNICAS_ANESTESIA, MEDS_ANESTESIA, UBICACION_QX,
         leer, escribir, normalizar, limpiarEspacios, hoyLocal, parseFechaISO, calcularEdad, fechaLegibleISO, iniciales, formatoReloj, hashContrasena, colorDeUsuario,
         iniciarSesion, sesion, cerrarSesion, puede, esEnfermeria, moduloAplicaARol, permisoModuloDe, permisoModuloExplicito, establecerPermisoModulo, permisoAccionDe, establecerPermisoAccion, restablecerPermisosPersonal, leerPermisosPersonal, especialidadPorCodigo, medicosDeEspecialidad, identificarOperadorFarmacia,
         guardarUsuario, desactivarUsuario, reactivarUsuario, eliminarUsuario, listarPapeleria, agregarDocumentoPersonal, eliminarDocumentoPersonal,
         listarPacientes, buscarPacientePorIdentidad, buscarPacientesPorNombre, buscarPacientePorId, homonimos, guardarPaciente,
         listarTurnos, obtenerTurno, actualizarTurno, siguienteNumeroTurno, crearTurno, ordenarPorLlegada, turnoVisiblePara, filaDe, colaEspera, pacientesEnConsulta, posicionEnCola, posicionNuevaEnCola, siguienteEnCola, corteDiario, metricas24h,
-        listarCirugias, fichaCirugia, proximasCirugias, cirugiasVisibles, cirugiaVisiblePara, cirujanos, anestesiologos, validarCirugia, programarCirugia, hospitalizadosDe, hospitalizadoVisiblePara,
+        listarCirugias, fichaCirugia, proximasCirugias, cirugiasVisibles, cirugiaVisiblePara, cirugiaPara, cirujanos, anestesiologos, disponibilidadQuirofano, validarCirugia, programarCirugia, asignarAnestesiologo, puedeIngresarAmbulatorio, ingresarPacienteAmbulatorio, hospitalizadosDe, hospitalizadoVisiblePara,
+        camasLibres, flujoQuirofanoDe, pasarPacienteAQuirofano, recibirEnQuirofano, regresarAHospitalizacion, datosHojaTransanestesica,
+        guardarNotaPostanestesica, guardarNotaPostoperatoria, altaAmbulatoriaQx, convertirAmbulatorioAPiso,
+        puedeImprimirHojaTrans, puedeNotaPostanestesica, puedeNotaPostoperatoria, puedeAltaAmbulatoria, puedeConvertirAPiso, puedeRegresarAPiso,
         validarSignos, signosCompletos, resumenSignos, guardarSignos,
         pasarAMedico, iniciarConsulta, accesoExpediente,
         leerBorrador, guardarBorrador, borrarBorrador,
@@ -3203,16 +4193,19 @@
         listarInventarioFarmacia, productoPorSku, buscarLotesFarmacia, validarIngresoFarmacia, ingresarInsumo, fichasSurtidoPendiente, surtirLinea, parsearLineasSurtido,
         CATEGORIAS_FARMACIA, CATEGORIAS_ALMACEN, FRACCIONES_COFEPRIS, CLASIFICACION_AWARE, FORMAS_FARMACEUTICAS, VIAS_ADMINISTRACION, CONSERVACIONES, LABORATORIOS_FRECUENTES, TIPOS_ESTUDIO,
         nombreCategoriaFarmacia, nombreFraccionCofepris, nombreFormaFarmaceutica, nombreConservacion, textoStockFarmacia, denominacionProducto, etiquetaNormativa, badgeRecetaMedica, puedeEmitirRecetaMedica,
-        listarEstudios, estudioPorCodigo, guardarEstudio, cargarEstudioACuenta, nombreTipoEstudio,
+        listarEstudios, estudiosPorCategoria, estudioPorCodigo, guardarEstudio, eliminarEstudio, cargarEstudioACuenta, cargarEstudiosACuenta, nombreTipoEstudio,
+        resumenTubosEstudios, puedeGestionarTarifario, puedeAlterarMontoEstudio, puedeAjustarCuenta, episodioAbiertoParaEstudios, turnoActivoParaEstudios,
+        cuentasAuditoria, establecerFacturaCuenta, ajustarLineaCuenta, htmlEstadoCuenta, metaCargoCuenta,
         listarPaquetes, guardarPaquete, eliminarPaquete, lineasDePaquete, sumaRealPaquete, aplicarPaqueteAPaciente,
         enfermerasActivas, pacientesTerminalFarmacia, prepararLineaCarrito, loteMasProximo, confirmarCarritoFarmacia,
         cajasAbiertasDe, abrirCajaEstupefaciente, listarCajasEstupefacientes, AREAS_CAJA, nombreAreaCaja, areaResguardoDeSesion, areaResguardoDeTurno, cajasDeArea, usarAmpulaDesdeNota,
-        listarSalidasFarmacia, registrarRetiroAdministracion, filtrarMovimientosFarmacia, personasBitacora, presentacionesBitacora, lotesDePresentacion, presentacionMovimiento, awareDeMovimiento, carpetasMovimientosFarmacia, csvMovimientosFarmacia, alertasCofeprisEnTexto, datosReceta, htmlRecetaImprimible,
+        listarSalidasFarmacia, registrarRetiroAdministracion, filtrarMovimientosFarmacia, personasBitacora, presentacionesBitacora, lotesDePresentacion, presentacionMovimiento, awareDeMovimiento, carpetasMovimientosFarmacia, csvMovimientosFarmacia, alertasCofeprisEnTexto, datosReceta, htmlCuerpoReceta, htmlRecetaImprimible,
         validarCorreccionPaciente, corregirDatosPaciente, fechaNacimientoParaEdad, fechaHoraLegible,
         sembrarDemoSiHaceFalta, restablecerDemo
     };
     sembrarUsuariosSiHaceFalta();
     completarAnestesiologoCirugias();
+    migrarCirugiasFase1();
     sembrarFarmaciaSiHaceFalta();
     normalizarIvaDiferido();
 })(window);

@@ -746,6 +746,7 @@
                     <p id="visor-doc-meta" class="text-xs text-slate-500"></p>
                 </div>
                 <div class="flex flex-wrap gap-2">
+                    <button type="button" id="btn-programar-cirugia-visor" onclick="abrirProgramarCirugiaVisor()" class="hidden bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-plus"></i> Programar Cirugía</button>
                     <button type="button" id="btn-nueva-evolucion" onclick="abrirNuevaNotaEvolucion()" class="hidden bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-plus"></i> Nueva Nota de Evolución</button>
                     <button type="button" id="btn-modificar-indicaciones" onclick="abrirModificarIndicaciones()" class="hidden bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-plus"></i> Actualizar Indicaciones</button>
                     <button type="button" id="btn-solicitar-interconsulta" onclick="abrirSolicitarInterconsulta()" class="hidden bg-white border border-cyan-300 text-cyan-700 hover:bg-cyan-50 text-xs font-bold px-3.5 py-2 rounded-lg transition items-center gap-1.5"><i class="fas fa-plus"></i> Solicitar Interconsulta</button>
@@ -1011,8 +1012,8 @@
         </div>
     </div>
 
-    <script src="js/belen-store.js"></script>
-    <script src="js/belen-ui.js"></script>
+    <script src="js/belen-store.js?v=f3"></script>
+    <script src="js/belen-ui.js?v=f3"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
@@ -1301,7 +1302,7 @@
             const pac = BelenStore.buscarPacientePorId(TURNO.paciente_id) || { nombre_completo: TURNO.paciente_nombre, fecha_nacimiento: TURNO.fecha_nacimiento, sexo: TURNO.sexo };
             const edad = BelenStore.calcularEdad(pac.fecha_nacimiento);
             return { pac: pac, nombre: pac.nombre_completo, edad: edad,
-                     edadTxt: edad === null ? 'No registrada' : edad + ' ' + (edad === 1 ? 'año' : 'años'), sexoTxt: pac.sexo === 'F' ? 'Femenino' : 'Masculino' };
+                     edadTxt: edad === null ? 'No registrada' : edad + ' ' + (edad === 1 ? 'año' : 'años'), sexoTxt: pac.sexo === 'F' ? 'Femenino' : (pac.sexo === 'M' ? 'Masculino' : 'No registrado') };
         }
         function etiquetaRelacion(doc) {
             return doc.relacion === 'interconsultante'
@@ -1449,8 +1450,8 @@
                         <p class="text-xs text-slate-500">Acumulado sin IVA. Si el paciente solicita factura, Caja suma 16% solo a los conceptos gravables.</p>
                     </div>
                     ${puede ? `<div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="abrirTerminalEstudiosHospital()" class="bg-cyan-700 hover:bg-cyan-800 text-white text-sm font-extrabold px-4 py-2.5 rounded-lg shadow-sm transition inline-flex items-center gap-1.5">🧪 Cargar Laboratorios / Estudios / Procedimientos</button>
                         <button type="button" onclick="abrirAplicarPaqueteHospital()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition inline-flex items-center gap-1.5"><i class="fas fa-kit-medical"></i> Aplicar Paquete</button>
-                        <button type="button" onclick="abrirCargarInsumoHospital()" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition inline-flex items-center gap-1.5"><i class="fas fa-plus"></i> Cargar Insumo/Estudio</button>
                     </div>` : ''}
                 </div>
                 <div class="overflow-x-auto"><table class="w-full text-sm">
@@ -1564,17 +1565,118 @@
             setTimeout(() => { try { w.print(); } catch (err) { /* la receta queda visible en la ventana */ } }, 250);
         }
 
+        function ingresoAmbulatorioSinNota() {
+            return !!(INTERNAMIENTO && INTERNAMIENTO.modalidad === 'AMBULATORIO_QUIROFANO' && INTERNAMIENTO.sin_nota_consulta && !(INTERNAMIENTO.snapshot_formulario || BelenStore.leerBorrador(TURNO && TURNO.turno_id)));
+        }
+        function hojaPapel(titulo, cuerpo) {
+            return `<div style="font-family:Arial,sans-serif;font-size:12px;color:#0f172a;line-height:1.45"><p style="margin:0 0 8px;font-size:14px;font-weight:bold;text-align:center;text-decoration:underline">${titulo}</p>${cuerpo}</div>`;
+        }
+        function documentosAmbulatorioQx() {
+            const e = BelenUI.esc, p = datosPacienteVigentes();
+            const cir = (BelenStore.listarCirugias().find(c => c.cirugia_id === INTERNAMIENTO.cirugia_id)) || {};
+            const ind = cir.indicaciones_preoperatorias || ((INTERNAMIENTO.hojas_indicaciones || [])[0] || {}).medidas_generales || 'Sin indicaciones preoperatorias.';
+            const cuando = BelenStore.fechaHoraLegible(cir.fecha_hora || INTERNAMIENTO.fecha_ingreso);
+            const hoja = hojaPapel('HOJA FRONTAL · CIRUGÍA AMBULATORIA', `<p><strong>Paciente:</strong> ${e(p.nombre)} &nbsp; <strong>Nacimiento:</strong> ${e(BelenStore.fechaLegibleISO(p.pac.fecha_nacimiento))} &nbsp; <strong>Edad:</strong> ${e(p.edadTxt)} &nbsp; <strong>Sexo:</strong> ${e(p.sexoTxt)}</p><p><strong>Área:</strong> ${e(areaVisor())}</p><p><strong>Cama de piso:</strong> No aplica. Entra y sale el mismo día.</p><p><strong>Procedimiento:</strong> ${e(cir.procedimiento || INTERNAMIENTO.diagnostico_ingreso || '')}</p><p><strong>Cirujano:</strong> ${e(INTERNAMIENTO.medico_tratante_nombre)} &nbsp; <strong>Programada:</strong> ${e(cuando)}</p><p><strong>Indicaciones preoperatorias:</strong> ${e(ind)}</p><p style="margin-top:28px">Firma de Enfermería: ___________________________</p>`);
+            const ingreso = hojaPapel('CONSENTIMIENTO DE INGRESO A QUIRÓFANO AMBULATORIO', `<p>Autorizo mi ingreso a ${e(areaVisor())} para el procedimiento <strong>${e(cir.procedimiento || '')}</strong>, el ${e(cuando)}, sin pasar por consulta ni ocupar cama de hospitalización.</p><p style="margin-top:28px">Firma del paciente o responsable: ___________________________</p>`);
+            const proc = hojaPapel('CONSENTIMIENTO DEL PROCEDIMIENTO', `<p><strong>Paciente:</strong> ${e(p.nombre)}</p><p><strong>Procedimiento:</strong> ${e(cir.procedimiento || '')}</p><p><strong>Cirujano:</strong> ${e(INTERNAMIENTO.medico_tratante_nombre)}</p><p>Se me informaron los riesgos propios del procedimiento y de la anestesia. Este ingreso no sustituye una nota de consulta médica.</p><p style="margin-top:28px">Firma del paciente o responsable: ___________________________</p>`);
+            return { hoja: hoja, nota: '', historia: '', consentimientos: [ingreso, proc] };
+        }
+        function abrirProgramarCirugiaVisor() {
+            if (!BelenStore.puede('programar_cirugia') || !TURNO || TURNO.estatus !== 'internado') { BelenUI.toast('Su perfil no puede programar cirugías de este paciente.', 'alerta'); return; }
+            const p = datosPacienteVigentes();
+            const preset = { paciente_id: TURNO.paciente_id, nombre: p.nombre, fecha_nacimiento: p.pac.fecha_nacimiento, medico_id: TURNO.medico_id };
+            const S = BelenStore, e = BelenUI.esc;
+            const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 outline-none bg-white';
+            const lab = (id, t) => `<label for="${id}" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">${t} <span class="text-red-500">*</span></label>`;
+            const err = k => `<p data-err="${k}" class="text-[11px] text-red-600 mt-1 hidden"></p>`;
+            const propio = SESION.rol === 'medico' && S.cirujanos().some(m => m.id === SESION.medico_id);
+            const cirujanos = (propio ? S.cirujanos().filter(m => m.id === SESION.medico_id) : S.cirujanos()).map(m => `<option value="${e(m.id)}" ${m.id === (propio ? SESION.medico_id : preset.medico_id) ? 'selected' : ''}>${e(m.nombre)} · ${e(m.cargo)}</option>`).join('');
+            const anests = S.anestesiologos().map(m => `<option value="${e(m.id)}">${e(m.nombre)}</option>`).join('');
+            const pintar = raiz => {
+                const box = raiz.querySelector('#cx-disponibilidad');
+                const sala = raiz.querySelector('#cx-sala').value, fecha = raiz.querySelector('#cx-fecha').value;
+                if (!sala || !fecha) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+                const d = S.disponibilidadQuirofano(sala, fecha, SESION);
+                box.classList.remove('hidden');
+                const seg = t => `<div class="${t.tipo === 'libre' ? 'bg-emerald-500' : (t.tipo === 'ocupado' ? 'bg-rose-500' : 'bg-slate-300')} h-9" style="width:${t.porcentaje}%" title="${e(t.etiqueta)}"></div>`;
+                const libres = (d.libres || []).map(t => `<button type="button" data-libre="${e(t.inicio)}" class="text-left text-xs font-bold text-emerald-900 bg-emerald-50 border border-emerald-300 rounded-lg px-3 py-2">Libre: ${e(t.inicio)} - ${e(t.fin)}</button>`).join('');
+                const ocupados = (d.ocupados || []).map(t => `<div class="text-xs font-bold text-rose-900 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">${e(t.etiqueta)}</div>`).join('');
+                box.innerHTML = `<p class="text-[11px] font-bold text-slate-500 uppercase mb-2">Disponibilidad del día · 07:00 a 22:00</p><div class="flex w-full rounded-lg overflow-hidden border border-slate-200 mb-2">${(d.tramos || []).map(seg).join('')}</div><div class="flex flex-col gap-1.5">${libres}${ocupados}</div>`;
+                box.querySelectorAll('[data-libre]').forEach(b => b.addEventListener('click', () => {
+                    const hora = raiz.querySelector('#cx-hora_inicio');
+                    hora.value = b.getAttribute('data-libre');
+                    hora.dispatchEvent(new Event('input'));
+                }));
+            };
+            BelenUI.modal({
+                titulo: 'Programar Cirugía', subtitulo: p.nombre + ' · paciente internado', icono: 'fa-kit-medical', ancho: 'xl',
+                html: `<div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
+                    <div class="sm:col-span-6">${lab('cx-nombre', 'Paciente')}<input id="cx-nombre" readonly value="${e(preset.nombre)}" class="${cls} bg-slate-50"><input id="cx-paciente_id" type="hidden" value="${e(preset.paciente_id)}">${err('nombre')}</div>
+                    <div class="sm:col-span-3"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Fecha de nacimiento</label><input id="cx-fecha_nacimiento" readonly value="${e(preset.fecha_nacimiento)}" class="${cls} bg-slate-50">${err('fecha_nacimiento')}</div>
+                    <div class="sm:col-span-3"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Edad</label><input id="cx-edad" readonly value="${e(p.edadTxt)}" class="${cls} bg-slate-50"></div>
+                    <div class="sm:col-span-6">${lab('cx-tipo_estancia', 'Tipo de estancia quirúrgica')}<select id="cx-tipo_estancia" class="${cls}"><option value="">Seleccione…</option>${S.TIPOS_ESTANCIA_QX.map(x => `<option value="${x.codigo}">${e(x.etiqueta)}</option>`).join('')}</select>${err('tipo_estancia')}</div>
+                    <div class="sm:col-span-6">${lab('cx-procedimiento', 'Nombre de la cirugía')}<input id="cx-procedimiento" maxlength="120" class="${cls}">${err('procedimiento')}</div>
+                    <div class="sm:col-span-6">${lab('cx-sala', 'Sala solicitada')}<select id="cx-sala" class="${cls}"><option value="">Seleccione…</option>${S.SALAS_QUIROFANO.map(x => `<option value="${x.codigo}">${e(x.nombre)}</option>`).join('')}</select>${err('sala')}</div>
+                    <div class="sm:col-span-6">${lab('cx-fecha', 'Fecha de la cirugía')}<input id="cx-fecha" type="date" min="${S.hoyLocal()}" class="${cls}">${err('fecha')}</div>
+                    <div id="cx-disponibilidad" class="sm:col-span-6 hidden"></div>
+                    <div class="sm:col-span-2">${lab('cx-hora_inicio', 'Hora de inicio')}<input id="cx-hora_inicio" type="time" min="07:00" max="21:30" class="${cls}">${err('hora_inicio')}</div>
+                    <div class="sm:col-span-2">${lab('cx-duracion', 'Duración estimada')}<select id="cx-duracion" class="${cls}"><option value="">Seleccione…</option>${S.DURACIONES_CIRUGIA.map(x => `<option value="${x.minutos}">${e(x.etiqueta)}</option>`).join('')}</select>${err('duracion_minutos')}</div>
+                    <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Hora de fin</label><input id="cx-hora_fin" readonly class="${cls} bg-slate-50" placeholder="Se calcula sola"></div>
+                    <div class="sm:col-span-3">${lab('cx-medico', 'Médico cirujano')}<select id="cx-medico_cirujano_id" class="${cls}" ${propio ? 'disabled' : ''}><option value="">Seleccione…</option>${cirujanos}</select>${err('medico_cirujano_id')}</div>
+                    <div class="sm:col-span-3"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Anestesiólogo</label><select id="cx-anestesiologo_id" class="${cls}"><option value="">Pendiente (Asignará Administración)</option>${anests}</select>${err('anestesiologo_id')}</div>
+                    <div class="sm:col-span-6"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Indicaciones preoperatorias</label><textarea id="cx-indicaciones" rows="2" maxlength="600" class="${cls}" placeholder="Ayuno, tricotomía, laboratorios previos"></textarea>${err('indicaciones_preoperatorias')}</div>
+                    <div class="sm:col-span-6"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Notas privadas</label><textarea id="cx-notas" rows="2" maxlength="600" class="${cls}"></textarea>${err('notas')}</div>
+                </div>`,
+                alMostrar: c => {
+                    const q = sel => c.el.querySelector(sel);
+                    const actualizarFin = () => {
+                        const ini = q('#cx-hora_inicio').value, dur = Number(q('#cx-duracion').value), m = String(ini).match(/^(\d{2}):(\d{2})$/);
+                        q('#cx-hora_fin').value = m && dur ? String(Math.floor(((+m[1]) * 60 + (+m[2]) + dur) / 60)).padStart(2, '0') + ':' + String(((+m[1]) * 60 + (+m[2]) + dur) % 60).padStart(2, '0') : '';
+                    };
+                    q('#cx-sala').addEventListener('change', () => pintar(c.el));
+                    q('#cx-fecha').addEventListener('change', () => pintar(c.el));
+                    q('#cx-hora_inicio').addEventListener('input', actualizarFin);
+                    q('#cx-duracion').addEventListener('change', actualizarFin);
+                    c._fin = actualizarFin;
+                },
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Guardar Cirugía', estilo: 'primario', id: 'cx-guardar', alPulsar: c => {
+                        const q = sel => c.el.querySelector(sel);
+                        const r = S.programarCirugia({
+                            paciente_id: preset.paciente_id, nombre: preset.nombre, fecha_nacimiento: preset.fecha_nacimiento,
+                            tipo_estancia: q('#cx-tipo_estancia').value, procedimiento: q('#cx-procedimiento').value, sala: q('#cx-sala').value,
+                            fecha: q('#cx-fecha').value, hora_inicio: q('#cx-hora_inicio').value, duracion_minutos: q('#cx-duracion').value,
+                            medico_cirujano_id: q('#cx-medico_cirujano_id').value, anestesiologo_id: q('#cx-anestesiologo_id').value,
+                            indicaciones_preoperatorias: q('#cx-indicaciones').value, notas: q('#cx-notas').value
+                        }, SESION);
+                        if (!r.ok) {
+                            c.el.querySelectorAll('[data-err]').forEach(n => n.classList.add('hidden'));
+                            Object.keys(r.errores || {}).forEach(k => {
+                                const n = q(`[data-err="${k}"]`); if (n) { n.textContent = r.errores[k]; n.classList.remove('hidden'); }
+                                const mapa = { duracion_minutos: '#cx-duracion', indicaciones_preoperatorias: '#cx-indicaciones' };
+                                const i = q(mapa[k] || ('#cx-' + k)); if (i) i.classList.add('border-red-500');
+                            });
+                            if (!r.errores) BelenUI.toast(r.motivo, 'peligro');
+                            return false;
+                        }
+                        BelenUI.toast('Cirugía programada: ' + r.cirugia.procedimiento + ' (' + r.cirugia.hora_inicio + ' a ' + r.cirugia.hora_fin + ').', 'exito');
+                    } }
+                ]
+            });
+        }
+
         // Árbol: carpeta Ingreso, carpeta Indicaciones Médicas (por fecha), carpeta Evolución (SOAP por fecha/hora)
         function construirDocumentosVisor() {
             const S = BelenStore, docs = [], nodos = [];
             const nodo = (clave, titulo, icono, items, opc) => { nodos.push(Object.assign({ clave: clave, titulo: titulo, icono: icono, items: items }, opc || {})); items.forEach(d => docs.push(d)); };
             const ingreso = S.fechaHoraLegible(INTERNAMIENTO.fecha_ingreso);
             const tituloNota = tituloNotaSegunDestino(sessionStorage.getItem('belen_destino'));
+            const sinNota = ingresoAmbulatorioSinNota();
 
-            const itemsIngreso = [
-                { id: 'nota-ingreso', titulo: 'Nota de Ingreso', sub: ingreso, meta: tituloNota + ' · ' + ingreso, htmls: () => [HTML_CAPTURADO.nota] },
-                { id: 'hoja-frontal', titulo: 'Hoja Frontal', sub: ingreso, meta: 'Documento de ingreso · ' + ingreso, htmls: () => [HTML_CAPTURADO.hoja] }
-            ];
+            const itemsIngreso = [];
+            if (!sinNota) itemsIngreso.push({ id: 'nota-ingreso', titulo: 'Nota de Ingreso', sub: ingreso, meta: tituloNota + ' · ' + ingreso, htmls: () => [HTML_CAPTURADO.nota] });
+            itemsIngreso.push({ id: 'hoja-frontal', titulo: 'Hoja Frontal', sub: ingreso, meta: 'Documento de ingreso · ' + ingreso, htmls: () => [HTML_CAPTURADO.hoja] });
             (HTML_CAPTURADO.consentimientos || []).forEach((h, i) => {
                 itemsIngreso.push({
                     id: 'cons-' + i,
@@ -1582,7 +1684,7 @@
                     sub: ingreso, meta: 'Consentimiento informado · ' + ingreso, htmls: () => [h]
                 });
             });
-            itemsIngreso.push({ id: 'historia-clinica', titulo: 'Historia Clínica', sub: ingreso, meta: 'Historia Clínica · ' + ingreso, htmls: () => [HTML_CAPTURADO.historia] });
+            if (!sinNota) itemsIngreso.push({ id: 'historia-clinica', titulo: 'Historia Clínica', sub: ingreso, meta: 'Historia Clínica · ' + ingreso, htmls: () => [HTML_CAPTURADO.historia] });
             nodo('ingreso', 'Ingreso', 'fa-folder-open', itemsIngreso);
 
             const hojas = (INTERNAMIENTO.hojas_indicaciones || []).slice().reverse();
@@ -1665,7 +1767,8 @@
             const p = datosPacienteVigentes();
             $('visor-iniciales').textContent = BelenStore.iniciales(p.nombre);
             $('visor-paciente-nombre').textContent = p.nombre;
-            $('visor-paciente-datos').textContent = p.sexoTxt + ' · ' + p.edadTxt + ' · ' + BelenStore.especialidadPorCodigo(TURNO.especialidad_codigo).nombre;
+            const espVisor = BelenStore.especialidadPorCodigo(TURNO.especialidad_codigo);
+            $('visor-paciente-datos').textContent = [p.sexoTxt, p.edadTxt, espVisor ? espVisor.nombre : ''].filter(Boolean).join(' · ');
             document.title = 'Hospitalización | ' + p.nombre;
             const fila = (et, v) => `<div><p class="text-[10px] font-bold text-slate-400 uppercase leading-none">${et}</p><p class="mt-0.5 text-slate-800">${v}</p></div>`;
             const ics = (INTERNAMIENTO.interconsultas || []);
@@ -1677,6 +1780,10 @@
                     <p class="text-[10px] font-bold uppercase leading-none"><i class="fas ${INTERNAMIENTO.alergias ? 'fa-triangle-exclamation' : 'fa-shield-heart'} mr-1"></i>Alergias</p>
                     <p class="mt-0.5 font-bold">${e(textoAlergiasVisor())}</p></div>` +
                 (ics.length ? fila('Interconsultas', ics.map(x => `<span class="inline-block bg-indigo-50 text-indigo-700 border border-indigo-200 rounded px-1.5 py-0.5 text-[10px] font-bold mr-1 mb-1">${e(x.especialidad)} · ${e(x.medico_nombre)}</span>`).join('')) : '');
+            if (INTERNAMIENTO.modalidad === 'AMBULATORIO_QUIROFANO') {
+                document.getElementById('visor-banner-texto').textContent = 'Ingreso directo ambulatorio a quirófano. No pasó por la fila de consulta y no exige nota de consulta médica. Hoja Frontal, Consentimientos y Cuenta de Consumos están habilitados.';
+                $('visor-resumen').insertAdjacentHTML('afterbegin', '<p class="inline-flex text-[10px] font-extrabold uppercase tracking-wide px-2 py-1 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300">CIRUGÍA AMBULATORIA</p>');
+            }
             if (ACCESO_VISOR.relacion === 'interconsultante') {
                 document.getElementById('visor-banner-texto').textContent = 'Documento inmutable. Usted participa por interconsulta: puede agregar notas de evolución e indicaciones.';
             }
@@ -1697,16 +1804,20 @@
             ['btn-nueva-evolucion', 'btn-modificar-indicaciones', 'btn-solicitar-interconsulta'].forEach(id => { $(id).classList.toggle('hidden', !escribe); $(id).classList.toggle('flex', escribe); });
             $('btn-dar-alta-egreso').classList.toggle('hidden', !alta); $('btn-dar-alta-egreso').classList.toggle('flex', alta);
             $('btn-corregir-datos').classList.toggle('hidden', !ACCESO_VISOR.puede_corregir);
+            const puedeProgramar = BelenStore.puede('programar_cirugia') && TURNO && TURNO.estatus === 'internado';
+            $('btn-programar-cirugia-visor').classList.toggle('hidden', !puedeProgramar);
+            $('btn-programar-cirugia-visor').classList.toggle('flex', puedeProgramar);
         }
 
         function refrescarVisor(seleccionarId) {
             INTERNAMIENTO = BelenStore.obtenerInternamiento(INTERNAMIENTO.internamiento_id) || INTERNAMIENTO;
             TURNO = BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
             ACCESO_VISOR = BelenStore.accesoVisorHospitalizado(SESION, INTERNAMIENTO);
-            compilarDocumentosCapturados();
+            if (ingresoAmbulatorioSinNota()) HTML_CAPTURADO = documentosAmbulatorioQx();
+            else compilarDocumentosCapturados();
             construirDocumentosVisor();
             if (seleccionarId) DOC_ACTIVO_ID = seleccionarId;
-            if (!DOCS_VISOR.some(d => d.id === DOC_ACTIVO_ID)) DOC_ACTIVO_ID = 'nota-ingreso';
+            if (!DOCS_VISOR.some(d => d.id === DOC_ACTIVO_ID)) DOC_ACTIVO_ID = (DOCS_VISOR[0] && DOCS_VISOR[0].id) || 'hoja-frontal';
             renderResumenVisor();
             renderPortafolio();
             renderDocumentoActivo();
@@ -1730,15 +1841,20 @@
             if (volver) volver.href = 'dashboard.html?vista=hospitalizacion';
 
             const captura = INTERNAMIENTO.snapshot_formulario || BelenStore.leerBorrador(TURNO.turno_id);
-            if (!captura) { bloquearAcceso('No se encontró la captura del expediente de este internamiento.', 'Expediente no disponible'); return; }
-            // El formulario (oculto) se rehidrata con la captura para compilar los documentos con el código de impresión existente
-            sessionStorage.setItem('belen_destino', captura.destino || INTERNAMIENTO.destino || 'Hospitalizacion');
-            aplicarContextoPaciente();
-            sincronizarSignosDesdeTurno(true);
-            sincronizarCivil();
-            aplicarTipoIngreso(sessionStorage.getItem('belen_destino'));
-            poblarEspecialidadesInterconsulta();
-            try { restaurarBorrador(captura); } catch (err) { console.error('No se pudo rehidratar la captura:', err); }
+            const ambulatorioDirecto = INTERNAMIENTO.modalidad === 'AMBULATORIO_QUIROFANO' && INTERNAMIENTO.sin_nota_consulta;
+            if (!captura && !ambulatorioDirecto) { bloquearAcceso('No se encontró la captura del expediente de este internamiento.', 'Expediente no disponible'); return; }
+            if (captura) {
+                sessionStorage.setItem('belen_destino', captura.destino || INTERNAMIENTO.destino || 'Hospitalizacion');
+                aplicarContextoPaciente();
+                sincronizarSignosDesdeTurno(true);
+                sincronizarCivil();
+                aplicarTipoIngreso(sessionStorage.getItem('belen_destino'));
+                poblarEspecialidadesInterconsulta();
+                try { restaurarBorrador(captura); } catch (err) { console.error('No se pudo rehidratar la captura:', err); }
+            } else {
+                sessionStorage.setItem('belen_destino', 'Quirofano');
+                aplicarContextoPaciente();
+            }
             document.getElementById('main-expediente').classList.add('hidden');
             document.getElementById('main-expediente').setAttribute('aria-hidden', 'true');
             document.getElementById('visor-hospitalizado').classList.remove('hidden');
@@ -1756,7 +1872,7 @@
                 INTERNAMIENTO = BelenStore.obtenerInternamiento(INTERNAMIENTO.internamiento_id) || INTERNAMIENTO;
                 renderResumenVisor();
             });
-            refrescarVisor('nota-ingreso');
+            refrescarVisor(ambulatorioDirecto && !captura ? 'hoja-frontal' : 'nota-ingreso');
         }
 
         // ---------- Impresión de la hoja abierta (la inmutabilidad no impide reimprimir) ----------
@@ -1997,66 +2113,20 @@
                 <label class="flex items-start gap-2 text-sm text-slate-700"><input id="cg-aplica_iva" type="checkbox" class="mt-1 rounded border-slate-300 text-cyan-700"> <span>Grava 16% de IVA en caso de facturación. El cargo entra a la cuenta con el precio base; Caja suma el impuesto solo si solicitan factura.</span></label>
             </div>`;
         }
-        function abrirCargarInsumoHospital() {
+        function abrirTerminalEstudiosHospital() {
             if (!ACCESO_VISOR || !ACCESO_VISOR.puede_cargar_cuenta) { BelenUI.toast('No puede cargar consumos en este internamiento.', 'alerta'); return; }
-            const S = BelenStore, e = BelenUI.esc;
-            const estudios = S.listarEstudios();
-            const enfermera = S.esEnfermeria(SESION.rol);
-            const admin = SESION.rol === 'admin';
-            const opciones = estudios.map(est => `<option value="${e(est.estudio_id)}" data-precio="${est.precio_unitario}">${e(est.nombre)} · ${e(S.nombreTipoEstudio(est.tipo))} · ${e(S.formatoMoneda(est.precio_unitario))}</option>`).join('');
-            const alta = admin ? `<div id="est-alta" class="hidden border-t border-slate-100 pt-3 space-y-2">
-                <input id="est-nuevo-nombre" placeholder="Nombre del estudio" class="${CLASE_CAMPO}">
-                <select id="est-nuevo-tipo" class="${CLASE_CAMPO}">${S.TIPOS_ESTUDIO.map(t => `<option value="${t.codigo}">${t.nombre}</option>`).join('')}</select>
-                <input id="est-nuevo-precio" type="number" min="0.01" step="0.01" placeholder="Precio unitario" class="${CLASE_CAMPO}">
-                <button type="button" id="est-guardar-nuevo" class="text-xs font-bold text-cyan-800">Guardar en el catálogo</button>
-            </div>` : '';
-            BelenUI.modal({
-                titulo: 'Cargar Insumo/Estudio', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-vial', ancho: 'md',
-                html: `<div class="space-y-3 text-left">
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Estudio o procedimiento</label>
-                    <select id="est-id" class="${CLASE_CAMPO}">${opciones || '<option value="">Sin estudios en el catálogo</option>'}</select>
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Precio unitario</label>
-                    <input id="est-precio" type="number" min="0.01" step="0.01" ${enfermera ? 'readonly disabled' : ''} class="${CLASE_CAMPO} ${enfermera ? 'bg-slate-100' : ''}">
-                    <p class="text-[11px] text-slate-500">${enfermera ? 'El precio oficial del catálogo queda bloqueado para enfermería.' : 'Si cambia el precio, queda como precio oficial del catálogo.'}</p>
-                    ${admin ? '<button type="button" id="est-mostrar-alta" class="text-xs font-bold text-cyan-800">Agregar estudio al catálogo</button>' : ''}${alta}
-                    <p id="est-error" class="text-xs text-red-600 hidden"></p>
-                </div>`,
-                alMostrar: c => {
-                    const sel = c.el.querySelector('#est-id'), precio = c.el.querySelector('#est-precio');
-                    const sync = () => { const o = sel.selectedOptions[0]; if (o && o.getAttribute('data-precio')) precio.value = o.getAttribute('data-precio'); };
-                    sel.addEventListener('change', sync);
-                    sync();
-                    const mostrar = c.el.querySelector('#est-mostrar-alta');
-                    if (mostrar) mostrar.addEventListener('click', () => c.el.querySelector('#est-alta').classList.remove('hidden'));
-                    const guardar = c.el.querySelector('#est-guardar-nuevo');
-                    if (guardar) guardar.addEventListener('click', () => {
-                        const r = S.guardarEstudio({ nombre: c.el.querySelector('#est-nuevo-nombre').value, tipo: c.el.querySelector('#est-nuevo-tipo').value, precio_unitario: c.el.querySelector('#est-nuevo-precio').value, aplica_iva: true }, S.sesion());
-                        const error = c.el.querySelector('#est-error');
-                        if (!r.ok) { error.textContent = (r.errores && (r.errores.nombre || r.errores.precio_unitario || r.errores.tipo)) || r.motivo; error.classList.remove('hidden'); return; }
-                        const opt = document.createElement('option');
-                        opt.value = r.estudio.estudio_id;
-                        opt.setAttribute('data-precio', r.estudio.precio_unitario);
-                        opt.textContent = r.estudio.nombre + ' · ' + S.nombreTipoEstudio(r.estudio.tipo);
-                        sel.appendChild(opt);
-                        sel.value = r.estudio.estudio_id;
-                        sync();
-                        BelenUI.toast(r.estudio.nombre + ' quedó en el catálogo.', 'exito');
-                    });
-                },
-                botones: [
-                    { texto: 'Cancelar', estilo: 'secundario' },
-                    { texto: 'Agregar a la cuenta', estilo: 'primario', id: 'cg-guardar', alPulsar: c => {
-                        const r = S.cargarEstudioACuenta(TURNO.turno_id, { estudio_id: c.el.querySelector('#est-id').value, precio_unitario: enfermera ? null : c.el.querySelector('#est-precio').value }, S.sesion());
-                        const error = c.el.querySelector('#est-error');
-                        if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
-                        const fresco = S.resolverInternamiento(TURNO.turno_id);
-                        if (fresco) INTERNAMIENTO = fresco;
-                        BelenUI.toast(r.cargo.concepto + ' agregado · ' + S.formatoMoneda(r.cargo.subtotal), 'exito');
-                        refrescarVisor('cuenta-consumos');
-                    } }
-                ]
+            BelenUI.abrirTerminalEstudios({
+                turnoId: TURNO.turno_id,
+                alGuardar: () => {
+                    const fresco = BelenStore.resolverInternamiento(TURNO.turno_id);
+                    if (fresco) INTERNAMIENTO = fresco;
+                    const t = BelenStore.obtenerTurno(TURNO.turno_id);
+                    if (t) TURNO = t;
+                    refrescarVisor('cuenta-consumos');
+                }
             });
         }
+        function abrirCargarInsumoHospital() { abrirTerminalEstudiosHospital(); }
         function imprimirNotaEgresoDosCopias(nota) {
             const html = htmlNotaEgreso(nota);
             const zona = document.getElementById('print-visor');

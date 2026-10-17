@@ -59,7 +59,7 @@
                 <i class="fas fa-bed-pulse w-5"></i> Monitor de Camas
             </a>
 
-            <!-- Cirugías: módulo "Quirófano" (admin, administrador y enf_quirofano por defecto; interruptor por usuario) -->
+            <!-- Cirugías: dos salas (Grande y Chico). + Programar Cirugía solo si BelenStore.puede('programar_cirugia'). -->
             <a href="?vista=cirugias" data-vista="cirugias" data-roles="admin,administrador,enf_triage,enf_hospital,enf_quirofano,medico" data-modulo="ver_quirofano" onclick="AdminController.navegar('cirugias', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-kit-medical w-5"></i> Cirugías
             </a>
@@ -73,7 +73,7 @@
                 <i class="fas fa-users-gear w-5"></i> Gestión de Personal
             </a>
 
-            <a href="#" data-proximamente="Tarifario y Caja" data-roles="admin,administrador" title="El cobro muestra el total sin IVA. El 16% se suma en el desglose solo si el paciente solicita factura." class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
+            <a href="?vista=tarifario" data-vista="tarifario" data-roles="admin,administrador" title="El cobro muestra el total sin IVA. El 16% se suma en el desglose solo si el paciente solicita factura." onclick="AdminController.navegar('tarifario', event)" class="flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded-xl font-medium transition">
                 <i class="fas fa-file-invoice-dollar w-5"></i> Tarifario y Caja
             </a>
 
@@ -120,9 +120,9 @@
     </main>
 
     <!-- Scripts -->
-    <script src="js/belen-store.js"></script>
-    <script src="js/belen-ui.js"></script>
+    <script src="js/belen-store.js?v=f3"></script>
+    <script src="js/belen-ui.js?v=f3"></script>
     <script src="js/admin-api.js"></script>
-    <script src="js/admin-app.js"></script>
+    <script src="js/admin-app.js?v=f3"></script>
 </body>
 </html>
