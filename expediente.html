@@ -1450,7 +1450,7 @@
                     </div>
                     ${puede ? `<div class="flex flex-wrap gap-2">
                         <button type="button" onclick="abrirAplicarPaqueteHospital()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition inline-flex items-center gap-1.5"><i class="fas fa-kit-medical"></i> Aplicar Paquete</button>
-                        <button type="button" onclick="abrirCargarInsumoHospital()" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition inline-flex items-center gap-1.5"><i class="fas fa-plus"></i> Cargar Insumo/Medicamento</button>
+                        <button type="button" onclick="abrirCargarInsumoHospital()" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition inline-flex items-center gap-1.5"><i class="fas fa-plus"></i> Cargar Insumo/Estudio</button>
                     </div>` : ''}
                 </div>
                 <div class="overflow-x-auto"><table class="w-full text-sm">
@@ -1492,7 +1492,10 @@
             const alertas = BelenStore.alertasCofeprisEnTexto(texto);
             if (!alertas.length) return '';
             return alertas.map(a => {
-                const btn = a.retenida ? `<button type="button" data-receta-sku="${BelenUI.esc(a.sku)}" data-receta-dosis="${BelenUI.esc(a.dosis)}" class="mt-2 bg-white border border-rose-300 text-rose-800 text-xs font-bold px-3 py-1.5 rounded-lg">Generar e Imprimir Receta de Respaldo</button>` : '';
+                const puedeReceta = SESION && (SESION.rol === 'medico' || SESION.rol === 'admin');
+                const btn = a.estupefaciente && puedeReceta
+                    ? `<button type="button" data-receta-sku="${BelenUI.esc(a.sku)}" data-receta-dosis="${BelenUI.esc(a.dosis)}" data-receta-tipo="individual" class="mt-2 bg-amber-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Generar receta individual y descontar ámpula</button>`
+                    : (a.retenida && puedeReceta ? `<button type="button" data-receta-sku="${BelenUI.esc(a.sku)}" data-receta-dosis="${BelenUI.esc(a.dosis)}" data-receta-tipo="respaldo" class="mt-2 bg-white border border-rose-300 text-rose-800 text-xs font-bold px-3 py-1.5 rounded-lg">Generar e Imprimir Receta</button>` : '');
                 const tono = a.estupefaciente ? 'border-amber-300 bg-amber-50 text-amber-950' : 'border-rose-300 bg-rose-50 text-rose-900';
                 return `<div class="rounded-xl border ${tono} px-3 py-2 text-xs"><p class="font-bold">${BelenUI.esc(a.nombre)}</p><p class="mt-1">${BelenUI.esc(a.etiqueta)}</p>${btn}</div>`;
             }).join('');
@@ -1503,7 +1506,7 @@
             const caja = id && document.getElementById(id);
             if (!caja) return;
             caja.innerHTML = htmlAlertasCofepris(origen.value || '');
-            caja.querySelectorAll('[data-receta-sku]').forEach(b => b.addEventListener('click', () => imprimirRecetaExpediente(b.getAttribute('data-receta-sku'), b.getAttribute('data-receta-dosis'))));
+            caja.querySelectorAll('[data-receta-sku]').forEach(b => b.addEventListener('click', () => imprimirRecetaExpediente(b.getAttribute('data-receta-sku'), b.getAttribute('data-receta-dosis'), b.getAttribute('data-receta-tipo'))));
         }
         function enlazarAlertasCofepris() {
             ['ind-medicamentos', 'ind-soluciones', 'val-plan'].forEach(id => {
@@ -1514,10 +1517,38 @@
                 pintarAlertasCofepris(el);
             });
         }
-        function imprimirRecetaExpediente(sku, dosis) {
+        function imprimirRecetaExpediente(sku, dosis, tipo) {
             const S = BelenStore;
+            if (!SESION || (SESION.rol !== 'medico' && SESION.rol !== 'admin')) { BelenUI.toast('Solo el médico puede generar e imprimir la receta.', 'alerta'); return; }
             const prod = S.productoPorSku(sku);
             if (!prod || !TURNO) { BelenUI.toast('No se encontró el medicamento en el inventario.', 'alerta'); return; }
+            if (tipo === 'individual' || (prod.fraccion_cofepris === 'I' && tipo !== 'respaldo')) {
+                BelenUI.confirmar({
+                    titulo: 'Receta individual',
+                    mensaje: 'Se descontará 1 ámpula de la caja activa del área de este paciente, con su lote, caducidad y folio de receta especial, y quedará la salida en la bitácora.',
+                    textoConfirmar: 'Descontar y generar receta',
+                    alConfirmar: () => {
+                        const r = S.usarAmpulaDesdeNota(TURNO.turno_id, sku, SESION, dosis || prod.nombre);
+                        if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+                        BelenUI.toast('Ámpula ' + r.uso.numero + ' de ' + r.uso.de + ' descontada de ' + S.nombreAreaCaja(r.area) + '.', 'exito');
+                        const pac = datosPacienteVigentes();
+                        const medico = S.USUARIOS[SESION.usuario_id] && SESION.rol === 'medico' ? S.USUARIOS[SESION.usuario_id] : (S.USUARIOS[TURNO.medico_id] || null);
+                        const datos = S.datosReceta({
+                            tipo: 'individual', producto: r.producto, paciente: pac.nombre, edad: pac.edadTxt,
+                            cama: (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO && INTERNAMIENTO.cama) || TURNO.area_destino || S.nombreAreaCaja(r.area),
+                            medico: medico ? medico.nombre : (TURNO.medico_nombre || SESION.nombre), cedula: medico ? medico.cedula_profesional : '',
+                            denominacion: r.producto.nombre, dosis: dosis || r.producto.nombre, lote: r.uso.lote, laboratorio: r.producto.laboratorio, fraccion: 'I',
+                            numero: r.uso.numero, de: r.uso.de, folio_receta_especial: r.uso.folio_receta_especial, datos_postanestesicos: r.uso.datos_postanestesicos
+                        });
+                        const w = window.open('', '_blank', 'noopener,width=720,height=900');
+                        if (!w) { BelenUI.toast('La ámpula ya se descontó. El navegador bloqueó la ventana de impresión.', 'alerta'); return; }
+                        w.document.write(S.htmlRecetaImprimible(datos));
+                        w.document.close();
+                        setTimeout(() => { try { w.focus(); w.print(); } catch (err) { /* la ventana ya muestra la receta */ } }, 250);
+                    }
+                });
+                return;
+            }
             const pac = datosPacienteVigentes();
             const medico = S.USUARIOS[SESION.usuario_id] && SESION.rol === 'medico' ? S.USUARIOS[SESION.usuario_id] : (S.USUARIOS[TURNO.medico_id] || null);
             const datos = S.datosReceta({
@@ -1849,7 +1880,7 @@
                     med.parentElement.appendChild(caja);
                     const pintar = () => {
                         caja.innerHTML = htmlAlertasCofepris([med.value, sol.value].filter(Boolean).join('\n'));
-                        caja.querySelectorAll('[data-receta-sku]').forEach(b => b.addEventListener('click', () => imprimirRecetaExpediente(b.getAttribute('data-receta-sku'), b.getAttribute('data-receta-dosis'))));
+                        caja.querySelectorAll('[data-receta-sku]').forEach(b => b.addEventListener('click', () => imprimirRecetaExpediente(b.getAttribute('data-receta-sku'), b.getAttribute('data-receta-dosis'), b.getAttribute('data-receta-tipo'))));
                     };
                     med.addEventListener('input', pintar);
                     sol.addEventListener('input', pintar);
@@ -1968,21 +1999,59 @@
         }
         function abrirCargarInsumoHospital() {
             if (!ACCESO_VISOR || !ACCESO_VISOR.puede_cargar_cuenta) { BelenUI.toast('No puede cargar consumos en este internamiento.', 'alerta'); return; }
+            const S = BelenStore, e = BelenUI.esc;
+            const estudios = S.listarEstudios();
+            const enfermera = S.esEnfermeria(SESION.rol);
+            const admin = SESION.rol === 'admin';
+            const opciones = estudios.map(est => `<option value="${e(est.estudio_id)}" data-precio="${est.precio_unitario}">${e(est.nombre)} · ${e(S.nombreTipoEstudio(est.tipo))} · ${e(S.formatoMoneda(est.precio_unitario))}</option>`).join('');
+            const alta = admin ? `<div id="est-alta" class="hidden border-t border-slate-100 pt-3 space-y-2">
+                <input id="est-nuevo-nombre" placeholder="Nombre del estudio" class="${CLASE_CAMPO}">
+                <select id="est-nuevo-tipo" class="${CLASE_CAMPO}">${S.TIPOS_ESTUDIO.map(t => `<option value="${t.codigo}">${t.nombre}</option>`).join('')}</select>
+                <input id="est-nuevo-precio" type="number" min="0.01" step="0.01" placeholder="Precio unitario" class="${CLASE_CAMPO}">
+                <button type="button" id="est-guardar-nuevo" class="text-xs font-bold text-cyan-800">Guardar en el catálogo</button>
+            </div>` : '';
             BelenUI.modal({
-                titulo: 'Cargar Insumo o Medicamento', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-pills', ancho: 'md',
-                html: htmlModalCargo(BelenStore.CONCEPTOS_HOSPITAL, 'hospitalizacion'),
-                alMostrar: c => enlazarIvaConcepto(c),
+                titulo: 'Cargar Insumo/Estudio', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-vial', ancho: 'md',
+                html: `<div class="space-y-3 text-left">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Estudio o procedimiento</label>
+                    <select id="est-id" class="${CLASE_CAMPO}">${opciones || '<option value="">Sin estudios en el catálogo</option>'}</select>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Precio unitario</label>
+                    <input id="est-precio" type="number" min="0.01" step="0.01" ${enfermera ? 'readonly disabled' : ''} class="${CLASE_CAMPO} ${enfermera ? 'bg-slate-100' : ''}">
+                    <p class="text-[11px] text-slate-500">${enfermera ? 'El precio oficial del catálogo queda bloqueado para enfermería.' : 'Si cambia el precio, queda como precio oficial del catálogo.'}</p>
+                    ${admin ? '<button type="button" id="est-mostrar-alta" class="text-xs font-bold text-cyan-800">Agregar estudio al catálogo</button>' : ''}${alta}
+                    <p id="est-error" class="text-xs text-red-600 hidden"></p>
+                </div>`,
+                alMostrar: c => {
+                    const sel = c.el.querySelector('#est-id'), precio = c.el.querySelector('#est-precio');
+                    const sync = () => { const o = sel.selectedOptions[0]; if (o && o.getAttribute('data-precio')) precio.value = o.getAttribute('data-precio'); };
+                    sel.addEventListener('change', sync);
+                    sync();
+                    const mostrar = c.el.querySelector('#est-mostrar-alta');
+                    if (mostrar) mostrar.addEventListener('click', () => c.el.querySelector('#est-alta').classList.remove('hidden'));
+                    const guardar = c.el.querySelector('#est-guardar-nuevo');
+                    if (guardar) guardar.addEventListener('click', () => {
+                        const r = S.guardarEstudio({ nombre: c.el.querySelector('#est-nuevo-nombre').value, tipo: c.el.querySelector('#est-nuevo-tipo').value, precio_unitario: c.el.querySelector('#est-nuevo-precio').value, aplica_iva: true }, S.sesion());
+                        const error = c.el.querySelector('#est-error');
+                        if (!r.ok) { error.textContent = (r.errores && (r.errores.nombre || r.errores.precio_unitario || r.errores.tipo)) || r.motivo; error.classList.remove('hidden'); return; }
+                        const opt = document.createElement('option');
+                        opt.value = r.estudio.estudio_id;
+                        opt.setAttribute('data-precio', r.estudio.precio_unitario);
+                        opt.textContent = r.estudio.nombre + ' · ' + S.nombreTipoEstudio(r.estudio.tipo);
+                        sel.appendChild(opt);
+                        sel.value = r.estudio.estudio_id;
+                        sync();
+                        BelenUI.toast(r.estudio.nombre + ' quedó en el catálogo.', 'exito');
+                    });
+                },
                 botones: [
                     { texto: 'Cancelar', estilo: 'secundario' },
                     { texto: 'Agregar a la cuenta', estilo: 'primario', id: 'cg-guardar', alPulsar: c => {
-                        const datos = leerCamposModal(c, 'cg', ['concepto', 'precio_unitario']);
-                        datos.aplica_iva = c.el.querySelector('#cg-aplica_iva').checked;
-                        const r = BelenStore.agregarCargoInternamiento(INTERNAMIENTO.internamiento_id, datos, BelenStore.sesion());
-                        if (!r.ok) {
-                            if (r.errores) marcarErroresModal(c, 'cg', ['concepto', 'precio_unitario'], r.errores); else BelenUI.toast(r.motivo, 'peligro');
-                            return false;
-                        }
-                        BelenUI.toast(r.cargo.concepto + ' agregado · ' + BelenStore.formatoMoneda(r.cargo.subtotal), 'exito');
+                        const r = S.cargarEstudioACuenta(TURNO.turno_id, { estudio_id: c.el.querySelector('#est-id').value, precio_unitario: enfermera ? null : c.el.querySelector('#est-precio').value }, S.sesion());
+                        const error = c.el.querySelector('#est-error');
+                        if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                        const fresco = S.resolverInternamiento(TURNO.turno_id);
+                        if (fresco) INTERNAMIENTO = fresco;
+                        BelenUI.toast(r.cargo.concepto + ' agregado · ' + S.formatoMoneda(r.cargo.subtotal), 'exito');
                         refrescarVisor('cuenta-consumos');
                     } }
                 ]
@@ -2036,6 +2105,7 @@
             const visible = !!(TURNO && SESION && BelenStore.puede('cargar_cuenta_consulta') && TURNO.estatus === 'en_consulta' && MODO_ACCESO === 'medico' && enNotaAmbulatoria);
             btn.classList.toggle('hidden', !visible);
             btn.classList.toggle('inline-flex', visible);
+            if (TURNO) TURNO = BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
             const n = ((TURNO && TURNO.cargos) || []).length;
             if (badge) { badge.textContent = String(n); badge.classList.toggle('hidden', !n); }
         }
@@ -2133,7 +2203,13 @@
             sincronizarSignosDesdeTurno(false);
 
             // Si enfermería (u otra pestaña) captura signos vitales mientras el expediente está abierto, se refleja de inmediato
-            window.addEventListener('storage', e => { if (e.key === BelenStore.CLAVES.turnos) sincronizarSignosDesdeTurno(false); });
+            window.addEventListener('storage', e => {
+                if (e.key === BelenStore.CLAVES.turnos) {
+                    sincronizarSignosDesdeTurno(false);
+                    if (TURNO) TURNO = BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
+                    actualizarBotonCargarCuenta();
+                }
+            });
 
             // Indicador de pendientes: se recalcula ante cualquier cambio en el formulario
             document.addEventListener('input', actualizarIndicadorPendientes);
@@ -2856,6 +2932,7 @@
             ocultarTodosLosPrints();
 
             if (destino === 'Alta') {
+                if (TURNO) TURNO = BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
                 document.getElementById('titulo-impresion-nota').innerText = tituloNotaSegunDestino(destino);
                 document.getElementById('print-nota').classList.remove('hidden');
 

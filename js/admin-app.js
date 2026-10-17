@@ -18,7 +18,7 @@ const AdminController = {
     operadorFarmaciaId: null,
     modoRetiroAdmin: false,
     bitacoraAbiertas: {},
-    filtrosBitacora: { desde: '', hasta: '', tipo: '', persona: '', medicamento: '' },
+    filtrosBitacora: { desde: '', hasta: '', tipo: '', persona: '', medicamento: '', lote: '', clasificacion: '' },
     _temporizador: null,
     _pendienteRender: null,
 
@@ -267,7 +267,7 @@ const AdminController = {
                 ? `<div class="mb-6 bg-cyan-50 border border-cyan-200 text-cyan-800 text-xs rounded-xl px-4 py-3 flex items-center gap-2"><i class="fas fa-user-nurse"></i> Modo Enfermería: capture o edite signos vitales y envíe al paciente con su médico. El orden de la fila lo define únicamente la hora de llegada.</div>` : '');
         return `<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
                     <div><h2 class="text-2xl font-extrabold text-slate-800">Fila de Espera</h2><p class="text-slate-500">Cola inteligente por especialidad: el número de turno es la posición en la fila y se recorre solo.</p></div>${boton}</div>
-                ${aviso}<div class="flex flex-wrap gap-2 mb-6">${chips}</div>${secciones}`;
+                ${this.htmlPanelEstupefacientes('OBSERVACION')}${aviso}<div class="flex flex-wrap gap-2 mb-6">${chips}</div>${secciones}`;
     },
 
     filtrarEspecialidad: function (codigo) { this.filtroEspecialidad = codigo; this.render(); },
@@ -587,6 +587,7 @@ const AdminController = {
                     : 'Agenda quirúrgica ordenada por fecha y hora exacta.'));
         return `<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
                     <div><h2 class="text-2xl font-extrabold text-slate-800">Próximas Cirugías</h2><p class="text-slate-500">${this.e(aviso)}</p></div>${boton}</div>
+                ${this.htmlPanelEstupefacientes('QUIROFANO')}
                 <div id="lista-cirugias" class="grid grid-cols-1 xl:grid-cols-2 gap-4">${lista.length ? lista.map(c => this.htmlTarjetaCirugia(c)).join('') : '<div class="xl:col-span-2 text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-kit-medical text-4xl mb-3 text-slate-300"></i><p>No hay cirugías programadas.</p></div>'}</div>`;
     },
 
@@ -806,6 +807,8 @@ const AdminController = {
                 const cls = esEnf ? 'bg-cyan-700 hover:bg-cyan-800 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white';
                 accion = `<a href="expediente.html?turno=${encodeURIComponent(f.turno_id)}" data-accion="abrir-expediente" class="${cls} text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas ${ico}"></i> ${txt}</a>`;
             }
+            const botonEstudio = (f.finalizado && !pendientePago && S.permisoAccionDe(s.usuario_id, 'cargar_consumos'))
+                ? `<button type="button" onclick="AdminController.abrirCargarEstudio('${e(f.turno_id)}')" class="bg-white border border-cyan-300 text-cyan-800 text-xs font-bold py-2 px-3 rounded-lg">Cargar Insumo/Estudio</button>` : '';
             const botonCama = (!pendientePago && S.puede('asignar_cama'))
                 ? `<button type="button" data-accion="asignar-cama" onclick="AdminController.abrirAsignarCama('${e(f.turno_id)}')" class="bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-bed"></i> ${f.cama ? 'Cambiar cama' : 'Asignar cama'}</button>` : '';
             const ics = f.interconsultas.length
@@ -819,7 +822,7 @@ const AdminController = {
                         <div class="flex flex-wrap items-center gap-2"><h4 class="text-lg font-bold text-slate-900">${e(f.nombre)}</h4>${this.badgeEstatus({ estatus: f.estatus })}${relacion}</div>
                         <p class="text-xs text-slate-500">${f.edad !== null ? f.edad + ' años' : ''}${sexoTxt(f) ? ' · ' + sexoTxt(f) : ''}${f.area ? ' · ' + e(f.area) : ''}${pendientePago ? ' · ' + e(S.formatoMoneda(f.cuenta_actual || 0)) : ''}</p>
                     </div>
-                    <div class="flex flex-wrap gap-2 justify-end">${botonCama}${accion}</div>
+                    <div class="flex flex-wrap gap-2 justify-end">${botonCama}${botonEstudio}${accion}</div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-100">
                     ${dato('Médico tratante', `<span class="font-semibold">${e(f.medico_tratante)}</span><span class="block text-[11px] text-slate-400">${e(f.especialidad)}</span>`)}
@@ -830,8 +833,71 @@ const AdminController = {
             </div>`;
         };
         return `<div class="mb-6"><h2 class="text-2xl font-extrabold text-slate-800">Monitor de Camas</h2><p class="text-slate-500">Pacientes en observación u hospitalización.</p></div>
+                ${this.htmlPanelEstupefacientes('HOSPITALIZACION')}
                 <div class="mb-6 bg-cyan-50 border border-cyan-200 text-cyan-800 text-xs rounded-xl px-4 py-3 flex items-center gap-2"><i class="fas fa-circle-info"></i> ${this.e(modo)}</div>
                 <div class="flex flex-col gap-3" id="lista-hospitalizados">${lista.length ? lista.map(tarjeta).join('') : '<div class="text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-bed text-4xl mb-3 text-slate-300"></i><p>No hay pacientes hospitalizados.</p></div>'}</div>`;
+    },
+
+    abrirCargarEstudio: function (turnoId) {
+        const S = BelenStore, e = t => this.e(t);
+        if (!S.permisoAccionDe(this.sesion.usuario_id, 'cargar_consumos')) { BelenUI.toast('Su perfil no puede cargar consumos.', 'alerta'); return; }
+        const estudios = S.listarEstudios();
+        if (!estudios.length) { BelenUI.toast('El catálogo de estudios está vacío.', 'alerta'); return; }
+        const enfermera = S.esEnfermeria(this.rolActual);
+        const admin = this.rolActual === 'admin';
+        const opciones = estudios.map(est => `<option value="${e(est.estudio_id)}" data-precio="${est.precio_unitario}" data-iva="${est.aplica_iva ? '1' : '0'}">${e(est.nombre)} · ${e(S.nombreTipoEstudio(est.tipo))} · ${e(S.formatoMoneda(est.precio_unitario))}</option>`).join('');
+        const alta = admin ? `<div id="est-alta" class="hidden border-t border-slate-100 pt-3 space-y-2">
+            <p class="text-[11px] font-bold uppercase text-slate-500">Nuevo estudio en el catálogo</p>
+            <input id="est-nuevo-nombre" placeholder="Nombre" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+            <select id="est-nuevo-tipo" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white">${S.TIPOS_ESTUDIO.map(t => `<option value="${t.codigo}">${t.nombre}</option>`).join('')}</select>
+            <input id="est-nuevo-precio" type="number" min="0.01" step="0.01" placeholder="Precio unitario" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+            <button type="button" id="est-guardar-nuevo" class="text-xs font-bold text-cyan-800">Guardar en el catálogo</button>
+        </div>` : '';
+        BelenUI.modal({
+            titulo: 'Cargar Insumo/Estudio', subtitulo: (S.obtenerTurno(turnoId) || {}).paciente_nombre || '', icono: 'fa-vial', ancho: 'md',
+            html: `<div class="space-y-3 text-left">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Estudio o procedimiento</label>
+                <select id="est-id" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white">${opciones}</select>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Precio unitario</label>
+                <input id="est-precio" type="number" min="0.01" step="0.01" ${enfermera ? 'readonly disabled' : ''} class="w-full border border-slate-300 rounded-lg p-2.5 text-sm ${enfermera ? 'bg-slate-100 text-slate-600' : ''}">
+                <p class="text-[11px] text-slate-500">${enfermera ? 'El precio oficial del catálogo queda bloqueado para enfermería.' : 'Si cambia el precio, queda como precio oficial del catálogo.'}</p>
+                ${admin ? '<button type="button" id="est-mostrar-alta" class="text-xs font-bold text-cyan-800">Agregar estudio al catálogo</button>' : ''}${alta}
+                <p id="est-error" class="text-xs text-red-600 hidden"></p>
+            </div>`,
+            alMostrar: c => {
+                const sel = c.el.querySelector('#est-id'), precio = c.el.querySelector('#est-precio');
+                const sync = () => { const o = sel.selectedOptions[0]; if (o) precio.value = o.getAttribute('data-precio'); };
+                sel.addEventListener('change', sync);
+                sync();
+                const mostrar = c.el.querySelector('#est-mostrar-alta');
+                if (mostrar) mostrar.addEventListener('click', () => c.el.querySelector('#est-alta').classList.remove('hidden'));
+                const guardar = c.el.querySelector('#est-guardar-nuevo');
+                if (guardar) guardar.addEventListener('click', () => {
+                    const r = S.guardarEstudio({ nombre: c.el.querySelector('#est-nuevo-nombre').value, tipo: c.el.querySelector('#est-nuevo-tipo').value, precio_unitario: c.el.querySelector('#est-nuevo-precio').value, aplica_iva: true }, this.sesion);
+                    const error = c.el.querySelector('#est-error');
+                    if (!r.ok) { error.textContent = (r.errores && (r.errores.nombre || r.errores.precio_unitario || r.errores.tipo)) || r.motivo; error.classList.remove('hidden'); return; }
+                    const opt = document.createElement('option');
+                    opt.value = r.estudio.estudio_id;
+                    opt.setAttribute('data-precio', r.estudio.precio_unitario);
+                    opt.textContent = r.estudio.nombre + ' · ' + S.nombreTipoEstudio(r.estudio.tipo) + ' · ' + S.formatoMoneda(r.estudio.precio_unitario);
+                    sel.appendChild(opt);
+                    sel.value = r.estudio.estudio_id;
+                    sync();
+                    BelenUI.toast(r.estudio.nombre + ' quedó en el catálogo.', 'exito');
+                });
+            },
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Agregar a la cuenta', estilo: 'primario', alPulsar: c => {
+                    const precio = c.el.querySelector('#est-precio').value;
+                    const r = S.cargarEstudioACuenta(turnoId, { estudio_id: c.el.querySelector('#est-id').value, precio_unitario: enfermera ? null : precio }, this.sesion);
+                    const error = c.el.querySelector('#est-error');
+                    if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                    BelenUI.toast(r.cargo.concepto + ' agregado · ' + S.formatoMoneda(r.cargo.subtotal), 'exito');
+                    this.render();
+                } }
+            ]
+        });
     },
 
     // Asignación de cama (Enfermería o Administración). Cama única por paciente activo.
@@ -896,7 +962,7 @@ const AdminController = {
         if (!op) return tabs;
         const puede = accion => BelenStore.permisoAccionDe(op.id, accion);
         if (puede('farmacia_paquetes')) tabs.push(['paquetes', 'Paquetes y Kits']);
-        if (puede('farmacia_estupefacientes')) tabs.push(['estupefacientes', 'Estupefacientes Fracción I']);
+        if (puede('farmacia_estupefacientes') || op.rol === 'administrador' || op.rol === 'enf_farmacia') tabs.push(['estupefacientes', 'Estupefacientes Fracción I']);
         if (puede('ver_bitacora_farmacia')) tabs.push(['bitacora', 'Bitácora de Entradas y Salidas']);
         return tabs;
     },
@@ -1029,9 +1095,10 @@ const AdminController = {
             <p id="err-${id}" class="text-[11px] text-red-600 mt-1 hidden"></p></div>`;
         const labs = `<datalist id="labs-farmacia">${S.LABORATORIOS_FRECUENTES.map(l => `<option value="${l}"></option>`).join('')}</datalist>`;
         BelenUI.modal({
-            titulo: 'Nuevo ingreso de insumo / servicio', subtitulo: 'Si el código ya existe, se completan los datos maestros y el cursor pasa a Lote.', icono: 'fa-barcode', ancho: 'xl',
+            titulo: 'Nuevo ingreso de insumo', subtitulo: 'Medicamento o material de curación. Los estudios viven en su propio catálogo.', icono: 'fa-barcode', ancho: 'xl',
             html: `${labs}<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                ${campo('far-sku', 'Código de barras / SKU', 'text', 'data-autofoco maxlength="20" placeholder="Escanee el código"')}
+                ${sel('far-categoria', 'Categoría', S.CATEGORIAS_ALMACEN.map(c => `<option value="${c.codigo}">${c.nombre}</option>`).join(''))}
+                ${campo('far-sku', 'Código de barras / SKU', 'text', 'data-autofoco maxlength="20" placeholder="Escanee el código. En material es opcional."')}
                 ${campo('far-nombre', 'Principio activo / denominación genérica', 'text', 'maxlength="80" placeholder="Ej. Dapagliflozina"')}
                 ${campo('far-comercial', 'Nombre comercial / distintivo', 'text', 'maxlength="80" placeholder="Opcional. Ej. Daposar"')}
                 ${sel('far-forma', 'Forma farmacéutica', S.FORMAS_FARMACEUTICAS.map(f => `<option value="${f.codigo}">${f.nombre}</option>`).join(''))}
@@ -1041,8 +1108,8 @@ const AdminController = {
                 ${campo('far-laboratorio', 'Laboratorio (fabricante)', 'text', 'maxlength="40" list="labs-farmacia" placeholder="Pisa, Pfizer, Bayer…"')}
                 ${campo('far-proveedor', 'Proveedor (distribuidor)', 'text', 'maxlength="60"')}
                 ${campo('far-factura', 'Folio de factura de compra', 'text', 'maxlength="30"')}
-                ${sel('far-categoria', 'Categoría', S.CATEGORIAS_FARMACIA.map(c => `<option value="${c.codigo}">${c.nombre}</option>`).join(''))}
                 ${sel('far-fraccion', 'Fracción COFEPRIS', S.FRACCIONES_COFEPRIS.map(f => `<option value="${f.codigo}" ${f.codigo === 'NA' ? 'selected' : ''}>${f.nombre}</option>`).join(''))}
+                ${sel('far-aware', 'Clasificación AWaRe (FEUM/OMS)', '<option value="">Seleccione…</option>' + S.CLASIFICACION_AWARE.map(a => `<option value="${a.codigo}">${a.nombre}</option>`).join(''))}
                 ${sel('far-modo', 'Modo de captura de stock', '<option value="cajas">Por cajas</option><option value="piezas">Por piezas sueltas / unidades</option>')}
                 ${campo('far-piezas', 'Piezas por caja', 'number', 'min="1" step="1" value="1"')}
                 ${campo('far-cajas', 'Número de cajas que ingresan', 'number', 'min="1" step="1"')}
@@ -1060,6 +1127,20 @@ const AdminController = {
                     const precio = parseFloat(q('far-precio').value);
                     const aplica = q('far-iva').checked;
                     q('far-precio-iva').textContent = Number.isFinite(precio) ? (aplica ? 'Si solicitan factura: ' + S.formatoMoneda(Math.round(precio * 116) / 100) : 'Tasa 0%. En Caja se cobra este precio.') : '';
+                };
+                const etiqueta = (id, texto) => { const lab = c.el.querySelector('label[for="' + id + '"]'); if (lab) lab.textContent = texto; };
+                const pintarModo = () => {
+                    const material = q('far-categoria').value === 'MATERIAL_CURACION';
+                    const antibiotico = !material && q('far-fraccion').value === 'IV_ANTIBIOTICO';
+                    ['far-comercial', 'far-forma', 'far-concentracion', 'far-via', 'far-conservacion', 'far-proveedor', 'far-fraccion'].forEach(id => {
+                        const cajaCampo = c.el.querySelector('#caja-' + id) || (q(id) && q(id).closest('div'));
+                        if (cajaCampo) cajaCampo.classList.toggle('hidden', material);
+                    });
+                    const cajaAware = q('far-aware') && q('far-aware').closest('div');
+                    if (cajaAware) cajaAware.classList.toggle('hidden', !antibiotico);
+                    etiqueta('far-nombre', material ? 'Nombre del insumo' : 'Principio activo / denominación genérica');
+                    etiqueta('far-laboratorio', material ? 'Marca / Laboratorio' : 'Laboratorio (fabricante)');
+                    etiqueta('far-sku', material ? 'Código de barras (opcional)' : 'Código de barras / SKU');
                 };
                 const pintarStock = () => {
                     const modo = q('far-modo').value;
@@ -1082,10 +1163,12 @@ const AdminController = {
                     q('far-proveedor').value = prod.proveedor || '';
                     q('far-categoria').value = prod.categoria || 'MEDICAMENTO';
                     q('far-fraccion').value = prod.fraccion_cofepris || 'NA';
+                    if (prod.clasificacion_aware) q('far-aware').value = prod.clasificacion_aware;
                     q('far-piezas').value = prod.piezas_por_caja || 1;
                     q('far-iva').checked = !!prod.aplica_iva;
                     q('far-precio').value = prod.precio_unitario;
                     pintarPrecio();
+                    pintarModo();
                     pintarStock();
                     q('far-lote').focus();
                 };
@@ -1102,6 +1185,9 @@ const AdminController = {
                 q('far-modo').addEventListener('change', pintarStock);
                 q('far-precio').addEventListener('input', pintarPrecio);
                 q('far-iva').addEventListener('change', pintarPrecio);
+                q('far-categoria').addEventListener('change', pintarModo);
+                q('far-fraccion').addEventListener('change', pintarModo);
+                pintarModo();
                 pintarStock();
                 q('far-lote').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); q('far-caducidad').focus(); } });
             },
@@ -1109,15 +1195,19 @@ const AdminController = {
                 { texto: 'Cancelar', estilo: 'secundario' },
                 { texto: 'Registrar ingreso', estilo: 'exito', id: 'far-guardar', alPulsar: c => {
                     const val = id => c.el.querySelector('#' + id).value;
+                    const material = val('far-categoria') === 'MATERIAL_CURACION';
                     const r = S.ingresarInsumo({
-                        sku: val('far-sku'), nombre: val('far-nombre'), nombre_comercial: val('far-comercial'),
-                        forma_farmaceutica: val('far-forma'), concentracion: val('far-concentracion'), via_administracion: val('far-via'), conservacion: val('far-conservacion'),
-                        laboratorio: val('far-laboratorio'), proveedor: val('far-proveedor'), numero_factura: val('far-factura'),
-                        categoria: val('far-categoria'), fraccion_cofepris: val('far-fraccion'), modo_stock: val('far-modo'),
+                        sku: val('far-sku'), nombre: val('far-nombre'), nombre_comercial: material ? '' : val('far-comercial'),
+                        forma_farmaceutica: material ? 'MATERIAL' : val('far-forma'), concentracion: material ? '' : val('far-concentracion'),
+                        via_administracion: material ? 'NA' : val('far-via'), conservacion: material ? 'AMBIENTE' : val('far-conservacion'),
+                        laboratorio: val('far-laboratorio'), proveedor: material ? '' : val('far-proveedor'), numero_factura: val('far-factura'),
+                        categoria: val('far-categoria'), fraccion_cofepris: material ? 'NA' : val('far-fraccion'),
+                        clasificacion_aware: (!material && val('far-fraccion') === 'IV_ANTIBIOTICO') ? val('far-aware') : '',
+                        modo_stock: val('far-modo'),
                         piezas_por_caja: val('far-piezas'), numero_cajas: val('far-cajas'), lote: val('far-lote'), caducidad: val('far-caducidad'),
                         stock: val('far-stock'), precio_unitario: val('far-precio'), aplica_iva: c.el.querySelector('#far-iva').checked, operador_id: (this.operadorFarmacia() || {}).id
                     }, this.sesion);
-                    const mapa = { 'far-sku': 'sku', 'far-nombre': 'nombre', 'far-comercial': 'nombre_comercial', 'far-forma': 'forma_farmaceutica', 'far-concentracion': 'concentracion', 'far-via': 'via_administracion', 'far-conservacion': 'conservacion', 'far-laboratorio': 'laboratorio', 'far-proveedor': 'proveedor', 'far-factura': 'numero_factura', 'far-categoria': 'categoria', 'far-fraccion': 'fraccion_cofepris', 'far-piezas': 'piezas_por_caja', 'far-cajas': 'numero_cajas', 'far-stock': 'stock', 'far-lote': 'lote', 'far-caducidad': 'caducidad', 'far-precio': 'precio_unitario' };
+                    const mapa = { 'far-sku': 'sku', 'far-nombre': 'nombre', 'far-comercial': 'nombre_comercial', 'far-forma': 'forma_farmaceutica', 'far-concentracion': 'concentracion', 'far-via': 'via_administracion', 'far-conservacion': 'conservacion', 'far-laboratorio': 'laboratorio', 'far-proveedor': 'proveedor', 'far-factura': 'numero_factura', 'far-categoria': 'categoria', 'far-fraccion': 'fraccion_cofepris', 'far-aware': 'clasificacion_aware', 'far-piezas': 'piezas_por_caja', 'far-cajas': 'numero_cajas', 'far-stock': 'stock', 'far-lote': 'lote', 'far-caducidad': 'caducidad', 'far-precio': 'precio_unitario' };
                     Object.keys(mapa).forEach(id => {
                         const input = c.el.querySelector('#' + id), msg = c.el.querySelector('#err-' + id);
                         const error = r.errores && r.errores[mapa[id]];
@@ -1174,7 +1264,7 @@ const AdminController = {
         const input = ctrl.el.querySelector('#scan-codigo');
         const op = opciones || {};
         const r = BelenStore.surtirLinea(solicitudId, op.codigo || (input ? input.value : ''), this.sesion, op);
-        if (r.fefo) { this.avisarFefo(r, elegido => this.confirmarEscaneo(ctrl, solicitudId, elegido)); return; }
+        if (r.fefo) { this.avisarFefo(r, lote => this.confirmarEscaneo(ctrl, solicitudId, { codigo: lote.lote, lote_id: lote.lote_id, ignorar_fefo: true })); return; }
         if (!r.ok) {
             BelenUI.toast(r.motivo, 'alerta');
             const lista = ctrl.el.querySelector('#scan-lista');
@@ -1195,11 +1285,17 @@ const AdminController = {
     avisarFefo: function (r, alElegir) {
         const fecha = BelenStore.fechaLegibleISO(r.alterno.caducidad);
         const texto = '¡Atención! Existe un lote con caducidad más próxima: Lote ' + r.alterno.lote + ' (Caduca: ' + fecha + ', Stock: ' + r.alterno.stock + '). Se recomienda utilizar primero ese lote para evitar mermas.';
+        let usado = false;
+        const elegir = quedarse => {
+            if (usado) return false;
+            usado = true;
+            alElegir(quedarse ? r.lote : r.alterno);
+        };
         BelenUI.modal({
             titulo: 'Aviso FEFO', mensaje: texto, tipo: 'alerta', icono: 'fa-clock', ancho: 'md',
             botones: [
-                { texto: 'Continuar con el lote actual de todos modos', estilo: 'secundario', alPulsar: () => alElegir({ codigo: r.lote.lote, lote_id: r.lote.lote_id, ignorar_fefo: true }) },
-                { texto: 'Cambiar al Lote más próximo (Recomendado)', estilo: 'primario', alPulsar: () => alElegir({ codigo: r.alterno.lote, lote_id: r.alterno.lote_id, ignorar_fefo: true }) }
+                { texto: 'Continuar con el lote actual de todos modos', estilo: 'secundario', alPulsar: () => elegir(true) },
+                { texto: 'Cambiar al Lote más próximo (Recomendado)', estilo: 'primario', alPulsar: () => elegir(false) }
             ]
         });
     },
@@ -1299,6 +1395,7 @@ const AdminController = {
         scan.addEventListener('keydown', ev => {
             if (ev.key !== 'Enter') return;
             ev.preventDefault();
+            clearTimeout(espera);
             const codigo = scan.value.trim();
             scan.value = '';
             if (codigo) this.recibirEnCarrito(codigo);
@@ -1337,35 +1434,114 @@ const AdminController = {
     htmlCarritoFarmacia: function () {
         const S = BelenStore, e = t => this.e(t);
         const inv = S.listarInventarioFarmacia(this.sesion);
+        const op = this.operadorFarmacia();
+        const puedeReceta = !!(op && S.puedeEmitirRecetaMedica(op.rol));
         let base = 0;
         const filas = this.carritoFarmacia.map(lin => {
-            const p = inv.find(x => x.lote_id === lin.lote_id);
-            if (!p) return `<tr><td colspan="4" class="px-3 py-2 text-red-600">Un lote del carrito ya no está disponible.</td></tr>`;
+            const est = lin.estudio_id ? (S.estudioPorCodigo(lin.sku) || null) : null;
+            const p = est ? null : inv.find(x => x.lote_id === lin.lote_id);
+            if (!p && !est) return `<tr><td colspan="4" class="px-3 py-2 text-red-600">Un lote del carrito ya no está disponible.</td></tr>`;
             const cant = lin.cantidad || 1;
-            const sub = Math.round(p.precio_unitario * cant * 100) / 100;
+            const precio = est ? est.precio_unitario : p.precio_unitario;
+            const sub = Math.round(precio * cant * 100) / 100;
             base += sub;
-            const aviso = S.etiquetaNormativa(p.fraccion_cofepris);
-            const receta = ['II', 'III', 'IV_ANTIBIOTICO'].indexOf(p.fraccion_cofepris) >= 0
-                ? `<button type="button" onclick="AdminController.imprimirRecetaLinea('${e(lin.linea_id)}')" class="mt-1 text-[11px] font-bold text-rose-700 underline">Generar e Imprimir Receta de Respaldo</button>` : '';
-            const frac = p.fraccion_cofepris === 'I' && lin.receta_previa ? `<p class="text-[11px] text-amber-800">Receta individual ${e(lin.receta_previa)} · caja ${e(lin.folio_receta_especial || '')}</p>` : '';
-            const gravable = p.aplica_iva ? '<p class="text-[11px] font-bold text-amber-700">Grava 16% si solicitan factura</p>' : '';
+            const fraccion = p ? p.fraccion_cofepris : '';
+            const aviso = S.badgeRecetaMedica(fraccion);
+            const receta = puedeReceta && ['II', 'III', 'IV_ANTIBIOTICO'].indexOf(fraccion) >= 0
+                ? `<button type="button" onclick="AdminController.imprimirRecetaLinea('${e(lin.linea_id)}')" class="mt-1 text-[11px] font-bold text-rose-700 underline">Generar e Imprimir Receta</button>` : '';
+            const frac = fraccion === 'I' && lin.receta_previa ? `<p class="text-[11px] text-amber-800">Receta individual ${e(lin.receta_previa)} · caja ${e(lin.folio_receta_especial || '')}</p>` : '';
+            const gravable = (est ? est.aplica_iva : p.aplica_iva) ? '<p class="text-[11px] font-bold text-amber-700">Grava 16% si solicitan factura</p>' : '';
+            const bloqueada = fraccion === 'I';
+            const control = `<div class="inline-flex items-center justify-center gap-1">
+                <button type="button" ${bloqueada ? 'disabled' : ''} onclick="AdminController.cambiarCantidadCarrito('${e(lin.linea_id)}', -1)" class="w-8 h-8 rounded-lg border border-slate-300 text-slate-700 font-bold disabled:opacity-40" aria-label="Disminuir">−</button>
+                <input data-cant-linea="${e(lin.linea_id)}" type="number" min="1" max="99" value="${cant}" ${bloqueada ? 'readonly' : ''} onchange="AdminController.fijarCantidadCarrito('${e(lin.linea_id)}', this.value)" class="w-14 h-8 text-center border border-slate-300 rounded-lg text-sm font-bold">
+                <button type="button" ${bloqueada ? 'disabled' : ''} onclick="AdminController.cambiarCantidadCarrito('${e(lin.linea_id)}', 1)" class="w-8 h-8 rounded-lg border border-slate-300 text-slate-700 font-bold disabled:opacity-40" aria-label="Aumentar">+</button>
+            </div>`;
+            const titulo = est ? est.nombre : S.denominacionProducto(p);
+            const detalle = est ? 'Estudio · ' + S.nombreTipoEstudio(est.tipo) : 'Lote ' + p.lote;
             return `<tr class="border-t border-slate-100 align-top">
-                <td class="px-3 py-2"><p class="font-semibold text-slate-800">${e(S.denominacionProducto(p))}</p><p class="text-[11px] text-slate-400">Lote ${e(p.lote)}${lin.paquete_nombre ? ' · ' + e(lin.paquete_nombre) : ''}</p>
+                <td class="px-3 py-2"><p class="font-semibold text-slate-800">${e(titulo)}</p><p class="text-[11px] text-slate-400">${e(detalle)}${lin.paquete_nombre ? ' · ' + e(lin.paquete_nombre) : ''}</p>
                     ${gravable}${aviso ? `<p class="text-[11px] font-bold text-rose-700 mt-1">${e(aviso)}</p>${receta}` : ''}${frac}</td>
-                <td class="px-3 py-2 text-center">${cant}</td>
+                <td class="px-3 py-2 text-center">${control}</td>
                 <td class="px-3 py-2 text-right">${e(S.formatoMoneda(sub))}</td>
                 <td class="px-3 py-2 text-right"><button type="button" onclick="AdminController.quitarLineaCarrito('${e(lin.linea_id)}')" class="text-slate-400 hover:text-red-600" aria-label="Quitar"><i class="fas fa-xmark"></i></button></td>
             </tr>`;
         }).join('');
+        const ajustes = this.ajustesVisiblesCarrito();
+        const filasAjuste = ajustes.map(a => {
+            base += a.subtotal;
+            return `<tr class="border-t border-emerald-100 bg-emerald-50/60"><td class="px-3 py-2 font-semibold text-emerald-900">${e(a.concepto)}</td><td class="px-3 py-2 text-center">1</td><td class="px-3 py-2 text-right font-bold text-emerald-800">${e(S.formatoMoneda(a.subtotal))}</td><td></td></tr>`;
+        }).join('');
         const vacio = this.carritoFarmacia.length ? '' : '<tr><td colspan="4" class="px-3 py-8 text-center text-slate-400">El carrito está vacío.</td></tr>';
         const totalBase = Math.round(base * 100) / 100;
-        return `<table class="w-full text-sm"><thead class="text-[11px] uppercase text-slate-400"><tr><th class="px-3 py-2 text-left">Concepto</th><th class="px-3 py-2">Cant.</th><th class="px-3 py-2 text-right">Importe</th><th></th></tr></thead>
-            <tbody>${filas || vacio}</tbody></table>
+        return `<div id="carrito-farmacia"><table class="w-full text-sm"><thead class="text-[11px] uppercase text-slate-400"><tr><th class="px-3 py-2 text-left">Concepto</th><th class="px-3 py-2">Cant.</th><th class="px-3 py-2 text-right">Importe</th><th></th></tr></thead>
+            <tbody>${filas || vacio}${filasAjuste}</tbody></table>
             <div class="mt-3 border-t border-slate-100 pt-3 text-sm space-y-1">
                 <p class="flex justify-between font-extrabold text-slate-900 text-base"><span>Total sin IVA</span><span>${e(S.formatoMoneda(totalBase))}</span></p>
                 <p class="text-[11px] text-slate-500">El IVA de los conceptos gravables se calcula en Caja, solo si el paciente solicita factura.</p>
             </div>
-            <button type="button" onclick="AdminController.confirmarCargoPaciente()" class="mt-4 w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3 rounded-xl">${this.modoRetiroAdmin ? 'Registrar salida de almacén' : 'Confirmar y Cargar a Cuenta'}</button>`;
+            <button type="button" onclick="AdminController.confirmarCargoPaciente()" class="mt-4 w-full bg-teal-700 hover:bg-teal-800 text-white font-bold py-3 rounded-xl">${this.modoRetiroAdmin ? 'Registrar salida de almacén' : 'Confirmar y Cargar a Cuenta'}</button></div>`;
+    },
+
+    ajustesVisiblesCarrito: function () {
+        const S = BelenStore;
+        const inv = S.listarInventarioFarmacia(this.sesion);
+        const grupos = {};
+        this.carritoFarmacia.forEach(lin => {
+            if (!lin.paquete_id) return;
+            const est = lin.estudio_id ? S.estudioPorCodigo(lin.sku) : null;
+            const p = est ? null : inv.find(x => x.lote_id === lin.lote_id);
+            const precio = est ? est.precio_unitario : (p ? p.precio_unitario : 0);
+            if (!grupos[lin.paquete_id]) grupos[lin.paquete_id] = { nombre: lin.paquete_nombre || '', subtotal: 0 };
+            grupos[lin.paquete_id].subtotal += precio * (lin.cantidad || 1);
+        });
+        return Object.keys(grupos).map(id => {
+            const paq = S.listarPaquetes().find(p => p.paquete_id === id);
+            if (!paq || paq.precio_paquete == null || paq.precio_paquete === '') return null;
+            const suma = Math.round(grupos[id].subtotal * 100) / 100;
+            const pactado = Math.round(Number(paq.precio_paquete) * 100) / 100;
+            if (!(pactado < suma)) return null;
+            const diff = Math.round((pactado - suma) * 100) / 100;
+            return { concepto: 'Descuento por Paquete ' + grupos[id].nombre + ' (' + S.formatoMoneda(diff) + ')', subtotal: diff };
+        }).filter(Boolean);
+    },
+
+    repintarCarritoFarmacia: function () {
+        const caja = document.getElementById('carrito-farmacia');
+        if (!caja) { this.render(); return; }
+        const activo = document.activeElement;
+        const id = activo && activo.getAttribute && activo.getAttribute('data-cant-linea');
+        caja.outerHTML = this.htmlCarritoFarmacia();
+        if (id) {
+            const inp = document.querySelector('[data-cant-linea="' + id + '"]');
+            if (inp) inp.focus();
+        }
+    },
+
+    fijarCantidadCarrito: function (lineaId, valor) {
+        const lin = this.carritoFarmacia.find(l => l.linea_id === lineaId);
+        if (!lin) return;
+        let n = parseInt(valor, 10);
+        if (!Number.isInteger(n) || n < 1) n = 1;
+        if (n > 99) n = 99;
+        if (lin.lote_id && !lin.servicio) {
+            const p = BelenStore.listarInventarioFarmacia(this.sesion).find(x => x.lote_id === lin.lote_id);
+            if (p && p.fraccion_cofepris === 'I') n = 1;
+            const otros = this.carritoFarmacia.filter(l => l !== lin && l.lote_id === lin.lote_id).reduce((s, l) => s + (l.cantidad || 1), 0);
+            const tope = p ? p.stock - otros : n;
+            if (p && n > tope) {
+                BelenUI.toast('Solo hay ' + Math.max(0, tope) + ' piezas disponibles de ' + p.nombre + '.', 'alerta');
+                n = Math.max(1, Math.min(99, tope));
+            }
+        }
+        lin.cantidad = n;
+        this.repintarCarritoFarmacia();
+    },
+
+    cambiarCantidadCarrito: function (lineaId, delta) {
+        const lin = this.carritoFarmacia.find(l => l.linea_id === lineaId);
+        if (!lin) return;
+        this.fijarCantidadCarrito(lineaId, (lin.cantidad || 1) + delta);
     },
 
     quitarLineaCarrito: function (lineaId) {
@@ -1381,7 +1557,7 @@ const AdminController = {
         const op = opciones || {};
         const r = BelenStore.prepararLineaCarrito(codigo, op);
         if (r.fefo) {
-            this.avisarFefo(r, elegido => this.recibirEnCarrito(elegido.codigo, { lote_id: elegido.lote_id, ignorar_fefo: true, cantidad: op.cantidad, paquete_id: op.paquete_id, paquete_nombre: op.paquete_nombre, servicio: op.servicio }));
+            this.avisarFefo(r, lote => this.recibirEnCarrito(null, { lote_id: lote.lote_id, ignorar_fefo: true, cantidad: op.cantidad, paquete_id: op.paquete_id, paquete_nombre: op.paquete_nombre, servicio: op.servicio }));
             return;
         }
         if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
@@ -1407,7 +1583,7 @@ const AdminController = {
         const S = BelenStore, e = t => this.e(t);
         const cajas = S.cajasAbiertasDe(producto.sku);
         const medicos = Object.values(S.USUARIOS).filter(u => u.activo !== false && u.rol === 'medico');
-        const opcionesCaja = cajas.map(c => `<option value="${e(c.caja_id)}">${e(c.folio_receta_especial)} · ${c.usadas}/${c.piezas_por_caja} ámpulas · lote ${e(c.lote)}</option>`).join('');
+        const opcionesCaja = cajas.map(c => `<option value="${e(c.caja_id)}">${e(S.nombreAreaCaja(c.area_destino) || 'Sin área')} · ${e(c.folio_receta_especial)} · ${c.usadas}/${c.piezas_por_caja} ámpulas · lote ${e(c.lote)}</option>`).join('');
         BelenUI.modal({
             titulo: 'Fracción I · ' + producto.nombre, subtitulo: 'Una ámpula, una receta individual ligada a la caja.', icono: 'fa-prescription', ancho: 'lg', tipo: 'alerta',
             html: `<div class="space-y-3 text-left">
@@ -1415,6 +1591,7 @@ const AdminController = {
                 <label class="block text-[11px] font-bold text-slate-500 uppercase">Caja abierta</label>
                 <select id="fen-caja" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white"><option value="">Abrir una caja nueva…</option>${opcionesCaja}</select>
                 <div id="fen-nueva" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Área de destino / resguardo de la caja</label><select id="fen-area" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white"><option value="">Seleccione el área</option>${S.AREAS_CAJA.map(a => `<option value="${a.codigo}">${e(a.nombre)}</option>`).join('')}</select></div>
                     <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Folio de receta especial</label><input id="fen-folio" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm" placeholder="RE-2026-0001"></div>
                     <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Responsable sanitario</label>
                         <select id="fen-responsable" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white">${medicos.map(m => `<option value="${e(m.id)}">${e(m.nombre)}</option>`).join('')}</select></div>
@@ -1437,7 +1614,9 @@ const AdminController = {
                     if (datos.trim().length < 8) { error.textContent = 'Registre los datos post-anestésicos de la ámpula.'; error.classList.remove('hidden'); return false; }
                     let cajaId = c.el.querySelector('#fen-caja').value;
                     if (!cajaId) {
-                        const abierta = S.abrirCajaEstupefaciente({ lote_id: producto.lote_id, folio_receta_especial: c.el.querySelector('#fen-folio').value, responsable_id: c.el.querySelector('#fen-responsable').value }, this.sesion);
+                        const area = c.el.querySelector('#fen-area').value;
+                        if (!area) { error.textContent = 'Seleccione el área de destino de la caja.'; error.classList.remove('hidden'); return false; }
+                        const abierta = S.abrirCajaEstupefaciente({ lote_id: producto.lote_id, folio_receta_especial: c.el.querySelector('#fen-folio').value, responsable_id: c.el.querySelector('#fen-responsable').value, area_destino: area }, this.sesion);
                         if (!abierta.ok) { error.textContent = abierta.motivo; error.classList.remove('hidden'); return false; }
                         cajaId = abierta.caja.caja_id;
                     }
@@ -1497,10 +1676,14 @@ const AdminController = {
 
     totalCarritoVisible: function () {
         const inv = BelenStore.listarInventarioFarmacia(this.sesion);
-        return Math.round(this.carritoFarmacia.reduce((s, lin) => {
-            const p = inv.find(x => x.lote_id === lin.lote_id);
-            return s + (p ? p.precio_unitario * (lin.cantidad || 1) : 0);
-        }, 0) * 100) / 100;
+        const base = this.carritoFarmacia.reduce((s, lin) => {
+            const est = lin.estudio_id ? BelenStore.estudioPorCodigo(lin.sku) : null;
+            const p = est ? null : inv.find(x => x.lote_id === lin.lote_id);
+            const precio = est ? est.precio_unitario : (p ? p.precio_unitario : 0);
+            return s + precio * (lin.cantidad || 1);
+        }, 0);
+        const ajuste = this.ajustesVisiblesCarrito().reduce((s, a) => s + a.subtotal, 0);
+        return Math.round((base + ajuste) * 100) / 100;
     },
 
     ejecutarCargoPaciente: function () {
@@ -1509,11 +1692,34 @@ const AdminController = {
             operador_id: (this.operadorFarmacia() || {}).id,
             lineas: this.carritoFarmacia
         }, this.sesion);
-        if (r.fefo) { this.avisarFefo(r, elegido => { const lin = this.carritoFarmacia.find(l => l.lote_id === r.lote.lote_id); if (lin) { lin.lote_id = elegido.lote_id; lin.ignorar_fefo = true; } this.ejecutarCargoPaciente(); }); return; }
+        if (r.fefo) {
+            this.avisarFefo(r, lote => {
+                const origen = r.lote.lote_id;
+                const destino = lote.lote_id;
+                this.carritoFarmacia.forEach(lin => {
+                    if (lin.lote_id !== origen || lin.ignorar_fefo) return;
+                    if (destino === origen) { lin.ignorar_fefo = true; return; }
+                    const otra = this.carritoFarmacia.find(o => o !== lin && o.lote_id === destino && !o.caja_id && (o.paquete_id || null) === (lin.paquete_id || null));
+                    if (otra) {
+                        otra.cantidad = (otra.cantidad || 1) + (lin.cantidad || 1);
+                        otra.ignorar_fefo = true;
+                        lin._descartar = true;
+                    } else {
+                        lin.lote_id = destino;
+                        lin.ignorar_fefo = true;
+                    }
+                });
+                this.carritoFarmacia = this.carritoFarmacia.filter(l => !l._descartar);
+                this.ejecutarCargoPaciente();
+            });
+            return;
+        }
         if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
         this.carritoFarmacia = [];
+        this.pacienteCargoId = null;
         BelenUI.toast('Cargo aplicado a la cuenta. Total del episodio ' + BelenStore.formatoMoneda(r.total) + '.', 'exito');
-        (r.recetas || []).forEach(rec => this.imprimirRecetaDatos(this.datosRecetaDe({
+        const op = this.operadorFarmacia();
+        if (op && BelenStore.puedeEmitirRecetaMedica(op.rol)) (r.recetas || []).forEach(rec => this.imprimirRecetaDatos(this.datosRecetaDe({
             nombre: rec.nombre, lote: rec.lote, laboratorio: '', fraccion_cofepris: 'I', sku: rec.sku
         }, { tipo: 'individual', numero: rec.numero, de: rec.de, folio_receta_especial: rec.folio_receta_especial, datos_postanestesicos: rec.datos_postanestesicos, dosis: rec.datos_postanestesicos })));
         this.render();
@@ -1556,22 +1762,47 @@ const AdminController = {
         setTimeout(() => { try { w.print(); } catch (err) { /* la ventana ya muestra la receta */ } }, 250);
     },
 
+    htmlPanelEstupefacientes: function (areaVista) {
+        const S = BelenStore;
+        if (S.areaResguardoDeSesion(this.sesion) !== areaVista) return '';
+        const cajas = S.cajasDeArea(areaVista, true);
+        const e = t => this.e(t);
+        const cuerpo = cajas.length ? cajas.map(c => {
+            const restantes = (c.piezas_por_caja || 0) - (c.usadas || 0);
+            return `<div class="bg-white border border-rose-200 rounded-xl p-3 min-w-[220px]">
+                <div class="text-[10px] font-bold uppercase text-rose-600">Caja activa</div>
+                <div class="font-extrabold text-slate-800">${e(c.nombre)}</div>
+                <div class="text-xs text-slate-500 mt-1">Lote ${e(c.lote)}${c.caducidad ? ' · Cad. ' + e(String(c.caducidad).slice(0, 10)) : ''}</div>
+                <div class="text-xs text-slate-500">Folio ${e(c.folio_receta_especial)}</div>
+                <div class="mt-2 text-sm font-extrabold text-rose-700">Ámpulas restantes: ${restantes} de ${e(c.piezas_por_caja)}</div>
+            </div>`;
+        }).join('') : `<p class="text-sm text-rose-700">No hay una caja activa asignada a ${e(S.nombreAreaCaja(areaVista))}.</p>`;
+        return `<section class="mb-6 bg-rose-50 border border-rose-200 rounded-2xl p-4">
+            <h3 class="font-extrabold text-rose-900 mb-3"><i class="fas fa-syringe mr-1"></i> Estupefacientes en resguardo · ${e(S.nombreAreaCaja(areaVista))}</h3>
+            <div class="flex flex-wrap gap-3">${cuerpo}</div></section>`;
+    },
+
     htmlBitacoraFarmacia: function () {
         const op = this.operadorFarmacia();
         if (!op || !BelenStore.permisoAccionDe(op.id, 'ver_bitacora_farmacia')) return '<div class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-500">Su perfil no tiene la bitácora de farmacia.</div>';
-        const f = this.filtrosBitacora, e = t => this.e(t);
+        const S = BelenStore, f = this.filtrosBitacora, e = t => this.e(t);
+        const ctx = this.contextoOperadorFarmacia();
+        const personas = S.personasBitacora(ctx);
+        const presentaciones = S.presentacionesBitacora(ctx);
+        const lotes = f.medicamento ? S.lotesDePresentacion(ctx, f.medicamento) : [];
         return `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <p class="text-sm text-slate-500 mb-3">Solo medicamentos. Material de curación, estudios y servicios quedan fuera de este reporte.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="bit-desde">Desde</label><input id="bit-desde" type="date" value="${e(f.desde)}" oninput="AdminController.leerFiltrosBitacora()" class="w-full border border-slate-300 rounded-lg p-2 text-sm"></div>
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="bit-hasta">Hasta</label><input id="bit-hasta" type="date" value="${e(f.hasta)}" oninput="AdminController.leerFiltrosBitacora()" class="w-full border border-slate-300 rounded-lg p-2 text-sm"></div>
-                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="bit-tipo">Tipo</label><select id="bit-tipo" onchange="AdminController.leerFiltrosBitacora()" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white"><option value="" ${f.tipo === '' ? 'selected' : ''}>Entradas y salidas</option><option value="ENTRADA" ${f.tipo === 'ENTRADA' ? 'selected' : ''}>Solo ingresos</option><option value="SALIDA" ${f.tipo === 'SALIDA' ? 'selected' : ''}>Solo egresos</option></select></div>
-                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="bit-persona">Enfermera o personal</label><input id="bit-persona" value="${e(f.persona)}" oninput="AdminController.leerFiltrosBitacora()" placeholder="Nombre" class="w-full border border-slate-300 rounded-lg p-2 text-sm"></div>
-                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="bit-med">Medicamento</label><input id="bit-med" value="${e(f.medicamento)}" oninput="AdminController.leerFiltrosBitacora()" placeholder="Principio, comercial o SKU" class="w-full border border-slate-300 rounded-lg p-2 text-sm"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="bit-tipo">Tipo de movimiento</label><select id="bit-tipo" onchange="AdminController.leerFiltrosBitacora()" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white"><option value="" ${f.tipo === '' ? 'selected' : ''}>Todos (Entradas y Salidas)</option><option value="ENTRADA" ${f.tipo === 'ENTRADA' ? 'selected' : ''}>Solo Entradas (Ingresos)</option><option value="SALIDA" ${f.tipo === 'SALIDA' ? 'selected' : ''}>Solo Salidas (Egresos)</option></select></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="bit-persona">Personal / Enfermera</label><select id="bit-persona" onchange="AdminController.leerFiltrosBitacora()" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white"><option value="">Todas las personas</option>${personas.map(p => `<option value="${e(p.id)}" ${f.persona === p.id ? 'selected' : ''}>${e(p.nombre)} (${p.n} movs)</option>`).join('')}</select></div>
+                <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="bit-med">Medicamento / Presentación</label><input id="bit-med" list="bit-presentaciones" value="${e(f.medicamento)}" oninput="AdminController.actualizarLotesBitacora()" placeholder="Principio activo, concentración y forma" class="w-full border border-slate-300 rounded-lg p-2 text-sm"><datalist id="bit-presentaciones">${presentaciones.map(p => `<option value="${e(p)}"></option>`).join('')}</datalist></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="bit-lote">Lote</label><select id="bit-lote" onchange="AdminController.leerFiltrosBitacora()" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white" ${lotes.length ? '' : 'disabled'}><option value="">Todos los lotes</option>${lotes.map(l => `<option value="${e(l)}" ${f.lote === l ? 'selected' : ''}>${e(l)}</option>`).join('')}</select></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="bit-clase">Clasificación AWaRe / Fracción</label><select id="bit-clase" onchange="AdminController.leerFiltrosBitacora()" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white"><option value="" ${f.clasificacion === '' ? 'selected' : ''}>Todos</option><option value="CONTROLADOS" ${f.clasificacion === 'CONTROLADOS' ? 'selected' : ''}>Fracción I, II, III</option><option value="ANTIBIOTICOS" ${f.clasificacion === 'ANTIBIOTICOS' ? 'selected' : ''}>Antibióticos (Todos)</option><option value="ACCESO" ${f.clasificacion === 'ACCESO' ? 'selected' : ''}>AWaRe: Acceso</option><option value="VIGILANCIA" ${f.clasificacion === 'VIGILANCIA' ? 'selected' : ''}>AWaRe: Vigilancia</option><option value="RESERVA" ${f.clasificacion === 'RESERVA' ? 'selected' : ''}>AWaRe: Reserva</option></select></div>
             </div>
             <div class="flex flex-wrap gap-2 mt-4">
-                <button type="button" onclick="AdminController.descargarBitacora('ENTRADA')" class="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold px-3 py-2 rounded-lg">Descargar Excel: Solo Ingresos (Entradas)</button>
-                <button type="button" onclick="AdminController.descargarBitacora('SALIDA')" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold px-3 py-2 rounded-lg">Descargar Excel: Solo Egresos (Salidas a Pacientes/Admin)</button>
-                <button type="button" onclick="AdminController.descargarBitacora('')" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-2 rounded-lg">Descargar Excel: Movimientos Completos (Ambos)</button>
+                <button type="button" onclick="AdminController.descargarBitacora()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl">📊 Descargar Excel (.csv) con los Filtros Actuales</button>
             </div>
         </div>
         <div id="bitacora-carpetas">${this.htmlCarpetasBitacora()}</div>`;
@@ -1579,7 +1810,7 @@ const AdminController = {
 
     leerFiltrosBitacora: function () {
         const v = id => { const n = document.getElementById(id); return n ? n.value : ''; };
-        this.filtrosBitacora = { desde: v('bit-desde'), hasta: v('bit-hasta'), tipo: v('bit-tipo'), persona: v('bit-persona'), medicamento: v('bit-med') };
+        this.filtrosBitacora = { desde: v('bit-desde'), hasta: v('bit-hasta'), tipo: v('bit-tipo'), persona: v('bit-persona'), medicamento: v('bit-med'), lote: v('bit-lote'), clasificacion: v('bit-clase') };
         const caja = document.getElementById('bitacora-carpetas');
         if (caja) caja.innerHTML = this.htmlCarpetasBitacora();
     },
@@ -1594,7 +1825,7 @@ const AdminController = {
         const S = BelenStore, e = t => this.e(t);
         const lista = S.filtrarMovimientosFarmacia(this.contextoOperadorFarmacia(), this.filtrosBitacora);
         const anios = S.carpetasMovimientosFarmacia(lista);
-        if (!anios.length) return '<div class="text-center py-16 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">No hay movimientos con esos filtros.</div>';
+        if (!anios.length) return '<div class="text-center py-16 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">No hay medicamentos con esos filtros.</div>';
         const fila = m => {
             const piezas = m.tipo === 'ENTRADA' ? (m.total_piezas + ' pzas ingresadas' + (m.cajas_ingresadas ? ' · ' + m.cajas_ingresadas + ' cajas' : '')) : (m.cantidad_piezas + ' pzas retiradas');
             const contacto = m.tipo === 'SALIDA' && m.area_paciente !== 'RETIRO DIRECTO ADMINISTRACIÓN'
@@ -1604,7 +1835,7 @@ const AdminController = {
                 <td class="px-3 py-2 whitespace-nowrap">${e(S.fechaHoraLegible(m.fecha_hora))}</td>
                 <td class="px-3 py-2 font-bold ${m.tipo === 'ENTRADA' ? 'text-teal-800' : 'text-rose-800'}">${m.tipo === 'ENTRADA' ? 'Entrada' : 'Salida'}</td>
                 <td class="px-3 py-2">${e(m.nombre)}<span class="block text-[11px] text-slate-400">${e(m.cedula_profesional || 'Sin cédula')}</span></td>
-                <td class="px-3 py-2">${e(m.principio_activo)}${m.nombre_comercial ? '<span class="block text-[11px] text-slate-400">' + e(m.nombre_comercial) + '</span>' : ''}<span class="block text-[11px] text-slate-400">${e(m.sku)} · lote ${e(m.lote)}</span></td>
+                <td class="px-3 py-2">${e(S.presentacionMovimiento(m) || m.principio_activo)}${m.nombre_comercial ? '<span class="block text-[11px] text-slate-400">' + e(m.nombre_comercial) + '</span>' : ''}<span class="block text-[11px] text-slate-400">${e(S.nombreFraccionCofepris(m.fraccion_cofepris))}${S.awareDeMovimiento(m) ? ' · ' + e((S.CLASIFICACION_AWARE.find(a => a.codigo === S.awareDeMovimiento(m)) || {}).nombre || S.awareDeMovimiento(m)) : ''} · lote ${e(m.lote)}</span></td>
                 <td class="px-3 py-2">${e(piezas)}</td>
                 <td class="px-3 py-2">${e(destino)}${contacto}</td>
             </tr>`;
@@ -1626,10 +1857,23 @@ const AdminController = {
         }).join('');
     },
 
-    descargarBitacora: function (tipo) {
-        const csv = BelenStore.csvMovimientosFarmacia(this.contextoOperadorFarmacia(), Object.assign({}, this.filtrosBitacora, { tipoExport: tipo || 'AMBOS' }));
+    actualizarLotesBitacora: function () {
+        const med = ((document.getElementById('bit-med') || {}).value || '').trim();
+        const sel = document.getElementById('bit-lote');
+        if (!sel) { this.leerFiltrosBitacora(); return; }
+        const actual = sel.value;
+        const lotes = BelenStore.lotesDePresentacion(this.contextoOperadorFarmacia(), med);
+        sel.disabled = !lotes.length;
+        sel.innerHTML = '<option value="">Todos los lotes</option>' + lotes.map(l => `<option value="${this.e(l)}">${this.e(l)}</option>`).join('');
+        if (lotes.indexOf(actual) >= 0) sel.value = actual;
+        this.leerFiltrosBitacora();
+    },
+
+    descargarBitacora: function () {
+        this.leerFiltrosBitacora();
+        const csv = BelenStore.csvMovimientosFarmacia(this.contextoOperadorFarmacia(), this.filtrosBitacora);
         if (!csv) { BelenUI.toast('Su perfil no puede descargar la bitácora.', 'alerta'); return; }
-        const nombre = tipo === 'ENTRADA' ? 'kardex-ingresos.csv' : (tipo === 'SALIDA' ? 'kardex-egresos.csv' : 'kardex-completo.csv');
+        const nombre = 'kardex-filtros.csv';
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -1648,7 +1892,8 @@ const AdminController = {
             const usos = (c.usos || []).map(u => `<li class="py-1">${e(S.fechaHoraLegible(u.fecha_hora))} · ${e(u.paciente_nombre)} · receta ${u.numero}/${u.de} · ${e(u.datos_postanestesicos || '')}</li>`).join('');
             return `<article class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
                 <h3 class="font-extrabold text-slate-900">${e(c.nombre)}</h3>
-                <p class="text-sm text-slate-600 mt-1">Folio ${e(c.folio_receta_especial)} · lote ${e(c.lote)} · ${c.usadas}/${c.piezas_por_caja} ámpulas justificadas</p>
+                <p class="text-sm text-slate-600 mt-1">${e(S.nombreAreaCaja(c.area_destino) || 'Sin área')} · Folio ${e(c.folio_receta_especial)} · lote ${e(c.lote)}${c.caducidad ? ' · caduca ' + e(String(c.caducidad).slice(0, 10)) : ''}</p>
+                <p class="text-sm font-extrabold text-rose-700 mt-1">Ámpulas restantes: ${(c.piezas_por_caja || 0) - (c.usadas || 0)} de ${c.piezas_por_caja}</p>
                 <p class="text-xs text-slate-400 mt-1">Responsable: ${e(c.responsable_nombre || '')}</p>
                 ${usos ? `<ul class="mt-3 text-xs text-slate-600 border-t border-slate-100 pt-2">${usos}</ul>` : '<p class="text-xs text-slate-400 mt-3">Todavía no se usa ninguna ámpula de esta caja.</p>'}
             </article>`;
@@ -1661,11 +1906,17 @@ const AdminController = {
         if (!paquetes.length) return '<div class="text-center py-16 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">No hay paquetes. Cree el primero con Nuevo paquete.</div>';
         return `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${paquetes.map(p => {
             const items = p.items.map(it => {
-                const prod = S.productoPorSku(it.sku);
-                return `<li class="flex justify-between gap-3 py-1"><span>${e(prod ? prod.nombre : it.sku)}</span><span class="font-bold">${it.cantidad}×</span></li>`;
+                const est = S.estudioPorCodigo(it.sku);
+                const prod = est ? null : S.productoPorSku(it.sku);
+                const nombre = est ? est.nombre : (prod ? prod.nombre : it.sku);
+                return `<li class="flex justify-between gap-3 py-1"><span>${e(nombre)}${est ? ' <span class="text-[10px] uppercase text-slate-400">estudio</span>' : ''}</span><span class="font-bold">${it.cantidad}×</span></li>`;
             }).join('');
+            const suma = S.sumaRealPaquete(p.items);
+            const pactado = p.precio_paquete != null && p.precio_paquete !== '' ? Number(p.precio_paquete) : null;
             return `<article class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
                 <h3 class="font-extrabold text-slate-900">${e(p.nombre)}</h3>
+                <p class="text-sm text-slate-500 mt-1">Suma real de insumos y estudios: <b class="text-slate-800">${e(S.formatoMoneda(suma))}</b></p>
+                ${pactado != null ? `<p class="text-sm font-bold text-emerald-800">Precio final de venta: ${e(S.formatoMoneda(pactado))}${pactado < suma ? ' · descuento ' + e(S.formatoMoneda(pactado - suma)) : ''}</p>` : '<p class="text-xs text-slate-400">Sin precio especial: cada ítem se cobra a su precio.</p>'}
                 <ul class="mt-3 text-sm text-slate-600">${items}</ul>
                 <div class="mt-4 flex flex-wrap gap-2">
                     <button type="button" onclick="AdminController.meterPaqueteEnCarrito('${e(p.paquete_id)}')" class="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold px-3 py-2 rounded-lg">Aplicar al carrito</button>
@@ -1681,7 +1932,12 @@ const AdminController = {
         BelenStore.listarInventarioFarmacia(this.sesion).forEach(p => {
             if (vistos[p.sku] || p.fraccion_cofepris === 'I') return;
             vistos[p.sku] = true;
-            out.push(p);
+            out.push({ sku: p.sku, nombre: p.nombre, precio: p.precio_unitario, grupo: 'Almacén' });
+        });
+        BelenStore.listarEstudios().forEach(est => {
+            if (vistos[est.codigo]) return;
+            vistos[est.codigo] = true;
+            out.push({ sku: est.codigo, nombre: est.nombre, precio: est.precio_unitario, grupo: 'Estudio' });
         });
         return out.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
     },
@@ -1690,7 +1946,7 @@ const AdminController = {
         const S = BelenStore, e = t => this.e(t);
         const paq = paqueteId ? S.listarPaquetes().find(p => p.paquete_id === paqueteId) : null;
         const skus = this.skusParaPaquete();
-        const opciones = skus.map(p => `<option value="${e(p.sku)}">${e(p.nombre)} · ${e(p.sku)}</option>`).join('');
+        const opciones = skus.map(p => `<option value="${e(p.sku)}" data-precio="${p.precio}">${e(p.grupo)} · ${e(p.nombre)} · ${e(p.sku)} · ${e(S.formatoMoneda(p.precio))}</option>`).join('');
         const fila = (sku, cant) => `<div class="flex gap-2 items-center" data-fila-paq>
             <select class="flex-1 border border-slate-300 rounded-lg p-2 text-sm bg-white" data-sku-paq>${opciones.replace(`value="${e(sku)}"`, `value="${e(sku)}" selected`)}</select>
             <input data-cant-paq type="number" min="1" max="99" value="${cant || 1}" class="w-20 border border-slate-300 rounded-lg p-2 text-sm">
@@ -1703,11 +1959,30 @@ const AdminController = {
                 <input id="paq-nombre" value="${e(paq ? paq.nombre : '')}" data-autofoco class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
                 <div id="paq-items" class="space-y-2">${iniciales}</div>
                 <button type="button" id="paq-agregar" class="text-xs font-bold text-teal-700">+ Agregar ítem</button>
+                <p id="paq-suma" class="text-sm font-extrabold text-slate-800">Suma real: ${e(S.formatoMoneda(0))}</p>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Precio final de venta del paquete (opcional)</label>
+                <input id="paq-precio" type="number" min="0.01" step="0.01" value="${paq && paq.precio_paquete != null ? paq.precio_paquete : ''}" placeholder="Vacío = cobrar cada ítem a su precio" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+                <p id="paq-ajuste" class="text-xs text-emerald-800"></p>
                 <p id="paq-error" class="text-xs text-red-600 hidden"></p>
             </div>`,
             alMostrar: c => {
                 const caja = c.el.querySelector('#paq-items');
-                const enganchar = filaEl => filaEl.querySelector('[data-quitar-paq]').addEventListener('click', () => { if (caja.children.length > 1) filaEl.remove(); });
+                const pintar = () => {
+                    const items = Array.from(caja.querySelectorAll('[data-fila-paq]')).map(f => ({ sku: f.querySelector('[data-sku-paq]').value, cantidad: f.querySelector('[data-cant-paq]').value }));
+                    const suma = S.sumaRealPaquete(items);
+                    c.el.querySelector('#paq-suma').textContent = 'Suma real: ' + S.formatoMoneda(suma);
+                    const crudo = c.el.querySelector('#paq-precio').value.trim();
+                    const nota = c.el.querySelector('#paq-ajuste');
+                    const pactado = crudo === '' ? null : Math.round(Number(crudo) * 100) / 100;
+                    if (pactado != null && pactado > 0 && pactado < suma) nota.textContent = 'Al aplicarlo se insertará Descuento por Paquete (' + S.formatoMoneda(pactado - suma) + '). La cuenta quedará en ' + S.formatoMoneda(pactado) + '.';
+                    else if (pactado != null && pactado > 0) nota.textContent = 'El precio no es menor a la suma: cada ítem se cobra a su precio.';
+                    else nota.textContent = 'Sin precio especial, cada ítem entra a su precio de catálogo.';
+                };
+                const enganchar = filaEl => {
+                    filaEl.querySelector('[data-quitar-paq]').addEventListener('click', () => { if (caja.children.length > 1) { filaEl.remove(); pintar(); } });
+                    filaEl.querySelector('[data-sku-paq]').addEventListener('change', pintar);
+                    filaEl.querySelector('[data-cant-paq]').addEventListener('input', pintar);
+                };
                 Array.from(caja.children).forEach(enganchar);
                 c.el.querySelector('#paq-agregar').addEventListener('click', () => {
                     const wrap = document.createElement('div');
@@ -1715,15 +1990,18 @@ const AdminController = {
                     const nodo = wrap.firstElementChild;
                     caja.appendChild(nodo);
                     enganchar(nodo);
+                    pintar();
                 });
+                c.el.querySelector('#paq-precio').addEventListener('input', pintar);
+                pintar();
             },
             botones: [
                 { texto: 'Cancelar', estilo: 'secundario' },
                 { texto: 'Guardar paquete', estilo: 'exito', alPulsar: c => {
                     const items = Array.from(c.el.querySelectorAll('[data-fila-paq]')).map(f => ({ sku: f.querySelector('[data-sku-paq]').value, cantidad: f.querySelector('[data-cant-paq]').value }));
-                    const r = S.guardarPaquete({ nombre: c.el.querySelector('#paq-nombre').value, items: items }, this.sesion, paq ? paq.paquete_id : null);
+                    const r = S.guardarPaquete({ nombre: c.el.querySelector('#paq-nombre').value, items: items, precio_paquete: c.el.querySelector('#paq-precio').value }, this.sesion, paq ? paq.paquete_id : null);
                     const error = c.el.querySelector('#paq-error');
-                    if (!r.ok) { error.textContent = (r.errores && (r.errores.nombre || r.errores.items)) || r.motivo; error.classList.remove('hidden'); return false; }
+                    if (!r.ok) { error.textContent = (r.errores && (r.errores.nombre || r.errores.items || r.errores.precio_paquete)) || r.motivo; error.classList.remove('hidden'); return false; }
                     BelenUI.toast('Paquete guardado.', 'exito');
                     this.pestanaFarmacia = 'paquetes';
                     this.render();
