@@ -46,6 +46,10 @@
         salidasFarmacia: 'belen_bitacora_salidas',
         movimientosFarmacia: 'belen_movimientos_farmacia',
         recetasFoliadas: 'belen_recetas_foliadas',
+        recetas: 'belen_recetas',
+        folioRecetaSeq: 'belen_folio_receta_seq',
+        folioExternoSeq: 'belen_folio_externo_seq',
+        demoQxActivo: 'belen_demo_qx_activo_v1',
         ivaDiferido: 'belen_iva_diferido_v1',
         farmaciaAmpliada: 'belen_farmacia_ampliada_v2',
         usuarios: 'belen_usuarios',
@@ -1285,7 +1289,7 @@
     }
     function nuevaHojaIndicaciones(hojas, origen, textos, autor, fechaHora) {
         return Object.assign({
-            hoja_id: uid('IM'), folio: 'IM-' + pad3(hojas.length + 1), fecha_hora: fechaHora || new Date().toISOString(), fecha_dia: hoyLocal(), origen: origen,
+            hoja_id: uid('IM'), folio: 'IND-' + pad3(hojas.length + 1), fecha_hora: fechaHora || new Date().toISOString(), fecha_dia: hoyLocal(), origen: origen,
             autor_id: autor.id, autor_nombre: autor.nombre, relacion: autor.relacion
         }, textos);
     }
@@ -1331,11 +1335,13 @@
                 const autor = { id: t.medico_id, nombre: t.medico_nombre, relacion: 'tratante' };
                 if (!primera) {
                     hojaParaFarmacia = nuevaHojaIndicaciones([], 'ingreso', textos, autor, (datos.consulta && datos.consulta.fecha_hora) || null);
+                    anotarCoberturaIndicacion(hojaParaFarmacia);
                     i.hojas_indicaciones = hojas;
                     i.hojas_indicaciones.unshift(hojaParaFarmacia);
                 } else if (hojas.length === 1) {
                     previaParaFarmacia = { medicamentos: primera.medicamentos, soluciones_parenterales: primera.soluciones_parenterales };
                     Object.assign(primera, textos);
+                    anotarCoberturaIndicacion(primera);
                     hojaParaFarmacia = primera;
                 }
             }
@@ -1504,6 +1510,7 @@
         if (vig && Object.keys(textos).every(k => String(vig[k] || '').trim() === textos[k])) return { ok: false, sin_cambios: true, motivo: 'No hay cambios respecto a las indicaciones vigentes.' };
         const t = obtenerTurno(i.turno_id);
         const hoja = nuevaHojaIndicaciones(i.hojas_indicaciones || [], 'actualizacion', textos, { id: s.usuario_id, nombre: s.nombre, relacion: relacionMedico(i, t, s) });
+        anotarCoberturaIndicacion(hoja);
         i.hojas_indicaciones = (i.hojas_indicaciones || []).concat([hoja]);
         if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
         encolarSurtidoIndicacion(i, hoja, vig);
@@ -3898,7 +3905,13 @@
             escribir(CLAVES.cajasEstupefacientes, JSON.parse(snapCajas));
             return { ok: false, motivo: 'No se pudo cargar el ámpula a la cuenta. La caja no se modificó.' };
         }
-        if (!caja.stock_traspasado && !anexarMovimientos([movimientoSalida(row, cant, quien, fichaDestinoKardex(t))])) {
+        if (!caja.stock_traspasado && !anexarMovimientos([movimientoSalida(row, cant, quien, Object.assign({}, fichaDestinoKardex(t), {
+            folio_receta: caja.folio_receta_especial,
+            tipo_respaldo: 'Receta Especial Fracción I',
+            medico_prescriptor: caja.responsable_nombre || '',
+            cedula_prescriptor: caja.responsable_cedula || '',
+            estatus_receta: 'Retenida'
+        }))])) {
             escribir(CLAVES.farmacia, JSON.parse(snapCat));
             escribir(CLAVES.cajasEstupefacientes, JSON.parse(snapCajas));
             return { ok: false, motivo: 'No se pudo registrar la salida. La caja no se modificó.' };
@@ -3958,7 +3971,19 @@
             }
             if (FRACCIONES_RECETA.indexOf(prod.fraccion_cofepris) >= 0) {
                 if (!limpiarEspacios(lin.folio_receta) || limpiarEspacios(lin.folio_receta).length < 3) return { ok: false, motivo: 'Indique el folio de receta de ' + prod.nombre + ' (sistema, recetario físico u hoja de indicaciones).' };
-                if (!lin.medico_prescriptor_id) return { ok: false, motivo: 'Indique el médico prescriptor de ' + prod.nombre + '.' };
+                if (!lin.medico_prescriptor_id && inferirTipoRespaldo(lin.folio_receta, prod.fraccion_cofepris) !== 'Indicaciones Hospitalarias (IND)') return { ok: false, motivo: 'Indique el médico prescriptor de ' + prod.nombre + '.' };
+            }
+            const tope = pendienteFolioSku(lin.folio_receta, prod.sku);
+            if (tope !== null) {
+                const yaEnCarrito = lineas.slice(0, k).reduce((s, previa) => {
+                    const otro = catalogo.find(p => p.lote_id === previa.lote_id);
+                    return otro && normalizar(otro.sku) === normalizar(prod.sku) && normalizar(previa.folio_receta) === normalizar(lin.folio_receta) ? s + (parseInt(previa.cantidad, 10) || 0) : s;
+                }, 0);
+                if (cant + yaEnCarrito > tope) {
+                    const faltan = Math.max(0, tope - yaEnCarrito);
+                    const folioTxt = limpiarEspacios(lin.folio_receta).toUpperCase();
+                    return { ok: false, motivo: faltan ? ('De ' + folioTxt + ' solo faltan ' + faltan + ' piezas de ' + prod.nombre + '.') : (folioTxt + ' ya está completa para ' + prod.nombre + '.') };
+                }
             }
             const previo = descuentos[prod.lote_id] || 0;
             if (!lin.servicio && prod.stock < previo + cant) return { ok: false, motivo: 'No hay stock suficiente de ' + prod.nombre + ' (lote ' + prod.lote + ').' };
@@ -4008,10 +4033,21 @@
         lineas.forEach(lin => {
             if (lin.servicio) return;
             const prod = catalogo.find(p => p.lote_id === lin.lote_id);
-            if (prod) movs.push(movimientoSalida(prod, parseInt(lin.cantidad, 10), quien, Object.assign({}, destino, {
-                folio_receta: lin.folio_receta || '',
-                medico_prescriptor: lin.medico_prescriptor_nombre || ''
-            })));
+            if (prod) {
+                const cantMov = parseInt(lin.cantidad, 10);
+                const tipoRespaldo = lin.tipo_respaldo || inferirTipoRespaldo(lin.folio_receta, prod.fraccion_cofepris, lin.folio_receta_especial);
+                const previas = lineas.slice(0, lineas.indexOf(lin)).reduce((s, previa) => {
+                    const otro = catalogo.find(p => p.lote_id === previa.lote_id);
+                    return otro && normalizar(otro.sku) === normalizar(prod.sku) && normalizar(previa.folio_receta) === normalizar(lin.folio_receta) ? s + (parseInt(previa.cantidad, 10) || 0) : s;
+                }, 0);
+                movs.push(movimientoSalida(prod, cantMov, quien, Object.assign({}, destino, {
+                    folio_receta: lin.folio_receta || '',
+                    tipo_respaldo: tipoRespaldo,
+                    medico_prescriptor: lin.medico_prescriptor_nombre || '',
+                    cedula_prescriptor: lin.cedula_prescriptor || cedulaDeUsuario(lin.medico_prescriptor_id),
+                    estatus_receta: textoEstatusBitacora(tipoRespaldo, lin.folio_receta, prod.sku, previas + cantMov)
+                })));
+            }
         });
         if (movs.length && !anexarMovimientos(movs)) {
             escribir(CLAVES.farmacia, JSON.parse(snapCat));
@@ -4021,6 +4057,16 @@
             if (snapHosp === null) localStorage.removeItem(CLAVES.hospitalizados); else localStorage.setItem(CLAVES.hospitalizados, snapHosp);
             return { ok: false, motivo: 'No se pudo registrar la bitácora. La cuenta y el inventario no se modificaron.' };
         }
+        const porFolio = {};
+        lineas.forEach(lin => {
+            if (!lin.folio_receta || lin.servicio) return;
+            const prod = catalogo.find(p => p.lote_id === lin.lote_id);
+            if (!prod) return;
+            const folio = limpiarEspacios(lin.folio_receta).toUpperCase();
+            if (!porFolio[folio]) porFolio[folio] = [];
+            porFolio[folio].push({ sku: prod.sku, cantidad: parseInt(lin.cantidad, 10) || 1, lote: prod.lote });
+        });
+        Object.keys(porFolio).forEach(folio => registrarSurtidoReceta(folio, porFolio[folio]));
         return { ok: true, cargos: cargos, total: guardado.total, recetas: recetas };
     }
     function listarMovimientosFarmacia() { return leer(CLAVES.movimientosFarmacia, []); }
@@ -4095,7 +4141,10 @@
             paciente_direccion: d.paciente_direccion || '',
             area_paciente: d.area_paciente || '', cama: d.cama || '', medico_tratante: d.medico_tratante || '',
             folio_receta: d.folio_receta ? limpiarEspacios(d.folio_receta).toUpperCase() : '',
-            medico_prescriptor: d.medico_prescriptor || ''
+            tipo_respaldo: d.tipo_respaldo || '',
+            medico_prescriptor: d.medico_prescriptor || '',
+            cedula_prescriptor: d.cedula_prescriptor || '',
+            estatus_receta: d.estatus_receta || ''
         }, idn);
     }
     function fechaLocalDeIso(iso) {
@@ -4241,7 +4290,7 @@
         if (!s || !permisoAccionDe(s.usuario_id, 'ver_bitacora_farmacia')) return '';
         const f = Object.assign({}, filtros || {});
         const filas = filtrarMovimientosFarmacia(s, f);
-        const encabezado = ['Tipo', 'Fecha y hora', 'Usuario', 'Nombre', 'Cédula', 'SKU', 'Principio activo', 'Presentación', 'Nombre comercial', 'Laboratorio', 'Proveedor', 'Número de factura', 'Forma farmacéutica', 'Concentración', 'Fracción COFEPRIS', 'Clasificación AWaRe', 'Lote', 'Caducidad', 'Cajas ingresadas', 'Piezas por caja', 'Total de piezas ingresadas', 'Cantidad de piezas retiradas', 'Precio unitario', 'Grava IVA', 'Paciente', 'Edad', 'Área', 'Cama', 'Médico tratante', 'Folio de receta', 'Médico prescriptor', 'Teléfono / Celular Paciente', 'Dirección Paciente'];
+        const encabezado = ['Tipo', 'Fecha y hora', 'Usuario', 'Nombre', 'Cédula', 'SKU', 'Principio activo', 'Presentación', 'Nombre comercial', 'Laboratorio', 'Proveedor', 'Número de factura', 'Forma farmacéutica', 'Concentración', 'Fracción COFEPRIS', 'Clasificación AWaRe', 'Lote', 'Caducidad', 'Cajas ingresadas', 'Piezas por caja', 'Total de piezas ingresadas', 'Cantidad de piezas retiradas', 'Precio unitario', 'Grava IVA', 'Paciente', 'Edad', 'Área', 'Cama', 'Médico tratante', 'Folio de receta', 'Médico prescriptor', 'Teléfono / Celular Paciente', 'Dirección Paciente', 'Tipo de Respaldo Médico', 'Folio de Receta / Indicación', 'Médico Prescriptor', 'Cédula del Médico Prescriptor', 'Estatus de Receta'];
         const lineas = filas.slice().sort((a, b) => String(a.fecha_hora).localeCompare(String(b.fecha_hora))).map(m => {
             const aware = awareDeMovimiento(m);
             const celdas = [
@@ -4251,7 +4300,8 @@
                 m.lote, m.caducidad, m.cajas_ingresadas, m.piezas_por_caja, m.total_piezas,
                 m.cantidad_piezas, m.precio_unitario, m.aplica_iva ? 'Sí' : 'No', m.paciente_nombre, m.paciente_edad, m.area_paciente, m.cama, m.medico_tratante,
                 m.folio_receta || '', m.medico_prescriptor || '',
-                m.paciente_telefono || '', m.paciente_direccion || ''
+                m.paciente_telefono || '', m.paciente_direccion || '',
+                m.tipo_respaldo || '', m.folio_receta || '', m.medico_prescriptor || '', m.cedula_prescriptor || '', m.estatus_receta || ''
             ];
             return celdas.map(csvCelda).join(',');
         });
@@ -4399,7 +4449,535 @@
         return out;
     }
     function listarRecetasFoliadas() { return leer(CLAVES.recetasFoliadas, []); }
+    function listarRecetas() { return leer(CLAVES.recetas, []); }
+    function recetaPorFolio(folio) {
+        const f = normalizar(folio);
+        if (!f) return null;
+        return listarRecetas().find(r => normalizar(r.folio) === f || normalizar(r.folio_externo) === f) || null;
+    }
+    function recetasDeTurno(turnoId) { return listarRecetas().filter(r => r.turno_id === turnoId); }
+    function recetasDePaciente(pacienteId) { return listarRecetas().filter(r => r.paciente_id === pacienteId); }
+    function catalogoMedicamentosUnicos() {
+        const vistos = {};
+        const out = [];
+        listarFarmacia().forEach(p => {
+            if (!p || p.categoria === 'INSUMO' || vistos[p.sku]) return;
+            vistos[p.sku] = true;
+            out.push(productoPorSku(p.sku) || p);
+        });
+        return out;
+    }
+    function buscarMedicamentosReceta(texto) {
+        const n = normalizar(texto);
+        if (n.length < 2) return [];
+        return catalogoMedicamentosUnicos().filter(p => normalizar([p.sku, p.nombre, p.nombre_comercial].filter(Boolean).join(' ')).indexOf(n) >= 0).slice(0, 8);
+    }
+    const FRACCIONES_HOJA = ['IV', 'V', 'VI', 'IV_ANTIBIOTICO'];
+    function tokenPropioEnTexto(textoNorm, prod) {
+        const campos = [prod.nombre, prod.nombre_comercial].filter(Boolean);
+        const tokens = [];
+        campos.forEach(c => normalizar(c).split(/[^a-z0-9]+/).forEach(w => { if (w.length >= 5) tokens.push(w); }));
+        const propios = tokens.filter(w => textoNorm.indexOf(w) >= 0).sort((a, b) => b.length - a.length);
+        const alias = ALIAS_MEDICAMENTO.find(a => normalizar(campos.join(' ')).indexOf(a.raiz) >= 0 && palabraEnTexto(textoNorm, a.aguja));
+        if (!propios.length) return alias ? alias.aguja : '';
+        const mejor = propios[0];
+        const compartido = catalogoMedicamentosUnicos().some(p => p.sku !== prod.sku && normalizar([p.nombre, p.nombre_comercial].filter(Boolean).join(' ')).indexOf(mejor) >= 0);
+        if (compartido && propios.length === 1 && !alias) return '';
+        return alias && alias.aguja.length > mejor.length ? alias.aguja : mejor;
+    }
+    function medicamentosDetectadosEnTexto(texto) {
+        const crudo = String(texto || '');
+        const n = normalizar(crudo);
+        if (!n) return [];
+        const vistos = {};
+        const out = [];
+        catalogoMedicamentosUnicos().forEach(prod => {
+            if (!prod.fraccion_cofepris || prod.fraccion_cofepris === 'NA') return;
+            const golpe = tokenPropioEnTexto(n, prod);
+            if (!golpe || vistos[prod.sku]) return;
+            vistos[prod.sku] = true;
+            const pos = Math.max(0, n.indexOf(golpe));
+            const corte = crudo.slice(Math.max(0, pos - 12), Math.min(crudo.length, pos + 90)).replace(/\s+/g, ' ').trim();
+            out.push({
+                sku: prod.sku, nombre: prod.nombre, concentracion: prod.concentracion || '',
+                forma_farmaceutica: prod.forma_farmaceutica || '', fraccion_cofepris: prod.fraccion_cofepris || 'VI',
+                clasificacion_aware: prod.clasificacion_aware || null, dosis_indicacion: corte,
+                cubierta_por_hoja: FRACCIONES_HOJA.indexOf(prod.fraccion_cofepris) >= 0,
+                requiere_receta_retenida: prod.fraccion_cofepris === 'I' || prod.fraccion_cofepris === 'II' || prod.fraccion_cofepris === 'III'
+            });
+        });
+        return out;
+    }
+    function anotarCoberturaIndicacion(hoja) {
+        if (!hoja) return hoja;
+        const detectados = medicamentosDetectadosEnTexto([hoja.medicamentos, hoja.soluciones_parenterales].filter(Boolean).join('\n'));
+        hoja.medicamentos_vinculados = detectados.map(d => ({
+            sku: d.sku, nombre: d.nombre, fraccion_cofepris: d.fraccion_cofepris,
+            folio_hoja: d.cubierta_por_hoja ? hoja.folio : null,
+            requiere_receta_retenida: d.requiere_receta_retenida
+        }));
+        return hoja;
+    }
+    function reservarFolioReceta() {
+        const actual = parseInt(localStorage.getItem(CLAVES.folioRecetaSeq) || '0', 10) || 0;
+        const siguiente = actual + 1;
+        localStorage.setItem(CLAVES.folioRecetaSeq, String(siguiente));
+        return 'SB-REC-' + String(siguiente).padStart(5, '0');
+    }
+    function devolverFolioReceta(folio) {
+        const n = parseInt(String(folio || '').replace(/\D/g, ''), 10);
+        const actual = parseInt(localStorage.getItem(CLAVES.folioRecetaSeq) || '0', 10) || 0;
+        if (n && n === actual) localStorage.setItem(CLAVES.folioRecetaSeq, String(n - 1));
+    }
+    function fichaPacienteReceta(pacienteId, turno) {
+        const p = buscarPacientePorId(pacienteId) || {};
+        return {
+            paciente_id: pacienteId || null,
+            paciente_nombre: p.nombre_completo || (turno && turno.paciente_nombre) || '',
+            paciente_edad: p.fecha_nacimiento ? calcularEdad(p.fecha_nacimiento) : null,
+            paciente_telefono: p.telefono || '',
+            paciente_direccion: p.direccion || ''
+        };
+    }
+    function itemRecetaDesdeProducto(prod, entrada) {
+        const cantidad = parseInt(entrada && entrada.cantidad, 10);
+        return {
+            sku: prod.sku,
+            nombre: prod.nombre,
+            concentracion: prod.concentracion || '',
+            forma_farmaceutica: prod.forma_farmaceutica || '',
+            fraccion_cofepris: prod.fraccion_cofepris || 'VI',
+            clasificacion_aware: prod.clasificacion_aware || null,
+            dosis_indicacion: limpiarEspacios((entrada && (entrada.dosis_indicacion || entrada.dosis)) || ''),
+            cantidad_prescrita: cantidad >= 1 && cantidad <= 99 ? cantidad : 1,
+            cantidad_surtida: 0,
+            lotes_surtidos: []
+        };
+    }
+    function estatusSurtidoDe(items) {
+        const lista = items || [];
+        const medibles = lista.filter(i => (parseInt(i.cantidad_prescrita, 10) || 0) > 0);
+        if (!lista.length || lista.every(i => (parseInt(i.cantidad_surtida, 10) || 0) <= 0)) return 'PENDIENTE';
+        if (!medibles.length) return 'PARCIAL_SELLADA';
+        if (medibles.every(i => (parseInt(i.cantidad_surtida, 10) || 0) >= (parseInt(i.cantidad_prescrita, 10) || 1))) return 'COMPLETA_RETENIDA';
+        return 'PARCIAL_SELLADA';
+    }
+    function emitirReceta(entrada, s) {
+        if (!puedeEmitirRecetaMedica(s && s.rol)) return { ok: false, motivo: 'La receta la emite el médico.' };
+        const tipos = ['APLICACION_CONSULTA', 'RECETA_CASA', 'CONTROLADO_HOSPITAL', 'EXTERNA'];
+        const tipo = tipos.indexOf(entrada && entrada.tipo_origen) >= 0 ? entrada.tipo_origen : 'CONTROLADO_HOSPITAL';
+        const t = entrada && entrada.turno_id ? obtenerTurno(entrada.turno_id) : null;
+        const pacienteId = (entrada && entrada.paciente_id) || (t && t.paciente_id);
+        if (!pacienteId && !t) return { ok: false, motivo: 'La receta necesita un paciente o un turno.' };
+        const crudos = (entrada && entrada.items) || [];
+        if (!crudos.length) return { ok: false, motivo: 'Agregue al menos un medicamento.' };
+        const items = [];
+        for (let k = 0; k < crudos.length; k++) {
+            const prod = productoPorSku(crudos[k].sku);
+            if (!prod) return { ok: false, motivo: 'Un medicamento de la receta no está en el catálogo.' };
+            items.push(itemRecetaDesdeProducto(prod, crudos[k]));
+        }
+        const folioExterno = limpiarEspacios((entrada && entrada.folio_externo) || '').toUpperCase();
+        if (tipo === 'EXTERNA' && folioExterno.length < 3) return { ok: false, motivo: 'Anote el folio del recetario físico (mínimo 3 caracteres).' };
+        if (tipo === 'EXTERNA' && listarRecetas().some(r => normalizar(r.folio_externo) === normalizar(folioExterno))) return { ok: false, motivo: 'Ese folio de recetario ya está registrado.' };
+        const internamiento = t ? internamientoDeTurno(t.turno_id) : null;
+        const medico = (s && USUARIOS[s.usuario_id]) || s || {};
+        const folio = reservarFolioReceta();
+        const receta = Object.assign({
+            receta_id: uid('RX'),
+            folio: folio,
+            folio_externo: tipo === 'EXTERNA' ? folioExterno : '',
+            tipo_origen: tipo,
+            fecha_hora: new Date().toISOString(),
+            turno_id: t ? t.turno_id : null,
+            internamiento_id: internamiento ? internamiento.internamiento_id : null,
+            medico_id: s.usuario_id,
+            medico_nombre: s.nombre,
+            cedulas_impresas: textoCedulasFirma(medico),
+            diagnostico: limpiarEspacios((entrada && entrada.diagnostico) || (t && t.dx_principal) || ''),
+            items: items,
+            estatus_surtido: 'PENDIENTE'
+        }, fichaPacienteReceta(pacienteId, t));
+        if (!escribir(CLAVES.recetas, listarRecetas().concat([receta]))) {
+            devolverFolioReceta(folio);
+            return { ok: false, motivo: 'No se pudo guardar la receta. El folio no se consumió.' };
+        }
+        return { ok: true, receta: receta, producto: productoPorSku(items[0].sku) };
+    }
+    function enviarOrdenAplicacion(entrada, s) {
+        const t = obtenerTurno(entrada && entrada.turno_id);
+        if (!t) return { ok: false, motivo: 'No hay un turno activo para la orden.' };
+        const emitida = emitirReceta(Object.assign({}, entrada, { turno_id: t.turno_id, tipo_origen: 'APLICACION_CONSULTA' }), s);
+        if (!emitida.ok) return emitida;
+        const orden = {
+            orden_id: uid('OA'),
+            receta_id: emitida.receta.receta_id,
+            folio: emitida.receta.folio,
+            fecha_hora: emitida.receta.fecha_hora,
+            medico_id: emitida.receta.medico_id,
+            medico_nombre: emitida.receta.medico_nombre,
+            items: emitida.receta.items.map(i => ({ sku: i.sku, nombre: i.nombre, dosis_indicacion: i.dosis_indicacion, cantidad_prescrita: i.cantidad_prescrita }))
+        };
+        const guardado = actualizarTurno(t.turno_id, { ordenes_aplicacion: (t.ordenes_aplicacion || []).concat([orden]) });
+        if (!guardado) return { ok: false, motivo: 'La receta quedó foliada, pero no se pudo avisar a enfermería. Reimprímala desde el archivo.' };
+        return { ok: true, receta: emitida.receta, orden: orden, turno: guardado };
+    }
+    function guardarBorradorRecetaCasa(turnoId, items) {
+        const t = obtenerTurno(turnoId);
+        if (!t) return null;
+        return actualizarTurno(turnoId, { receta_casa_borrador: items || [] });
+    }
+    function registrarSurtidoReceta(folio, lineas) {
+        const receta = recetaPorFolio(folio);
+        if (!receta || !(lineas || []).length) return null;
+        const items = (receta.items || []).map(item => {
+            const copia = Object.assign({}, item, { lotes_surtidos: (item.lotes_surtidos || []).slice() });
+            (lineas || []).forEach(lin => {
+                if (normalizar(lin.sku) !== normalizar(item.sku)) return;
+                const pedida = parseInt(item.cantidad_prescrita, 10) || 0;
+                const ya = parseInt(copia.cantidad_surtida, 10) || 0;
+                let n = parseInt(lin.cantidad, 10) || 0;
+                if (pedida > 0) n = Math.min(n, Math.max(0, pedida - ya));
+                if (n <= 0) return;
+                copia.cantidad_surtida = ya + n;
+                if (lin.lote) copia.lotes_surtidos.push({ lote: lin.lote, cantidad: n, fecha_hora: new Date().toISOString() });
+            });
+            return copia;
+        });
+        const actualizada = Object.assign({}, receta, { items: items, estatus_surtido: estatusSurtidoDe(items) });
+        const lista = listarRecetas().map(r => r.receta_id === receta.receta_id ? actualizada : r);
+        return escribir(CLAVES.recetas, lista) ? actualizada : null;
+    }
+    function etiquetaEstatusReceta(estatus) {
+        if (estatus === 'COMPLETA_RETENIDA') return 'Surtido completo';
+        if (estatus === 'PARCIAL_SELLADA') return 'Surtido parcial';
+        return 'Pendiente de surtir';
+    }
+    function pendienteItemReceta(item) {
+        if (!item) return 0;
+        const pedida = parseInt(item.cantidad_prescrita, 10) || 0;
+        const surtida = parseInt(item.cantidad_surtida, 10) || 0;
+        if (pedida <= 0) return 0;
+        return Math.max(0, pedida - surtida);
+    }
+    function pendienteFolioSku(folio, sku) {
+        const receta = recetaPorFolio(folio);
+        if (!receta) return null;
+        const item = (receta.items || []).find(i => normalizar(i.sku) === normalizar(sku));
+        if (!item || !(parseInt(item.cantidad_prescrita, 10) > 0)) return null;
+        return pendienteItemReceta(item);
+    }
+    function textoSurtidoItem(item) {
+        const pedida = parseInt(item && item.cantidad_prescrita, 10) || 0;
+        const surtida = parseInt(item && item.cantidad_surtida, 10) || 0;
+        if (pedida > 0 && surtida >= pedida) return surtida + ' de ' + pedida + ' — Retener receta física';
+        if (pedida > 0) return 'Surtidas: ' + surtida + ' de ' + pedida + ' — Pendientes: ' + (pedida - surtida);
+        if (surtida > 0) return 'Surtidas: ' + surtida + ' — Sellada, se devolvió la receta';
+        return 'Pendiente de surtir';
+    }
+    function cedulaDeUsuario(id) {
+        const u = id && USUARIOS[id];
+        if (!u) return '';
+        return resumenCedulas(u) || u.cedula_profesional || '';
+    }
+    function inferirTipoRespaldo(folio, fraccion, folioEspecial) {
+        if (fraccion === 'I' || limpiarEspacios(folioEspecial || '')) return 'Receta Especial Fracción I';
+        const f = limpiarEspacios(folio || '').toUpperCase();
+        if (f.indexOf('SB-REC') === 0) return 'Receta Interna (SB-REC)';
+        if (f.indexOf('IND-') === 0 || f.indexOf('IM-') === 0) return 'Indicaciones Hospitalarias (IND)';
+        if (f.indexOf('EXT-') === 0) return 'Receta Externa (EXT)';
+        return '';
+    }
+    function textoEstatusBitacora(tipo, folio, sku, cantidadExtra) {
+        if (tipo === 'Receta Especial Fracción I') return 'Retenida';
+        if (tipo === 'Indicaciones Hospitalarias (IND)') return 'Expediente Hospitalario';
+        const receta = recetaPorFolio(folio);
+        if (!receta) return tipo === 'Receta Externa (EXT)' ? 'Retenida' : '';
+        const item = (receta.items || []).find(i => !sku || normalizar(i.sku) === normalizar(sku));
+        const surtida = ((item && parseInt(item.cantidad_surtida, 10)) || 0) + (parseInt(cantidadExtra, 10) || 0);
+        const pedida = (item && parseInt(item.cantidad_prescrita, 10)) || 0;
+        if (receta.estatus_surtido === 'COMPLETA_RETENIDA' && !(pedida > 0 && surtida < pedida)) return 'Retenida';
+        if (pedida > 0 && surtida >= pedida) return 'Retenida';
+        if (pedida > 0 && surtida > 0) return 'Sellada Parcial (' + surtida + '/' + pedida + ')';
+        if (surtida > 0 || receta.estatus_surtido === 'PARCIAL_SELLADA') return 'Sellada Parcial';
+        return '';
+    }
+    function respaldoParaSurtido(turnoId, sku) {
+        const t = obtenerTurno(turnoId);
+        const prod = productoPorSku(sku);
+        if (!t || !prod) return null;
+        const recetas = recetasDeTurno(turnoId).filter(r => (r.items || []).some(i => normalizar(i.sku) === normalizar(sku) && pendienteItemReceta(i) > 0));
+        if (recetas.length) {
+            const r = recetas[recetas.length - 1];
+            const item = r.items.find(i => normalizar(i.sku) === normalizar(sku));
+            const externa = r.tipo_origen === 'EXTERNA' || String(r.folio || '').indexOf('EXT-') === 0;
+            return {
+                folio: r.folio, tipo_respaldo: externa ? 'Receta Externa (EXT)' : 'Receta Interna (SB-REC)',
+                medico_id: r.medico_id || '', medico_nombre: r.medico_nombre || '',
+                cedula: r.cedulas_impresas || cedulaDeUsuario(r.medico_id),
+                pendiente: pendienteItemReceta(item), receta_id: r.receta_id, dosis: item.dosis_indicacion || ''
+            };
+        }
+        const area = clasificarAreaFarmacia(t);
+        const enPiso = area === 'hospital' || area === 'observacion' || area === 'quirofano';
+        if (enPiso && prod.fraccion_cofepris === 'IV_ANTIBIOTICO') {
+            const hoja = indicacionesVigentes(internamientoDeTurno(t.turno_id));
+            if (hoja && hoja.folio) {
+                const medico = USUARIOS[hoja.autor_id] || USUARIOS[t.medico_id];
+                return {
+                    folio: hoja.folio, tipo_respaldo: 'Indicaciones Hospitalarias (IND)',
+                    medico_id: (medico && medico.id) || hoja.autor_id || t.medico_id || '',
+                    medico_nombre: (medico && medico.nombre) || hoja.autor_nombre || t.medico_nombre || '',
+                    cedula: cedulaDeUsuario(medico && medico.id),
+                    pendiente: null, receta_id: null, dosis: ''
+                };
+            }
+        }
+        return null;
+    }
+    function loteParaSurtir(sku) {
+        const hoy = hoyLocal();
+        return listarFarmacia().filter(p => normalizar(p.sku) === normalizar(sku) && p.stock > 0 && String(p.caducidad) >= hoy)
+            .sort((a, b) => String(a.caducidad).localeCompare(String(b.caducidad)))[0] || null;
+    }
+    function lineasSugeridasDeReceta(receta, soloSku, cantidadForzada) {
+        if (!receta) return [];
+        const externa = receta.tipo_origen === 'EXTERNA' || String(receta.folio || '').indexOf('EXT-') === 0;
+        const tipo = externa ? 'Receta Externa (EXT)' : 'Receta Interna (SB-REC)';
+        const cedula = receta.cedulas_impresas || cedulaDeUsuario(receta.medico_id);
+        const out = [];
+        (receta.items || []).forEach(item => {
+            if (soloSku && normalizar(item.sku) !== normalizar(soloSku)) return;
+            const pedida = parseInt(item.cantidad_prescrita, 10) || 0;
+            const pendiente = pedida > 0 ? pendienteItemReceta(item) : 0;
+            if (pedida > 0 && pendiente <= 0) return;
+            if (pedida <= 0 && (parseInt(item.cantidad_surtida, 10) || 0) > 0 && receta.estatus_surtido === 'COMPLETA_RETENIDA') return;
+            const lote = loteParaSurtir(item.sku);
+            if (!lote) return;
+            const tope = pedida > 0 ? pendiente : lote.stock;
+            const cant = Math.min(cantidadForzada ? parseInt(cantidadForzada, 10) || 1 : tope, tope, lote.stock);
+            if (cant < 1) return;
+            out.push({
+                lote_id: lote.lote_id, cantidad: cant, folio_confirmado: true,
+                folio_receta: receta.folio, medico_prescriptor_id: receta.medico_id || '',
+                medico_prescriptor_nombre: receta.medico_nombre || '',
+                cedula_prescriptor: cedula, tipo_respaldo: tipo
+            });
+        });
+        return out;
+    }
+    function reservarFolioExterno() {
+        const actual = parseInt(localStorage.getItem(CLAVES.folioExternoSeq) || '0', 10) || 0;
+        const siguiente = actual + 1;
+        localStorage.setItem(CLAVES.folioExternoSeq, String(siguiente));
+        return 'EXT-' + String(siguiente).padStart(5, '0');
+    }
+    function devolverFolioExterno(folio) {
+        const n = parseInt(String(folio || '').replace(/\D/g, ''), 10);
+        const actual = parseInt(localStorage.getItem(CLAVES.folioExternoSeq) || '0', 10) || 0;
+        if (n && n === actual) localStorage.setItem(CLAVES.folioExternoSeq, String(n - 1));
+    }
+    function fijarDisposicionReceta(folio, disposicion) {
+        const receta = recetaPorFolio(folio);
+        if (!receta) return null;
+        const items = (receta.items || []).map(item => {
+            const copia = Object.assign({}, item);
+            const surtida = parseInt(copia.cantidad_surtida, 10) || 0;
+            if (disposicion === 'completa') copia.cantidad_prescrita = Math.max(parseInt(copia.cantidad_prescrita, 10) || 0, surtida);
+            return copia;
+        });
+        const estatus = disposicion === 'completa' ? 'COMPLETA_RETENIDA' : (disposicion === 'parcial' ? 'PARCIAL_SELLADA' : estatusSurtidoDe(items));
+        const actualizada = Object.assign({}, receta, { items: items, estatus_surtido: estatus, disposicion_receta: disposicion || receta.disposicion_receta || '' });
+        const lista = listarRecetas().map(r => r.receta_id === receta.receta_id ? actualizada : r);
+        return escribir(CLAVES.recetas, lista) ? actualizada : null;
+    }
+    function confirmarSurtidoMostrador(entrada, s) {
+        if (!puedeGestionarFarmacia(s)) return { ok: false, motivo: 'Su perfil no puede surtir en mostrador.' };
+        const operador = entrada && entrada.operador_id ? USUARIOS[entrada.operador_id] : null;
+        const quien = operador && operador.activo !== false
+            ? { id: operador.id, nombre: operador.nombre, cedula_profesional: operador.cedula_profesional || '' }
+            : { id: s.usuario_id, nombre: s.nombre, cedula_profesional: cedulaDeUsuario(s.usuario_id) };
+        const lineas = (entrada && entrada.lineas) || [];
+        if (!lineas.length) return { ok: false, motivo: 'El carrito está vacío.' };
+        const externo = entrada.externo || {};
+        const catalogo = listarFarmacia();
+        const descuentos = {};
+        const sinFolio = [];
+        for (let k = 0; k < lineas.length; k++) {
+            const lin = lineas[k];
+            const prod = catalogo.find(p => p.lote_id === lin.lote_id);
+            if (!prod) return { ok: false, motivo: 'Un lote del carrito ya no está en el inventario.' };
+            const cant = parseInt(lin.cantidad, 10);
+            if (!Number.isInteger(cant) || cant < 1 || cant > 99) return { ok: false, motivo: 'Cantidad inválida de ' + prod.nombre + '.' };
+            if (String(prod.caducidad) < hoyLocal()) return { ok: false, motivo: prod.nombre + ' está caducado.' };
+            if (prod.fraccion_cofepris === 'I') return { ok: false, motivo: 'El estupefaciente de fracción I se surte desde una caja abierta, no en mostrador.' };
+            if (prod.stock < (descuentos[prod.lote_id] || 0) + cant) return { ok: false, motivo: 'No hay stock suficiente de ' + prod.nombre + '.' };
+            descuentos[prod.lote_id] = (descuentos[prod.lote_id] || 0) + cant;
+            const tope = pendienteFolioSku(lin.folio_receta, prod.sku);
+            if (tope !== null && cant > tope) return { ok: false, motivo: 'De ' + lin.folio_receta + ' solo faltan ' + tope + ' piezas de ' + prod.nombre + '.' };
+            if (FRACCIONES_RECETA.indexOf(prod.fraccion_cofepris) >= 0 && !limpiarEspacios(lin.folio_receta)) sinFolio.push(prod);
+        }
+        if (sinFolio.length) {
+            if (!limpiarEspacios(externo.paciente_nombre)) return { ok: false, motivo: 'Indique el nombre del paciente externo.' };
+            if (!limpiarEspacios(externo.medico_nombre)) return { ok: false, motivo: 'Indique el nombre del médico externo.' };
+            if (!limpiarEspacios(externo.cedula)) return { ok: false, motivo: 'Indique la cédula profesional del médico externo.' };
+        } else if (lineas.some(l => !limpiarEspacios(l.folio_receta)) && !limpiarEspacios(externo.paciente_nombre)) {
+            return { ok: false, motivo: 'Indique el nombre del paciente externo.' };
+        }
+        let folioNuevo = limpiarEspacios(externo.folio_fisico || '').toUpperCase();
+        let generado = false;
+        if (sinFolio.length && folioNuevo.length < 3) {
+            folioNuevo = reservarFolioExterno();
+            generado = true;
+        }
+        const snapCat = JSON.stringify(catalogo);
+        const snapRec = localStorage.getItem(CLAVES.recetas);
+        const snapMov = localStorage.getItem(CLAVES.movimientosFarmacia);
+        Object.keys(descuentos).forEach(id => { catalogo.find(p => p.lote_id === id).stock -= descuentos[id]; });
+        if (!escribir(CLAVES.farmacia, catalogo)) return { ok: false, motivo: 'No se pudo actualizar el inventario.' };
+        const revertir = () => {
+            escribir(CLAVES.farmacia, JSON.parse(snapCat));
+            if (snapRec === null) localStorage.removeItem(CLAVES.recetas); else localStorage.setItem(CLAVES.recetas, snapRec);
+            if (snapMov === null) localStorage.removeItem(CLAVES.movimientosFarmacia); else localStorage.setItem(CLAVES.movimientosFarmacia, snapMov);
+            if (generado) devolverFolioExterno(folioNuevo);
+        };
+        if (sinFolio.length && folioNuevo && !recetaPorFolio(folioNuevo)) {
+            const items = [];
+            const vistos = {};
+            lineas.forEach(lin => {
+                if (limpiarEspacios(lin.folio_receta) && normalizar(lin.folio_receta) !== normalizar(folioNuevo)) return;
+                const prod = catalogo.find(p => p.lote_id === lin.lote_id);
+                if (!prod || vistos[prod.sku]) return;
+                if (FRACCIONES_RECETA.indexOf(prod.fraccion_cofepris) < 0 && limpiarEspacios(lin.folio_receta)) return;
+                vistos[prod.sku] = true;
+                const cant = lineas.filter(otra => {
+                    const p2 = catalogo.find(p => p.lote_id === otra.lote_id);
+                    return p2 && p2.sku === prod.sku && (!limpiarEspacios(otra.folio_receta) || normalizar(otra.folio_receta) === normalizar(folioNuevo));
+                }).reduce((s, otra) => s + (parseInt(otra.cantidad, 10) || 0), 0);
+                const item = itemRecetaDesdeProducto(prod, { dosis_indicacion: '', cantidad: externo.disposicion === 'completa' ? cant : 0 });
+                item.cantidad_prescrita = externo.disposicion === 'completa' ? cant : 0;
+                item.cantidad_surtida = 0;
+                items.push(item);
+                lineas.forEach(otra => {
+                    const p2 = catalogo.find(p => p.lote_id === otra.lote_id);
+                    if (p2 && p2.sku === prod.sku && !limpiarEspacios(otra.folio_receta)) {
+                        otra.folio_receta = folioNuevo;
+                        otra.tipo_respaldo = 'Receta Externa (EXT)';
+                        otra.medico_prescriptor_nombre = limpiarEspacios(externo.medico_nombre);
+                        otra.cedula_prescriptor = limpiarEspacios(externo.cedula);
+                    }
+                });
+            });
+            const receta = {
+                receta_id: uid('RX'), folio: folioNuevo, folio_externo: generado ? '' : folioNuevo,
+                tipo_origen: 'EXTERNA', fecha_hora: new Date().toISOString(),
+                turno_id: null, internamiento_id: null, paciente_id: null,
+                paciente_nombre: limpiarEspacios(externo.paciente_nombre), paciente_edad: null,
+                paciente_telefono: limpiarEspacios(externo.telefono || ''), paciente_direccion: limpiarEspacios(externo.direccion || ''),
+                medico_id: '', medico_nombre: limpiarEspacios(externo.medico_nombre),
+                cedulas_impresas: limpiarEspacios(externo.cedula), institucion_medico: limpiarEspacios(externo.institucion || ''),
+                diagnostico: '', items: items, estatus_surtido: 'PENDIENTE'
+            };
+            if (!escribir(CLAVES.recetas, listarRecetas().concat([receta]))) { revertir(); return { ok: false, motivo: 'No se pudo guardar la receta externa.' }; }
+        } else if (sinFolio.length && folioNuevo) {
+            lineas.forEach(lin => {
+                if (!limpiarEspacios(lin.folio_receta)) {
+                    lin.folio_receta = folioNuevo;
+                    lin.tipo_respaldo = 'Receta Externa (EXT)';
+                    lin.medico_prescriptor_nombre = limpiarEspacios(externo.medico_nombre);
+                    lin.cedula_prescriptor = limpiarEspacios(externo.cedula);
+                }
+            });
+        }
+        const porFolio = {};
+        lineas.forEach(lin => {
+            const prod = catalogo.find(p => p.lote_id === lin.lote_id);
+            const folio = limpiarEspacios(lin.folio_receta).toUpperCase();
+            if (!folio || !prod) return;
+            if (!porFolio[folio]) porFolio[folio] = [];
+            porFolio[folio].push({ sku: prod.sku, cantidad: parseInt(lin.cantidad, 10) || 1, lote: prod.lote });
+        });
+        Object.keys(porFolio).forEach(folio => registrarSurtidoReceta(folio, porFolio[folio]));
+        if (externo.disposicion === 'completa' || externo.disposicion === 'parcial') {
+            const vistos = {};
+            if (folioNuevo) vistos[folioNuevo] = true;
+            Object.keys(porFolio).forEach(folio => {
+                const receta = recetaPorFolio(folio);
+                if (receta && receta.tipo_origen === 'EXTERNA') vistos[folio] = true;
+            });
+            Object.keys(vistos).forEach(folio => fijarDisposicionReceta(folio, externo.disposicion));
+        }
+        const basePaciente = folioNuevo && recetaPorFolio(folioNuevo);
+        const movs = lineas.map(lin => {
+            const prod = catalogo.find(p => p.lote_id === lin.lote_id);
+            const receta = recetaPorFolio(lin.folio_receta) || basePaciente;
+            const tipo = lin.tipo_respaldo || inferirTipoRespaldo(lin.folio_receta, prod.fraccion_cofepris);
+            const cant = parseInt(lin.cantidad, 10) || 1;
+            return movimientoSalida(prod, cant, quien, {
+                paciente_nombre: (receta && receta.paciente_nombre) || limpiarEspacios(externo.paciente_nombre),
+                paciente_telefono: (receta && receta.paciente_telefono) || limpiarEspacios(externo.telefono || ''),
+                paciente_direccion: (receta && receta.paciente_direccion) || limpiarEspacios(externo.direccion || ''),
+                area_paciente: receta && receta.tipo_origen && receta.tipo_origen !== 'EXTERNA' ? 'Surtido por folio' : 'Mostrador / Receta externa',
+                medico_tratante: (receta && receta.medico_nombre) || limpiarEspacios(externo.medico_nombre),
+                folio_receta: lin.folio_receta || '',
+                tipo_respaldo: tipo,
+                medico_prescriptor: lin.medico_prescriptor_nombre || (receta && receta.medico_nombre) || limpiarEspacios(externo.medico_nombre),
+                cedula_prescriptor: lin.cedula_prescriptor || (receta && receta.cedulas_impresas) || limpiarEspacios(externo.cedula),
+                estatus_receta: textoEstatusBitacora(tipo, lin.folio_receta, prod.sku, 0)
+            });
+        });
+        if (movs.length && !anexarMovimientos(movs)) { revertir(); return { ok: false, motivo: 'No se pudo registrar la bitácora. El inventario no se modificó.' }; }
+        return { ok: true, folio: folioNuevo, generado: generado, receta: folioNuevo ? recetaPorFolio(folioNuevo) : null, disposicion: externo.disposicion || '' };
+    }
+    function htmlHojaReceta(receta) {
+        if (!receta) return '';
+        const e = escHtmlCuenta;
+        const filas = (receta.items || []).map(i => {
+            const surtida = parseInt(i.cantidad_surtida, 10) || 0;
+            const pedida = parseInt(i.cantidad_prescrita, 10) || 0;
+            return `<tr>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;"><b>${e(i.nombre)}</b><br><span style="color:#64748b;">${e([i.concentracion, i.forma_farmaceutica].filter(Boolean).join(' · '))}</span></td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${e(i.dosis_indicacion || '—')}</td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center;">${pedida}</td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center;">${e(textoSurtidoItem(i))}</td>
+            </tr>`;
+        }).join('');
+        const externo = receta.folio_externo ? `<p style="margin:4px 0 0;font-size:12px;">Folio del recetario físico: <b>${e(receta.folio_externo)}</b></p>` : '';
+        return `<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:720px;margin:0 auto;padding:24px;border:1px solid #cbd5e1;">
+            <p style="margin:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#0e7490;">Sanatorio Belén · Receta</p>
+            <h1 style="margin:4px 0 0;font-size:28px;">${e(receta.folio)}</h1>
+            ${externo}
+            <p style="margin:8px 0 0;font-size:12px;color:#475569;">${e(fechaHoraLegible(receta.fecha_hora))} · ${e(receta.tipo_origen || '')} · ${e(etiquetaEstatusReceta(receta.estatus_surtido))}</p>
+            <hr style="border:0;border-top:1px solid #cbd5e1;margin:14px 0;">
+            <p style="margin:0;font-size:12px;color:#64748b;">Paciente</p>
+            <p style="margin:2px 0 0;font-size:16px;"><b>${e(receta.paciente_nombre)}</b>${receta.paciente_edad !== null && receta.paciente_edad !== undefined ? ' · ' + e(String(receta.paciente_edad)) + ' años' : ''}</p>
+            <p style="margin:2px 0 0;font-size:12px;">${e(receta.paciente_telefono || 'Sin teléfono')} · ${e(receta.paciente_direccion || 'Sin dirección')}</p>
+            <p style="margin:12px 0 0;font-size:12px;color:#64748b;">Médico que emite</p>
+            <p style="margin:2px 0 0;"><b>${e(receta.medico_nombre)}</b></p>
+            <p style="margin:2px 0 0;font-size:12px;white-space:pre-line;">${e(receta.cedulas_impresas || 'Sin cédula registrada')}</p>
+            ${receta.diagnostico ? `<p style="margin:12px 0 0;font-size:13px;"><b>Diagnóstico:</b> ${e(receta.diagnostico)}</p>` : ''}
+            <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:13px;">
+                <thead><tr style="text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;">
+                    <th style="padding:6px 8px;">Medicamento</th><th style="padding:6px 8px;">Indicación</th><th style="padding:6px 8px;">Prescrito</th><th style="padding:6px 8px;">Surtido</th>
+                </tr></thead>
+                <tbody>${filas}</tbody>
+            </table>
+            <p style="margin-top:36px;border-top:1px solid #0f172a;padding-top:6px;width:240px;font-size:12px;">Firma autógrafa del médico</p>
+        </article>`;
+    }
     function folioRecetaVigente(turnoId, sku) {
+        const nuevas = recetasDeTurno(turnoId).filter(r => !sku || (r.items || []).some(i => normalizar(i.sku) === normalizar(sku)));
+        if (nuevas.length) {
+            const r = nuevas[nuevas.length - 1];
+            return {
+                folio: r.folio_externo || r.folio,
+                folio_sistema: r.folio,
+                medico_id: r.medico_id,
+                medico_nombre: r.medico_nombre,
+                origen: r.tipo_origen === 'EXTERNA' ? 'fisica' : 'sistema',
+                receta: r
+            };
+        }
         const lista = listarRecetasFoliadas().filter(r => r.turno_id === turnoId && (!sku || normalizar(r.sku) === normalizar(sku)));
         return lista.length ? lista[lista.length - 1] : null;
     }
@@ -4411,20 +4989,18 @@
         if (!t || !prod) return { ok: false, motivo: 'No se encontró el paciente o el medicamento.' };
         const fr = prod.fraccion_cofepris;
         if (fr !== 'II' && fr !== 'III' && fr !== 'IV_ANTIBIOTICO') return { ok: false, motivo: 'Este medicamento no exige receta foliada de fracción II, III o antibiótico.' };
-        const fisica = op.origen === 'fisica';
-        const folio = fisica ? limpiarEspacios(op.folio).toUpperCase() : ('REC-' + String(listarRecetasFoliadas().length + 1).padStart(4, '0'));
-        if (fisica && folio.length < 3) return { ok: false, motivo: 'Anote el folio del recetario físico.' };
-        if (listarRecetasFoliadas().some(r => normalizar(r.folio) === normalizar(folio))) return { ok: false, motivo: 'Ese folio ya está vinculado a otra receta.' };
-        const receta = {
-            receta_id: uid('RCF'), folio: folio, origen: fisica ? 'fisica' : 'sistema',
-            turno_id: t.turno_id, paciente_id: t.paciente_id, paciente_nombre: t.paciente_nombre,
-            sku: prod.sku, nombre: prod.nombre, fraccion: fr,
-            medico_id: s.usuario_id, medico_nombre: s.nombre,
-            dosis: limpiarEspacios(op.dosis || prod.nombre),
-            fecha_hora: new Date().toISOString()
-        };
-        if (!escribir(CLAVES.recetasFoliadas, listarRecetasFoliadas().concat([receta]))) return { ok: false, motivo: 'No se pudo guardar la receta.' };
-        return { ok: true, receta: receta, producto: prod };
+        const internado = t.estatus === 'internado' || t.estatus === 'internado_en_proceso';
+        if (internado && fr === 'IV_ANTIBIOTICO') {
+            const i = internamientoDeTurno(t.turno_id);
+            const hoja = i && indicacionesVigentes(i);
+            return { ok: false, motivo: 'Este antibiótico queda amparado por la hoja de indicaciones ' + ((hoja && hoja.folio) || 'vigente') + '. No se genera una receta suelta.' };
+        }
+        return emitirReceta({
+            turno_id: t.turno_id,
+            tipo_origen: op.origen === 'fisica' ? 'EXTERNA' : 'CONTROLADO_HOSPITAL',
+            folio_externo: op.folio,
+            items: [{ sku: prod.sku, dosis_indicacion: op.dosis || prod.nombre, cantidad: 1 }]
+        }, s);
     }
     function datosReceta(op) {
         const p = op.producto || {};
@@ -4587,7 +5163,7 @@
         sembrarUsuariosSiHaceFalta();
         completarAnestesiologoCirugias();
         sembrarFarmaciaSiHaceFalta();
-        if (localStorage.getItem(CLAVES.catalogo) !== null || localStorage.getItem(CLAVES.visitas) !== null) { sembrarCirugiasSiHaceFalta(); migrarCirugiasFase1(); return false; }
+        if (localStorage.getItem(CLAVES.catalogo) !== null || localStorage.getItem(CLAVES.visitas) !== null) { sembrarCirugiasSiHaceFalta(); migrarCirugiasFase1(); sembrarPacienteQuirofanoDemo(); return false; }
         const carlos = { paciente_id: 'PAC-000001', nombre_completo: 'Carlos Ruiz Herrera', fecha_nacimiento: '1979-03-14', sexo: 'M', estado_civil: 'Casado(a)', telefono: '3221110001', ocupacion: 'Contador', direccion: 'Calle Morelos 120, Col. Centro', creado_en: '2026-03-12T09:00:00.000Z' };
         const laura = { paciente_id: 'PAC-000002', nombre_completo: 'Laura Méndez Olvera', fecha_nacimiento: '1991-07-22', sexo: 'F', estado_civil: 'Unión Libre', telefono: '3221110002', ocupacion: 'Maestra', direccion: 'Av. México 455, Col. Versalles', creado_en: '2026-08-02T09:00:00.000Z' };
         const visitaCarlos = expedienteDemo(carlos, {
@@ -4621,12 +5197,86 @@
         escribir(CLAVES.demo, true);
         sembrarCirugiasSiHaceFalta();
         migrarCirugiasFase1();
+        sembrarPacienteQuirofanoDemo();
+        return true;
+    }
+    function sembrarPacienteQuirofanoDemo() {
+        if (localStorage.getItem(CLAVES.demoQxActivo) === '1') return false;
+        if (obtenerTurno('T-DEMO-QX') || listarInternamientos().some(i => i.internamiento_id === 'INT-DEMO-QX')) {
+            localStorage.setItem(CLAVES.demoQxActivo, '1');
+            return false;
+        }
+        const medico = USUARIOS.dr_arturo;
+        const ana = USUARIOS.dra_elena;
+        if (!medico || !ana) return false;
+        const pid = 'PAC-DEMO-QX';
+        const pacs = listarPacientes();
+        if (!pacs.some(p => p.paciente_id === pid)) {
+            pacs.push({
+                paciente_id: pid, nombre_completo: 'Helena Vargas Ríos', fecha_nacimiento: '1976-05-18', sexo: 'F',
+                estado_civil: 'Casada', telefono: '3221550190', ocupacion: 'Comerciante',
+                direccion: 'Av. de los Deportes 88, Col. Fluvial', creado_en: new Date().toISOString()
+            });
+            if (!escribir(CLAVES.catalogo, pacs)) return false;
+        }
+        const preferida = resolverCama('REC-1');
+        const libre = camasLibres('QUIROFANO');
+        const cama = (preferida && !camaEstaOcupada(preferida, null)) ? preferida : (libre[0] ? resolverCama(libre[0].codigo) : null);
+        const ahora = new Date();
+        const cita = citaQuirurgica(0, ahora.getHours(), 0, 150);
+        const esp = especialidadPorCodigo(medico.especialidad_codigo);
+        const ahoraIso = new Date().toISOString();
+        const turno = {
+            turno_id: 'T-DEMO-QX', paciente_id: pid, paciente_nombre: 'Helena Vargas Ríos', fecha_nacimiento: '1976-05-18', sexo: 'F',
+            especialidad_codigo: medico.especialidad_codigo, especialidad: esp ? esp.nombre : medico.cargo,
+            medico_id: medico.medico_id || medico.id, medico_nombre: medico.nombre, motivo: 'Colecistectomía laparoscópica',
+            fecha_turno: hoyLocal(), numero_turno: siguienteNumeroTurno(medico.especialidad_codigo), timestamp_llegada: ahoraIso,
+            estatus: ESTATUS.INTERNADO, modalidad: MODALIDAD_AMBULATORIO_QX, sin_nota_consulta: true,
+            area_destino: AREA_AMBULATORIO_QX, destino: 'Quirofano', signos_vitales: null, cargos: [], cuenta_actual: 0, cuenta_actual_total: 0,
+            cirugia_id: 'CX-DEMO-QX', registrado_por: 'administrador', ordenes_aplicacion: []
+        };
+        if (!escribir(CLAVES.turnos, listarTurnos().concat([turno]))) return false;
+        const hoja = nuevaHojaIndicaciones([], 'preoperatorio', {
+            dieta: 'Ayuno. Líquidos claros al egreso si tolera.',
+            soluciones_parenterales: 'Solución fisiológica 1000 ml para venoclisis.',
+            medicamentos: 'Ceftriaxona 1 g IV cada 12 horas. Midazolam 5 mg IV en caso de agitación.',
+            medidas_generales: 'Recuperación en REC. Control de sangrado y dolor. Avisar al cirujano si hay náusea persistente.'
+        }, { id: medico.id, nombre: medico.nombre, relacion: 'tratante' }, ahoraIso);
+        anotarCoberturaIndicacion(hoja);
+        const internamiento = {
+            internamiento_id: 'INT-DEMO-QX', turno_id: turno.turno_id, paciente_id: pid,
+            medico_tratante_id: medico.medico_id || medico.id, medico_tratante_nombre: medico.nombre,
+            especialidad_codigo: medico.especialidad_codigo, especialidad: turno.especialidad,
+            fecha_ingreso: ahoraIso, cama: cama ? cama.nombre : null, cama_codigo: cama ? cama.codigo : null,
+            estatus: 'activo', modalidad: MODALIDAD_AMBULATORIO_QX, sin_nota_consulta: true,
+            hoja_frontal_habilitada: true, consentimientos_habilitados: true,
+            area_destino: AREA_AMBULATORIO_QX, area_codigo: 'QUIROFANO', destino: 'Quirofano',
+            diagnostico_ingreso: 'Colelitiasis. Colecistectomía laparoscópica.', diagnostico_actual: 'Colelitiasis. Colecistectomía laparoscópica.', alergias: 'Ninguna conocida',
+            interconsultas: [], notas_evolucion: [], hojas_indicaciones: [hoja], cargos: [], cuenta_actual: 0, cuenta_actual_total: 0,
+            nota_egreso: null, cirugia_id: 'CX-DEMO-QX',
+            ubicacion: UBICACION_QX.QUIROFANO, cama_origen_piso: null,
+            notas_postanestesicas: [], notas_postoperatorias: [], recetas_controlados: []
+        };
+        if (!guardarInternamiento(internamiento)) return false;
+        const cirugias = listarCirugias().filter(c => c.cirugia_id !== 'CX-DEMO-QX');
+        cirugias.push(Object.assign({
+            cirugia_id: 'CX-DEMO-QX', paciente_id: pid, paciente_nombre: 'Helena Vargas Ríos', fecha_nacimiento: '1976-05-18',
+            procedimiento: 'Colecistectomía laparoscópica', medico_cirujano_id: medico.id, medico_cirujano_nombre: medico.nombre,
+            anestesiologo_id: ana.id, anestesiologo_nombre: ana.nombre,
+            sala: 'QX_CHICO', tipo_estancia: 'AMBULATORIA',
+            indicaciones_preoperatorias: 'Ayuno. Profilaxis con ceftriaxona. Recuperación en cama de quirófano.',
+            notas: 'Paciente de ejemplo ya ingresada en recuperación. Lista para abrir el expediente.',
+            estatus: 'programada', programada_por_id: 'administrador', programada_por_nombre: (USUARIOS.administrador || {}).nombre || 'Adm. Sofía',
+            creado_en: ahoraIso, turno_id: turno.turno_id, internamiento_id: internamiento.internamiento_id, ingresado_en: ahoraIso
+        }, cita));
+        if (!escribir(CLAVES.cirugias, cirugias)) return false;
+        localStorage.setItem(CLAVES.demoQxActivo, '1');
         return true;
     }
 
     // Borra TODA la información operativa del demo (no toca los machotes) y vuelve a sembrar
     function restablecerDemo() {
-        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.estudios, CLAVES.estudiosV3, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.recetasFoliadas, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
+        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.estudios, CLAVES.estudiosV3, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.recetasFoliadas, CLAVES.recetas, CLAVES.folioRecetaSeq, CLAVES.folioExternoSeq, CLAVES.demoQxActivo, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
         return sembrarDemoSiHaceFalta();
     }
 
@@ -4665,7 +5315,10 @@
         listarPaquetes, guardarPaquete, eliminarPaquete, lineasDePaquete, sumaRealPaquete, aplicarPaqueteAPaciente,
         enfermerasActivas, pacientesTerminalFarmacia, prepararLineaCarrito, loteMasProximo, confirmarCarritoFarmacia,
         cajasAbiertasDe, restantesCaja, etiquetaCajaAbierta, abrirCajaEstupefaciente, dispensarAmpulas, listarCajas, listarCajasEstupefacientes, AREAS_CAJA, nombreAreaCaja, areaResguardoDeSesion, areaResguardoDeTurno, cajasDeArea, usarAmpulaDesdeNota,
-        listarSalidasFarmacia, registrarRetiroAdministracion, filtrarMovimientosFarmacia, personasBitacora, presentacionesBitacora, lotesDePresentacion, presentacionMovimiento, awareDeMovimiento, carpetasMovimientosFarmacia, csvMovimientosFarmacia, alertasCofeprisEnTexto, folioRecetaVigente, guardarRecetaFoliada, datosReceta, htmlCuerpoReceta, htmlRecetaImprimible,
+        listarSalidasFarmacia, registrarRetiroAdministracion, filtrarMovimientosFarmacia, personasBitacora, presentacionesBitacora, lotesDePresentacion, presentacionMovimiento, awareDeMovimiento, carpetasMovimientosFarmacia, csvMovimientosFarmacia, alertasCofeprisEnTexto, medicamentosDetectadosEnTexto,
+        listarRecetas, recetaPorFolio, recetasDeTurno, recetasDePaciente, buscarMedicamentosReceta, emitirReceta, enviarOrdenAplicacion, guardarBorradorRecetaCasa, registrarSurtidoReceta, htmlHojaReceta, etiquetaEstatusReceta,
+        respaldoParaSurtido, lineasSugeridasDeReceta, loteParaSurtir, textoSurtidoItem, textoEstatusBitacora, inferirTipoRespaldo, cedulaDeUsuario, pendienteFolioSku, confirmarSurtidoMostrador,
+        folioRecetaVigente, guardarRecetaFoliada, datosReceta, htmlCuerpoReceta, htmlRecetaImprimible,
         validarCorreccionPaciente, corregirDatosPaciente, fechaNacimientoParaEdad, fechaHoraLegible,
         sembrarDemoSiHaceFalta, restablecerDemo
     };
@@ -4674,4 +5327,5 @@
     migrarCirugiasFase1();
     sembrarFarmaciaSiHaceFalta();
     normalizarIvaDiferido();
+    sembrarPacienteQuirofanoDemo();
 })(window);

@@ -21,6 +21,9 @@ const AdminController = {
     enfermeraCargoId: '',
     operadorFarmaciaId: null,
     modoRetiroAdmin: false,
+    modoExterno: false,
+    folioBuscadoId: null,
+    folioBuscadoTexto: '',
     bitacoraAbiertas: {},
     filtrosBitacora: { desde: '', hasta: '', tipo: '', persona: '', medicamento: '', lote: '', clasificacion: '' },
     _temporizador: null,
@@ -584,6 +587,9 @@ const AdminController = {
             ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${e(turnoQx.turno_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Estudios / Tubos / Procedimientos</button>` : '';
         const postopQx = turnoQx && S.puedeNotaPostoperatoria(this.sesion, S.internamientoDeTurno(turnoQx.turno_id))
             ? `<button type="button" onclick="AdminController.abrirNotaPostoperatoria('${e(turnoQx.turno_id)}')" class="bg-violet-700 hover:bg-violet-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">Nota Post-Operatoria</button>` : '';
+        const abrirExp = c.turno_id
+            ? `<a href="expediente.html?modo=hospitalizado&turno=${encodeURIComponent(c.turno_id)}" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">Abrir expediente</a>`
+            : '';
         const ya = c.ingresada
             ? '<span class="inline-flex text-[10px] font-extrabold uppercase px-2 py-1 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300">CIRUGÍA AMBULATORIA · ingresado</span>'
             : (c.ya_internado && c.tipo_estancia === 'AMBULATORIA' ? '<span class="text-[11px] font-semibold text-slate-500">El paciente ya tiene un episodio activo.</span>' : '');
@@ -610,7 +616,7 @@ const AdminController = {
             <div class="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
                 <p class="text-[10px] font-bold text-yellow-700 uppercase leading-none mb-1"><i class="fas fa-note-sticky mr-1"></i>Notas privadas</p>
                 <p class="text-xs text-slate-800" data-campo="notas">${c.notas ? e(c.notas) : '<span class="text-slate-400 italic">Sin notas registradas.</span>'}</p></div>
-            ${(ingresar || ya || cargarQx || postopQx) ? `<div class="mt-3 flex flex-wrap items-center gap-2">${cargarQx}${postopQx}${ingresar}${ya}</div>` : ''}
+            ${(ingresar || ya || cargarQx || postopQx || abrirExp) ? `<div class="mt-3 flex flex-wrap items-center gap-2">${cargarQx}${postopQx}${ingresar}${abrirExp}${ya}</div>` : ''}
         </div>`;
     },
 
@@ -1150,7 +1156,7 @@ const AdminController = {
 
     pestanasVisiblesFarmacia: function () {
         const op = this.operadorFarmacia();
-        const tabs = [['terminal', 'Cargar a Paciente'], ['inventario', 'Inventario / Almacén']];
+        const tabs = [['terminal', 'Cargar a Paciente'], ['recetas', 'Archivo Digital de Recetas'], ['inventario', 'Inventario / Almacén']];
         if (!op) return tabs;
         const puede = accion => BelenStore.permisoAccionDe(op.id, accion);
         if (puede('farmacia_paquetes')) tabs.push(['paquetes', 'Paquetes y Kits']);
@@ -1193,7 +1199,7 @@ const AdminController = {
             const on = this.pestanaFarmacia === id;
             return `<button type="button" onclick="AdminController.cambiarPestanaFarmacia('${id}')" class="px-4 py-2 rounded-lg text-sm font-bold transition ${on ? 'bg-white text-teal-800 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">${txt}</button>`;
         };
-        const cuerpos = { terminal: () => this.htmlTerminalFarmacia(), inventario: () => this.htmlInventarioFarmacia(), paquetes: () => this.htmlPaquetesFarmacia(), estupefacientes: () => this.htmlEstupefacientesFarmacia(), bitacora: () => this.htmlBitacoraFarmacia() };
+        const cuerpos = { terminal: () => this.htmlTerminalFarmacia(), recetas: () => this.htmlArchivoRecetas(), inventario: () => this.htmlInventarioFarmacia(), paquetes: () => this.htmlPaquetesFarmacia(), estupefacientes: () => this.htmlEstupefacientesFarmacia(), bitacora: () => this.htmlBitacoraFarmacia() };
         const cuerpo = (cuerpos[this.pestanaFarmacia] || cuerpos.terminal)();
         const ingreso = this.pestanaFarmacia === 'inventario' && this.operadorFarmacia() && S.puede('gestionar_farmacia')
             ? '<button type="button" onclick="AdminController.abrirIngresoFarmacia()" class="bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas fa-plus"></i> Nuevo ingreso de insumo</button>' : '';
@@ -1549,8 +1555,9 @@ const AdminController = {
         }).join('');
         const op = this.operadorFarmacia();
         const retiro = op && op.rol === 'admin'
-            ? `<button type="button" onclick="AdminController.activarRetiroAdmin()" class="w-full mb-4 text-left bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-3 rounded-xl ${this.modoRetiroAdmin ? 'ring-4 ring-amber-300' : ''}">Retiro Directo de Administración (Sin Paciente)</button>`
+            ? `<button type="button" onclick="AdminController.activarRetiroAdmin()" class="w-full mb-2 text-left bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 px-3 rounded-xl ${this.modoRetiroAdmin ? 'ring-4 ring-amber-300' : ''}">Retiro Directo de Administración (Sin Paciente)</button>`
             : '';
+        const externoBtn = `<button type="button" onclick="AdminController.activarRecetaExterna()" class="w-full mb-4 text-left bg-amber-700 hover:bg-amber-800 text-white font-bold py-3 px-3 rounded-xl ${this.modoExterno ? 'ring-4 ring-amber-300' : ''}">🏥 Surtir Receta Externa (Paciente Externo / Mostrador)</button>`;
         let banner;
         if (this.modoRetiroAdmin) {
             const recientes = S.listarSalidasFarmacia().slice(-5).reverse().map(s => `<li class="py-1">${e(S.fechaHoraLegible(s.fecha_hora))} · ${e(s.operador_nombre)} · ${s.cantidad}× ${e(s.nombre)} · lote ${e(s.lote)}</li>`).join('');
@@ -1570,6 +1577,7 @@ const AdminController = {
                         <p class="text-3xl font-extrabold text-teal-950 leading-tight">${e(elegido.nombre)}</p>
                         <p class="text-lg text-teal-900 mt-1">${e(edadTxt)} · ${e(elegido.area_txt)} · ${e(elegido.cama)}</p>
                         <p class="text-sm font-bold text-teal-800 mt-1">Médico: ${e(elegido.medico || 'Sin médico')}</p>
+                        ${this.htmlRespaldoKiosco(elegido)}
                     </div>
                     <button type="button" onclick="AdminController.quitarPacienteCargo()" class="bg-white border-2 border-red-500 text-red-700 font-extrabold px-4 py-3 rounded-xl">✕ Quitar / Cambiar Paciente</button>
                 </div>
@@ -1577,10 +1585,24 @@ const AdminController = {
         } else {
             banner = '<div class="rounded-2xl border border-dashed border-slate-300 px-4 py-6 mb-4 text-sm text-slate-500">Seleccione al paciente antes de escanear.</div>';
         }
+        if (this.modoExterno) {
+            banner = `<div class="rounded-2xl border-4 border-amber-600 bg-amber-50 px-5 py-5 mb-4">
+                <p class="text-xs font-extrabold uppercase tracking-wide text-amber-800">Mostrador</p>
+                <p class="text-2xl font-extrabold text-amber-950">Receta externa</p>
+                <p class="text-sm text-amber-900 mt-1">Si el carrito lleva antibiótico o controlado, al confirmar se piden los datos del paciente, del médico y el folio. Si la receta física no trae folio, el sistema asigna EXT-00001 y pide anotarlo en el papel.</p>
+                <button type="button" onclick="AdminController.quitarPacienteCargo()" class="mt-3 bg-white border-2 border-red-500 text-red-700 font-extrabold px-4 py-2 rounded-xl">✕ Salir de receta externa</button>
+            </div>`;
+        }
         return `<div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
-            <aside class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 max-h-[70vh] overflow-y-auto">${retiro}${bloques}</aside>
+            <aside class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 max-h-[70vh] overflow-y-auto">${retiro}${externoBtn}${bloques}</aside>
             <section class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
                 ${banner}
+                <label for="busca-folio-receta" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">🔍 Buscar / Surtir por Folio de Receta</label>
+                <div class="flex gap-2 mb-2">
+                    <input id="busca-folio-receta" value="${e(this.folioBuscadoTexto || '')}" autocomplete="off" placeholder="SB-REC-00001" class="flex-1 border border-amber-400 rounded-lg p-2.5 text-sm font-mono uppercase" onkeydown="if(event.key==='Enter'){event.preventDefault();AdminController.buscarFolioReceta();}">
+                    <button type="button" onclick="AdminController.buscarFolioReceta()" class="bg-amber-700 hover:bg-amber-800 text-white text-xs font-extrabold px-3 rounded-lg">Buscar</button>
+                </div>
+                ${this.htmlResultadoFolioReceta()}
                 <label for="terminal-scan" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Pistola lectora</label>
                 <input id="terminal-scan" data-terminal-scan autocomplete="off" placeholder="Escanee el código. Entra solo al coincidir." class="w-full border border-teal-400 rounded-lg p-3 text-sm font-mono focus:ring-2 focus:ring-teal-500 outline-none mb-3">
                 <label for="terminal-buscar" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Buscar por principio activo, nombre comercial o SKU</label>
@@ -1632,6 +1654,7 @@ const AdminController = {
 
     elegirPacienteCargo: function (turnoId) {
         this.modoRetiroAdmin = false;
+        this.modoExterno = false;
         this.pacienteCargoId = turnoId;
         this.render();
     },
@@ -1639,6 +1662,24 @@ const AdminController = {
     quitarPacienteCargo: function () {
         this.pacienteCargoId = null;
         this.modoRetiroAdmin = false;
+        this.modoExterno = false;
+        this.render();
+    },
+
+    activarRecetaExterna: function () {
+        this.modoExterno = true;
+        this.modoRetiroAdmin = false;
+        this.pacienteCargoId = null;
+        this.render();
+    },
+
+    buscarFolioReceta: function () {
+        const input = document.getElementById('busca-folio-receta');
+        const texto = input ? input.value.trim() : this.folioBuscadoTexto;
+        this.folioBuscadoTexto = texto;
+        const receta = BelenStore.recetaPorFolio(texto);
+        if (!receta) { BelenUI.toast('No hay una receta con ese folio.', 'alerta'); this.folioBuscadoId = null; this.render(); return; }
+        this.folioBuscadoId = receta.receta_id;
         this.render();
     },
 
@@ -1677,6 +1718,7 @@ const AdminController = {
             const receta = puedeReceta && ['II', 'III', 'IV_ANTIBIOTICO'].indexOf(fraccion) >= 0
                 ? `<button type="button" onclick="AdminController.imprimirRecetaLinea('${e(lin.linea_id)}')" class="mt-1 text-[11px] font-bold text-rose-700 underline">Generar e Imprimir Receta</button>` : '';
             const frac = fraccion === 'I' && lin.receta_previa ? `<p class="text-[11px] text-amber-800">Receta individual ${e(lin.receta_previa)} · caja ${e(lin.folio_receta_especial || '')}</p>` : '';
+            const respaldo = lin.folio_receta ? `<p class="text-[11px] text-slate-600 mt-1">${e(lin.tipo_respaldo || 'Folio')} · <b>${e(lin.folio_receta)}</b>${lin.medico_prescriptor_nombre ? ' · ' + e(lin.medico_prescriptor_nombre) : ''}${lin.cedula_prescriptor ? ' · ' + e(lin.cedula_prescriptor) : ''}</p><button type="button" onclick="AdminController.cambiarFolioLinea('${e(lin.linea_id)}')" class="text-[11px] font-bold text-slate-500 underline">Folio en papel</button>` : '';
             const gravable = (est ? est.aplica_iva : p.aplica_iva) ? '<p class="text-[11px] font-bold text-amber-700">Grava 16% si solicitan factura</p>' : '';
             const bloqueada = fraccion === 'I';
             const control = `<div class="inline-flex items-center justify-center gap-1">
@@ -1688,7 +1730,7 @@ const AdminController = {
             const detalle = est ? 'Estudio · ' + S.nombreTipoEstudio(est.tipo) : 'Lote ' + p.lote;
             return `<tr class="border-t border-slate-100 align-top">
                 <td class="px-3 py-2"><p class="font-semibold text-slate-800">${e(titulo)}</p><p class="text-[11px] text-slate-400">${e(detalle)}${lin.paquete_nombre ? ' · ' + e(lin.paquete_nombre) : ''}</p>
-                    ${gravable}${aviso ? `<p class="text-[11px] font-bold text-rose-700 mt-1">${e(aviso)}</p>${receta}` : ''}${frac}</td>
+                    ${gravable}${aviso ? `<p class="text-[11px] font-bold text-rose-700 mt-1">${e(aviso)}</p>${receta}` : ''}${frac}${respaldo}</td>
                 <td class="px-3 py-2 text-center">${control}</td>
                 <td class="px-3 py-2 text-right">${e(S.formatoMoneda(sub))}</td>
                 <td class="px-3 py-2 text-right"><button type="button" onclick="AdminController.quitarLineaCarrito('${e(lin.linea_id)}')" class="text-slate-400 hover:text-red-600" aria-label="Quitar"><i class="fas fa-xmark"></i></button></td>
@@ -1760,6 +1802,16 @@ const AdminController = {
                 BelenUI.toast('Solo hay ' + Math.max(0, tope) + ' piezas disponibles de ' + p.nombre + '.', 'alerta');
                 n = Math.max(1, Math.min(99, tope));
             }
+            const falta = p && lin.folio_receta ? BelenStore.pendienteFolioSku(lin.folio_receta, p.sku) : null;
+            if (falta !== null && n > falta) {
+                BelenUI.toast('De ' + lin.folio_receta + ' solo faltan ' + falta + ' piezas.', 'alerta');
+                n = falta;
+            }
+        }
+        if (n < 1) {
+            this.carritoFarmacia = this.carritoFarmacia.filter(l => l !== lin);
+            this.repintarCarritoFarmacia();
+            return;
         }
         lin.cantidad = n;
         this.repintarCarritoFarmacia();
@@ -1780,7 +1832,7 @@ const AdminController = {
         this.recibirEnCarrito(null, { lote_id: loteId });
     },
 
-    pedirFolioRecetaCarrito: function (producto, op, cant) {
+    pedirFolioRecetaCarrito: function (producto, op, cant, lineaId) {
         const S = BelenStore;
         const pac = this.pacienteCargoActual();
         if (!pac) { BelenUI.toast('Seleccione al paciente antes de cargar un antibiótico o controlado.', 'alerta'); return; }
@@ -1801,7 +1853,7 @@ const AdminController = {
                 <select id="rx-medico" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white">${medicos.map(m => `<option value="${e(m.id)}" ${m.id === medicoInicial ? 'selected' : ''}>${e(m.nombre)}</option>`).join('')}</select>
                 <label class="block text-[11px] font-bold text-slate-500 uppercase">Folio de receta</label>
                 <input id="rx-folio" value="${e(previa ? previa.folio : '')}" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm" placeholder="REC-0001 o folio del recetario físico">
-                <p class="text-[11px] text-slate-500">${previa ? 'Folio que el médico ya generó o anotó en Consulta / Indicaciones. Puede corregirlo.' : 'Si el médico no lo capturó, escriba el folio de la receta física o de la hoja de indicaciones.'}</p>
+                <p class="text-[11px] text-slate-500">${previa ? 'Folio que el médico ya generó. Puede cambiarlo si la indicación fue en papel.' : 'Escriba el folio del papel físico, de la hoja de indicaciones o de la receta.'}</p>
                 <p id="rx-error" class="text-xs text-red-600 hidden"></p>
             </div>`,
             botones: [
@@ -1813,9 +1865,26 @@ const AdminController = {
                     const medico = medicos.find(m => m.id === medicoId);
                     if (folio.length < 3) { error.textContent = 'Indique el folio de la receta.'; error.classList.remove('hidden'); return false; }
                     if (!medico) { error.textContent = 'Seleccione al médico prescriptor.'; error.classList.remove('hidden'); return false; }
+                    const inferido = BelenStore.inferirTipoRespaldo(folio, producto.fraccion_cofepris);
+                    const enPiso = this.pacienteCargoActual() && this.pacienteCargoActual().area !== 'consulta';
+                    const tipo = inferido || (this.modoExterno || !enPiso ? 'Receta Externa (EXT)' : 'Indicaciones Hospitalarias (IND)');
+                    const cedula = BelenStore.cedulaDeUsuario(medico.id);
+                    if (lineaId) {
+                        const lin = this.carritoFarmacia.find(l => l.linea_id === lineaId);
+                        if (lin) {
+                            lin.folio_receta = folio.toUpperCase();
+                            lin.medico_prescriptor_id = medico.id;
+                            lin.medico_prescriptor_nombre = medico.nombre;
+                            lin.cedula_prescriptor = cedula;
+                            lin.tipo_respaldo = tipo;
+                        }
+                        this.render();
+                        return;
+                    }
                     this.recibirEnCarrito(null, Object.assign({}, op, {
                         lote_id: producto.lote_id, cantidad: cant, folio_confirmado: true,
-                        folio_receta: folio, medico_prescriptor_id: medico.id, medico_prescriptor_nombre: medico.nombre
+                        folio_receta: folio, medico_prescriptor_id: medico.id, medico_prescriptor_nombre: medico.nombre,
+                        cedula_prescriptor: cedula, tipo_respaldo: tipo
                     }));
                 } }
             ]
@@ -1823,10 +1892,10 @@ const AdminController = {
     },
 
     recibirEnCarrito: function (codigo, opciones) {
-        const op = opciones || {};
+        let op = Object.assign({}, opciones || {});
         const r = BelenStore.prepararLineaCarrito(codigo, op);
         if (r.fefo) {
-            this.avisarFefo(r, lote => this.recibirEnCarrito(null, { lote_id: lote.lote_id, ignorar_fefo: true, cantidad: op.cantidad, paquete_id: op.paquete_id, paquete_nombre: op.paquete_nombre, servicio: op.servicio }));
+            this.avisarFefo(r, lote => this.recibirEnCarrito(null, Object.assign({}, op, { lote_id: lote.lote_id, ignorar_fefo: true })));
             return;
         }
         if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
@@ -1835,7 +1904,22 @@ const AdminController = {
             return;
         }
         const fraccionReceta = r.producto.fraccion_cofepris;
-        if ((fraccionReceta === 'II' || fraccionReceta === 'III' || fraccionReceta === 'IV_ANTIBIOTICO') && !op.folio_confirmado) {
+        if (!op.folio_confirmado && !this.modoRetiroAdmin && !this.modoExterno && this.pacienteCargoId) {
+            const auto = BelenStore.respaldoParaSurtido(this.pacienteCargoId, r.producto.sku);
+            if (auto) {
+                let cantAuto = parseInt(op.cantidad, 10) || 1;
+                if (auto.pendiente && cantAuto > auto.pendiente) {
+                    BelenUI.toast('De ' + auto.folio + ' solo faltan ' + auto.pendiente + ' piezas. Se carga esa cantidad.', 'alerta');
+                    cantAuto = auto.pendiente;
+                }
+                op = Object.assign({}, op, {
+                    cantidad: cantAuto, folio_confirmado: true, folio_receta: auto.folio,
+                    medico_prescriptor_id: auto.medico_id, medico_prescriptor_nombre: auto.medico_nombre,
+                    cedula_prescriptor: auto.cedula, tipo_respaldo: auto.tipo_respaldo
+                });
+            }
+        }
+        if ((fraccionReceta === 'II' || fraccionReceta === 'III' || fraccionReceta === 'IV_ANTIBIOTICO') && !op.folio_confirmado && !this.modoExterno) {
             this.pedirFolioRecetaCarrito(r.producto, op, parseInt(op.cantidad, 10) || 1);
             return;
         }
@@ -1846,7 +1930,13 @@ const AdminController = {
             const misma = this.carritoFarmacia.find(l => l.lote_id === r.producto.lote_id && !l.caja_id && l.paquete_id === (op.paquete_id || null));
             if (misma) {
                 misma.cantidad += cant;
-                if (op.folio_receta) { misma.folio_receta = op.folio_receta; misma.medico_prescriptor_id = op.medico_prescriptor_id; misma.medico_prescriptor_nombre = op.medico_prescriptor_nombre; }
+                if (op.folio_receta) {
+                    misma.folio_receta = op.folio_receta;
+                    misma.medico_prescriptor_id = op.medico_prescriptor_id;
+                    misma.medico_prescriptor_nombre = op.medico_prescriptor_nombre;
+                    misma.cedula_prescriptor = op.cedula_prescriptor || '';
+                    misma.tipo_respaldo = op.tipo_respaldo || '';
+                }
                 this.render();
                 return;
             }
@@ -1858,7 +1948,8 @@ const AdminController = {
             caja_id: op.caja_id || null, datos_postanestesicos: op.datos_postanestesicos || '',
             receta_previa: op.receta_previa || '', folio_receta_especial: op.folio_receta_especial || '',
             folio_receta: op.folio_receta || '', medico_prescriptor_id: op.medico_prescriptor_id || '',
-            medico_prescriptor_nombre: op.medico_prescriptor_nombre || ''
+            medico_prescriptor_nombre: op.medico_prescriptor_nombre || '',
+            cedula_prescriptor: op.cedula_prescriptor || '', tipo_respaldo: op.tipo_respaldo || ''
         });
         this.render();
     },
@@ -1945,6 +2036,15 @@ const AdminController = {
                 textoConfirmar: 'Registrar salida',
                 alConfirmar: () => this.ejecutarRetiroAdmin()
             });
+            return;
+        }
+        if (this.modoExterno) {
+            const necesita = this.carritoFarmacia.some(lin => {
+                const p = BelenStore.listarInventarioFarmacia(this.sesion).find(x => x.lote_id === lin.lote_id);
+                return p && !lin.folio_receta && (p.fraccion_cofepris === 'II' || p.fraccion_cofepris === 'III' || p.fraccion_cofepris === 'IV_ANTIBIOTICO');
+            });
+            if (necesita || this.carritoFarmacia.some(lin => !lin.folio_receta)) this.abrirDespachoExterno(necesita);
+            else this.ejecutarDespachoExterno(null);
             return;
         }
         const paciente = this.pacienteCargoActual();
@@ -2050,6 +2150,224 @@ const AdminController = {
         this.imprimirEnDashboard(BelenStore.htmlCuerpoReceta(datos));
     },
 
+    htmlRespaldoKiosco: function (elegido) {
+        if (!elegido) return '';
+        const S = BelenStore, e = t => this.e(t);
+        const turno = S.obtenerTurno(elegido.turno_id);
+        if (!turno) return '';
+        const pendientes = r => (r.items || []).filter(i => (parseInt(i.cantidad_prescrita, 10) || 0) > 0 && (S.pendienteFolioSku(r.folio, i.sku) || 0) > 0);
+        const tarjetaReceta = r => {
+            const items = pendientes(r);
+            if (!items.length) return '';
+            const lista = items.map(i => `<li>${e(i.cantidad_prescrita)} × ${e(i.nombre)}${i.dosis_indicacion ? ' · ' + e(i.dosis_indicacion) : ''} <span class="text-slate-500">(${e(S.textoSurtidoItem(i))})</span></li>`).join('');
+            return `<div class="mt-3 rounded-2xl border-2 border-rose-400 bg-white px-4 py-3">
+                <p class="text-sm font-extrabold text-rose-950">💉 Indicado por ${e(r.medico_nombre || 'el médico')}${elegido.area === 'consulta' ? ' en Consulta' : ''} (Folio ${e(r.folio)})</p>
+                <ul class="mt-2 text-sm text-slate-800 list-disc pl-4">${lista}</ul>
+                <button type="button" onclick="AdminController.cargarRecetaAlCarrito('${e(r.receta_id)}')" class="mt-3 bg-rose-700 hover:bg-rose-800 text-white text-xs font-extrabold px-3 py-2 rounded-lg">+ Cargar al Carrito con un Clic</button>
+            </div>`;
+        };
+        const recetas = S.recetasDeTurno(turno.turno_id);
+        if (elegido.area === 'consulta') return recetas.map(tarjetaReceta).join('');
+        const internamiento = S.internamientoDeTurno(turno.turno_id);
+        const hoja = internamiento && S.indicacionesVigentes(internamiento);
+        const texto = hoja ? [hoja.medicamentos, hoja.soluciones_parenterales].filter(Boolean).join('\n') : '';
+        const indicacion = hoja ? `<div class="mt-3 rounded-2xl border-2 border-cyan-500 bg-white px-4 py-3">
+            <p class="text-sm font-extrabold text-cyan-950">📋 Indicaciones Médicas Vigentes (Folio ${e(hoja.folio)} — ${e(hoja.autor_nombre || turno.medico_nombre || '')})</p>
+            <p class="mt-2 text-sm text-slate-800 whitespace-pre-line">${e(texto || 'Sin medicamentos en la hoja vigente.')}</p>
+            <p class="mt-2 text-[11px] text-cyan-900">Al escanear un antibiótico se enlaza ${e(hoja.folio)}. Si era una indicación en papel, use «Folio en papel» en la línea del carrito.</p>
+        </div>` : '';
+        const retenidas = recetas.map(r => {
+            const control = (r.items || []).filter(i => {
+                const prod = S.productoPorSku(i.sku);
+                return prod && (prod.fraccion_cofepris === 'II' || prod.fraccion_cofepris === 'III' || prod.fraccion_cofepris === 'I') && (S.pendienteFolioSku(r.folio, i.sku) || 0) > 0;
+            });
+            if (!control.length) return '';
+            return tarjetaReceta(Object.assign({}, r, { items: control.concat((r.items || []).filter(i => control.indexOf(i) < 0 && (S.pendienteFolioSku(r.folio, i.sku) || 0) > 0)) }));
+        }).join('');
+        return indicacion + retenidas;
+    },
+
+    htmlResultadoFolioReceta: function () {
+        if (!this.folioBuscadoId) return '';
+        const S = BelenStore, e = t => this.e(t);
+        const r = S.listarRecetas().find(x => x.receta_id === this.folioBuscadoId);
+        if (!r) return '';
+        const filas = (r.items || []).map(i => {
+            const pendiente = (parseInt(i.cantidad_prescrita, 10) || 0) > 0 ? (S.pendienteFolioSku(r.folio, i.sku) || 0) : (r.estatus_surtido === 'COMPLETA_RETENIDA' ? 0 : 1);
+            const boton = pendiente > 0
+                ? `<button type="button" onclick="AdminController.surtirPiezaDeReceta('${e(r.receta_id)}','${e(i.sku)}')" class="ml-2 bg-teal-700 text-white text-[11px] font-bold px-2 py-1 rounded-lg">Surtir 1 pieza</button>`
+                : '<span class="ml-2 text-[11px] font-bold text-emerald-700">Completa</span>';
+            return `<li class="py-1">${e(i.nombre)} · ${e(S.textoSurtidoItem(i))}${boton}</li>`;
+        }).join('');
+        const cierre = r.estatus_surtido === 'COMPLETA_RETENIDA' ? 'COMPLETA_RETENIDA · Retener receta física' : (r.estatus_surtido === 'PARCIAL_SELLADA' ? 'PARCIAL_SELLADA' : 'PENDIENTE');
+        return `<div class="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-3">
+            <p class="text-sm font-extrabold text-amber-950">${e(r.folio)} · ${e(r.paciente_nombre || 'Paciente')} · ${e(r.medico_nombre || '')}</p>
+            <p class="text-[11px] font-bold text-amber-800 mt-1">${e(cierre)}</p>
+            <ul class="mt-2 text-sm text-slate-800">${filas}</ul>
+        </div>`;
+    },
+
+    cargarRecetaAlCarrito: function (recetaId) {
+        const receta = BelenStore.listarRecetas().find(r => r.receta_id === recetaId);
+        const lineas = BelenStore.lineasSugeridasDeReceta(receta);
+        if (!lineas.length) { BelenUI.toast('No hay piezas pendientes con stock para esa receta.', 'alerta'); return; }
+        lineas.forEach(lin => this.recibirEnCarrito(null, lin));
+        BelenUI.toast('Medicamentos de ' + receta.folio + ' cargados con el médico y el folio.', 'exito');
+    },
+
+    surtirPiezaDeReceta: function (recetaId, sku) {
+        const S = BelenStore;
+        const receta = S.listarRecetas().find(r => r.receta_id === recetaId);
+        const lineas = S.lineasSugeridasDeReceta(receta, sku, 1);
+        if (!lineas.length) { BelenUI.toast('Esa receta ya no tiene piezas pendientes o no hay stock.', 'alerta'); return; }
+        const turno = receta && receta.turno_id ? S.obtenerTurno(receta.turno_id) : null;
+        const grupos = S.pacientesTerminalFarmacia(this.sesion);
+        const activo = turno && ['hospital', 'observacion', 'quirofano', 'consulta'].some(k => (grupos[k] || []).some(p => p.turno_id === turno.turno_id));
+        if (activo) { this.modoExterno = false; this.pacienteCargoId = turno.turno_id; }
+        else { this.modoExterno = true; this.pacienteCargoId = null; }
+        this.folioBuscadoId = receta.receta_id;
+        this.folioBuscadoTexto = receta.folio;
+        this.recibirEnCarrito(null, lineas[0]);
+    },
+
+    cambiarFolioLinea: function (lineaId) {
+        const lin = this.carritoFarmacia.find(l => l.linea_id === lineaId);
+        if (!lin) return;
+        const p = BelenStore.listarInventarioFarmacia(this.sesion).find(x => x.lote_id === lin.lote_id);
+        if (!p) { BelenUI.toast('Esa línea ya no está en el inventario.', 'alerta'); return; }
+        this.pedirFolioRecetaCarrito(p, { cantidad: lin.cantidad }, lin.cantidad, lineaId);
+    },
+
+    abrirDespachoExterno: function (controlado) {
+        const e = t => this.e(t);
+        const extra = controlado ? `<label class="block text-[11px] font-bold text-slate-500 uppercase">Médico externo</label>
+                <input id="ext-medico" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm" placeholder="Nombre del médico">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Cédula profesional</label>
+                <input id="ext-cedula" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm" placeholder="Cédula">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Institución / domicilio del médico</label>
+                <input id="ext-institucion" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Folio impreso en la receta física</label>
+                <input id="ext-folio" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm" placeholder="Déjelo vacío si no trae folio">
+                <p class="text-[11px] text-slate-500">Si no trae folio, se asigna EXT-00001 y hay que anotarlo en el papel.</p>
+                <div class="flex flex-col gap-1 text-sm">
+                    <label class="flex items-center gap-2"><input type="radio" name="ext-disposicion" value="parcial" checked> Surtido parcial (se sella y se devuelve)</label>
+                    <label class="flex items-center gap-2"><input type="radio" name="ext-disposicion" value="completa"> Surtido completo (se retiene la receta)</label>
+                </div>` : '<p class="text-xs text-slate-500">Este despacho no lleva antibiótico ni controlado. Solo queda el paciente en la bitácora.</p>';
+        BelenUI.modal({
+            titulo: 'Receta externa',
+            subtitulo: controlado ? 'Datos normativos del mostrador' : 'Paciente de mostrador',
+            icono: 'fa-file-prescription',
+            ancho: 'md',
+            html: `<div class="space-y-3 text-left">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Nombre del paciente externo</label>
+                <input id="ext-paciente" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Teléfono</label>
+                <input id="ext-telefono" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Dirección</label>
+                <input id="ext-direccion" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+                ${extra}
+                <p id="ext-error" class="text-xs text-red-600 hidden"></p>
+            </div>`,
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Surtir', estilo: 'primario', alPulsar: c => {
+                    const v = id => { const n = c.el.querySelector(id); return n ? n.value : ''; };
+                    const marca = c.el.querySelector('input[name="ext-disposicion"]:checked');
+                    const datos = {
+                        paciente_nombre: v('#ext-paciente'), telefono: v('#ext-telefono'), direccion: v('#ext-direccion'),
+                        medico_nombre: v('#ext-medico'), cedula: v('#ext-cedula'), institucion: v('#ext-institucion'),
+                        folio_fisico: v('#ext-folio'), disposicion: marca ? marca.value : ''
+                    };
+                    const error = c.el.querySelector('#ext-error');
+                    if (!datos.paciente_nombre.trim()) { error.textContent = 'Indique el nombre del paciente.'; error.classList.remove('hidden'); return false; }
+                    if (controlado && (!datos.medico_nombre.trim() || !datos.cedula.trim())) { error.textContent = 'Indique médico y cédula.'; error.classList.remove('hidden'); return false; }
+                    this.ejecutarDespachoExterno(datos);
+                } }
+            ]
+        });
+    },
+
+    ejecutarDespachoExterno: function (externo) {
+        const r = BelenStore.confirmarSurtidoMostrador({
+            operador_id: (this.operadorFarmacia() || {}).id,
+            lineas: this.carritoFarmacia,
+            externo: externo || {}
+        }, this.sesion);
+        if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+        this.carritoFarmacia = [];
+        const folio = r.folio;
+        if (r.generado && folio) {
+            const texto = r.disposicion === 'completa' ? 'Surtido completo: se retiene la receta.' : 'Surtido parcial: se sella y se devuelve.';
+            BelenUI.aviso('Anote el folio ' + folio + ' en la receta física', texto, 'exito');
+        } else BelenUI.toast(folio ? 'Surtido registrado en ' + folio + '.' : 'Surtido de mostrador registrado.', 'exito');
+        this.render();
+    },
+
+    htmlOrdenesAplicacion: function (turnoId) {
+        const turno = BelenStore.obtenerTurno(turnoId);
+        const ordenes = (turno && turno.ordenes_aplicacion) || [];
+        if (!ordenes.length) return '';
+        const e = t => this.e(t);
+        const bloques = ordenes.map(o => {
+            const items = (o.items || []).map(i => `<li>${e(i.cantidad_prescrita)} × ${e(i.nombre)} · ${e(i.dosis_indicacion || 'sin indicación')}</li>`).join('');
+            return `<div class="mt-3 rounded-xl bg-white border border-teal-200 px-3 py-2">
+                <p class="text-xs font-extrabold text-teal-900">Orden de aplicación ${e(o.folio)} · ${e(BelenStore.fechaHoraLegible(o.fecha_hora))}</p>
+                <p class="text-[11px] text-teal-800">${e(o.medico_nombre || '')}</p>
+                <ul class="mt-1 text-sm text-slate-800 list-disc pl-4">${items}</ul>
+            </div>`;
+        }).join('');
+        return `<div class="mt-3"><p class="text-[11px] font-extrabold uppercase tracking-wide text-teal-800">Para aplicar ahora en clínica</p>${bloques}</div>`;
+    },
+
+    htmlArchivoRecetas: function (pacienteId) {
+        const e = t => this.e(t);
+        const S = BelenStore;
+        let lista = S.listarRecetas().slice().reverse();
+        if (pacienteId) lista = lista.filter(r => r.paciente_id === pacienteId);
+        if (!lista.length) return '<div class="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-sm text-slate-500">Todavía no hay recetas foliadas.</div>';
+        const filas = lista.map(r => `<tr class="border-t border-slate-100">
+            <td class="px-3 py-3 font-extrabold text-slate-900">${e(r.folio)}</td>
+            <td class="px-3 py-3">${e(S.fechaHoraLegible(r.fecha_hora))}</td>
+            <td class="px-3 py-3">${e(r.paciente_nombre)}<span class="block text-[11px] text-slate-400">${e(r.medico_nombre)}</span></td>
+            <td class="px-3 py-3 text-xs">${e(S.etiquetaEstatusReceta(r.estatus_surtido))}</td>
+            <td class="px-3 py-3 text-right"><button type="button" onclick="AdminController.abrirHojaReceta('${e(r.receta_id)}')" class="bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Ver receta</button></td>
+        </tr>`).join('');
+        return `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-100"><h3 class="font-extrabold text-slate-800">Archivo digital de recetas</h3>
+            <p class="text-xs text-slate-500">Cada hoja es de solo lectura. El folio SB-REC es del hospital y no se reutiliza.</p></div>
+            <table class="w-full text-sm text-left"><thead class="text-[11px] uppercase text-slate-400"><tr>
+                <th class="px-3 py-2">Folio</th><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Paciente</th><th class="px-3 py-2">Surtido</th><th></th>
+            </tr></thead><tbody>${filas}</tbody></table></div>`;
+    },
+
+    abrirRecetasPaciente: function (pacienteId) {
+        const p = BelenStore.buscarPacientePorId(pacienteId);
+        BelenUI.modal({
+            titulo: 'Recetas de ' + ((p && p.nombre_completo) || 'paciente'),
+            icono: 'fa-file-prescription',
+            ancho: 'xl',
+            html: this.htmlArchivoRecetas(pacienteId),
+            botones: [{ texto: 'Cerrar', estilo: 'secundario' }]
+        });
+    },
+
+    abrirHojaReceta: function (recetaId) {
+        const receta = BelenStore.listarRecetas().find(r => r.receta_id === recetaId);
+        if (!receta) { BelenUI.toast('No se encontró esa receta.', 'alerta'); return; }
+        const html = BelenStore.htmlHojaReceta(receta);
+        BelenUI.modal({
+            titulo: receta.folio,
+            subtitulo: 'Hoja inmutable',
+            icono: 'fa-file-prescription',
+            ancho: 'xl',
+            html: html,
+            botones: [
+                { texto: 'Cerrar', estilo: 'secundario' },
+                { texto: '🖨️ Reimprimir Receta para Firma', estilo: 'primario', alPulsar: () => { this.imprimirEnDashboard(html); return false; } }
+            ]
+        });
+    },
+
     htmlPanelEstupefacientes: function (areaVista) {
         const S = BelenStore;
         if (S.areaResguardoDeSesion(this.sesion) !== areaVista) return '';
@@ -2119,13 +2437,15 @@ const AdminController = {
             const contacto = m.tipo === 'SALIDA' && m.area_paciente !== 'RETIRO DIRECTO ADMINISTRACIÓN'
                 ? `<span class="block text-[11px] text-slate-500">${e(m.paciente_telefono || 'Sin teléfono')} · ${e(m.paciente_direccion || 'Sin dirección')}</span>` : '';
             const destino = m.tipo === 'SALIDA' ? (m.area_paciente === 'RETIRO DIRECTO ADMINISTRACIÓN' ? 'Retiro directo de administración' : (m.paciente_nombre + ' · ' + m.area_paciente + (m.cama ? ' · ' + m.cama : '') + (m.medico_tratante ? ' · ' + m.medico_tratante : ''))) : (m.numero_factura ? 'Factura ' + m.numero_factura : 'Ingreso a almacén');
+            const respaldo = m.tipo === 'SALIDA' && (m.tipo_respaldo || m.folio_receta || m.estatus_receta)
+                ? `<span class="block text-[11px] text-slate-600">${e(m.tipo_respaldo || '')}${m.folio_receta ? ' · ' + e(m.folio_receta) : ''}${m.medico_prescriptor ? ' · ' + e(m.medico_prescriptor) : ''}${m.cedula_prescriptor ? ' · ' + e(m.cedula_prescriptor) : ''}${m.estatus_receta ? ' · ' + e(m.estatus_receta) : ''}</span>` : '';
             return `<tr class="border-t border-slate-100">
                 <td class="px-3 py-2 whitespace-nowrap">${e(S.fechaHoraLegible(m.fecha_hora))}</td>
                 <td class="px-3 py-2 font-bold ${m.tipo === 'ENTRADA' ? 'text-teal-800' : 'text-rose-800'}">${m.tipo === 'ENTRADA' ? 'Entrada' : 'Salida'}</td>
                 <td class="px-3 py-2">${e(m.nombre)}<span class="block text-[11px] text-slate-400">${e(m.cedula_profesional || 'Sin cédula')}</span></td>
                 <td class="px-3 py-2">${e(S.presentacionMovimiento(m) || m.principio_activo)}${m.nombre_comercial ? '<span class="block text-[11px] text-slate-400">' + e(m.nombre_comercial) + '</span>' : ''}<span class="block text-[11px] text-slate-400">${e(S.nombreFraccionCofepris(m.fraccion_cofepris))}${S.awareDeMovimiento(m) ? ' · ' + e((S.CLASIFICACION_AWARE.find(a => a.codigo === S.awareDeMovimiento(m)) || {}).nombre || S.awareDeMovimiento(m)) : ''} · lote ${e(m.lote)}</span></td>
                 <td class="px-3 py-2">${e(piezas)}</td>
-                <td class="px-3 py-2">${e(destino)}${contacto}</td>
+                <td class="px-3 py-2">${e(destino)}${contacto}${respaldo}</td>
             </tr>`;
         };
         return anios.map(anio => {
@@ -3095,6 +3415,10 @@ const AdminController = {
             const portafolio = archivoHosp
                 ? `<a href="expediente.html?modo=hospitalizado&turno=${encodeURIComponent(archivoHosp.turno_id)}" class="text-xs font-bold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg px-3 py-1.5 transition inline-flex items-center gap-1"><i class="fas fa-folder-tree"></i> Portafolio</a>`
                 : '';
+            const nRecetas = S.recetasDePaciente(p.paciente_id).length;
+            const recetas = nRecetas
+                ? `<button type="button" onclick="AdminController.abrirRecetasPaciente('${this.e(p.paciente_id)}')" class="text-xs font-bold text-rose-800 hover:text-rose-950 bg-rose-50 hover:bg-rose-100 rounded-lg px-3 py-1.5 transition">Recetas (${nRecetas})</button>`
+                : '';
             const buscar = S.normalizar([p.nombre_completo, p.paciente_id, ultimo && ultimo.dx_principal, ultimo && ultimo.medico_nombre, ultimo && ultimo.estatus, archivoHosp ? 'cerrado historico portafolio' : ''].filter(Boolean).join(' '));
             return `<tr class="border-t border-slate-100 hover:bg-slate-50" data-paciente="${this.e(p.paciente_id)}" data-buscar="${this.e(buscar)}">
                 <td class="px-4 py-3 font-bold text-slate-800">${this.e(p.nombre_completo)}<span class="block text-[11px] font-normal text-slate-400">${this.e(p.paciente_id)}</span></td>
@@ -3102,7 +3426,7 @@ const AdminController = {
                 <td class="px-4 py-3 text-slate-600">${badge || '<span class="text-slate-400">—</span>'}</td>
                 <td class="px-4 py-3 text-slate-600 text-center">${v.length}</td>
                 <td class="px-4 py-3 text-slate-600">${ultima}</td>
-                <td class="px-4 py-3 text-right whitespace-nowrap"><div class="inline-flex flex-wrap justify-end gap-2">${portafolio}<button type="button" data-accion="ver-visitas" onclick="AdminController.verVisitasPaciente('${this.e(p.paciente_id)}')" class="text-xs font-bold text-cyan-700 hover:text-cyan-900 bg-cyan-50 hover:bg-cyan-100 rounded-lg px-3 py-1.5 transition" ${v.length ? '' : 'disabled style="opacity:.4;cursor:not-allowed"'}>Ver visitas</button></div></td></tr>`;
+                <td class="px-4 py-3 text-right whitespace-nowrap"><div class="inline-flex flex-wrap justify-end gap-2">${portafolio}${recetas}<button type="button" data-accion="ver-visitas" onclick="AdminController.verVisitasPaciente('${this.e(p.paciente_id)}')" class="text-xs font-bold text-cyan-700 hover:text-cyan-900 bg-cyan-50 hover:bg-cyan-100 rounded-lg px-3 py-1.5 transition" ${v.length ? '' : 'disabled style="opacity:.4;cursor:not-allowed"'}>Ver visitas</button></div></td></tr>`;
         }).join('');
         return `<div class="mb-6"><h2 class="text-2xl font-extrabold text-slate-800">Búsqueda Histórica</h2>
                     <p class="text-slate-500">${this.rolActual === 'medico' ? 'Archivo de los pacientes que usted ha atendido. Los expedientes cerrados ya no aparecen en los monitores activos.' : 'Archivo longitudinal. Un expediente cerrado sale de camas, fila y caja, y se consulta solo aquí.'}</p></div>

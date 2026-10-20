@@ -470,6 +470,24 @@
                 <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
                         <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Análisis Clínico <span class="text-red-500">*</span></label>
                     <textarea id="val-analisis" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Análisis del caso, integración diagnóstica..."></textarea>
+                    <div id="bloques-receta" class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+                        <section class="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
+                            <h3 class="text-sm font-extrabold text-rose-950">💉 Medicamentos a Aplicar Ahorita en Clínica / Urgencias</h3>
+                            <p class="text-[11px] text-rose-800 mt-1 mb-3">Se puede enviar a media consulta. Enfermería y Farmacia ven el folio de inmediato.</p>
+                            <input id="busca-aplica" type="search" autocomplete="off" placeholder="Buscar medicamento del catálogo" class="w-full bg-white border border-rose-200 rounded-xl p-2.5 text-sm outline-none focus:border-rose-500">
+                            <div id="lista-aplica" class="mt-2 flex flex-col gap-1"></div>
+                            <div id="lineas-aplica" class="mt-3 space-y-2"></div>
+                            <button type="button" id="btn-orden-aplicacion" class="mt-3 w-full bg-rose-700 hover:bg-rose-800 text-white text-sm font-extrabold py-2.5 rounded-xl">⚡ Enviar Orden de Aplicación a Enfermería/Farmacia Ahora</button>
+                        </section>
+                        <section class="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
+                            <h3 class="text-sm font-extrabold text-cyan-950">📄 Receta Médica para Llevar a Casa</h3>
+                            <p class="text-[11px] text-cyan-800 mt-1 mb-3">Cantidad en piezas o cajas. Si hoy ya se aplicó una dosis, recete solo lo que falta.</p>
+                            <input id="busca-casa" type="search" autocomplete="off" placeholder="Buscar medicamento para llevar" class="w-full bg-white border border-cyan-200 rounded-xl p-2.5 text-sm outline-none focus:border-cyan-500">
+                            <div id="lista-casa" class="mt-2 flex flex-col gap-1"></div>
+                            <div id="lineas-casa" class="mt-3 space-y-2"></div>
+                            <button type="button" id="btn-receta-casa" class="mt-3 w-full bg-cyan-800 hover:bg-cyan-900 text-white text-sm font-extrabold py-2.5 rounded-xl">🖨️ Generar e Imprimir Receta para Casa</button>
+                        </section>
+                    </div>
                         <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Plan y Tratamiento <span class="text-red-500">*</span></label>
                     <textarea id="val-plan" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28" placeholder="Ej. Desimpactación manual, Paracetamol..."></textarea>
                     <div id="alerta-cofepris-plan" class="mb-6 mt-3 space-y-2"></div>
@@ -805,6 +823,7 @@
         </div>
     </div>
 
+    <div id="print-receta-casa" class="zona-impresion hidden"></div>
     <div id="print-nota" class="zona-impresion hidden">
         <div style="text-align: right; margin-bottom: 5px;">
             <p id="titulo-impresion-nota" style="margin: 0; font-size: 14px; font-weight: bold; text-decoration: underline;">NOTA DE CONSULTA MÉDICA</p>
@@ -1025,8 +1044,8 @@
         </div>
     </div>
 
-    <script src="js/belen-store.js?v=f7"></script>
-    <script src="js/belen-ui.js?v=f7"></script>
+    <script src="js/belen-store.js?v=f9"></script>
+    <script src="js/belen-ui.js?v=f9"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
@@ -1396,6 +1415,8 @@
             const cedInd = q('print-cedulas-ind');
             if (cedInd) cedInd.textContent = textoCedulasDe(h.autor_id);
             z.firstElementChild.insertAdjacentHTML('afterbegin', '<span style="float:left;"><strong>Folio:</strong> ' + BelenUI.esc(h.folio) + '</span>');
+            const vinculo = (h.medicamentos_vinculados || []).map(m => m.requiere_receta_retenida ? (m.nombre + ' requiere receta retenida SB-REC') : (m.folio_hoja ? (m.nombre + ' amparado por ' + m.folio_hoja) : '')).filter(Boolean);
+            if (vinculo.length) z.firstElementChild.insertAdjacentHTML('beforeend', '<p style="clear:both;font-size:11px;margin-top:8px;"><strong>Cobertura de la hoja:</strong> ' + BelenUI.esc(vinculo.join(' · ')) + '</p>');
             return zonaComoDocumento(z);
         }
 
@@ -1542,14 +1563,19 @@
             const e = BelenUI.esc;
             return alertas.map(a => {
                 const puedeReceta = SESION && (SESION.rol === 'medico' || SESION.rol === 'admin');
+                const hospitalizado = !!(INTERNAMIENTO && INTERNAMIENTO.estatus === 'activo') || !!(TURNO && (TURNO.estatus === 'internado' || TURNO.estatus === 'internado_en_proceso'));
                 const folio = TURNO && BelenStore.folioRecetaVigente(TURNO.turno_id, a.sku);
-                const avisoFolio = folio ? `<p class="mt-1 font-bold">Folio vinculado: ${e(folio.folio)} (${folio.origen === 'fisica' ? 'recetario físico' : 'sistema'})</p>` : '';
+                const avisoFolio = folio ? `<p class="mt-1 font-bold">Folio vinculado: ${e(folio.folio_sistema || folio.folio)} (${folio.origen === 'fisica' ? 'recetario físico' : 'sistema'})</p>` : '';
+                if (hospitalizado && a.fraccion === 'IV_ANTIBIOTICO') {
+                    const hoja = INTERNAMIENTO && BelenStore.indicacionesVigentes(INTERNAMIENTO);
+                    return `<div class="rounded-xl border border-cyan-300 bg-cyan-50 text-cyan-950 px-3 py-2 text-xs"><p class="font-bold">${e(a.nombre)}</p><p class="mt-1">Queda amparado por la hoja de indicaciones ${e((hoja && hoja.folio) || 'vigente')}. No se genera una receta suelta por turno.</p></div>`;
+                }
                 let btn = '';
                 if (a.estupefaciente && puedeReceta) {
                     btn = `<button type="button" data-receta-sku="${e(a.sku)}" data-receta-dosis="${e(a.dosis)}" data-receta-tipo="individual" class="mt-2 bg-amber-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Generar receta individual y descontar ámpula</button>`;
                 } else if (a.retenida && puedeReceta) {
                     btn = `<div class="mt-2 flex flex-wrap gap-2">
-                        <button type="button" data-folio-sistema="${e(a.sku)}" data-receta-dosis="${e(a.dosis)}" class="bg-rose-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">🖨️ Generar e Imprimir Receta con Folio del Sistema (REC-XXXX)</button>
+                        <button type="button" data-folio-sistema="${e(a.sku)}" data-receta-dosis="${e(a.dosis)}" class="bg-rose-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">🖨️ Generar Receta Retenida (SB-REC-XXXXX)</button>
                         <button type="button" data-folio-fisica="${e(a.sku)}" data-receta-dosis="${e(a.dosis)}" class="bg-white border border-rose-300 text-rose-800 text-xs font-bold px-3 py-1.5 rounded-lg">✍️ Anotar Folio de Receta Física hecha a mano</button>
                     </div>`;
                 }
@@ -1563,6 +1589,10 @@
             const caja = id && document.getElementById(id);
             if (!caja) return;
             caja.innerHTML = htmlAlertasCofepris(origen.value || '');
+            enlazarBotonesReceta(caja);
+        }
+        function enlazarBotonesReceta(caja) {
+            if (!caja) return;
             caja.querySelectorAll('[data-receta-sku]').forEach(b => b.addEventListener('click', () => imprimirRecetaExpediente(b.getAttribute('data-receta-sku'), b.getAttribute('data-receta-dosis'), b.getAttribute('data-receta-tipo'))));
             caja.querySelectorAll('[data-folio-sistema]').forEach(b => b.addEventListener('click', () => generarRecetaSistema(b.getAttribute('data-folio-sistema'), b.getAttribute('data-receta-dosis'))));
             caja.querySelectorAll('[data-folio-fisica]').forEach(b => b.addEventListener('click', () => anotarRecetaFisica(b.getAttribute('data-folio-fisica'), b.getAttribute('data-receta-dosis'))));
@@ -1587,7 +1617,7 @@
             if (!TURNO || !SESION) return;
             const r = BelenStore.guardarRecetaFoliada({ turno_id: TURNO.turno_id, sku: sku, dosis: dosis, origen: 'sistema' }, SESION);
             if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
-            imprimirHtmlEnVisor(BelenStore.htmlCuerpoReceta(datosImpresionReceta(r.producto, dosis, r.receta.folio)));
+            imprimirHtmlEnVisor(BelenStore.htmlHojaReceta(r.receta));
             BelenUI.toast('Receta ' + r.receta.folio + ' vinculada a ' + (TURNO.paciente_nombre || 'el paciente') + '.', 'exito');
             repintarAlertasCofepris();
         }
@@ -1604,11 +1634,114 @@
                         const r = BelenStore.guardarRecetaFoliada({ turno_id: TURNO.turno_id, sku: sku, dosis: dosis, origen: 'fisica', folio: c.el.querySelector('#folio-fisico').value }, SESION);
                         const error = c.el.querySelector('#folio-fisico-error');
                         if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
-                        BelenUI.toast('Folio ' + r.receta.folio + ' vinculado al paciente.', 'exito');
+                        BelenUI.toast('Folio ' + (r.receta.folio_externo || r.receta.folio) + ' vinculado al paciente. Folio del hospital: ' + r.receta.folio + '.', 'exito');
                         repintarAlertasCofepris();
                     } }
                 ]
             });
+        }
+        let borradorAplicacion = [];
+        let borradorCasa = [];
+        function arregloReceta(destino) { return destino === 'casa' ? borradorCasa : borradorAplicacion; }
+        function diagnosticoNotaActual() {
+            const li = document.querySelector('#lista-dx li');
+            return li ? li.textContent.trim() : '';
+        }
+        function leerLineasReceta(destino) {
+            const caja = document.getElementById(destino === 'casa' ? 'lineas-casa' : 'lineas-aplica');
+            const base = arregloReceta(destino);
+            if (!caja) return base;
+            caja.querySelectorAll('[data-idx]').forEach(row => {
+                const i = parseInt(row.getAttribute('data-idx'), 10);
+                if (!base[i]) return;
+                base[i].dosis_indicacion = row.querySelector('[data-dosis]').value;
+                base[i].cantidad = parseInt(row.querySelector('[data-cant]').value, 10) || 1;
+            });
+            return base;
+        }
+        function pintarLineasReceta(destino) {
+            const caja = document.getElementById(destino === 'casa' ? 'lineas-casa' : 'lineas-aplica');
+            if (!caja) return;
+            const e = BelenUI.esc;
+            const base = arregloReceta(destino);
+            caja.innerHTML = base.map((item, i) => `<div data-idx="${i}" class="bg-white border border-slate-200 rounded-xl p-2">
+                <div class="flex items-center justify-between gap-2"><p class="text-sm font-bold text-slate-800">${e(item.nombre)}</p>
+                    <button type="button" data-quitar="${i}" class="text-xs font-bold text-red-600">Quitar</button></div>
+                <div class="grid grid-cols-3 gap-2 mt-2">
+                    <input data-dosis value="${e(item.dosis_indicacion || '')}" placeholder="${destino === 'casa' ? 'Ej. 1 frasco cada 24 h por 3 días' : 'Ej. 1 ámpula IM ahora'}" class="col-span-2 border border-slate-200 rounded-lg p-2 text-xs">
+                    <input data-cant type="number" min="1" max="99" value="${e(String(item.cantidad || 1))}" class="border border-slate-200 rounded-lg p-2 text-xs" aria-label="Cantidad">
+                </div></div>`).join('');
+            caja.querySelectorAll('[data-quitar]').forEach(b => b.addEventListener('click', () => {
+                leerLineasReceta(destino);
+                arregloReceta(destino).splice(parseInt(b.getAttribute('data-quitar'), 10), 1);
+                if (destino === 'casa' && TURNO) BelenStore.guardarBorradorRecetaCasa(TURNO.turno_id, borradorCasa);
+                pintarLineasReceta(destino);
+            }));
+        }
+        function buscarRecetaClinica(destino) {
+            const input = document.getElementById(destino === 'casa' ? 'busca-casa' : 'busca-aplica');
+            const lista = document.getElementById(destino === 'casa' ? 'lista-casa' : 'lista-aplica');
+            if (!input || !lista) return;
+            const e = BelenUI.esc;
+            const hits = BelenStore.buscarMedicamentosReceta(input.value);
+            lista.innerHTML = hits.map(p => `<button type="button" data-sku="${e(p.sku)}" class="text-left text-xs font-semibold bg-white border border-slate-200 rounded-lg px-2 py-1.5 hover:border-cyan-400">${e(p.nombre)}</button>`).join('');
+            lista.querySelectorAll('[data-sku]').forEach(b => b.addEventListener('click', () => {
+                const prod = BelenStore.productoPorSku(b.getAttribute('data-sku'));
+                if (!prod) return;
+                leerLineasReceta(destino);
+                const base = arregloReceta(destino);
+                if (base.some(x => x.sku === prod.sku)) { BelenUI.toast('Ese medicamento ya está en la lista.', 'alerta'); return; }
+                base.push({ sku: prod.sku, nombre: prod.nombre, dosis_indicacion: destino === 'casa' ? '' : '1 dosis ahora', cantidad: 1 });
+                input.value = '';
+                lista.innerHTML = '';
+                if (destino === 'casa' && TURNO) BelenStore.guardarBorradorRecetaCasa(TURNO.turno_id, borradorCasa);
+                pintarLineasReceta(destino);
+            }));
+        }
+        function prepararRecetasConsulta() {
+            const caja = document.getElementById('bloques-receta');
+            if (!caja) return;
+            const puede = SESION && BelenStore.puedeEmitirRecetaMedica(SESION.rol);
+            caja.classList.toggle('hidden', !puede);
+            if (!puede) return;
+            borradorCasa = ((TURNO && TURNO.receta_casa_borrador) || []).map(x => Object.assign({}, x));
+            pintarLineasReceta('aplica');
+            pintarLineasReceta('casa');
+            const aplica = document.getElementById('busca-aplica');
+            const casa = document.getElementById('busca-casa');
+            if (aplica) aplica.addEventListener('input', () => buscarRecetaClinica('aplica'));
+            if (casa) casa.addEventListener('input', () => buscarRecetaClinica('casa'));
+            const btnOrden = document.getElementById('btn-orden-aplicacion');
+            const btnCasa = document.getElementById('btn-receta-casa');
+            if (btnOrden) btnOrden.addEventListener('click', enviarOrdenAplicacionAhora);
+            if (btnCasa) btnCasa.addEventListener('click', () => emitirRecetaCasaPendiente(true));
+        }
+        function enviarOrdenAplicacionAhora() {
+            leerLineasReceta('aplica');
+            if (!borradorAplicacion.length) { BelenUI.toast('Agregue el medicamento que se va a aplicar.', 'alerta'); return; }
+            if (!TURNO || !SESION) { BelenUI.toast('Abra la consulta de un paciente para enviar la orden.', 'alerta'); return; }
+            const r = BelenStore.enviarOrdenAplicacion({ turno_id: TURNO.turno_id, items: borradorAplicacion, diagnostico: diagnosticoNotaActual() }, SESION);
+            if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+            TURNO = r.turno || BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
+            borradorAplicacion = [];
+            pintarLineasReceta('aplica');
+            BelenUI.toast('Orden ' + r.receta.folio + ' enviada a enfermería y farmacia.', 'exito');
+        }
+        function emitirRecetaCasaPendiente(imprimir) {
+            leerLineasReceta('casa');
+            if (!borradorCasa.length || !TURNO || !SESION) return '';
+            const r = BelenStore.emitirReceta({ turno_id: TURNO.turno_id, tipo_origen: 'RECETA_CASA', items: borradorCasa, diagnostico: diagnosticoNotaActual() }, SESION);
+            if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return ''; }
+            borradorCasa = [];
+            pintarLineasReceta('casa');
+            BelenStore.guardarBorradorRecetaCasa(TURNO.turno_id, []);
+            TURNO = BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
+            const html = BelenStore.htmlHojaReceta(r.receta);
+            if (imprimir) {
+                imprimirHtmlEnVisor(html);
+                BelenUI.toast('Receta ' + r.receta.folio + ' lista para la firma.', 'exito');
+            }
+            return html;
         }
         function abrirCambiarAreaVisor() {
             if (!TURNO || !INTERNAMIENTO) return;
@@ -1912,6 +2045,15 @@
             nodo('ingreso', 'Ingreso', 'fa-folder-open', itemsIngreso);
 
             const hojas = (INTERNAMIENTO.hojas_indicaciones || []).slice().reverse();
+            const recetasPaciente = S.recetasDePaciente(INTERNAMIENTO.paciente_id).slice().reverse();
+            nodo('recetas', 'Recetas', 'fa-file-prescription', recetasPaciente.map(r => ({
+                id: 'rx-' + r.receta_id,
+                titulo: r.folio,
+                sub: S.fechaHoraLegible(r.fecha_hora) + ' · ' + (r.medico_nombre || ''),
+                meta: r.folio + ' · ' + S.etiquetaEstatusReceta(r.estatus_surtido) + ' · ' + (r.medico_nombre || ''),
+                htmls: () => [S.htmlHojaReceta(r)]
+            })), { vacio: 'Sin recetas foliadas' });
+
             nodo('indicaciones', 'Indicaciones Médicas', 'fa-prescription-bottle-medical', hojas.map((h, k) => ({
                 id: 'ind-' + h.hoja_id, titulo: k === 0 ? 'Indicaciones vigentes' : h.folio, etiqueta: k === 0 ? 'Vigente' : 'Anterior',
                 sub: S.fechaHoraLegible(h.fecha_hora),
@@ -1984,7 +2126,9 @@
             document.getElementById('visor-doc-meta').textContent = d.meta || '';
             const esCuenta = d.id === 'cuenta-consumos';
             document.getElementById('visor-documento').innerHTML = d.htmls().map(h => esCuenta ? h : `<article class="hoja-papel" aria-readonly="true" data-hoja>${h}</article>`).join('');
-            document.getElementById('btn-imprimir-documento').classList.toggle('hidden', esCuenta);
+            const btnImprimir = document.getElementById('btn-imprimir-documento');
+            btnImprimir.classList.toggle('hidden', esCuenta);
+            btnImprimir.innerHTML = String(d.id).indexOf('rx-') === 0 ? '<i class="fas fa-print"></i> Reimprimir Receta para Firma' : '<i class="fas fa-print"></i> Imprimir este documento';
             document.getElementById('visor-documento-wrap').scrollTop = 0;
         }
 
@@ -2232,7 +2376,7 @@
                     med.parentElement.appendChild(caja);
                     const pintar = () => {
                         caja.innerHTML = htmlAlertasCofepris([med.value, sol.value].filter(Boolean).join('\n'));
-                        caja.querySelectorAll('[data-receta-sku]').forEach(b => b.addEventListener('click', () => imprimirRecetaExpediente(b.getAttribute('data-receta-sku'), b.getAttribute('data-receta-dosis'), b.getAttribute('data-receta-tipo'))));
+                        enlazarBotonesReceta(caja);
                     };
                     med.addEventListener('input', pintar);
                     sol.addEventListener('input', pintar);
@@ -2476,6 +2620,7 @@
             sincronizarCivil();
 
             aplicarTipoIngreso(sessionStorage.getItem('belen_destino'));
+            prepararRecetasConsulta();
             poblarEspecialidadesInterconsulta();
             renderizarMachotes();
 
@@ -3249,6 +3394,12 @@
                     avisar('No se pudo guardar la consulta', 'El almacenamiento local del navegador no está disponible o está lleno. La consulta NO se cerró; intente de nuevo.', 'error');
                     return;
                 }
+                const htmlCasa = emitirRecetaCasaPendiente(false);
+                if (htmlCasa) {
+                    const zonaCasa = document.getElementById('print-receta-casa');
+                    zonaCasa.innerHTML = htmlCasa;
+                    zonaCasa.classList.remove('hidden');
+                }
             window.print();
                 ocultarTodosLosPrints();
 
@@ -3260,6 +3411,8 @@
                 const datosGenerados = recolectarExpediente();
                 console.log("ENVIANDO AL BACKEND:", datosGenerados);
                 actualizarTurnoClinico(datosGenerados, 'internado_en_proceso');   // aparece en Hospitalización (papeleo en curso)
+                const htmlCasaInterna = emitirRecetaCasaPendiente(false);
+                if (htmlCasaInterna) BelenUI.toast('La receta para casa quedó foliada y se puede reimprimir desde el portafolio.', 'exito');
 
                 desbloquearModoIngreso();
                 cambiarPestana('ingreso');
