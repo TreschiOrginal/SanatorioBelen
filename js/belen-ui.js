@@ -233,49 +233,135 @@
         const sv = p.signos_vitales || {};
         const bloque = (titulo, valor) => valor ? `<div class="mb-3"><p class="text-[10px] font-bold text-slate-400 uppercase mb-0.5">${esc(titulo)}</p><p class="text-sm text-slate-700 whitespace-pre-line">${esc(valor)}</p></div>` : '';
         const dx = (exp.diagnosticos || []).map(d => `${d.cie10_codigo ? d.cie10_codigo + ' · ' : ''}${d.descripcion}`).join('\n');
-        const proc = ((exp.consentimientos || {}).procedimientos || []).map(x => x.procedimiento).filter(Boolean).join('\n');
         const ind = exp.indicaciones || {};
         const vit = (sv.ta_sistolica ? `TA ${sv.ta_sistolica}/${sv.ta_diastolica}` : '') + (sv.frecuencia_cardiaca ? ` · FC ${sv.frecuencia_cardiaca}` : '') +
                     (sv.frecuencia_respiratoria ? ` · FR ${sv.frecuencia_respiratoria}` : '') + (sv.temperatura_c ? ` · Temp ${sv.temperatura_c}` : '') + (sv.spo2_porcentaje ? ` · SpO2 ${sv.spo2_porcentaje}%` : '');
+        const ef = textoExploracionVisita(exp);
         return bloque('Motivo de consulta', c.motivo_consulta) + bloque('Padecimiento actual', c.padecimiento_actual) + bloque('Signos vitales', vit) +
+               bloque('Exploración física', ef) +
                bloque('Estudios auxiliares', c.estudios_auxiliares) + bloque('Diagnósticos', dx) + bloque('Análisis clínico', c.analisis_clinico) +
-               bloque('Plan de tratamiento', c.plan_tratamiento) + bloque('Procedimientos con consentimiento', proc) +
+               bloque('Plan de tratamiento', c.plan_tratamiento) + bloque('Pronóstico', c.pronostico) +
                bloque('Alergias', a.alergias && a.alergias.presente ? a.alergias.descripcion : '') +
                bloque('Indicaciones: dieta', (ind.dieta || {}).texto) + bloque('Indicaciones: medicamentos', (ind.medicamentos || {}).texto);
     }
 
-    // op: { pacienteId, excluirTurnoId, renderVisita(exp)->html, titulo }
+    function textoExploracionVisita(exp) {
+        const lista = (exp && exp.exploracion_fisica) || [];
+        const libre = lista.find(x => x && (x.sistema_codigo === 'libre' || x.estatus === 'LIBRE'));
+        if (libre && libre.hallazgo) return libre.hallazgo + (libre.fcf_lpm ? '\nFrecuencia cardíaca fetal: ' + libre.fcf_lpm + ' lpm' : '');
+        if ((exp.consulta || {}).exploracion_libre) return exp.consulta.exploracion_libre;
+        return lista.map(x => {
+            if (!x) return '';
+            const hallazgo = x.estatus === 'ALTERADO' ? (x.hallazgo || 'Alteración sin descripción') : (x.hallazgo || 'Sin hallazgos descritos');
+            return (x.sistema || 'Sistema') + ': ' + hallazgo;
+        }).filter(Boolean).join('\n');
+    }
+
+    function htmlDocumentoClinico(pieza) {
+        const bloque = (titulo, valor) => valor ? `<div class="mb-3"><p class="text-[10px] font-bold text-slate-400 uppercase mb-0.5">${esc(titulo)}</p><p class="text-sm text-slate-700 whitespace-pre-line">${esc(valor)}</p></div>` : '';
+        if (!pieza) return '';
+        if (pieza.tipo === 'consulta') return resumenVisitaHTML(pieza.visita || {});
+        if (pieza.tipo === 'historia') {
+            const exp = pieza.visita || {};
+            const a = (exp.antecedentes || {}).heredofamiliares || {};
+            const app = ((exp.antecedentes || {}).personales_patologicos || {});
+            return bloque('Antecedentes heredofamiliares', a.negado ? 'Interrogados y negados.' : a.detalle) +
+                bloque('Antecedentes patológicos', app.negado_todo ? 'Interrogados y negados.' : (app.otras_enfermedades || '')) +
+                resumenVisitaHTML(exp);
+        }
+        const n = pieza.nota || {};
+        if (pieza.tipo === 'evolucion') {
+            const sv = (n.objetivo && n.objetivo.signos_vitales) || {};
+            const vit = [sv.ta_sistolica ? 'TA ' + sv.ta_sistolica + '/' + (sv.ta_diastolica || '') : '', sv.frecuencia_cardiaca ? 'FC ' + sv.frecuencia_cardiaca : ''].filter(Boolean).join(' · ');
+            return bloque('Subjetivo', n.subjetivo || n.evolucion) + bloque('Exploración física', (n.objetivo && n.objetivo.exploracion_fisica) || n.exploracion_fisica) +
+                bloque('Signos vitales', vit) + bloque('Análisis', n.analisis) + bloque('Plan', n.plan) + bloque('Diagnóstico', n.diagnostico_actualizado || n.diagnostico_vigente);
+        }
+        if (pieza.tipo === 'postoperatoria') {
+            return bloque('Diagnóstico preoperatorio', n.dx_pre) + bloque('Operación', n.operacion) + bloque('Diagnóstico postoperatorio', n.dx_post) +
+                bloque('Técnica', n.tecnica) + bloque('Hallazgos', n.hallazgos) + bloque('Pronóstico', n.pronostico);
+        }
+        if (pieza.tipo === 'postanestesica') {
+            return bloque('Técnica anestésica', n.tecnica_texto || n.tecnica) + bloque('Evolución', n.evolucion) + bloque('Incidentes', n.incidentes);
+        }
+        if (pieza.tipo === 'egreso') {
+            return bloque('Motivo de egreso', n.motivo_egreso) + bloque('Resumen clínico', n.resumen_clinico) + bloque('Diagnóstico final', n.diagnostico_final) +
+                bloque('Pronóstico', n.pronostico) + bloque('Plan de alta', n.plan_alta);
+        }
+        return bloque(pieza.titulo, '');
+    }
+
+    function abrirMisCedulas() {
+        const S = global.BelenStore;
+        const s = S && S.sesion();
+        const u = s && S.USUARIOS[s.usuario_id];
+        if (!u || u.rol !== 'medico') { toast('Solo el médico puede configurar sus cédulas de firma.', 'alerta'); return null; }
+        if (S.esMedicoGeneral(u)) {
+            const valor = u.cedula_general || u.cedula_profesional || 'No registrada';
+            return modal({
+                titulo: 'Mis Cédulas de Firma', subtitulo: u.nombre, icono: 'fa-id-card', ancho: 'md',
+                html: `<p class="text-sm text-slate-600 text-left">Como médico general, sus notas, indicaciones y recetas imprimen siempre la cédula de licenciatura.</p>
+                    <p class="mt-3 text-left text-sm font-bold text-slate-900">${esc(S.CEDULAS_FIRMA[0].etiqueta)}</p>
+                    <p class="text-left text-base font-extrabold text-cyan-800">${esc(valor)}</p>`,
+                botones: [{ texto: 'Cerrar', estilo: 'primario' }]
+            });
+        }
+        const checks = S.CEDULAS_FIRMA.map(c => {
+            const tiene = !!u[c.campo];
+            const on = tiene && (u.cedulas_visibles || []).indexOf(c.codigo) >= 0;
+            return `<label class="flex items-start gap-3 rounded-xl border border-slate-200 px-3 py-2 ${tiene ? 'bg-white' : 'bg-slate-50'}">
+                <input type="checkbox" data-vis="${esc(c.codigo)}" class="mt-1" ${on ? 'checked' : ''} ${tiene ? '' : 'disabled'}>
+                <span><span class="block text-sm font-bold text-slate-800">${esc(c.etiqueta)}</span>
+                <span class="block text-xs ${tiene ? 'text-cyan-800 font-bold' : 'text-slate-400'}">${tiene ? esc(u[c.campo]) : 'No registrada. Dirección la captura en Gestión de Personal.'}</span></span>
+            </label>`;
+        }).join('');
+        return modal({
+            titulo: 'Mis Cédulas de Firma', subtitulo: 'Elija cuáles de sus cédulas registradas se imprimen en notas, indicaciones y recetas.', icono: 'fa-id-card', ancho: 'md',
+            html: `<div class="space-y-2 text-left">${checks}</div><p id="ced-error" class="text-xs text-red-600 mt-3 hidden text-left"></p>`,
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Guardar impresión', estilo: 'primario', alPulsar: c => {
+                    const vis = Array.from(c.el.querySelectorAll('[data-vis]:checked')).map(x => x.getAttribute('data-vis'));
+                    const r = S.guardarCedulasVisibles(u.id, vis, S.sesion());
+                    const error = c.el.querySelector('#ced-error');
+                    if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                    toast('Las notas, indicaciones y recetas usarán las cédulas seleccionadas.', 'exito');
+                } }
+            ]
+        });
+    }
+
+    // op: { pacienteId, excluirTurnoId, renderDocumento(pieza)->html, titulo }
     function modalHistorial(op) {
         const S = global.BelenStore;
         const pac = S.buscarPacientePorId(op.pacienteId);
-        const visitas = S.visitasDePaciente(op.pacienteId).filter(v => !op.excluirTurnoId || (v.meta || {}).turno_id !== op.excluirTurnoId);
         if (!pac) { toast('No se encontró el paciente.', 'alerta'); return null; }
-        if (!visitas.length) { toast('Este paciente no tiene visitas anteriores registradas.', 'info'); return null; }
-        const render = op.renderVisita || resumenVisitaHTML;
-        const lista = visitas.map((v, i) => {
-            const f = ((v.consulta || {}).fecha_hora || '').slice(0, 10);
-            return `<button type="button" data-visita="${i}" class="w-full text-left rounded-lg border border-slate-200 px-3 py-2 hover:border-cyan-400 transition">
-                <span class="block text-sm font-bold text-slate-800">${esc(S.fechaLegibleISO(f) || 'Sin fecha')}</span>
-                <span class="block text-[11px] text-slate-500">${esc((v.meta || {}).medico_nombre || (v.consulta || {}).medico_tratante || '')}</span>
-                <span class="inline-block mt-1 text-[10px] font-bold uppercase bg-slate-100 text-slate-600 rounded px-1.5 py-0.5">${esc(DESTINOS[(v.consulta || {}).destino] || (v.consulta || {}).destino || 'Consulta')}</span></button>`;
+        const piezas = S.piezasClinicasPaciente(op.pacienteId, op.excluirTurnoId);
+        if (!piezas.length) { toast('Este paciente no tiene notas clínicas anteriores.', 'info'); return null; }
+        const lista = piezas.map((p, i) => {
+            const f = String(p.fecha || '').slice(0, 16).replace('T', ' ');
+            return `<button type="button" data-doc="${i}" class="w-full text-left rounded-lg border border-slate-200 px-3 py-2 hover:border-cyan-400 transition">
+                <span class="block text-sm font-bold text-slate-800">${esc(p.titulo)}</span>
+                <span class="block text-[11px] text-slate-500">${esc(S.fechaHoraLegible ? S.fechaHoraLegible(p.fecha) : f)}${p.medico ? ' · ' + esc(p.medico) : ''}</span></button>`;
         }).join('');
-        const html = `<div class="grid grid-cols-1 md:grid-cols-[14rem_1fr] gap-4 text-left" id="historial-visitas">
+        const html = `<div class="grid grid-cols-1 md:grid-cols-[16rem_1fr] gap-4 text-left" id="historial-visitas">
             <div class="flex flex-col gap-2 md:max-h-[60vh] overflow-y-auto" id="historial-lista">${lista}</div>
             <div id="historial-detalle" class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 md:max-h-[60vh] overflow-y-auto"></div></div>`;
         return modal({
-            titulo: op.titulo || 'Historial de Visitas Anteriores', subtitulo: `${pac.nombre_completo} · ${pac.paciente_id} · Solo lectura`, icono: 'fa-clock-rotate-left', ancho: 'xxl', html: html,
+            titulo: op.titulo || 'Historial de Visitas Anteriores', subtitulo: `${pac.nombre_completo} · ${piezas.length} documento${piezas.length === 1 ? '' : 's'} clínico${piezas.length === 1 ? '' : 's'} · orden cronológico · solo lectura`, icono: 'fa-clock-rotate-left', ancho: 'xxl', html: html,
             alMostrar: ctrl => {
                 const mostrar = i => {
-                    ctrl.el.querySelectorAll('[data-visita]').forEach(b => {
-                        const act = +b.getAttribute('data-visita') === i;
+                    ctrl.el.querySelectorAll('[data-doc]').forEach(b => {
+                        const act = +b.getAttribute('data-doc') === i;
                         b.classList.toggle('border-cyan-500', act); b.classList.toggle('bg-cyan-50', act);
                     });
                     let h = '';
-                    try { h = render(visitas[i]); } catch (e) { h = resumenVisitaHTML(visitas[i]); }
-                    ctrl.el.querySelector('#historial-detalle').innerHTML = h;
+                    try {
+                        h = (op.renderDocumento && op.renderDocumento(piezas[i])) || htmlDocumentoClinico(piezas[i]);
+                    } catch (e) { h = htmlDocumentoClinico(piezas[i]); }
+                    ctrl.el.querySelector('#historial-detalle').innerHTML = h || '<p class="text-sm text-slate-500">Esta nota no tiene texto clínico.</p>';
                 };
-                ctrl.el.querySelectorAll('[data-visita]').forEach(b => b.addEventListener('click', () => mostrar(+b.getAttribute('data-visita'))));
-                mostrar(0);
+                ctrl.el.querySelectorAll('[data-doc]').forEach(b => b.addEventListener('click', () => mostrar(+b.getAttribute('data-doc'))));
+                mostrar(piezas.length - 1);
             },
             botones: [{ texto: 'Cerrar', estilo: 'secundario' }]
         });
@@ -292,8 +378,10 @@
         const estudios = S.listarEstudios();
         if (!estudios.length) { toast('El catálogo de estudios está vacío.', 'alerta'); return null; }
         const admin = S.puedeAlterarMontoEstudio(s);
+        const enfermeria = S.esEnfermeria(s.rol);
         const bloques = [
             { id: 'lab', titulo: '🧪 Laboratorios y Tubos', cats: ['LABORATORIO'] },
+            { id: 'pat', titulo: '🧫 Biopsias / Patología', cats: ['PATOLOGIA'] },
             { id: 'img', titulo: '🩻 Rayos X e Imagen', cats: ['IMAGENOLOGIA'] },
             { id: 'proc', titulo: '🩺 Procedimientos de Enfermería', cats: ['PROCEDIMIENTO'] },
             { id: 'hosp', titulo: '🏨 Estancia y hospitalización', cats: ['HOSPITALIZACION'] }
@@ -301,13 +389,15 @@
         const chip = est => {
             const tubo = est.tubo_muestra && est.tubo_muestra !== 'N/A' ? est.tubo_muestra : '';
             const emoji = tubo ? S.resumenTubosEstudios([est.estudio_id]).texto.split(' ')[0] : '';
-            const precio = admin
+            const precio = enfermeria ? '' : (admin
                 ? `<input data-precio="${esc(est.estudio_id)}" type="number" min="0.01" step="0.01" value="${est.precio_unitario}" class="mt-1 w-28 border border-slate-300 rounded-lg px-2 py-1 text-xs">`
-                : `<input data-precio="${esc(est.estudio_id)}" type="text" readonly disabled value="${esc(S.formatoMoneda(est.precio_unitario))}" class="mt-1 w-28 border border-slate-200 rounded-lg px-2 py-1 text-xs bg-slate-100 text-slate-600">`;
-            return `<label class="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:border-cyan-400">
-                <input type="checkbox" data-est="${esc(est.estudio_id)}" class="mt-1 rounded border-slate-300 text-cyan-700">
+                : `<input data-precio="${esc(est.estudio_id)}" type="text" readonly disabled value="${esc(S.formatoMoneda(est.precio_unitario))}" class="mt-1 w-28 border border-slate-200 rounded-lg px-2 py-1 text-xs bg-slate-100 text-slate-600">`);
+            const q = S.normalizar([est.codigo, est.nombre, S.nombreTipoEstudio(est.categoria), tubo].join(' '));
+            return `<label data-est-item data-q="${esc(q)}" class="flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 cursor-pointer hover:border-cyan-400">
+                <input type="checkbox" data-est="${esc(est.estudio_id)}" data-nombre="${esc(est.nombre)}" class="mt-1 rounded border-slate-300 text-cyan-700">
                 <span class="min-w-0 flex-1">
-                    <span class="block text-sm font-extrabold text-slate-900">${esc(est.codigo)} · ${esc(est.nombre)}</span>
+                    <span class="block text-sm font-extrabold text-slate-900">${esc(est.nombre)}</span>
+                    <span class="block text-[11px] font-bold text-slate-500">${esc(S.nombreTipoEstudio(est.categoria))}</span>
                     ${tubo ? `<span class="block text-[11px] font-bold text-violet-800">${emoji ? esc(emoji) + ' ' : ''}${esc(tubo)}</span>` : '<span class="block text-[11px] text-slate-400">Sin tubo</span>'}
                     ${precio}
                 </span>
@@ -319,53 +409,89 @@
         }).join('');
         const tabs = bloques.map((b, i) => `<button type="button" data-tab="${b.id}" class="px-3 py-2 rounded-lg text-xs font-extrabold ${i === 0 ? 'bg-white text-cyan-800 shadow-sm' : 'text-slate-500'}">${esc(b.titulo)}</button>`).join('');
         return modal({
-            titulo: '🧪 Cargar Laboratorios / Estudios / Procedimientos',
+            titulo: '🧪 Cargar Estudios / Tubos / Procedimientos',
             subtitulo: t.paciente_nombre || '',
             icono: 'fa-vial',
             ancho: 'xxl',
             html: `<div class="space-y-3 text-left">
+                <div id="seleccion-estudios" class="sticky top-0 z-10 rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 flex flex-wrap gap-2 min-h-[2.5rem] items-center"><span class="text-xs text-slate-400">Ningún estudio seleccionado.</span></div>
+                <input id="busca-estudio-modal" type="search" placeholder="Buscar estudio, código o tubo" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" autocomplete="off">
                 <div id="tubos-resumen" class="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-bold text-violet-950">Tubos requeridos/tomados para esta orden: ninguno todavía.</div>
                 <div class="inline-flex flex-wrap gap-1 bg-slate-100 rounded-xl p-1">${tabs}</div>
                 ${paneles}
                 <label class="block text-[11px] font-bold text-slate-500 uppercase">Observaciones de toma / Laboratorio externo al que se envía</label>
                 <textarea id="toma-obs" maxlength="240" rows="2" placeholder="Opcional. Ej. Se envía a Laboratorio Patología del Puerto." class="w-full border border-slate-300 rounded-lg p-2.5 text-sm"></textarea>
-                <p class="text-[11px] text-slate-500">${admin ? 'Dirección puede corregir un monto en esta orden. El catálogo no cambia.' : 'Precio oficial bloqueado. Enfermería, caja y el resto del personal no pueden modificarlo.'}</p>
+                <p class="text-[11px] text-slate-500">${enfermeria ? 'Usted ve el estudio, la categoría y el tubo. Los importes los registra Caja.' : (admin ? 'Dirección puede corregir un monto en esta orden. El catálogo no cambia.' : 'Precio oficial bloqueado. Caja y el resto del personal no pueden modificarlo.')}</p>
                 <p id="toma-error" class="text-xs text-red-600 hidden"></p>
             </div>`,
             alMostrar: c => {
+                let tabActiva = bloques[0].id;
                 const pintarTubos = () => {
                     const ids = Array.from(c.el.querySelectorAll('[data-est]:checked')).map(x => x.getAttribute('data-est'));
                     const r = S.resumenTubosEstudios(ids);
                     c.el.querySelector('#tubos-resumen').textContent = r.texto
                         ? 'Tubos requeridos/tomados para esta orden: ' + r.texto
                         : (ids.length ? 'Tubos requeridos/tomados para esta orden: ninguno. Los conceptos marcados no piden tubo.' : 'Tubos requeridos/tomados para esta orden: ninguno todavía.');
+                    const caja = c.el.querySelector('#seleccion-estudios');
+                    const marcados = Array.from(c.el.querySelectorAll('[data-est]:checked'));
+                    if (!marcados.length) { caja.innerHTML = '<span class="text-xs font-bold text-slate-500">Seleccionados para Cargar: ninguno.</span>'; return; }
+                    caja.innerHTML = '<span class="text-[11px] font-extrabold uppercase text-cyan-900 mr-1">Seleccionados para Cargar</span>' + marcados.map(chk => {
+                        const id = chk.getAttribute('data-est');
+                        return `<button type="button" data-quitar="${esc(id)}" class="inline-flex items-center gap-1 bg-cyan-700 text-white text-xs font-bold rounded-full px-2.5 py-1">${esc(chk.getAttribute('data-nombre'))} <span aria-hidden="true">✕</span></button>`;
+                    }).join('');
+                    caja.querySelectorAll('[data-quitar]').forEach(b => b.addEventListener('click', () => {
+                        const chk = c.el.querySelector('[data-est="' + b.getAttribute('data-quitar') + '"]');
+                        if (chk) { chk.checked = false; pintarTubos(); }
+                    }));
                 };
-                c.el.querySelectorAll('[data-tab]').forEach(btn => btn.addEventListener('click', () => {
-                    const id = btn.getAttribute('data-tab');
+                const mostrarTab = id => {
+                    tabActiva = id;
                     c.el.querySelectorAll('[data-tab]').forEach(b => {
                         const on = b.getAttribute('data-tab') === id;
                         b.classList.toggle('bg-white', on); b.classList.toggle('text-cyan-800', on); b.classList.toggle('shadow-sm', on); b.classList.toggle('text-slate-500', !on);
                     });
-                    c.el.querySelectorAll('[data-bloque]').forEach(p => p.classList.toggle('hidden', p.getAttribute('data-bloque') !== id));
+                };
+                const filtrar = () => {
+                    const q = S.normalizar(c.el.querySelector('#busca-estudio-modal').value);
+                    c.el.querySelectorAll('[data-est-item]').forEach(el => {
+                        el.classList.toggle('hidden', !!q && el.getAttribute('data-q').indexOf(q) < 0);
+                    });
+                    c.el.querySelectorAll('[data-bloque]').forEach(p => {
+                        if (q) {
+                            const alguno = Array.from(p.querySelectorAll('[data-est-item]')).some(el => !el.classList.contains('hidden'));
+                            p.classList.toggle('hidden', !alguno);
+                        } else {
+                            p.classList.toggle('hidden', p.getAttribute('data-bloque') !== tabActiva);
+                        }
+                    });
+                };
+                c.el.querySelectorAll('[data-tab]').forEach(btn => btn.addEventListener('click', () => {
+                    c.el.querySelector('#busca-estudio-modal').value = '';
+                    mostrarTab(btn.getAttribute('data-tab'));
+                    filtrar();
                 }));
+                c.el.querySelector('#busca-estudio-modal').addEventListener('input', filtrar);
                 c.el.querySelectorAll('[data-est]').forEach(chk => chk.addEventListener('change', pintarTubos));
                 pintarTubos();
             },
             botones: [
                 { texto: 'Cancelar', estilo: 'secundario' },
-                { texto: 'Cargar a la cuenta', estilo: 'primario', alPulsar: c => {
+                { texto: 'Confirmar y Cargar', estilo: 'primario', alPulsar: c => {
                     const ids = Array.from(c.el.querySelectorAll('[data-est]:checked')).map(x => x.getAttribute('data-est'));
                     const precios = {};
                     if (admin) ids.forEach(id => { const inp = c.el.querySelector('[data-precio="' + id + '"]'); if (inp) precios[id] = inp.value; });
                     const r = S.cargarEstudiosACuenta(turnoId, { estudio_ids: ids, precios: admin ? precios : null, observaciones: c.el.querySelector('#toma-obs').value }, s);
                     const error = c.el.querySelector('#toma-error');
                     if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
-                    toast(r.cargos.length + (r.cargos.length === 1 ? ' estudio cargado' : ' estudios cargados') + ' · ' + S.formatoMoneda(r.total) + ' en la cuenta.', 'exito');
+                    const n = r.cargos.length;
+                    toast(enfermeria
+                        ? (n + (n === 1 ? ' estudio cargado a la cuenta.' : ' estudios cargados a la cuenta.'))
+                        : (n + (n === 1 ? ' estudio cargado' : ' estudios cargados') + ' · ' + S.formatoMoneda(r.total) + ' en la cuenta.'), 'exito');
                     if (op && typeof op.alGuardar === 'function') op.alGuardar(r);
                 } }
             ]
         });
     }
 
-    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, resumenVisitaHTML, abrirTerminalEstudios, TIPOS };
+    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, TIPOS };
 })(window);

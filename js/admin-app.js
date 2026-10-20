@@ -13,6 +13,7 @@ const AdminController = {
     filtroEspecialidad: '',
     pestanaFarmacia: 'terminal',
     pestanaTarifario: 'catalogo',
+    cuentaDestacada: null,
     filtroCategoriaEstudio: '',
     buscaEstudio: '',
     carritoFarmacia: [],
@@ -44,14 +45,20 @@ const AdminController = {
 
         if (this.rolActual === 'enf_farmacia') this.vista = 'farmacia';
         else {
-            const pedida = new URLSearchParams(window.location.search).get('vista');
+            const params = new URLSearchParams(window.location.search);
+            const pedida = params.get('vista');
             this.vista = this.vistaPermitida(pedida) ? pedida : this.vistaInicial();
+            if (pedida === 'tarifario' && params.get('turno')) {
+                this.pestanaTarifario = 'caja';
+                this.cuentaDestacada = params.get('turno');
+            }
             if (pedida && !this.vistaPermitida(pedida)) {
                 BelenUI.toast('Su perfil no tiene acceso a esa sección.', 'alerta');
                 if (this.vista) history.replaceState(null, '', '?vista=' + this.vista);
             }
         }
         await this.render();
+        this.enfocarCuenta();
 
         // Reloj de espera activo + sincronización entre pestañas (enfermería ↔ médico)
         this._temporizador = setInterval(() => this.actualizarRelojes(), 1000);
@@ -71,6 +78,8 @@ const AdminController = {
         this.rolActual = s.rol;
         document.getElementById('user-name').innerText = s.nombre;
         document.getElementById('user-role').innerText = s.rol === 'medico' ? s.especialidad : s.cargo;
+        const btnCed = document.getElementById('btn-mis-cedulas');
+        if (btnCed) btnCed.classList.toggle('hidden', s.rol !== 'medico');
         return true;
     },
 
@@ -292,7 +301,7 @@ const AdminController = {
         const botones = `
             ${puedeSignos ? `<button type="button" data-accion="signos" onclick="AdminController.abrirSignos('${id}')" class="bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center gap-1.5">
                 <i class="fas fa-heart-pulse"></i> ${t.signos_vitales ? 'Editar Signos' : 'Capturar Signos'}</button>` : ''}
-            ${BelenStore.permisoAccionDe(this.sesion.usuario_id, 'cargar_consumos') ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${id}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Laboratorios / Estudios / Procedimientos</button>` : ''}
+            ${BelenStore.permisoAccionDe(this.sesion.usuario_id, 'cargar_consumos') ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${id}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Estudios / Tubos / Procedimientos</button>` : ''}
             ${enConsulta
                 ? `<span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"><i class="fas fa-user-doctor mr-1"></i> Con el médico</span>`
                 : (BelenStore.puede('pasar_a_medico') ? `<button type="button" data-accion="pasar" onclick="AdminController.confirmarPase('${id}')" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition flex items-center gap-1.5"><i class="fas fa-arrow-right"></i> Enviar a Médico</button>` : '')}`;
@@ -572,7 +581,9 @@ const AdminController = {
             ? `<button type="button" onclick="AdminController.confirmarIngresoAmbulatorio('${e(c.cirugia_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">Ingresar Paciente Ambulatorio a Quirófano</button>` : '';
         const turnoQx = S.turnoActivoParaEstudios({ turno_id: c.turno_id, paciente_id: c.paciente_id });
         const cargarQx = turnoQx && S.permisoAccionDe(this.sesion.usuario_id, 'cargar_consumos')
-            ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${e(turnoQx.turno_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Laboratorios / Estudios / Procedimientos</button>` : '';
+            ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${e(turnoQx.turno_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Estudios / Tubos / Procedimientos</button>` : '';
+        const postopQx = turnoQx && S.puedeNotaPostoperatoria(this.sesion, S.internamientoDeTurno(turnoQx.turno_id))
+            ? `<button type="button" onclick="AdminController.abrirNotaPostoperatoria('${e(turnoQx.turno_id)}')" class="bg-violet-700 hover:bg-violet-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">Nota Post-Operatoria</button>` : '';
         const ya = c.ingresada
             ? '<span class="inline-flex text-[10px] font-extrabold uppercase px-2 py-1 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300">CIRUGÍA AMBULATORIA · ingresado</span>'
             : (c.ya_internado && c.tipo_estancia === 'AMBULATORIA' ? '<span class="text-[11px] font-semibold text-slate-500">El paciente ya tiene un episodio activo.</span>' : '');
@@ -599,7 +610,7 @@ const AdminController = {
             <div class="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
                 <p class="text-[10px] font-bold text-yellow-700 uppercase leading-none mb-1"><i class="fas fa-note-sticky mr-1"></i>Notas privadas</p>
                 <p class="text-xs text-slate-800" data-campo="notas">${c.notas ? e(c.notas) : '<span class="text-slate-400 italic">Sin notas registradas.</span>'}</p></div>
-            ${(ingresar || ya || cargarQx) ? `<div class="mt-3 flex flex-wrap items-center gap-2">${cargarQx}${ingresar}${ya}</div>` : ''}
+            ${(ingresar || ya || cargarQx || postopQx) ? `<div class="mt-3 flex flex-wrap items-center gap-2">${cargarQx}${postopQx}${ingresar}${ya}</div>` : ''}
         </div>`;
     },
 
@@ -803,6 +814,7 @@ const AdminController = {
                 </div>
                 <div class="text-right shrink-0">
                     <p class="text-lg font-extrabold text-amber-800">${e(S.formatoMoneda(f.total))}</p>
+                    <p class="text-[11px] font-extrabold text-amber-700 mt-1">Ver Desglose / Cobrar</p>
                     <p class="text-[10px] font-bold uppercase text-amber-600">Sin IVA · ${f.cargos.length} ${f.cargos.length === 1 ? 'concepto' : 'conceptos'}</p>
                 </div>
             </button>`;
@@ -821,75 +833,30 @@ const AdminController = {
         </section>`;
     },
 
+    enfocarCuenta: function () {
+        if (!this.cuentaDestacada) return;
+        const art = document.getElementById('cuenta-' + this.cuentaDestacada);
+        if (art) art.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
+
     abrirDesgloseCuenta: function (turnoId) {
         const S = BelenStore, t = S.obtenerTurno(turnoId);
         if (!t || !S.puede('ver_cuentas_cobrar')) { BelenUI.toast('No puede consultar esta cuenta.', 'alerta'); return; }
-        if (t.estatus !== 'alta_medica_pendiente_pago') { BelenUI.toast('Esta cuenta ya no está pendiente de cobro.', 'info'); this.render(); return; }
-        const f = S.fichaCuenta(t), e = x => this.e(x);
-        const filas = f.cargos.length ? f.cargos.map((c, i) => `<tr class="border-t border-slate-100">
-            <td class="px-3 py-2 text-slate-500">${i + 1}</td>
-            <td class="px-3 py-2 font-medium text-slate-800">${e(c.concepto)}${c.lote ? `<span class="block text-[11px] text-slate-400">Lote ${e(c.lote)}</span>` : ''}${c.aplica_iva ? '<span class="block text-[10px] font-bold text-amber-700">Gravable</span>' : ''}</td>
-            <td class="px-3 py-2 text-right">${e(S.formatoMoneda(c.precio_unitario))}</td>
-            <td class="px-3 py-2 text-center">${c.cantidad || 1}</td>
-            <td class="px-3 py-2 text-right font-bold">${e(S.formatoMoneda(c.subtotal))}</td>
-            <td class="px-3 py-2 text-xs text-slate-600">${e(this.textoAtribucionCargo(c))}</td>
-        </tr>`).join('') : '<tr><td colspan="6" class="px-3 py-6 text-center text-slate-400">Sin cargos registrados. El total a cobrar es $0.00.</td></tr>';
-        const html = `<div class="space-y-3 text-left">
-            <p class="text-xs text-slate-500">${f.origen === 'hospitalizacion' ? 'Egreso hospitalario' : 'Consulta ambulatoria'} · ${e(f.medico_nombre)}${f.diagnostico ? ' · ' + e(f.diagnostico) : ''}</p>
-            <div class="border border-slate-200 rounded-xl overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr>
-                        <th class="px-3 py-2 text-left">#</th><th class="px-3 py-2 text-left">Concepto</th>
-                        <th class="px-3 py-2 text-right">Precio unitario</th><th class="px-3 py-2 text-center">Cantidad</th>
-                        <th class="px-3 py-2 text-right">Subtotal</th>
-                        <th class="px-3 py-2 text-left">Fecha/Hora y Enfermera que cargó</th></tr></thead>
-                    <tbody>${filas}</tbody>
-                </table>
-            </div>
-            <button type="button" id="caja-factura" role="switch" aria-checked="false" class="w-full text-left rounded-2xl border-2 border-slate-300 bg-white px-4 py-4 hover:border-amber-400">
-                <span class="block text-base font-extrabold text-slate-900">¿El paciente solicita Factura? Aplicar +16% IVA a conceptos gravables</span>
-                <span id="caja-factura-estado" class="block text-xs text-slate-500 mt-1">Apagado. Se cobra el total sin IVA.</span>
-            </button>
-            <div id="caja-resumen" class="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-sm"></div>
-            ${f.internamiento_id ? `<a href="expediente.html?modo=hospitalizado&turno=${encodeURIComponent(f.turno_id)}" class="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-700 hover:text-cyan-900"><i class="fas fa-folder-tree"></i> Ver portafolio</a>` : ''}
-        </div>`;
-        BelenUI.modal({
-            titulo: 'Desglose de cuenta', subtitulo: f.nombre, icono: 'fa-receipt', tipo: 'alerta', ancho: 'lg', html: html,
-            alMostrar: c => {
-                const pintar = () => {
-                    const on = c.el.querySelector('#caja-factura').getAttribute('aria-checked') === 'true';
-                    const fiscal = S.desgloseFiscal(f.cargos, on);
-                    c.el.querySelector('#caja-factura').classList.toggle('border-amber-500', on);
-                    c.el.querySelector('#caja-factura').classList.toggle('bg-amber-50', on);
-                    c.el.querySelector('#caja-factura-estado').textContent = on ? 'Encendido. Se suma 16% solo a los cargos gravables.' : 'Apagado. Se cobra el total sin IVA.';
-                    c.el.querySelector('#caja-resumen').innerHTML = on
-                        ? `<p class="flex justify-between"><span>Subtotal base</span><span>${e(S.formatoMoneda(fiscal.subtotal))}</span></p>
-                           <p class="flex justify-between text-amber-800"><span>IVA (16% sobre insumos gravables)</span><span>${e(S.formatoMoneda(fiscal.iva))}</span></p>
-                           <p class="flex justify-between font-extrabold text-base text-slate-900 mt-1"><span>TOTAL A COBRAR (Con Factura)</span><span>${e(S.formatoMoneda(fiscal.total))}</span></p>`
-                        : `<p class="flex justify-between font-extrabold text-base text-slate-900"><span>Total sin IVA</span><span>${e(S.formatoMoneda(fiscal.total))}</span></p>`;
-                };
-                c.el.querySelector('#caja-factura').addEventListener('click', () => {
-                    const b = c.el.querySelector('#caja-factura');
-                    b.setAttribute('aria-checked', b.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
-                    pintar();
-                });
-                pintar();
-            },
-            botones: [
-                { texto: 'Cerrar', estilo: 'secundario' },
-                { texto: 'Marcar como Pagado y Cerrar Expediente', estilo: 'primario', id: 'caja-pagar', alPulsar: c => {
-                    const on = c.el.querySelector('#caja-factura').getAttribute('aria-checked') === 'true';
-                    setTimeout(() => this.confirmarCerrarExpediente(turnoId, on), 200);
-                } }
-            ]
-        });
+        if (!this.vistaPermitida('tarifario')) { BelenUI.toast('Su perfil no tiene acceso a Tarifario y Caja.', 'alerta'); return; }
+        this.cuentaDestacada = turnoId;
+        this.pestanaTarifario = 'caja';
+        this.vista = 'tarifario';
+        history.replaceState(null, '', '?vista=tarifario&turno=' + encodeURIComponent(turnoId));
+        const self = this;
+        this.render().then(function () { self.enfocarCuenta(); });
     },
 
-    confirmarCerrarExpediente: function (turnoId, conFactura) {
+    confirmarCerrarExpediente: function (turnoId, conFactura, modo, base) {
         const S = BelenStore, t = S.obtenerTurno(turnoId);
         if (!t) return;
         const f = S.fichaCuenta(t);
-        const fiscal = S.desgloseFiscal(f.cargos, !!conFactura);
+        const opFiscal = { modo: modo || 'items', base_manual: base };
+        const fiscal = S.desgloseFiscal(f.cargos, !!conFactura, opFiscal);
         const detalle = conFactura
             ? 'Subtotal base ' + S.formatoMoneda(fiscal.subtotal) + '. IVA ' + S.formatoMoneda(fiscal.iva) + '. Total con factura ' + S.formatoMoneda(fiscal.total) + '.'
             : 'Se cobra el total sin IVA: ' + S.formatoMoneda(fiscal.total) + '.';
@@ -897,7 +864,7 @@ const AdminController = {
             titulo: '¿Marcar como pagado y cerrar el expediente?', tipo: 'alerta', textoConfirmar: 'Sí, cobrar y cerrar',
             mensaje: detalle + ' Paciente: ' + f.nombre + '. Desaparecerá de los monitores activos y quedará en la búsqueda histórica.',
             alConfirmar: () => {
-                const r = S.cerrarExpedientePagado(turnoId, this.sesion, { requirio_factura: !!conFactura });
+                const r = S.cerrarExpedientePagado(turnoId, this.sesion, { requirio_factura: !!conFactura, modo_iva: modo || 'items', base_gravable_manual: base });
                 if (!r.ok) { BelenUI.toast(r.motivo, 'peligro'); return false; }
                 BelenUI.toast('Expediente cerrado. Cobrado ' + S.formatoMoneda(fiscal.total) + (conFactura ? ' con factura.' : ' sin factura.'), 'exito');
                 this.render();
@@ -948,21 +915,29 @@ const AdminController = {
                 accion = `<a href="expediente.html?turno=${encodeURIComponent(f.turno_id)}" data-accion="abrir-expediente" class="${cls} text-xs font-bold py-2.5 px-4 rounded-lg shadow-sm transition flex items-center gap-2"><i class="fas ${ico}"></i> ${txt}</a>`;
             }
             const botonEstudio = (!pendientePago && (f.finalizado || f.estatus === 'internado_en_proceso') && S.permisoAccionDe(s.usuario_id, 'cargar_consumos'))
-                ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${e(f.turno_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Laboratorios / Estudios / Procedimientos</button>` : '';
+                ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${e(f.turno_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Estudios / Tubos / Procedimientos</button>` : '';
+            const internadoPo = S.internamientoDeTurno(f.turno_id);
+            const botonPostop = internadoPo && S.puedeNotaPostoperatoria(s, internadoPo)
+                ? `<button type="button" onclick="AdminController.abrirNotaPostoperatoria('${e(f.turno_id)}')" class="bg-violet-700 hover:bg-violet-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">Nota Post-Operatoria</button>` : '';
             const botonCama = (!pendientePago && S.puede('asignar_cama'))
                 ? `<button type="button" data-accion="asignar-cama" onclick="AdminController.abrirAsignarCama('${e(f.turno_id)}')" class="bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-bed"></i> ${f.cama ? 'Cambiar cama' : 'Asignar cama'}</button>` : '';
+            const areaActual = internadoPo ? S.codigoAreaEstancia(internadoPo, S.obtenerTurno(f.turno_id)) : '';
+            const botonArea = (!pendientePago && internadoPo && S.puedeCambiarArea(s) && S.areasDestinoEstancia(areaActual).length)
+                ? `<button type="button" onclick="AdminController.abrirCambiarArea('${e(f.turno_id)}')" class="bg-white border border-indigo-300 text-indigo-800 hover:bg-indigo-50 text-xs font-bold py-2 px-3 rounded-lg transition">🔄 Cambiar Área de Estancia</button>` : '';
+            const botonCorte = (!pendientePago && internadoPo && (s.rol === 'admin' || s.rol === 'administrador') && (areaActual === 'HOSPITALIZACION' || areaActual === 'OBSERVACION' || areaActual === 'QUIROFANO'))
+                ? `<button type="button" onclick="AdminController.abrirCorteEstancia('${e(f.turno_id)}')" class="bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold py-2 px-3 rounded-lg transition">🛏️ Aplicar Corte de Estancia / Noche</button>` : '';
             const ics = f.interconsultas.length
                 ? f.interconsultas.map(x => `<span class="inline-block bg-indigo-50 text-indigo-700 border border-indigo-200 rounded px-1.5 py-0.5 text-[10px] font-bold mr-1">${e(x.especialidad)} · ${e(x.medico_nombre)}</span>`).join('') : '';
             const borde = pendientePago ? 'border-l-amber-500' : (enProceso ? 'border-l-indigo-500' : 'border-l-slate-400');
             return `<div data-turno="${e(f.turno_id)}" data-paciente="${e(f.paciente_id)}" class="bg-white rounded-2xl border border-slate-200 border-l-4 ${borde} shadow-sm p-5">
                 <div class="flex flex-wrap items-start gap-4">
-                    <div class="min-w-[4rem] max-w-[7rem] min-h-[4rem] py-1 rounded-xl ${f.cama ? (pendientePago ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white') : 'bg-slate-100 text-slate-400 border border-dashed border-slate-300'} flex flex-col items-center justify-center shrink-0 text-center px-1">
+                    <div class="min-w-[4rem] max-w-[11rem] min-h-[4rem] py-1 rounded-xl ${f.cama ? (pendientePago ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white') : 'bg-slate-100 text-slate-400 border border-dashed border-slate-300'} flex flex-col items-center justify-center shrink-0 text-center px-1">
                         <i class="fas fa-bed text-sm"></i><span data-cama="1" class="text-[11px] font-extrabold leading-tight mt-0.5 break-words">${f.cama ? e(f.cama) : 'Sin cama'}</span></div>
                     <div class="flex-1 min-w-[240px]">
                         <div class="flex flex-wrap items-center gap-2"><h4 class="text-lg font-bold text-slate-900">${e(f.nombre)}</h4>${this.badgeEstatus({ estatus: f.estatus })}${f.ambulatorio_qx ? '<span class="inline-flex items-center text-[10px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300 shadow-sm">CIRUGÍA AMBULATORIA</span>' : ''}${relacion}</div>
                         <p class="text-xs text-slate-500">${f.edad !== null ? f.edad + ' años' : ''}${sexoTxt(f) ? ' · ' + sexoTxt(f) : ''}${f.area ? ' · ' + e(f.area) : ''}${pendientePago ? ' · ' + e(S.formatoMoneda(f.cuenta_actual || 0)) : ''}</p>
                     </div>
-                    <div class="flex flex-wrap gap-2 justify-end">${botonCama}${botonEstudio}${accion}</div>
+                    <div class="flex flex-wrap gap-2 justify-end">${botonCama}${botonArea}${botonCorte}${botonEstudio}${botonPostop}${accion}</div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-100">
                     ${dato('Médico tratante', `<span class="font-semibold">${e(f.medico_tratante)}</span><span class="block text-[11px] text-slate-400">${e(f.especialidad)}</span>`)}
@@ -984,24 +959,157 @@ const AdminController = {
 
     abrirCargarEstudio: function (turnoId) { this.abrirTerminalEstudios(turnoId); },
 
-    // Asignación de cama (Enfermería o Administración). Cama única por paciente activo.
+    abrirNotaPostoperatoria: function (turnoId) {
+        const S = BelenStore, e = t => this.e(t);
+        const i = S.internamientoDeTurno(turnoId);
+        if (!i || !S.puedeNotaPostoperatoria(this.sesion, i)) { BelenUI.toast('Solo el cirujano o Dirección pueden registrar la nota post-operatoria.', 'alerta'); return; }
+        const biopsias = S.listarEstudios().filter(est => est.categoria === 'PATOLOGIA' || S.normalizar(est.nombre).indexOf('biopsia') >= 0);
+        const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white';
+        BelenUI.modal({
+            titulo: 'Nota Post-Operatoria', subtitulo: 'Si hay pieza a patología, puede cargarse el estudio a la cuenta.', icono: 'fa-notes-medical', ancho: 'lg',
+            html: `<div class="space-y-3 text-left text-sm">
+                <label class="flex items-center gap-2"><input id="po-entrada" type="checkbox" checked class="rounded"> Entrada</label>
+                <label class="flex items-center gap-2"><input id="po-pausa" type="checkbox" checked class="rounded"> Pausa</label>
+                <label class="flex items-center gap-2"><input id="po-salida" type="checkbox" checked class="rounded"> Salida</label>
+                <label class="flex items-center gap-2"><input id="po-conteo" type="checkbox" checked class="rounded"> Conteo completo</label>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Diagnóstico preoperatorio</label><input id="po-dxpre" class="${cls}">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Diagnóstico postoperatorio</label><input id="po-dxpost" class="${cls}">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Operación realizada</label><input id="po-op" class="${cls}">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Técnica quirúrgica</label><textarea id="po-tecnica" rows="2" class="${cls}"></textarea>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Hallazgos</label><textarea id="po-hallazgos" rows="2" class="${cls}"></textarea>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Sangrado (ml)</label><input id="po-sangrado" type="number" min="0" value="0" class="${cls}">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Pieza enviada a patología</label>
+                <select id="po-patologia" class="${cls}"><option value="no">No</option><option value="si">Sí</option></select>
+                <div id="po-bx" class="hidden space-y-2 rounded-xl border border-violet-200 bg-violet-50 p-3">
+                    <label class="block text-[11px] font-bold text-violet-800 uppercase">Estudio de biopsia del catálogo</label>
+                    <select id="po-estudio" class="${cls}">${biopsias.map(b => `<option value="${e(b.estudio_id)}">${e(b.nombre)} · ${e(S.formatoMoneda(b.precio_unitario))}</option>`).join('')}</select>
+                    <label class="flex items-center gap-2 font-semibold text-slate-800"><input id="po-cargar" type="checkbox" checked class="rounded border-slate-300 text-violet-700"> Cargar estudio de Biopsia automáticamente a la cuenta del paciente</label>
+                </div>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Pronóstico</label><input id="po-pronostico" class="${cls}">
+                <p id="po-error" class="text-xs text-red-600 hidden"></p>
+            </div>`,
+            alMostrar: c => {
+                const sync = () => c.el.querySelector('#po-bx').classList.toggle('hidden', c.el.querySelector('#po-patologia').value !== 'si');
+                c.el.querySelector('#po-patologia').addEventListener('change', sync);
+                sync();
+            },
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Guardar nota', estilo: 'exito', alPulsar: c => {
+                    const val = id => c.el.querySelector(id).value;
+                    const si = val('#po-patologia') === 'si';
+                    const r = S.guardarNotaPostoperatoria(turnoId, {
+                        entrada: c.el.querySelector('#po-entrada').checked, pausa: c.el.querySelector('#po-pausa').checked,
+                        salida: c.el.querySelector('#po-salida').checked, conteo: c.el.querySelector('#po-conteo').checked,
+                        dx_pre: val('#po-dxpre'), dx_post: val('#po-dxpost'), operacion: val('#po-op'), tecnica: val('#po-tecnica'),
+                        hallazgos: val('#po-hallazgos'), sangrado_ml: val('#po-sangrado'), patologia: val('#po-patologia'),
+                        pronostico: val('#po-pronostico'),
+                        estudio_biopsia_id: si ? val('#po-estudio') : '',
+                        cargar_biopsia: si && c.el.querySelector('#po-cargar').checked
+                    }, this.sesion);
+                    const error = c.el.querySelector('#po-error');
+                    if (!r.ok) { error.textContent = (r.errores && Object.values(r.errores)[0]) || r.motivo; error.classList.remove('hidden'); return false; }
+                    BelenUI.toast(si && c.el.querySelector('#po-cargar').checked ? 'Nota guardada y biopsia cargada a la cuenta.' : 'Nota post-operatoria guardada.', 'exito');
+                    this.render();
+                } }
+            ]
+        });
+    },
+
+    // Asignación de cama: solo el número libre del área actual, con clave por zona.
     abrirAsignarCama: function (turnoId) {
         const S = BelenStore, t = S.obtenerTurno(turnoId);
         if (!t || !S.puede('asignar_cama') || !S.hospitalizadoVisiblePara(t, this.sesion)) { BelenUI.toast('No puede asignar cama a este paciente.', 'alerta'); return; }
         const i = S.internamientoDeTurno(turnoId);
+        const area = S.codigoAreaEstancia(i, t);
+        const libres = area ? S.camasLibres(area, i && i.internamiento_id) : [];
+        const e = x => this.e(x);
+        if (!area) { BelenUI.aviso('Sin área', 'Este paciente no tiene un área de estancia. Use Cambiar Área de Estancia.', 'alerta'); return; }
         BelenUI.modal({
-            titulo: 'Asignar cama', subtitulo: t.paciente_nombre, icono: 'fa-bed', ancho: 'sm',
-            html: `<label for="cama-valor" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Cama o habitación</label>
-                <input id="cama-valor" type="text" maxlength="40" autocomplete="off" value="${this.e(i && i.cama ? i.cama : '')}" placeholder="Ej. Habitación 204, Cama A" data-autofoco
-                    class="w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white">
+            titulo: 'Asignar cama', subtitulo: t.paciente_nombre + ' · ' + S.nombreAreaEstancia(area), icono: 'fa-bed', ancho: 'sm',
+            html: `<label for="cama-valor" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Cama disponible en ${e(S.nombreAreaEstancia(area))}</label>
+                ${libres.length ? `<select id="cama-valor" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white">${libres.map(c => `<option value="${e(c.codigo)}">${e(c.nombre)}</option>`).join('')}</select>` : '<p class="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">No hay camas libres en esta área.</p>'}
+                <p class="text-[11px] text-slate-500 mt-2">La misma cifra en otra zona es otra cama. Hospitalización, Observación y Recuperación no se pisan.</p>
                 <p id="cama-error" class="text-[11px] text-red-600 mt-1 hidden"></p>`,
-            alMostrar: c => c.el.querySelector('#cama-valor').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); c.el.querySelector('#cama-guardar').click(); } }),
             botones: [
                 { texto: 'Cancelar', estilo: 'secundario' },
                 { texto: 'Guardar cama', estilo: 'primario', id: 'cama-guardar', alPulsar: c => {
-                    const r = S.asignarCama(turnoId, c.el.querySelector('#cama-valor').value, this.sesion);
-                    if (!r.ok) { const m = c.el.querySelector('#cama-error'); m.textContent = r.motivo; m.classList.remove('hidden'); c.el.querySelector('#cama-valor').classList.add('border-red-500'); return false; }
-                    BelenUI.toast(`Cama "${r.internamiento.cama}" asignada a ${t.paciente_nombre}.`, 'exito');
+                    const sel = c.el.querySelector('#cama-valor');
+                    if (!sel) { BelenUI.toast('No hay camas libres en esta área.', 'alerta'); return false; }
+                    const r = S.asignarCama(turnoId, sel.value, this.sesion);
+                    if (!r.ok) { const m = c.el.querySelector('#cama-error'); m.textContent = r.motivo; m.classList.remove('hidden'); return false; }
+                    BelenUI.toast(r.internamiento.cama + ' asignada a ' + t.paciente_nombre + '.', 'exito');
+                    this.render();
+                } }
+            ]
+        });
+    },
+
+    abrirCambiarArea: function (turnoId) {
+        const S = BelenStore, t = S.obtenerTurno(turnoId);
+        if (!t || !S.puedeCambiarArea(this.sesion)) { BelenUI.toast('Su perfil no puede cambiar el área.', 'alerta'); return; }
+        const i = S.internamientoDeTurno(turnoId);
+        const actual = S.codigoAreaEstancia(i, t);
+        const destinos = S.areasDestinoEstancia(actual);
+        if (!destinos.length) { BelenUI.aviso('Sin cambio de área', 'Desde ' + (S.nombreAreaEstancia(actual) || 'esta área') + ' no hay un pase a Observación o Hospitalización.', 'info'); return; }
+        const e = x => this.e(x);
+        const opcionesArea = destinos.map(d => `<option value="${d}">${e(S.nombreAreaEstancia(d))}</option>`).join('');
+        BelenUI.modal({
+            titulo: 'Cambiar Área de Estancia', subtitulo: t.paciente_nombre, icono: 'fa-right-left', ancho: 'md',
+            html: `<div class="space-y-3 text-left">
+                <p class="text-xs text-slate-500">Sale de <b>${e(S.nombreAreaEstancia(actual) || 'sin área')}</b> y libera ${e(S.etiquetaCama(i && (i.cama_codigo || i.cama)) || 'la cama anterior')}.</p>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Nueva área</label>
+                <select id="area-nueva" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white">${opcionesArea}</select>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Cama en la nueva zona</label>
+                <select id="area-cama" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white"></select>
+                <p id="area-error" class="text-[11px] text-red-600 hidden"></p>
+            </div>`,
+            alMostrar: c => {
+                const area = c.el.querySelector('#area-nueva');
+                const cama = c.el.querySelector('#area-cama');
+                const pintar = () => {
+                    const libres = S.camasLibres(area.value, i && i.internamiento_id);
+                    cama.innerHTML = libres.length ? libres.map(x => `<option value="${e(x.codigo)}">${e(x.nombre)}</option>`).join('') : '<option value="">Sin camas libres</option>';
+                };
+                area.addEventListener('change', pintar);
+                pintar();
+            },
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Cambiar área', estilo: 'primario', alPulsar: c => {
+                    const error = c.el.querySelector('#area-error');
+                    const codigo = c.el.querySelector('#area-cama').value;
+                    if (!codigo) { error.textContent = 'Elija una cama libre de la nueva zona.'; error.classList.remove('hidden'); return false; }
+                    const r = S.cambiarAreaEstancia(turnoId, c.el.querySelector('#area-nueva').value, codigo, this.sesion);
+                    if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                    BelenUI.toast(t.paciente_nombre + ' pasó a ' + r.internamiento.cama + '.', 'exito');
+                    this.render();
+                } }
+            ]
+        });
+    },
+
+    abrirCorteEstancia: function (turnoId) {
+        const S = BelenStore;
+        if (this.rolActual !== 'admin' && this.rolActual !== 'administrador') { BelenUI.toast('Solo administración y caja aplican el corte de estancia.', 'alerta'); return; }
+        const prev = S.previewCorteEstancia(turnoId);
+        if (!prev.ok) { BelenUI.aviso('Corte de estancia', prev.motivo, 'alerta'); return; }
+        const e = x => this.e(x);
+        BelenUI.modal({
+            titulo: 'Aplicar Corte de Estancia / Noche', subtitulo: prev.area_nombre, icono: 'fa-bed', ancho: 'sm',
+            html: `<div class="space-y-3 text-left">
+                <p class="text-sm text-slate-700">Se cargará <b>${e(prev.concepto)}</b> a la cuenta. Puede confirmar el importe del tarifario o ajustarlo.</p>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Importe</label>
+                <input id="corte-precio" type="number" min="0.01" step="0.01" value="${prev.precio}" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+                <p id="corte-error" class="text-[11px] text-red-600 hidden"></p>
+            </div>`,
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Cargar corte', estilo: 'primario', alPulsar: c => {
+                    const r = S.aplicarCorteEstancia(turnoId, { precio: c.el.querySelector('#corte-precio').value }, this.sesion);
+                    const error = c.el.querySelector('#corte-error');
+                    if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                    BelenUI.toast(prev.concepto + ' cargado a la cuenta.', 'exito');
                     this.render();
                 } }
             ]
@@ -1139,15 +1247,16 @@ const AdminController = {
             <td class="px-3 py-3 font-mono text-xs">${e(p.lote)}</td>
             <td class="px-3 py-3">${e(S.fechaLegibleISO(p.caducidad))}${p.alerta && p.dias_caducidad !== null && p.dias_caducidad < 30 ? ' <i class="fas fa-triangle-exclamation text-red-600"></i>' : ''}</td>
             <td class="px-3 py-3"><span class="font-bold">${e(stock.piezas)}</span>${p.stock < 5 ? ' <i class="fas fa-triangle-exclamation text-red-600"></i>' : ''}<span class="block text-[11px] text-slate-500">${e(stock.cajas)}</span></td>
-            <td class="px-3 py-3 font-bold">${e(S.formatoMoneda(p.precio_unitario))}${p.aplica_iva ? '<span class="block text-[10px] font-normal text-amber-700">Grava 16% al facturar</span>' : '<span class="block text-[10px] font-normal text-slate-400">Tasa 0%</span>'}</td></tr>`;
+            <td class="px-3 py-3 font-bold">${e(S.formatoMoneda(p.precio_unitario))}${p.aplica_iva ? '<span class="block text-[10px] font-normal text-amber-700">Grava 16% al facturar</span>' : '<span class="block text-[10px] font-normal text-slate-400">Tasa 0%</span>'}</td>
+            <td class="px-3 py-3"><button type="button" onclick="AdminController.abrirIngresoFarmacia('${e(p.lote_id)}')" class="text-xs font-bold text-teal-800 hover:underline">Editar</button></td></tr>`;
         };
         return `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
             <table class="w-full text-sm text-left" id="tabla-farmacia">
                 <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr>
                     <th class="px-3 py-3">SKU</th><th class="px-3 py-3">Principio activo</th><th class="px-3 py-3">Forma</th><th class="px-3 py-3">Laboratorio</th>
-                    <th class="px-3 py-3">Lote</th><th class="px-3 py-3">Caducidad</th><th class="px-3 py-3">Piezas disponibles</th><th class="px-3 py-3">Precio unitario</th>
+                    <th class="px-3 py-3">Lote</th><th class="px-3 py-3">Caducidad</th><th class="px-3 py-3">Piezas disponibles</th><th class="px-3 py-3">Precio unitario</th><th class="px-3 py-3"></th>
                 </tr></thead>
-                <tbody>${filas.length ? filas.map(tr).join('') : '<tr><td colspan="8" class="px-4 py-16 text-center text-slate-400">No hay insumos en el almacén.</td></tr>'}</tbody>
+                <tbody>${filas.length ? filas.map(tr).join('') : '<tr><td colspan="9" class="px-4 py-16 text-center text-slate-400">No hay insumos en el almacén.</td></tr>'}</tbody>
             </table></div>
             <p class="text-[11px] text-slate-400 mt-3">La fila roja avisa stock menor a 5 o caducidad en menos de 30 días. El escáner completa el producto en cuanto el código coincide.</p>`;
     },
@@ -1167,7 +1276,9 @@ const AdminController = {
         </article>`).join('')}</div>`;
     },
 
-    abrirIngresoFarmacia: function () {
+    abrirIngresoFarmacia: function (loteId) {
+        const editando = loteId ? BelenStore.listarInventarioFarmacia(this.sesion).find(p => p.lote_id === loteId) : null;
+        if (loteId && !editando) { BelenUI.toast('No se encontró el insumo.', 'alerta'); return; }
         if (!this.operadorFarmacia()) { BelenUI.toast('Identifíquese con su código personal para operar.', 'alerta'); return; }
         if (!BelenStore.puede('gestionar_farmacia')) { BelenUI.toast('Su perfil no puede registrar inventario.', 'alerta'); return; }
         const S = BelenStore;
@@ -1179,7 +1290,7 @@ const AdminController = {
             <p id="err-${id}" class="text-[11px] text-red-600 mt-1 hidden"></p></div>`;
         const labs = `<datalist id="labs-farmacia">${S.LABORATORIOS_FRECUENTES.map(l => `<option value="${l}"></option>`).join('')}</datalist>`;
         BelenUI.modal({
-            titulo: 'Nuevo ingreso de insumo', subtitulo: 'Medicamento o material de curación. Los estudios viven en su propio catálogo.', icono: 'fa-barcode', ancho: 'xl',
+            titulo: editando ? 'Editar insumo' : 'Nuevo ingreso de insumo', subtitulo: editando ? 'El stock no cambia. AWaRe se pide solo en Fracción IV Antibiótico.' : 'Medicamento o material de curación. Los estudios viven en su propio catálogo.', icono: 'fa-barcode', ancho: 'xl',
             html: `${labs}<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 ${sel('far-categoria', 'Categoría', S.CATEGORIAS_ALMACEN.map(c => `<option value="${c.codigo}">${c.nombre}</option>`).join(''))}
                 ${campo('far-sku', 'Código de barras / SKU', 'text', 'data-autofoco maxlength="20" placeholder="Escanee el código. En material es opcional."')}
@@ -1193,7 +1304,9 @@ const AdminController = {
                 ${campo('far-proveedor', 'Proveedor (distribuidor)', 'text', 'maxlength="60"')}
                 ${campo('far-factura', 'Folio de factura de compra', 'text', 'maxlength="30"')}
                 ${sel('far-fraccion', 'Fracción COFEPRIS', S.FRACCIONES_COFEPRIS.map(f => `<option value="${f.codigo}" ${f.codigo === 'NA' ? 'selected' : ''}>${f.nombre}</option>`).join(''))}
-                ${sel('far-aware', 'Clasificación AWaRe (FEUM/OMS)', '<option value="">Seleccione…</option>' + S.CLASIFICACION_AWARE.map(a => `<option value="${a.codigo}">${a.nombre}</option>`).join(''))}
+                <div id="caja-far-aware"><label for="far-aware" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Clasificación AWaRe (Antibióticos FEUM/OMS)</label>
+                <select id="far-aware" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white"><option value="">No aplica (Solo para Fracción IV Antibiótico)</option></select>
+                <p id="err-far-aware" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
                 ${sel('far-modo', 'Modo de captura de stock', '<option value="cajas">Por cajas</option><option value="piezas">Por piezas sueltas / unidades</option>')}
                 ${campo('far-piezas', 'Piezas por caja', 'number', 'min="1" step="1" value="1"')}
                 ${campo('far-cajas', 'Número de cajas que ingresan', 'number', 'min="1" step="1"')}
@@ -1213,15 +1326,35 @@ const AdminController = {
                     q('far-precio-iva').textContent = Number.isFinite(precio) ? (aplica ? 'Si solicitan factura: ' + S.formatoMoneda(Math.round(precio * 116) / 100) : 'Tasa 0%. En Caja se cobra este precio.') : '';
                 };
                 const etiqueta = (id, texto) => { const lab = c.el.querySelector('label[for="' + id + '"]'); if (lab) lab.textContent = texto; };
-                const pintarModo = () => {
+                const pintarAware = () => {
                     const material = q('far-categoria').value === 'MATERIAL_CURACION';
                     const antibiotico = !material && q('far-fraccion').value === 'IV_ANTIBIOTICO';
+                    const cajaAware = c.el.querySelector('#caja-far-aware');
+                    if (cajaAware) cajaAware.classList.toggle('hidden', material);
+                    const selAware = q('far-aware');
+                    if (!selAware) return;
+                    if (antibiotico) {
+                        if (selAware.dataset.modo !== 'on') {
+                            const actual = selAware.value;
+                            selAware.innerHTML = '<option value="">Seleccione…</option>' + S.CLASIFICACION_AWARE.map(a => '<option value="' + a.codigo + '">' + a.nombre + '</option>').join('');
+                            if (['ACCESO', 'VIGILANCIA', 'RESERVA'].indexOf(actual) >= 0) selAware.value = actual;
+                            selAware.dataset.modo = 'on';
+                        }
+                        selAware.disabled = false;
+                    } else {
+                        selAware.dataset.modo = 'off';
+                        selAware.innerHTML = '<option value="">No aplica (Solo para Fracción IV Antibiótico)</option>';
+                        selAware.value = '';
+                        selAware.disabled = true;
+                    }
+                };
+                const pintarModo = () => {
+                    const material = q('far-categoria').value === 'MATERIAL_CURACION';
                     ['far-comercial', 'far-forma', 'far-concentracion', 'far-via', 'far-conservacion', 'far-proveedor', 'far-fraccion'].forEach(id => {
                         const cajaCampo = c.el.querySelector('#caja-' + id) || (q(id) && q(id).closest('div'));
                         if (cajaCampo) cajaCampo.classList.toggle('hidden', material);
                     });
-                    const cajaAware = q('far-aware') && q('far-aware').closest('div');
-                    if (cajaAware) cajaAware.classList.toggle('hidden', !antibiotico);
+                    pintarAware();
                     etiqueta('far-nombre', material ? 'Nombre del insumo' : 'Principio activo / denominación genérica');
                     etiqueta('far-laboratorio', material ? 'Marca / Laboratorio' : 'Laboratorio (fabricante)');
                     etiqueta('far-sku', material ? 'Código de barras (opcional)' : 'Código de barras / SKU');
@@ -1247,12 +1380,12 @@ const AdminController = {
                     q('far-proveedor').value = prod.proveedor || '';
                     q('far-categoria').value = prod.categoria || 'MEDICAMENTO';
                     q('far-fraccion').value = prod.fraccion_cofepris || 'NA';
-                    if (prod.clasificacion_aware) q('far-aware').value = prod.clasificacion_aware;
+                    pintarModo();
+                    if (prod.clasificacion_aware && q('far-aware') && !q('far-aware').disabled) q('far-aware').value = prod.clasificacion_aware;
                     q('far-piezas').value = prod.piezas_por_caja || 1;
                     q('far-iva').checked = !!prod.aplica_iva;
                     q('far-precio').value = prod.precio_unitario;
                     pintarPrecio();
-                    pintarModo();
                     pintarStock();
                     q('far-lote').focus();
                 };
@@ -1273,14 +1406,23 @@ const AdminController = {
                 q('far-fraccion').addEventListener('change', pintarModo);
                 pintarModo();
                 pintarStock();
+                if (editando) {
+                    ['caja-far-modo', 'caja-far-cajas', 'caja-far-stock'].forEach(id => { const n = c.el.querySelector('#' + id); if (n) n.classList.add('hidden'); });
+                    if (q('far-total')) q('far-total').classList.add('hidden');
+                    q('far-sku').readOnly = true;
+                    llenar(editando);
+                    q('far-lote').value = editando.lote || '';
+                    q('far-caducidad').value = editando.caducidad || '';
+                    q('far-factura').value = editando.numero_factura || '';
+                }
                 q('far-lote').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); q('far-caducidad').focus(); } });
             },
             botones: [
                 { texto: 'Cancelar', estilo: 'secundario' },
-                { texto: 'Registrar ingreso', estilo: 'exito', id: 'far-guardar', alPulsar: c => {
+                { texto: editando ? 'Guardar cambios' : 'Registrar ingreso', estilo: 'exito', id: 'far-guardar', alPulsar: c => {
                     const val = id => c.el.querySelector('#' + id).value;
                     const material = val('far-categoria') === 'MATERIAL_CURACION';
-                    const r = S.ingresarInsumo({
+                    const ficha = {
                         sku: val('far-sku'), nombre: val('far-nombre'), nombre_comercial: material ? '' : val('far-comercial'),
                         forma_farmaceutica: material ? 'MATERIAL' : val('far-forma'), concentracion: material ? '' : val('far-concentracion'),
                         via_administracion: material ? 'NA' : val('far-via'), conservacion: material ? 'AMBIENTE' : val('far-conservacion'),
@@ -1290,7 +1432,8 @@ const AdminController = {
                         modo_stock: val('far-modo'),
                         piezas_por_caja: val('far-piezas'), numero_cajas: val('far-cajas'), lote: val('far-lote'), caducidad: val('far-caducidad'),
                         stock: val('far-stock'), precio_unitario: val('far-precio'), aplica_iva: c.el.querySelector('#far-iva').checked, operador_id: (this.operadorFarmacia() || {}).id
-                    }, this.sesion);
+                    };
+                    const r = editando ? S.actualizarInsumo(editando.lote_id, ficha, this.sesion) : S.ingresarInsumo(ficha, this.sesion);
                     const mapa = { 'far-sku': 'sku', 'far-nombre': 'nombre', 'far-comercial': 'nombre_comercial', 'far-forma': 'forma_farmaceutica', 'far-concentracion': 'concentracion', 'far-via': 'via_administracion', 'far-conservacion': 'conservacion', 'far-laboratorio': 'laboratorio', 'far-proveedor': 'proveedor', 'far-factura': 'numero_factura', 'far-categoria': 'categoria', 'far-fraccion': 'fraccion_cofepris', 'far-aware': 'clasificacion_aware', 'far-piezas': 'piezas_por_caja', 'far-cajas': 'numero_cajas', 'far-stock': 'stock', 'far-lote': 'lote', 'far-caducidad': 'caducidad', 'far-precio': 'precio_unitario' };
                     Object.keys(mapa).forEach(id => {
                         const input = c.el.querySelector('#' + id), msg = c.el.querySelector('#err-' + id);
@@ -1300,7 +1443,7 @@ const AdminController = {
                     });
                     if (!r.ok) { if (!r.errores) BelenUI.toast(r.motivo, 'alerta'); return false; }
                     const eq = S.textoStockFarmacia(r.producto);
-                    BelenUI.toast(r.producto.nombre + ' ingresado. ' + eq.piezas + ' (' + eq.cajas + ').', 'exito');
+                    BelenUI.toast(editando ? (r.producto.nombre + ' actualizado.') : (r.producto.nombre + ' ingresado. ' + eq.piezas + ' (' + eq.cajas + ').'), 'exito');
                     this.render();
                 } }
             ]
@@ -1637,6 +1780,48 @@ const AdminController = {
         this.recibirEnCarrito(null, { lote_id: loteId });
     },
 
+    pedirFolioRecetaCarrito: function (producto, op, cant) {
+        const S = BelenStore;
+        const pac = this.pacienteCargoActual();
+        if (!pac) { BelenUI.toast('Seleccione al paciente antes de cargar un antibiótico o controlado.', 'alerta'); return; }
+        const previa = S.folioRecetaVigente(pac.turno_id, producto.sku);
+        const medicos = Object.values(S.USUARIOS).filter(u => u.activo !== false && u.rol === 'medico');
+        const turno = S.obtenerTurno(pac.turno_id);
+        const e = t => this.e(t);
+        const medicoInicial = (previa && previa.medico_id) || (turno && turno.medico_id) || (medicos[0] && medicos[0].id) || '';
+        BelenUI.modal({
+            titulo: 'Receta de ' + producto.nombre,
+            subtitulo: S.etiquetaNormativa(producto.fraccion_cofepris),
+            icono: 'fa-prescription',
+            ancho: 'md',
+            tipo: 'alerta',
+            html: `<div class="space-y-3 text-left">
+                <p class="text-xs text-slate-600">Este medicamento queda en la bitácora FEUM y en el Excel con el médico prescriptor y el folio de la receta.</p>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Médico prescriptor</label>
+                <select id="rx-medico" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white">${medicos.map(m => `<option value="${e(m.id)}" ${m.id === medicoInicial ? 'selected' : ''}>${e(m.nombre)}</option>`).join('')}</select>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Folio de receta</label>
+                <input id="rx-folio" value="${e(previa ? previa.folio : '')}" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm" placeholder="REC-0001 o folio del recetario físico">
+                <p class="text-[11px] text-slate-500">${previa ? 'Folio que el médico ya generó o anotó en Consulta / Indicaciones. Puede corregirlo.' : 'Si el médico no lo capturó, escriba el folio de la receta física o de la hoja de indicaciones.'}</p>
+                <p id="rx-error" class="text-xs text-red-600 hidden"></p>
+            </div>`,
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Confirmar y agregar', estilo: 'primario', alPulsar: c => {
+                    const error = c.el.querySelector('#rx-error');
+                    const folio = c.el.querySelector('#rx-folio').value.trim();
+                    const medicoId = c.el.querySelector('#rx-medico').value;
+                    const medico = medicos.find(m => m.id === medicoId);
+                    if (folio.length < 3) { error.textContent = 'Indique el folio de la receta.'; error.classList.remove('hidden'); return false; }
+                    if (!medico) { error.textContent = 'Seleccione al médico prescriptor.'; error.classList.remove('hidden'); return false; }
+                    this.recibirEnCarrito(null, Object.assign({}, op, {
+                        lote_id: producto.lote_id, cantidad: cant, folio_confirmado: true,
+                        folio_receta: folio, medico_prescriptor_id: medico.id, medico_prescriptor_nombre: medico.nombre
+                    }));
+                } }
+            ]
+        });
+    },
+
     recibirEnCarrito: function (codigo, opciones) {
         const op = opciones || {};
         const r = BelenStore.prepararLineaCarrito(codigo, op);
@@ -1645,20 +1830,35 @@ const AdminController = {
             return;
         }
         if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
-        if (r.producto.fraccion_cofepris === 'I' && !op.caja_id) { this.abrirUsoEstupefaciente(r.producto, op); return; }
+        if (r.producto.fraccion_cofepris === 'I') {
+            BelenUI.aviso('🔒 Estupefaciente Fracción I', '🔒 Estupefaciente Fracción I: No se puede cargar una caja ni piezas sueltas directo del almacén. Debe abrirse primero una Caja en la pestaña Estupefacientes Fracción I con los datos de la Receta Especial, y surtirse por ámpula desde las Cajas Abiertas.', 'alerta');
+            return;
+        }
+        const fraccionReceta = r.producto.fraccion_cofepris;
+        if ((fraccionReceta === 'II' || fraccionReceta === 'III' || fraccionReceta === 'IV_ANTIBIOTICO') && !op.folio_confirmado) {
+            this.pedirFolioRecetaCarrito(r.producto, op, parseInt(op.cantidad, 10) || 1);
+            return;
+        }
         const cant = parseInt(op.cantidad, 10) || 1;
         const ya = this.carritoFarmacia.filter(l => l.lote_id === r.producto.lote_id).reduce((s, l) => s + (l.cantidad || 1), 0);
         if (!op.servicio && r.producto.stock < ya + cant) { BelenUI.toast('No hay stock suficiente de ' + r.producto.nombre + '.', 'alerta'); return; }
         if (r.producto.fraccion_cofepris !== 'I') {
             const misma = this.carritoFarmacia.find(l => l.lote_id === r.producto.lote_id && !l.caja_id && l.paquete_id === (op.paquete_id || null));
-            if (misma) { misma.cantidad += cant; this.render(); return; }
+            if (misma) {
+                misma.cantidad += cant;
+                if (op.folio_receta) { misma.folio_receta = op.folio_receta; misma.medico_prescriptor_id = op.medico_prescriptor_id; misma.medico_prescriptor_nombre = op.medico_prescriptor_nombre; }
+                this.render();
+                return;
+            }
         }
         this.carritoFarmacia.push({
             linea_id: 'LIN-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
             lote_id: r.producto.lote_id, cantidad: cant, ignorar_fefo: !!op.ignorar_fefo || !!op.lote_id,
             paquete_id: op.paquete_id || null, paquete_nombre: op.paquete_nombre || null, servicio: !!op.servicio,
             caja_id: op.caja_id || null, datos_postanestesicos: op.datos_postanestesicos || '',
-            receta_previa: op.receta_previa || '', folio_receta_especial: op.folio_receta_especial || ''
+            receta_previa: op.receta_previa || '', folio_receta_especial: op.folio_receta_especial || '',
+            folio_receta: op.folio_receta || '', medico_prescriptor_id: op.medico_prescriptor_id || '',
+            medico_prescriptor_nombre: op.medico_prescriptor_nombre || ''
         });
         this.render();
     },
@@ -1824,7 +2024,7 @@ const AdminController = {
         const medico = turno && S.USUARIOS[turno.medico_id];
         return S.datosReceta(Object.assign({
             producto: producto, paciente: paciente ? paciente.nombre : '', cama: paciente ? paciente.cama : '',
-            medico: medico ? medico.nombre : (turno && turno.medico_nombre) || '', cedula: medico ? medico.cedula_profesional : '',
+            medico: medico ? medico.nombre : (turno && turno.medico_nombre) || '', cedula: medico ? S.resumenCedulas(medico) : '', cedulas_texto: medico ? S.textoCedulasFirma(medico) : '',
             denominacion: producto.nombre, dosis: extra && extra.dosis || producto.nombre, lote: producto.lote, laboratorio: producto.laboratorio,
             fraccion: producto.fraccion_cofepris
         }, extra || {}));
@@ -1837,13 +2037,17 @@ const AdminController = {
         this.imprimirRecetaDatos(this.datosRecetaDe(p, { dosis: p.nombre, tipo: 'respaldo' }));
     },
 
+    imprimirEnDashboard: function (html) {
+        const zona = document.getElementById('print-dashboard');
+        if (!zona) { BelenUI.toast('No se encontró la zona de impresión.', 'alerta'); return; }
+        zona.innerHTML = html;
+        const limpiar = () => { zona.innerHTML = ''; window.removeEventListener('afterprint', limpiar); };
+        window.addEventListener('afterprint', limpiar);
+        window.print();
+    },
+
     imprimirRecetaDatos: function (datos) {
-        const w = window.open('', '_blank', 'noopener,width=720,height=900');
-        if (!w) { BelenUI.toast('El navegador bloqueó la ventana de impresión. Permita ventanas emergentes para la receta.', 'alerta'); return; }
-        w.document.write(BelenStore.htmlRecetaImprimible(datos));
-        w.document.close();
-        w.focus();
-        setTimeout(() => { try { w.print(); } catch (err) { /* la ventana ya muestra la receta */ } }, 250);
+        this.imprimirEnDashboard(BelenStore.htmlCuerpoReceta(datos));
     },
 
     htmlPanelEstupefacientes: function (areaVista) {
@@ -1852,7 +2056,7 @@ const AdminController = {
         const cajas = S.cajasDeArea(areaVista, true);
         const e = t => this.e(t);
         const cuerpo = cajas.length ? cajas.map(c => {
-            const restantes = (c.piezas_por_caja || 0) - (c.usadas || 0);
+            const restantes = BelenStore.restantesCaja(c);
             return `<div class="bg-white border border-rose-200 rounded-xl p-3 min-w-[220px]">
                 <div class="text-[10px] font-bold uppercase text-rose-600">Caja activa</div>
                 <div class="font-extrabold text-slate-800">${e(c.nombre)}</div>
@@ -1971,17 +2175,113 @@ const AdminController = {
     htmlEstupefacientesFarmacia: function () {
         const S = BelenStore, e = t => this.e(t);
         const cajas = S.listarCajasEstupefacientes(this.contextoOperadorFarmacia());
-        if (!cajas.length) return '<div class="text-center py-16 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">No hay cajas de fracción I registradas.</div>';
-        return `<div class="flex flex-col gap-4">${cajas.map(c => {
-            const usos = (c.usos || []).map(u => `<li class="py-1">${e(S.fechaHoraLegible(u.fecha_hora))} · ${e(u.paciente_nombre)} · receta ${u.numero}/${u.de} · ${e(u.datos_postanestesicos || '')}</li>`).join('');
+        const lista = cajas.length ? `<div class="flex flex-col gap-4">${cajas.map(c => {
+            const rest = S.restantesCaja(c);
+            const tot = c.ampulas_totales || c.piezas_por_caja || rest;
+            const usos = (c.usos || []).map(u => `<li class="py-1">${e(S.fechaHoraLegible(u.fecha_hora))} · ${e(u.paciente_nombre)} · receta ${u.numero}/${u.de}${u.aplicador_nombre ? ' · ' + e(u.aplicador_nombre) : ''} · ${e(u.datos_postanestesicos || '')}</li>`).join('');
             return `<article class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-                <h3 class="font-extrabold text-slate-900">${e(c.nombre)}</h3>
-                <p class="text-sm text-slate-600 mt-1">${e(S.nombreAreaCaja(c.area_destino) || 'Sin área')} · Folio ${e(c.folio_receta_especial)} · lote ${e(c.lote)}${c.caducidad ? ' · caduca ' + e(String(c.caducidad).slice(0, 10)) : ''}</p>
-                <p class="text-sm font-extrabold text-rose-700 mt-1">Ámpulas restantes: ${(c.piezas_por_caja || 0) - (c.usadas || 0)} de ${c.piezas_por_caja}</p>
-                <p class="text-xs text-slate-400 mt-1">Responsable: ${e(c.responsable_nombre || '')}</p>
+                <h3 class="font-extrabold text-slate-900">${e(S.etiquetaCajaAbierta(c))}</h3>
+                <p class="text-sm text-slate-600 mt-1">${e(c.nombre)} · caduca ${e(String(c.caducidad || '').slice(0, 10))}</p>
+                <p class="text-sm font-extrabold text-rose-700 mt-1">Ámpulas restantes: ${rest} de ${tot}</p>
+                <p class="text-xs text-slate-400 mt-1">Médico: ${e(c.responsable_nombre || '')}${c.responsable_cedula ? ' · cédula ' + e(c.responsable_cedula) : ''}${c.enfermera_nombre ? ' · recibe ' + e(c.enfermera_nombre) : ''}</p>
                 ${usos ? `<ul class="mt-3 text-xs text-slate-600 border-t border-slate-100 pt-2">${usos}</ul>` : '<p class="text-xs text-slate-400 mt-3">Todavía no se usa ninguna ámpula de esta caja.</p>'}
             </article>`;
-        }).join('')}</div>`;
+        }).join('')}</div>` : '<div class="text-center py-10 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-300">No hay cajas de fracción I registradas.</div>';
+        return `<div class="flex flex-wrap gap-2 mb-4">
+            <button type="button" onclick="AdminController.abrirFormularioCajaEstupefaciente()" class="bg-rose-700 hover:bg-rose-800 text-white text-xs font-extrabold px-4 py-2.5 rounded-lg">Abrir caja del almacén</button>
+            <button type="button" onclick="AdminController.abrirDispensarAmpula()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold px-4 py-2.5 rounded-lg">Dispensar / usar ámpula</button>
+        </div>${lista}`;
+    },
+
+    abrirFormularioCajaEstupefaciente: function () {
+        const S = BelenStore, e = t => this.e(t);
+        const lotes = S.listarInventarioFarmacia(this.sesion).filter(p => p.fraccion_cofepris === 'I' && p.stock > 0);
+        if (!lotes.length) { BelenUI.aviso('Sin cajas en almacén', 'No hay medicamento de Fracción I con stock para abrir una caja.', 'alerta'); return; }
+        const medicos = Object.values(S.USUARIOS).filter(u => u.activo !== false && u.rol === 'medico');
+        const enfermeras = S.enfermerasActivas();
+        const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white';
+        BelenUI.modal({
+            titulo: 'Abrir caja de Fracción I', subtitulo: 'Descuenta una caja completa del almacén y la pasa al resguardo del área.', icono: 'fa-box-open', ancho: 'lg',
+            html: `<div class="space-y-3 text-left">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Medicamento · lote · caducidad · piezas por caja</label>
+                <select id="caja-lote" class="${cls}">${lotes.map(p => `<option value="${e(p.lote_id)}">${e(p.nombre)} · Lote ${e(p.lote)} · Cad. ${e(S.fechaLegibleISO(p.caducidad))} · ${p.piezas_por_caja} ámpulas/caja · stock ${p.stock}</option>`).join('')}</select>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Folio / código de barras de la receta física especial</label>
+                <input id="caja-folio" maxlength="30" class="${cls}" placeholder="RE-2026-0001" data-autofoco>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Médico / responsable sanitario (nombre y cédula)</label>
+                <select id="caja-medico" class="${cls}">${medicos.map(m => `<option value="${e(m.id)}">${e(m.nombre)} · cédula ${e(m.cedula_profesional || 'sin cédula')}</option>`).join('')}</select>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Enfermera que solicita y recibe la caja</label>
+                <select id="caja-enf" class="${cls}">${enfermeras.map(n => `<option value="${e(n.id)}">${e(n.nombre)}</option>`).join('')}</select>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Área de resguardo</label>
+                <select id="caja-area" class="${cls}"><option value="">Seleccione</option>${S.AREAS_CAJA.map(a => `<option value="${a.codigo}">${e(a.nombre)}</option>`).join('')}</select>
+                <p id="caja-error" class="text-xs text-red-600 hidden"></p>
+            </div>`,
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Abrir caja y descontar almacén', estilo: 'exito', alPulsar: c => {
+                    const r = S.abrirCajaEstupefaciente({
+                        lote_id: c.el.querySelector('#caja-lote').value,
+                        folio_receta_especial: c.el.querySelector('#caja-folio').value,
+                        responsable_id: c.el.querySelector('#caja-medico').value,
+                        enfermera_id: c.el.querySelector('#caja-enf').value,
+                        area_destino: c.el.querySelector('#caja-area').value
+                    }, this.sesion);
+                    const error = c.el.querySelector('#caja-error');
+                    if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                    BelenUI.toast('Caja abierta. ' + r.caja.ampulas_totales + ' ámpulas pasaron a ' + S.nombreAreaCaja(r.caja.area_destino) + '.', 'exito');
+                    this.pestanaFarmacia = 'estupefacientes';
+                    this.render();
+                } }
+            ]
+        });
+    },
+
+    abrirDispensarAmpula: function (turnoId) {
+        const S = BelenStore, e = t => this.e(t);
+        const cajas = S.listarCajas().filter(c => S.restantesCaja(c) > 0);
+        if (!cajas.length) { BelenUI.aviso('Sin cajas abiertas', 'Abra primero una caja en Estupefacientes Fracción I. No se surte directo del almacén.', 'alerta'); return; }
+        const grupos = S.pacientesTerminalFarmacia(this.sesion);
+        const pacientes = [].concat(grupos.hospital || [], grupos.observacion || [], grupos.quirofano || [], grupos.consulta || []);
+        const aplicadores = S.enfermerasActivas().concat(Object.values(S.USUARIOS).filter(u => u.activo !== false && u.rol === 'medico'));
+        const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white';
+        BelenUI.modal({
+            titulo: 'Dispensar ámpula', subtitulo: 'El cargo es solo el precio de las ámpulas usadas, tomado de la caja abierta.', icono: 'fa-syringe', ancho: 'lg',
+            html: `<div class="space-y-3 text-left">
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Caja abierta</label>
+                <select id="disp-caja" class="${cls}">${cajas.map(c => `<option value="${e(c.caja_id)}">${e(S.etiquetaCajaAbierta(c))}</option>`).join('')}</select>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Paciente</label>
+                <select id="disp-turno" class="${cls}">${pacientes.map(p => `<option value="${e(p.turno_id)}" ${turnoId === p.turno_id ? 'selected' : ''}>${e(p.nombre)} · ${e(p.area_txt)} · ${e(p.cama)}</option>`).join('')}</select>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Enfermera o médico que la aplicó</label>
+                <select id="disp-quien" class="${cls}">${aplicadores.map(u => `<option value="${e(u.id)}">${e(u.nombre)}</option>`).join('')}</select>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Ámpulas usadas</label>
+                <input id="disp-cant" type="number" min="1" max="20" step="1" value="1" class="${cls}">
+                <p id="disp-error" class="text-xs text-red-600 hidden"></p>
+            </div>`,
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Cargar ámpulas a la cuenta', estilo: 'exito', alPulsar: c => {
+                    const caja = S.listarCajas().find(x => x.caja_id === c.el.querySelector('#disp-caja').value);
+                    const r = S.dispensarAmpulas({
+                        caja_id: c.el.querySelector('#disp-caja').value,
+                        turno_id: c.el.querySelector('#disp-turno').value,
+                        aplicador_id: c.el.querySelector('#disp-quien').value,
+                        cantidad: c.el.querySelector('#disp-cant').value,
+                        datos: caja ? caja.nombre : ''
+                    }, this.sesion);
+                    const error = c.el.querySelector('#disp-error');
+                    if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                    BelenUI.toast('Se cargaron ' + (r.usos || []).length + ' ámpula(s). Quedan ' + S.restantesCaja(r.caja) + '.', 'exito');
+                    this.render();
+                    const pac = S.obtenerTurno(r.uso.turno_id);
+                    const medico = S.USUARIOS[r.uso.aplicador_id] || {};
+                    this.imprimirRecetaDatos(S.datosReceta({
+                        tipo: 'individual', producto: r.producto, paciente: pac ? pac.paciente_nombre : r.uso.paciente_nombre,
+                        cama: S.nombreAreaCaja(r.area), medico: medico.nombre || r.uso.aplicador_nombre, cedula: S.resumenCedulas(medico), cedulas_texto: S.textoCedulasFirma(medico),
+                        denominacion: r.producto.nombre, dosis: r.producto.nombre, lote: r.uso.lote, laboratorio: r.producto.laboratorio, fraccion: 'I',
+                        numero: r.uso.numero, de: r.uso.de, folio_receta_especial: r.uso.folio_receta_especial, datos_postanestesicos: r.uso.datos_postanestesicos
+                    }));
+                } }
+            ]
+        });
     },
 
     htmlPaquetesFarmacia: function () {
@@ -2011,38 +2311,52 @@ const AdminController = {
         }).join('')}</div>`;
     },
 
-    skusParaPaquete: function () {
-        const vistos = {}, out = [];
-        BelenStore.listarInventarioFarmacia(this.sesion).forEach(p => {
+    fichaItemPaquete: function (sku) {
+        const S = BelenStore;
+        const est = S.estudioPorCodigo(sku);
+        if (est) return { sku: est.codigo, nombre: est.nombre, extra: '', precio: est.precio_unitario, aplica_iva: !!est.aplica_iva, grupo: S.nombreTipoEstudio(est.categoria) };
+        const prod = S.productoPorSku(sku);
+        if (prod) return { sku: prod.sku, nombre: prod.nombre, extra: prod.nombre_comercial || '', precio: prod.precio_unitario, aplica_iva: !!prod.aplica_iva, grupo: prod.categoria === 'MATERIAL_CURACION' ? 'Material de curación' : 'Farmacia' };
+        return { sku: sku, nombre: sku, extra: '', precio: 0, aplica_iva: false, grupo: 'Sin catálogo' };
+    },
+
+    buscarParaPaquete: function (texto) {
+        const S = BelenStore, n = S.normalizar(texto);
+        if (!n) return [];
+        const out = [], vistos = {};
+        S.listarInventarioFarmacia(this.sesion).forEach(p => {
             if (vistos[p.sku] || p.fraccion_cofepris === 'I') return;
+            const blob = S.normalizar([p.nombre, p.nombre_comercial, p.sku, p.principio].filter(Boolean).join(' '));
+            if (blob.indexOf(n) < 0) return;
             vistos[p.sku] = true;
-            out.push({ sku: p.sku, nombre: p.nombre, precio: p.precio_unitario, grupo: 'Almacén' });
+            out.push(this.fichaItemPaquete(p.sku));
         });
-        BelenStore.listarEstudios().forEach(est => {
+        S.listarEstudios().forEach(est => {
             if (vistos[est.codigo]) return;
+            if (S.normalizar(est.nombre + ' ' + est.codigo).indexOf(n) < 0) return;
             vistos[est.codigo] = true;
-            out.push({ sku: est.codigo, nombre: est.nombre, precio: est.precio_unitario, grupo: 'Estudio' });
+            out.push(this.fichaItemPaquete(est.codigo));
         });
-        return out.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+        return out.slice(0, 12);
     },
 
     abrirEditorPaquete: function (paqueteId) {
-        const S = BelenStore, e = t => this.e(t);
+        const S = BelenStore, e = t => this.e(t), self = this;
         const paq = paqueteId ? S.listarPaquetes().find(p => p.paquete_id === paqueteId) : null;
-        const skus = this.skusParaPaquete();
-        const opciones = skus.map(p => `<option value="${e(p.sku)}" data-precio="${p.precio}">${e(p.grupo)} · ${e(p.nombre)} · ${e(p.sku)} · ${e(S.formatoMoneda(p.precio))}</option>`).join('');
-        const fila = (sku, cant) => `<div class="flex gap-2 items-center" data-fila-paq>
-            <select class="flex-1 border border-slate-300 rounded-lg p-2 text-sm bg-white" data-sku-paq>${opciones.replace(`value="${e(sku)}"`, `value="${e(sku)}" selected`)}</select>
-            <input data-cant-paq type="number" min="1" max="99" value="${cant || 1}" class="w-20 border border-slate-300 rounded-lg p-2 text-sm">
-            <button type="button" data-quitar-paq class="text-slate-400 hover:text-red-600 px-2" aria-label="Quitar ítem"><i class="fas fa-xmark"></i></button></div>`;
-        const iniciales = (paq ? paq.items : [{ sku: skus[0] ? skus[0].sku : '', cantidad: 1 }]).map(it => fila(it.sku, it.cantidad)).join('');
         BelenUI.modal({
             titulo: paq ? 'Editar paquete' : 'Nuevo paquete', icono: 'fa-kit-medical', ancho: 'lg',
             html: `<div class="space-y-3 text-left">
                 <label class="block text-[11px] font-bold text-slate-500 uppercase">Nombre</label>
                 <input id="paq-nombre" value="${e(paq ? paq.nombre : '')}" data-autofoco class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
-                <div id="paq-items" class="space-y-2">${iniciales}</div>
-                <button type="button" id="paq-agregar" class="text-xs font-bold text-teal-700">+ Agregar ítem</button>
+                <label class="block text-[11px] font-bold text-slate-500 uppercase">Buscar en farmacia y tarifario</label>
+                <input id="paq-busca" autocomplete="off" placeholder="Nombre, principio activo, nombre comercial o código" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+                <div id="paq-coincidencias" class="hidden border border-slate-200 rounded-xl overflow-hidden bg-white"></div>
+                <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                    <table class="w-full text-sm"><thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr>
+                        <th class="px-3 py-2 text-left">Ítem</th><th class="px-3 py-2 text-left">IVA del insumo</th><th class="px-3 py-2 text-center">Cantidad</th><th></th>
+                    </tr></thead><tbody id="paq-items"></tbody></table>
+                </div>
+                <p id="paq-vacio" class="text-xs text-slate-400">La lista inicia vacía. Escriba para buscar y pulse una coincidencia.</p>
                 <p id="paq-suma" class="text-sm font-extrabold text-slate-800">Suma real: ${e(S.formatoMoneda(0))}</p>
                 <label class="block text-[11px] font-bold text-slate-500 uppercase">Precio final de venta del paquete (opcional)</label>
                 <input id="paq-precio" type="number" min="0.01" step="0.01" value="${paq && paq.precio_paquete != null ? paq.precio_paquete : ''}" placeholder="Vacío = cobrar cada ítem a su precio" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
@@ -2050,39 +2364,73 @@ const AdminController = {
                 <p id="paq-error" class="text-xs text-red-600 hidden"></p>
             </div>`,
             alMostrar: c => {
-                const caja = c.el.querySelector('#paq-items');
+                const cuerpo = c.el.querySelector('#paq-items');
+                const fila = (sku, cant) => {
+                    const ficha = self.fichaItemPaquete(sku);
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-t border-slate-100';
+                    tr.setAttribute('data-fila-paq', '1');
+                    tr.setAttribute('data-sku', ficha.sku);
+                    tr.innerHTML = `<td class="px-3 py-2"><span class="block font-semibold text-slate-800">${e(ficha.nombre)}</span><span class="block text-[11px] text-slate-400">${e(ficha.grupo)} · ${e(ficha.sku)}${ficha.extra ? ' · ' + e(ficha.extra) : ''}</span></td>
+                        <td class="px-3 py-2 text-xs font-bold ${ficha.aplica_iva ? 'text-amber-700' : 'text-slate-400'}">${ficha.aplica_iva ? 'Grava IVA' : 'Tasa 0%'}</td>
+                        <td class="px-3 py-2"><div class="inline-flex items-center gap-1">
+                            <button type="button" data-menos class="w-8 h-8 rounded-lg border border-slate-300 font-bold">−</button>
+                            <input data-cant-paq type="number" min="1" max="99" value="${cant || 1}" class="w-16 border border-slate-300 rounded-lg p-1.5 text-sm text-center">
+                            <button type="button" data-mas class="w-8 h-8 rounded-lg border border-slate-300 font-bold">+</button>
+                        </div></td>
+                        <td class="px-2 py-2"><button type="button" data-quitar-paq class="text-slate-400 hover:text-red-600 px-2" aria-label="Quitar ítem"><i class="fas fa-xmark"></i></button></td>`;
+                    const cantInput = tr.querySelector('[data-cant-paq]');
+                    const fijar = n => { cantInput.value = String(Math.max(1, Math.min(99, n))); pintar(); };
+                    tr.querySelector('[data-menos]').addEventListener('click', () => fijar((parseInt(cantInput.value, 10) || 1) - 1));
+                    tr.querySelector('[data-mas]').addEventListener('click', () => fijar((parseInt(cantInput.value, 10) || 1) + 1));
+                    cantInput.addEventListener('input', pintar);
+                    tr.querySelector('[data-quitar-paq]').addEventListener('click', () => { tr.remove(); pintar(); });
+                    return tr;
+                };
+                const agregar = (sku, cant) => {
+                    const ya = Array.from(cuerpo.querySelectorAll('[data-fila-paq]')).find(f => f.getAttribute('data-sku') === sku);
+                    if (ya) {
+                        const input = ya.querySelector('[data-cant-paq]');
+                        input.value = String(Math.min(99, (parseInt(input.value, 10) || 1) + (cant || 1)));
+                    } else cuerpo.appendChild(fila(sku, cant || 1));
+                    pintar();
+                };
                 const pintar = () => {
-                    const items = Array.from(caja.querySelectorAll('[data-fila-paq]')).map(f => ({ sku: f.querySelector('[data-sku-paq]').value, cantidad: f.querySelector('[data-cant-paq]').value }));
+                    const items = Array.from(cuerpo.querySelectorAll('[data-fila-paq]')).map(f => ({ sku: f.getAttribute('data-sku'), cantidad: f.querySelector('[data-cant-paq]').value }));
+                    c.el.querySelector('#paq-vacio').classList.toggle('hidden', items.length > 0);
                     const suma = S.sumaRealPaquete(items);
                     c.el.querySelector('#paq-suma').textContent = 'Suma real: ' + S.formatoMoneda(suma);
                     const crudo = c.el.querySelector('#paq-precio').value.trim();
                     const nota = c.el.querySelector('#paq-ajuste');
                     const pactado = crudo === '' ? null : Math.round(Number(crudo) * 100) / 100;
-                    if (pactado != null && pactado > 0 && pactado < suma) nota.textContent = 'Al aplicarlo se insertará Descuento por Paquete (' + S.formatoMoneda(pactado - suma) + '). La cuenta quedará en ' + S.formatoMoneda(pactado) + '.';
-                    else if (pactado != null && pactado > 0) nota.textContent = 'El precio no es menor a la suma: cada ítem se cobra a su precio.';
+                    if (pactado != null && pactado > 0 && pactado < suma) nota.textContent = 'Precio promocional ' + S.formatoMoneda(pactado) + '. Cada línea conserva si grava IVA. El descuento será ' + S.formatoMoneda(pactado - suma) + '.';
+                    else if (pactado != null && pactado > 0) nota.textContent = 'El precio no es menor a la suma: cada ítem se cobra a su precio y conserva su IVA.';
                     else nota.textContent = 'Sin precio especial, cada ítem entra a su precio de catálogo.';
                 };
-                const enganchar = filaEl => {
-                    filaEl.querySelector('[data-quitar-paq]').addEventListener('click', () => { if (caja.children.length > 1) { filaEl.remove(); pintar(); } });
-                    filaEl.querySelector('[data-sku-paq]').addEventListener('change', pintar);
-                    filaEl.querySelector('[data-cant-paq]').addEventListener('input', pintar);
-                };
-                Array.from(caja.children).forEach(enganchar);
-                c.el.querySelector('#paq-agregar').addEventListener('click', () => {
-                    const wrap = document.createElement('div');
-                    wrap.innerHTML = fila(skus[0] ? skus[0].sku : '', 1);
-                    const nodo = wrap.firstElementChild;
-                    caja.appendChild(nodo);
-                    enganchar(nodo);
-                    pintar();
+                const coincidencias = c.el.querySelector('#paq-coincidencias');
+                c.el.querySelector('#paq-busca').addEventListener('input', ev => {
+                    const lista = self.buscarParaPaquete(ev.target.value);
+                    if (!lista.length) { coincidencias.classList.add('hidden'); coincidencias.innerHTML = ''; return; }
+                    coincidencias.classList.remove('hidden');
+                    coincidencias.innerHTML = lista.map(it => `<button type="button" data-agregar="${e(it.sku)}" class="w-full text-left px-3 py-2 hover:bg-teal-50 border-t border-slate-100 first:border-0">
+                        <span class="block text-sm font-semibold text-slate-800">${e(it.nombre)}</span>
+                        <span class="block text-[11px] text-slate-500">${e(it.grupo)} · ${e(it.sku)}${it.extra ? ' · ' + e(it.extra) : ''} · ${e(S.formatoMoneda(it.precio))} · ${it.aplica_iva ? 'Grava IVA' : 'Tasa 0%'}</span>
+                    </button>`).join('');
+                    coincidencias.querySelectorAll('[data-agregar]').forEach(b => b.addEventListener('click', () => {
+                        agregar(b.getAttribute('data-agregar'), 1);
+                        c.el.querySelector('#paq-busca').value = '';
+                        coincidencias.classList.add('hidden');
+                        coincidencias.innerHTML = '';
+                    }));
                 });
+                (paq ? paq.items : []).forEach(it => agregar(it.sku, it.cantidad));
                 c.el.querySelector('#paq-precio').addEventListener('input', pintar);
                 pintar();
             },
             botones: [
                 { texto: 'Cancelar', estilo: 'secundario' },
                 { texto: 'Guardar paquete', estilo: 'exito', alPulsar: c => {
-                    const items = Array.from(c.el.querySelectorAll('[data-fila-paq]')).map(f => ({ sku: f.querySelector('[data-sku-paq]').value, cantidad: f.querySelector('[data-cant-paq]').value }));
+                    const items = Array.from(c.el.querySelectorAll('[data-fila-paq]')).map(f => ({ sku: f.getAttribute('data-sku'), cantidad: f.querySelector('[data-cant-paq]').value }));
                     const r = S.guardarPaquete({ nombre: c.el.querySelector('#paq-nombre').value, items: items, precio_paquete: c.el.querySelector('#paq-precio').value }, this.sesion, paq ? paq.paquete_id : null);
                     const error = c.el.querySelector('#paq-error');
                     if (!r.ok) { error.textContent = (r.errores && (r.errores.nombre || r.errores.items || r.errores.precio_paquete)) || r.motivo; error.classList.remove('hidden'); return false; }
@@ -2154,7 +2502,7 @@ const AdminController = {
             <td class="px-3 py-3 font-mono text-xs font-bold">${e(est.codigo)}</td>
             <td class="px-3 py-3 font-semibold text-slate-900">${e(est.nombre)}</td>
             <td class="px-3 py-3 text-xs">${e(S.nombreTipoEstudio(est.categoria))}</td>
-            <td class="px-3 py-3 text-xs">${e(est.tubo_muestra || 'N/A')}</td>
+            <td class="px-3 py-3 text-xs">${(est.categoria === 'LABORATORIO' || est.categoria === 'PATOLOGIA') ? e(est.tubo_muestra || '—') : '—'}</td>
             <td class="px-3 py-3 font-bold">${e(S.formatoMoneda(est.precio_unitario))}${est.aplica_iva ? '<span class="block text-[10px] font-normal text-amber-700">Grava 16% al facturar</span>' : '<span class="block text-[10px] font-normal text-slate-400">Tasa 0%</span>'}</td>
             <td class="px-3 py-3 text-right whitespace-nowrap">
                 <button type="button" onclick="AdminController.abrirEditorEstudio('${e(est.estudio_id)}')" class="text-xs font-bold text-cyan-800 px-2 py-1">Editar</button>
@@ -2170,7 +2518,7 @@ const AdminController = {
         const cuerpo = this.pestanaTarifario === 'caja' ? this.htmlAuditoriaCaja() : this.htmlCatalogoEstudios();
         return `<div class="mb-4"><h2 class="text-2xl font-extrabold text-slate-800">Tarifario y Caja</h2>
             <p class="text-slate-500">Catálogo de estudios y auditoría de cuentas. El total se muestra sin IVA; el 16% se suma solo si piden factura.</p></div>
-            <div class="inline-flex flex-wrap bg-slate-100 rounded-xl p-1 mb-5 gap-1">${tab('catalogo', 'Catálogo de estudios')}${tab('caja', 'Auditoría de cuentas')}</div>
+            <div class="inline-flex flex-wrap bg-slate-100 rounded-xl p-1 mb-5 gap-1">${tab('catalogo', 'Catálogo de estudios')}${tab('caja', 'Auditoría Detallada de Cuentas y Caja')}</div>
             ${cuerpo}`;
     },
     htmlCatalogoEstudios: function () {
@@ -2209,13 +2557,31 @@ const AdminController = {
                 <input id="te-nombre" value="${e(est ? est.nombre : '')}" maxlength="80" data-autofoco class="${cls}">
                 <label class="block text-[11px] font-bold text-slate-500 uppercase">Categoría</label>
                 <select id="te-categoria" class="${cls}">${S.TIPOS_ESTUDIO.map(t => `<option value="${t.codigo}" ${est && est.categoria === t.codigo ? 'selected' : ''}>${e(t.nombre)}</option>`).join('')}</select>
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Tubo / muestra</label>
-                <input id="te-tubo" value="${e(est ? est.tubo_muestra : 'N/A')}" maxlength="60" placeholder="Tubo Lila (EDTA), Tubo Rojo, N/A" class="${cls}">
+                <div id="te-tubo-caja">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Tubo / Recipiente / Tipo de Muestra</label>
+                    <select id="te-tubo" class="${cls}"></select>
+                </div>
                 <label class="block text-[11px] font-bold text-slate-500 uppercase">Precio unitario</label>
                 <input id="te-precio" type="number" min="0.01" step="0.01" value="${est ? est.precio_unitario : ''}" class="${cls}">
                 <label class="flex items-center gap-2 text-sm text-slate-700"><input id="te-iva" type="checkbox" class="rounded border-slate-300 text-amber-600" ${!est || est.aplica_iva ? 'checked' : ''}> Grava 16% solo si en Caja piden factura</label>
                 <p id="te-error" class="text-xs text-red-600 hidden"></p>
             </div>`,
+            alMostrar: c => {
+                const cat = c.el.querySelector('#te-categoria');
+                const sel = c.el.querySelector('#te-tubo');
+                const caja = c.el.querySelector('#te-tubo-caja');
+                const actual = est ? (est.tubo_muestra || '') : 'Tubo Lila (EDTA)';
+                const pintarTubo = () => {
+                    const pide = cat.value === 'LABORATORIO' || cat.value === 'PATOLOGIA';
+                    caja.classList.toggle('hidden', !pide);
+                    if (!pide) return;
+                    const opciones = S.RECIPIENTES_MUESTRA.slice();
+                    if (actual && opciones.indexOf(actual) < 0 && actual !== 'N/A') opciones.push(actual);
+                    sel.innerHTML = opciones.map(t => `<option value="${e(t)}" ${t === actual ? 'selected' : ''}>${e(t)}</option>`).join('');
+                };
+                cat.addEventListener('change', pintarTubo);
+                pintarTubo();
+            },
             botones: [
                 { texto: 'Cancelar', estilo: 'secundario' },
                 { texto: 'Guardar', estilo: 'exito', alPulsar: c => {
@@ -2224,7 +2590,7 @@ const AdminController = {
                         codigo: c.el.querySelector('#te-codigo').value,
                         nombre: c.el.querySelector('#te-nombre').value,
                         categoria: c.el.querySelector('#te-categoria').value,
-                        tubo_muestra: c.el.querySelector('#te-tubo').value,
+                        tubo_muestra: (c.el.querySelector('#te-categoria').value === 'LABORATORIO' || c.el.querySelector('#te-categoria').value === 'PATOLOGIA') ? c.el.querySelector('#te-tubo').value : 'N/A',
                         precio_unitario: c.el.querySelector('#te-precio').value,
                         aplica_iva: c.el.querySelector('#te-iva').checked
                     }, this.sesion);
@@ -2266,14 +2632,17 @@ const AdminController = {
             const bloques = grupos.length ? grupos.map(g => `<div class="mt-3">
                 <p class="text-[11px] font-extrabold uppercase text-slate-500">${e(g.dia)} · ${e(g.turno)} · ${e(g.quien)}</p>
                 <div class="overflow-x-auto"><table class="w-full text-sm mt-1"><tbody>${g.lineas.map(c => `<tr class="border-t border-slate-100">
-                    <td class="py-2 pr-3 font-medium text-slate-800">${e(c.concepto)}${c.tubo_muestra && c.tubo_muestra !== 'N/A' ? `<span class="block text-[11px] text-violet-700">${e(c.tubo_muestra)}</span>` : ''}${c.observaciones_toma ? `<span class="block text-[11px] text-slate-500">${e(c.observaciones_toma)}</span>` : ''}${c.ajustado_por_nombre ? `<span class="block text-[10px] text-amber-700">Ajustado por ${e(c.ajustado_por_nombre)}</span>` : ''}</td>
+                    <td class="py-2 pr-3 font-medium text-slate-800">${e(c.concepto)}${c.aplica_iva ? '<span class="block text-[10px] font-bold text-amber-700">Grava IVA</span>' : '<span class="block text-[10px] font-bold text-slate-400">Tasa 0%</span>'}${c.tubo_muestra && c.tubo_muestra !== 'N/A' ? `<span class="block text-[11px] text-violet-700">${e(c.tubo_muestra)}</span>` : ''}${c.observaciones_toma ? `<span class="block text-[11px] text-slate-500">${e(c.observaciones_toma)}</span>` : ''}${c.ajustado_por_nombre ? `<span class="block text-[10px] text-amber-700">Ajustado por ${e(c.ajustado_por_nombre)}</span>` : ''}</td>
                     <td class="py-2 text-right whitespace-nowrap">${e(S.formatoMoneda(c.precio_unitario))}</td>
                     <td class="py-2 text-center">${c.cantidad || 1}</td>
                     <td class="py-2 text-right font-bold whitespace-nowrap">${e(S.formatoMoneda(c.subtotal))}</td>
                     <td class="py-2 text-right"><button type="button" onclick="AdminController.abrirAjusteLinea('${e(f.turno_id)}','${e(c.cargo_id)}')" class="text-xs font-bold text-cyan-800">Ajustar</button></td>
                 </tr>`).join('')}</tbody></table></div></div>`).join('') : '<p class="text-sm text-slate-400 mt-3">Sin conceptos cargados.</p>';
             const fiscal = f.fiscal;
-            return `<article class="bg-white rounded-2xl border ${f.pendiente_pago ? 'border-amber-300' : 'border-slate-200'} shadow-sm p-5">
+            const destacada = this.cuentaDestacada === f.turno_id;
+            const corte = (this.rolActual === 'admin' || this.rolActual === 'administrador') && (f.estatus === 'internado' || f.estatus === 'internado_en_proceso')
+                ? `<button type="button" onclick="AdminController.abrirCorteEstancia('${e(f.turno_id)}')" class="px-3 py-2 rounded-lg text-xs font-extrabold bg-amber-700 text-white">🛏️ Aplicar Corte de Estancia / Noche</button>` : '';
+            return `<article id="cuenta-${e(f.turno_id)}" class="bg-white rounded-2xl border ${destacada ? 'border-amber-500 ring-2 ring-amber-400' : (f.pendiente_pago ? 'border-amber-300' : 'border-slate-200')} shadow-sm p-5">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <div class="flex flex-wrap items-center gap-2"><h3 class="text-lg font-extrabold text-slate-900">${e(f.nombre)}</h3>${this.badgeEstatus({ estatus: f.estatus })}</div>
@@ -2286,9 +2655,13 @@ const AdminController = {
                 </div>
                 ${bloques}
                 <div class="mt-4 flex flex-wrap gap-2">
-                    <button type="button" role="switch" aria-checked="${f.requiere_factura ? 'true' : 'false'}" onclick="AdminController.alternarFacturaCuenta('${e(f.turno_id)}', ${f.requiere_factura ? 'false' : 'true'})" class="px-3 py-2 rounded-lg text-xs font-extrabold border ${f.requiere_factura ? 'bg-amber-50 border-amber-400 text-amber-900' : 'bg-white border-slate-300 text-slate-700'}">Factura +16% IVA: ${f.requiere_factura ? 'encendida' : 'apagada'}</button>
-                    <button type="button" onclick="AdminController.imprimirEstadoCuenta('${e(f.turno_id)}')" class="px-3 py-2 rounded-lg text-xs font-extrabold bg-slate-900 text-white">Imprimir estado de cuenta</button>
-                    ${f.pendiente_pago ? `<button type="button" onclick="AdminController.confirmarCerrarExpediente('${e(f.turno_id)}', ${f.requiere_factura ? 'true' : 'false'})" class="px-3 py-2 rounded-lg text-xs font-extrabold bg-emerald-700 text-white">Cerrar cuenta como pagada</button>` : '<span class="text-xs text-slate-400 px-2 py-2">El cierre de caja se habilita con el alta médica pendiente de pago.</span>'}
+                    <button type="button" role="switch" aria-checked="${f.requiere_factura ? 'true' : 'false'}" onclick="AdminController.alternarFacturaCuenta('${e(f.turno_id)}', ${f.requiere_factura ? 'false' : 'true'})" class="px-3 py-2 rounded-lg text-xs font-extrabold border ${f.requiere_factura ? 'bg-amber-50 border-amber-400 text-amber-900' : 'bg-white border-slate-300 text-slate-700'}">¿Solicita Factura? (+16% IVA): ${f.requiere_factura ? 'encendida' : 'apagada'}</button>
+                    ${f.requiere_factura ? `<label class="text-[11px] font-bold text-slate-500 uppercase flex items-center gap-2">Modo de IVA
+                        <select onchange="AdminController.cambiarModoIvaCuenta('${e(f.turno_id)}', this.value)" class="normal-case border border-slate-300 rounded-lg px-2 py-2 text-xs font-bold text-slate-800 bg-white">${S.MODOS_IVA.map(m => `<option value="${m.codigo}" ${f.modo_iva === m.codigo ? 'selected' : ''}>${e(m.nombre)}</option>`).join('')}</select>
+                    </label>${f.modo_iva === 'manual' ? `<label class="text-[11px] font-bold text-slate-500 uppercase flex items-center gap-2">Base gravable <input type="number" min="0" step="0.01" value="${f.base_gravable_manual != null ? f.base_gravable_manual : ''}" onchange="AdminController.cambiarBaseIvaCuenta('${e(f.turno_id)}', this.value)" class="normal-case w-32 border border-slate-300 rounded-lg px-2 py-2 text-xs font-bold"></label>` : ''}` : ''}
+                    <button type="button" onclick="AdminController.imprimirEstadoCuenta('${e(f.turno_id)}')" class="px-3 py-2 rounded-lg text-xs font-extrabold bg-slate-900 text-white">🖨️ Imprimir Estado de Cuenta / Nota de Consumos al Paciente</button>
+                    ${corte}
+                    ${f.pendiente_pago ? `<button type="button" onclick="AdminController.confirmarCerrarExpediente('${e(f.turno_id)}', ${f.requiere_factura ? 'true' : 'false'})" class="px-3 py-2 rounded-lg text-xs font-extrabold bg-emerald-700 text-white">Marcar como Pagado y Cerrar Expediente</button>` : '<span class="text-xs text-slate-400 px-2 py-2">El cierre de caja se habilita con el alta médica pendiente de pago.</span>'}
                 </div>
             </article>`;
         }).join('')}</div>`;
@@ -2296,17 +2669,24 @@ const AdminController = {
     alternarFacturaCuenta: function (turnoId, encendida) {
         const r = BelenStore.establecerFacturaCuenta(turnoId, encendida === true || encendida === 'true', this.sesion);
         if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
-        BelenUI.toast(r.requiere_factura ? 'Factura activada. El 16% se suma a lo gravable.' : 'Factura apagada. Se cobra sin IVA.', 'info');
+        BelenUI.toast(r.requiere_factura ? 'Factura activada. Elija sobre qué monto se aplica el 16%.' : 'Factura apagada. Se cobra sin IVA.', 'info');
+        this.render();
+    },
+    cambiarModoIvaCuenta: function (turnoId, modo) {
+        const r = BelenStore.establecerFiscalCuenta(turnoId, { modo_iva: modo }, this.sesion);
+        if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+        this.render();
+    },
+    cambiarBaseIvaCuenta: function (turnoId, base) {
+        const r = BelenStore.establecerFiscalCuenta(turnoId, { modo_iva: 'manual', base_gravable_manual: base }, this.sesion);
+        if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+        BelenUI.toast('Base gravable actualizada.', 'info');
         this.render();
     },
     imprimirEstadoCuenta: function (turnoId) {
         const html = BelenStore.htmlEstadoCuenta(turnoId);
         if (!html) { BelenUI.toast('No se encontró la cuenta.', 'alerta'); return; }
-        const w = window.open('', '_blank', 'noopener,width=860,height=900');
-        if (!w) { BelenUI.toast('El navegador bloqueó la ventana de impresión.', 'alerta'); return; }
-        w.document.write(html);
-        w.document.close();
-        setTimeout(() => { try { w.focus(); w.print(); } catch (err) { /* el estado queda visible en la ventana */ } }, 250);
+        this.imprimirEnDashboard(html);
     },
     abrirAjusteLinea: function (turnoId, cargoId) {
         const S = BelenStore, e = t => this.e(t);
@@ -2369,13 +2749,13 @@ const AdminController = {
             const esp = u.rol === 'medico' ? (S.especialidadPorCodigo(u.especialidad_codigo) || {}).nombre : u.cargo;
             const docs = S.listarPapeleria(u.id).length;
             const personalizado = !!ajustes[u.id] && Object.keys(ajustes[u.id]).length > 0;
-            const busca = S.normalizar([u.nombre, u.id, rol.etiqueta, rol.corta, u.cedula_profesional, u.etiqueta_admin, esp].join(' '));
+            const busca = S.normalizar([u.nombre, u.id, rol.etiqueta, rol.corta, u.cedula_profesional, u.cedula_general, u.cedula_especialidad, u.cedula_subespecialidad, u.etiqueta_admin, esp].join(' '));
             const btn = (accion, texto, extra) => `<button type="button" onclick="AdminController.${accion}('${e(u.id)}')" class="text-[11px] font-bold px-2 py-1 rounded-md border border-slate-200 hover:border-cyan-400 hover:text-cyan-800 ${extra || ''}">${texto}</button>`;
             return `<tr class="border-t border-slate-100 hover:bg-slate-50/70 ${u.activo === false ? 'opacity-60' : ''}" data-usuario-fila="${e(u.id)}" data-busca="${e(busca)}">
                 <td class="px-4 py-3"><div class="flex items-center gap-3">
                     <div class="w-9 h-9 rounded-full ${color} flex items-center justify-center text-xs font-bold shrink-0">${e(S.iniciales(u.nombre.replace(/^(Dra?\.|Enf\.|Adm\.)\s*/, '')))}</div>
                     <div><p class="font-bold text-slate-800 leading-tight">${e(u.nombre)}${u.activo === false ? ' <span class="text-[10px] uppercase text-red-600">Inactivo</span>' : ''}</p>
-                        <p class="text-[11px] text-slate-400 font-mono">${e(u.id)}${u.cedula_profesional ? ' · ' + e(u.cedula_profesional) : ''}</p>
+                        <p class="text-[11px] text-slate-400 font-mono">${e(u.id)}${S.resumenCedulas(u) ? ' · ' + e(S.resumenCedulas(u)) : ''}</p>
                         ${u.etiqueta_admin ? `<p class="text-[11px] text-amber-700">${e(u.etiqueta_admin)}</p>` : ''}</div></div></td>
                 <td class="px-4 py-3"><span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded whitespace-nowrap ${color}">${e(rol.corta)}</span><p class="text-xs text-slate-500 mt-1">${e(esp || '')}</p></td>
                 ${S.MODULOS.map(m => `<td class="px-4 py-3 text-center">${interruptor(u, m)}</td>`).join('')}
@@ -2430,23 +2810,51 @@ const AdminController = {
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-pin">Código rápido de farmacia</label><input id="rh-pin" inputmode="numeric" maxlength="8" class="${cls}" value="${u ? e(u.codigo_rapido || '') : ''}" placeholder="4 a 8 dígitos, único"><p data-err="codigo_rapido" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-rol">Perfil</label><select id="rh-rol" class="${cls}" ${u && u.id === 'admin' ? 'disabled' : ''}>${roles}</select><p data-err="rol" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-cargo">Cargo</label><input id="rh-cargo" class="${cls}" value="${u ? e(u.cargo) : ''}"><p data-err="cargo" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
-                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-cedula">Cédula profesional</label><input id="rh-cedula" class="${cls}" value="${u ? e(u.cedula_profesional || '') : ''}"><p data-err="cedula_profesional" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
+                <div id="rh-cedula-wrap"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-cedula">Cédula profesional</label><input id="rh-cedula" class="${cls}" value="${u && u.rol !== 'medico' ? e(u.cedula_profesional || '') : ''}"><p data-err="cedula_profesional" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-esp">Especialidad</label><select id="rh-esp" class="${cls}"><option value="">No aplica</option>${esps}</select><p data-err="especialidad_codigo" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
+                <div id="rh-cedulas-med" class="hidden sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-ced-general">Cédula de Médico General / Licenciatura</label><input id="rh-ced-general" class="${cls}" value="${u ? e(u.cedula_general || '') : ''}"><p data-err="cedula_general" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
+                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-ced-esp">Cédula de Especialidad</label><input id="rh-ced-esp" class="${cls}" value="${u ? e(u.cedula_especialidad || '') : ''}"><p data-err="cedula_especialidad" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
+                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-ced-sub">Cédula de Subespecialidad</label><input id="rh-ced-sub" class="${cls}" value="${u ? e(u.cedula_subespecialidad || '') : ''}"><p data-err="cedula_subespecialidad" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
+                    <p id="rh-aviso-general" class="hidden sm:col-span-3 text-xs text-cyan-800 bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2">Médico general: la nota, las indicaciones y la receta imprimen siempre la cédula de licenciatura.</p>
+                    <div id="rh-visibles" class="sm:col-span-3">
+                        <p class="text-[11px] font-bold text-slate-500 uppercase mb-2">Cédulas que se imprimen en notas, indicaciones y recetas</p>
+                        <p data-err="cedulas_visibles" class="text-[11px] text-red-600 mt-1 hidden"></p>
+                        <div class="flex flex-wrap gap-3 text-sm font-bold text-slate-700">
+                            ${['general', 'especialidad', 'subespecialidad'].map(c => `<label class="inline-flex items-center gap-2"><input type="checkbox" data-ced-vis="${c}" ${u && (u.cedulas_visibles || []).indexOf(c) >= 0 ? 'checked' : ''}> ${c === 'general' ? 'General' : (c === 'especialidad' ? 'Especialidad' : 'Subespecialidad')}</label>`).join('')}
+                        </div>
+                    </div>
+                </div>
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-color">Color distintivo</label><select id="rh-color" class="${cls}">${colores}</select></div>
                 <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-etiqueta">Etiqueta informal</label><input id="rh-etiqueta" class="${cls}" maxlength="80" value="${u ? e(u.etiqueta_admin || '') : ''}" placeholder="Nota visible solo para administración"><p data-err="etiqueta_admin" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
             </div>`,
             alMostrar: c => {
                 const rol = c.el.querySelector('#rh-rol'), esp = c.el.querySelector('#rh-esp');
-                const sync = () => { esp.disabled = rol.value !== 'medico'; if (rol.value !== 'medico') esp.value = ''; };
-                rol.addEventListener('change', sync); sync();
+                const sync = () => {
+                    const medico = rol.value === 'medico';
+                    esp.disabled = !medico;
+                    if (!medico) esp.value = '';
+                    c.el.querySelector('#rh-cedulas-med').classList.toggle('hidden', !medico);
+                    c.el.querySelector('#rh-cedula-wrap').classList.toggle('hidden', medico);
+                    const general = medico && esp.value === 'MEDICINA_GENERAL';
+                    c.el.querySelector('#rh-visibles').classList.toggle('hidden', !medico || general);
+                    c.el.querySelector('#rh-aviso-general').classList.toggle('hidden', !medico || !general);
+                };
+                rol.addEventListener('change', sync);
+                esp.addEventListener('change', sync);
+                sync();
             },
             botones: [
                 { texto: 'Cancelar', estilo: 'secundario' },
                 { texto: u ? 'Guardar cambios' : 'Crear usuario', estilo: 'primario', alPulsar: c => {
                     const q = sel => c.el.querySelector(sel).value;
+                    const rol = c.el.querySelector('#rh-rol').disabled ? 'admin' : q('#rh-rol');
+                    const visibles = Array.from(c.el.querySelectorAll('[data-ced-vis]:checked')).map(x => x.getAttribute('data-ced-vis'));
                     const r = S.guardarUsuario({
-                        id: q('#rh-id'), nombre: q('#rh-nombre'), password: q('#rh-password'), codigo_rapido: q('#rh-pin'), rol: c.el.querySelector('#rh-rol').disabled ? 'admin' : q('#rh-rol'),
-                        cargo: q('#rh-cargo'), cedula_profesional: q('#rh-cedula'), especialidad_codigo: q('#rh-esp'), color_distintivo: q('#rh-color'), etiqueta_admin: q('#rh-etiqueta')
+                        id: q('#rh-id'), nombre: q('#rh-nombre'), password: q('#rh-password'), codigo_rapido: q('#rh-pin'), rol: rol,
+                        cargo: q('#rh-cargo'), cedula_profesional: rol === 'medico' ? '' : q('#rh-cedula'),
+                        cedula_general: q('#rh-ced-general'), cedula_especialidad: q('#rh-ced-esp'), cedula_subespecialidad: q('#rh-ced-sub'),
+                        cedulas_visibles: visibles, especialidad_codigo: q('#rh-esp'), color_distintivo: q('#rh-color'), etiqueta_admin: q('#rh-etiqueta')
                     }, this.sesion, u ? u.id : null);
                     c.el.querySelectorAll('[data-err]').forEach(p => p.classList.add('hidden'));
                     if (!r.ok) {

@@ -23,6 +23,8 @@
         
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        @media screen { .zona-impresion { display: none !important; } }
+        @media print { body > *:not(#print-dashboard) { display: none !important; } #print-dashboard { display: block !important; width: 100%; background: white; color: black; } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen overflow-hidden flex relative">
@@ -100,6 +102,7 @@
             <div class="flex items-center gap-4">
                 <div id="kiosco-operador" class="hidden"></div>
                 <button type="button" id="kiosco-cerrar" onclick="AdminController.cerrarSesion()" class="hidden text-xs font-bold text-slate-500 hover:text-red-600 border border-slate-200 rounded-lg px-3 py-2">Cerrar sesión del kiosco</button>
+                <button type="button" id="btn-mis-cedulas" onclick="BelenUI.abrirMisCedulas()" class="hidden text-xs font-bold text-cyan-800 bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2 hover:bg-cyan-100">Mis Cédulas de Firma</button>
                 <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
                     <div class="text-right hidden md:block">
                         <!-- Estos spans los llenará JS -->
@@ -120,9 +123,10 @@
     </main>
 
     <!-- Scripts -->
-    <script src="js/belen-store.js?v=f3"></script>
-    <script src="js/belen-ui.js?v=f3"></script>
+    <div id="print-dashboard" class="zona-impresion"></div>
+    <script src="js/belen-store.js?v=f7"></script>
+    <script src="js/belen-ui.js?v=f7"></script>
     <script src="js/admin-api.js"></script>
-    <script src="js/admin-app.js?v=f3"></script>
+    <script src="js/admin-app.js?v=f7"></script>
 </body>
 </html>
