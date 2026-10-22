@@ -2594,6 +2594,20 @@
             cirugia_segura: { entrada: true, pausa: true, salida: true, conteo: true },
             dx_pre: v.dx_pre, dx_post: v.dx_post, operacion: v.operacion, tecnica: v.tecnica, hallazgos: v.hallazgos,
             sangrado_ml: v.sangrado_ml, patologia: v.patologia, pronostico: v.pronostico,
+            servicio: limpiarEspacios(entrada.servicio),
+            fecha_programacion: limpiarEspacios(entrada.fecha_programacion),
+            fecha_hora_quirurgica: limpiarEspacios(entrada.fecha_hora_quirurgica),
+            recuento: String(entrada.recuento || '').trim(),
+            uresis: limpiarEspacios(entrada.uresis),
+            tipo_anestesia: limpiarEspacios(entrada.tipo_anestesia),
+            firmantes: {
+                cirujano: limpiarEspacios(entrada.cirujano),
+                ayudante: limpiarEspacios(entrada.ayudante),
+                anestesiologo: limpiarEspacios(entrada.anestesiologo),
+                instrumentista: limpiarEspacios(entrada.instrumentista),
+                circulante: limpiarEspacios(entrada.circulante),
+                otro: limpiarEspacios(entrada.otro)
+            },
             estudio_biopsia_id: estudioBx ? estudioBx.estudio_id : null,
             estudio_biopsia_nombre: estudioBx ? estudioBx.nombre : null
         };
@@ -4655,12 +4669,18 @@
     }
     function fichaPacienteReceta(pacienteId, turno) {
         const p = buscarPacientePorId(pacienteId) || {};
+        const i = turno ? internamientoDeTurno(turno.turno_id) : null;
+        const sv = (turno && turno.signos_vitales) || {};
         return {
             paciente_id: pacienteId || null,
             paciente_nombre: p.nombre_completo || (turno && turno.paciente_nombre) || '',
             paciente_edad: p.fecha_nacimiento ? calcularEdad(p.fecha_nacimiento) : null,
+            paciente_fecha_nacimiento: p.fecha_nacimiento || (turno && turno.fecha_nacimiento) || '',
             paciente_telefono: p.telefono || '',
-            paciente_direccion: p.direccion || ''
+            paciente_direccion: p.direccion || '',
+            paciente_peso: sv.peso_kg != null && sv.peso_kg !== '' ? sv.peso_kg : '',
+            paciente_talla: sv.talla_m != null && sv.talla_m !== '' ? sv.talla_m : '',
+            paciente_alergias: (i && i.alergias) || (turno && alergiasDeBorrador(turno.turno_id)) || ''
         };
     }
     function itemRecetaDesdeProducto(prod, entrada) {
@@ -4714,6 +4734,7 @@
             internamiento_id: internamiento ? internamiento.internamiento_id : null,
             medico_id: s.usuario_id,
             medico_nombre: s.nombre,
+            medico_especialidad: (especialidadPorCodigo(medico.especialidad_codigo) || {}).nombre || medico.cargo || (s && s.especialidad) || '',
             cedulas_impresas: textoCedulasFirma(medico),
             diagnostico: limpiarEspacios((entrada && entrada.diagnostico) || (t && t.dx_principal) || ''),
             items: items,
@@ -5179,39 +5200,7 @@
     }
     function htmlHojaReceta(receta) {
         if (!receta) return '';
-        const e = escHtmlCuenta;
-        const filas = (receta.items || []).map(i => {
-            const surtida = parseInt(i.cantidad_surtida, 10) || 0;
-            const pedida = parseInt(i.cantidad_prescrita, 10) || 0;
-            return `<tr>
-                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;"><b>${e(i.nombre)}</b><br><span style="color:#64748b;">${e([i.concentracion, i.forma_farmaceutica].filter(Boolean).join(' · '))}</span></td>
-                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;">${e(i.dosis_indicacion || '—')}</td>
-                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center;">${pedida}</td>
-                <td style="padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:center;">${e(textoSurtidoItem(i))}</td>
-            </tr>`;
-        }).join('');
-        const externo = receta.folio_externo ? `<p style="margin:4px 0 0;font-size:12px;">Folio del recetario físico: <b>${e(receta.folio_externo)}</b></p>` : '';
-        return `<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:720px;margin:0 auto;padding:24px;border:1px solid #cbd5e1;">
-            <p style="margin:0;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#0e7490;">Sanatorio Belén · Receta</p>
-            <h1 style="margin:4px 0 0;font-size:28px;">${e(receta.folio)}</h1>
-            ${externo}
-            <p style="margin:8px 0 0;font-size:12px;color:#475569;">${e(fechaHoraLegible(receta.fecha_hora))} · ${e(receta.tipo_origen || '')} · ${e(etiquetaEstatusReceta(receta.estatus_surtido))}</p>
-            <hr style="border:0;border-top:1px solid #cbd5e1;margin:14px 0;">
-            <p style="margin:0;font-size:12px;color:#64748b;">Paciente</p>
-            <p style="margin:2px 0 0;font-size:16px;"><b>${e(receta.paciente_nombre)}</b>${receta.paciente_edad !== null && receta.paciente_edad !== undefined ? ' · ' + e(String(receta.paciente_edad)) + ' años' : ''}</p>
-            <p style="margin:2px 0 0;font-size:12px;">${e(receta.paciente_telefono || 'Sin teléfono')} · ${e(receta.paciente_direccion || 'Sin dirección')}</p>
-            <p style="margin:12px 0 0;font-size:12px;color:#64748b;">Médico que emite</p>
-            <p style="margin:2px 0 0;"><b>${e(receta.medico_nombre)}</b></p>
-            <p style="margin:2px 0 0;font-size:12px;white-space:pre-line;">${e(receta.cedulas_impresas || 'Sin cédula registrada')}</p>
-            ${receta.diagnostico ? `<p style="margin:12px 0 0;font-size:13px;"><b>Diagnóstico:</b> ${e(receta.diagnostico)}</p>` : ''}
-            <table style="width:100%;border-collapse:collapse;margin-top:14px;font-size:13px;">
-                <thead><tr style="text-align:left;color:#64748b;font-size:11px;text-transform:uppercase;">
-                    <th style="padding:6px 8px;">Medicamento</th><th style="padding:6px 8px;">Indicación</th><th style="padding:6px 8px;">Prescrito</th><th style="padding:6px 8px;">Surtido</th>
-                </tr></thead>
-                <tbody>${filas}</tbody>
-            </table>
-            <p style="margin-top:36px;border-top:1px solid #0f172a;padding-top:6px;width:240px;font-size:12px;">Firma autógrafa del médico</p>
-        </article>`;
+        return htmlRecetaCarta(modeloRecetaOficial(receta));
     }
     function folioRecetaVigente(turnoId, sku) {
         const nuevas = recetasDeTurno(turnoId).filter(r => !sku || (r.items || []).some(i => normalizar(i.sku) === normalizar(sku)));
@@ -5265,17 +5254,116 @@
             fecha: op.fecha || new Date().toISOString(),
             numero: op.numero || null, de: op.de || null,
             folio_receta_especial: op.folio_receta_especial || '',
-            datos_postanestesicos: op.datos_postanestesicos || ''
+            datos_postanestesicos: op.datos_postanestesicos || '',
+            expediente: op.expediente || op.paciente_id || '',
+            fecha_nacimiento: op.fecha_nacimiento || '',
+            peso: op.peso || '',
+            talla: op.talla || '',
+            alergias: op.alergias || '',
+            especialidad: op.especialidad || '',
+            presentacion: op.presentacion || [p.concentracion, nombreFormaFarmaceutica(p.forma_farmaceutica)].filter(Boolean).join(' · '),
+            cantidad: op.cantidad || (op.numero ? String(op.numero) : '')
+        };
+    }
+    function conUnidadReceta(valor, unidad, pista) {
+        if (valor === null || valor === undefined || valor === '') return '';
+        const s = String(valor);
+        if (pista && s.toLowerCase().indexOf(pista) >= 0) return s;
+        return s + ' ' + unidad;
+    }
+    function marcaAguaReceta() {
+        return '<div style="position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:280px;text-align:center;opacity:0.08;pointer-events:none;">'
+            + '<img src="logo-belen.png" alt="" onerror="this.style.display=\'none\'" style="width:130px;height:auto;display:block;margin:0 auto 4px;">'
+            + '<svg viewBox="0 0 280 78" width="280" height="78" aria-hidden="true"><defs><path id="arco-sb" d="M18,70 A122,122 0 0,1 262,70"></path></defs>'
+            + '<text fill="#0b3a5b" font-size="15" font-family="Arial,sans-serif" letter-spacing="2.5"><textPath href="#arco-sb" xlink:href="#arco-sb" startOffset="50%" text-anchor="middle">SANATORIO BELÉN</textPath></text></svg>'
+            + '<div style="font-size:64px;line-height:1;margin-top:-16px;">&#9764;</div></div>';
+    }
+    function htmlRecetaCarta(m) {
+        const e = escHtmlCuenta;
+        const dato = (etiqueta, valor, ancho) => etiqueta + ' <span style="display:inline-block;border-bottom:1px solid #000;min-width:' + ancho + ';font-weight:bold;padding:0 4px;">' + (valor ? e(valor) : '&nbsp;') + '</span>';
+        const meds = (m.medicamentos && m.medicamentos.length) ? m.medicamentos.map((med, i) => {
+            const cabeza = [med.nombre, med.presentacion, med.cantidad].filter(x => x !== undefined && x !== null && String(x) !== '').join(' · ');
+            return '<div style="margin:0 0 12px;"><p style="margin:0;font-weight:bold;">' + (i + 1) + '. ' + e(cabeza) + '</p><p style="margin:3px 0 0 18px;white-space:pre-wrap;">' + e(med.instrucciones || '') + '</p></div>';
+        }).join('') : '<p style="margin:0;">&nbsp;</p>';
+        const cedulas = e(m.cedulas || '').replace(/\n/g, '<br>');
+        return '<article style="font-family:Arial,sans-serif;color:#000;width:100%;max-width:19.5cm;margin:0 auto;font-size:12px;line-height:1.35;display:flex;flex-direction:column;min-height:21cm;box-sizing:border-box;">'
+            + '<header><div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:start;gap:8px;">'
+            + '<div></div><div style="text-align:center;"><div style="font-size:20px;font-weight:bold;letter-spacing:.12em;">SANATORIO BELÉN</div>'
+            + '<div style="margin-top:6px;font-weight:bold;">' + e(m.medico || '') + '</div>'
+            + '<div style="font-size:11px;">' + e(m.especialidad || '') + '</div>'
+            + '<div style="font-size:10px;white-space:pre-line;margin-top:2px;">' + e(m.cedulas || '') + '</div></div>'
+            + '<div style="text-align:right;font-size:11px;"><div><strong>Folio:</strong> ' + e(m.folio || '') + '</div><div><strong>Exp:</strong> ' + e(m.expediente || '') + '</div></div></div>'
+            + '<div style="margin-top:14px;">'
+            + '<div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;"><span style="flex:1;">' + dato('Nombre del Paciente:', m.paciente, '68%') + '</span><span>' + dato('Fecha:', m.fecha, '120px') + '</span></div>'
+            + '<div style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-bottom:8px;">' + dato('Fecha de Nacimiento:', m.fecha_nacimiento, '150px') + dato('Edad:', m.edad, '72px') + dato('Peso:', m.peso, '72px') + dato('Talla:', m.talla, '72px') + '</div>'
+            + '<div>' + dato('Alergias:', m.alergias, '80%') + '</div></div></header>'
+            + '<div style="position:relative;flex:1;min-height:10cm;margin-top:16px;">' + marcaAguaReceta() + '<div style="position:relative;">' + meds + '</div></div>'
+            + '<footer style="margin-top:18px;"><div style="text-align:center;margin-bottom:12px;"><div style="display:inline-block;min-width:260px;border-top:1px solid #000;padding-top:4px;font-size:11px;"><strong>' + e(m.medico || '') + '</strong><br>' + cedulas + '</div></div>'
+            + '<div style="background:#d7eefb;text-align:center;font-size:10px;padding:8px 10px;color:#0f172a;-webkit-print-color-adjust:exact;print-color-adjust:exact;">Josefa Ortiz de Domínguez 189, Col. Centro Pitillal, Puerto Vallarta, Jalisco. <br> Tel: 322 224 0564  WhatsApp: 322 174 2776  Cel: ___________________.</div>'
+            + '</footer></article>';
+    }
+    function modeloRecetaOficial(receta) {
+        const pac = receta.paciente_id ? buscarPacientePorId(receta.paciente_id) : null;
+        const turno = receta.turno_id ? obtenerTurno(receta.turno_id) : null;
+        const internamiento = (receta.internamiento_id && obtenerInternamiento(receta.internamiento_id)) || (turno && internamientoDeTurno(turno.turno_id));
+        const medico = (receta.medico_id && USUARIOS[receta.medico_id]) || null;
+        const esp = medico && especialidadPorCodigo(medico.especialidad_codigo);
+        const sv = (turno && turno.signos_vitales) || {};
+        const fn = (pac && pac.fecha_nacimiento) || receta.paciente_fecha_nacimiento || '';
+        const edadN = (receta.paciente_edad !== null && receta.paciente_edad !== undefined && receta.paciente_edad !== '') ? receta.paciente_edad : (fn ? calcularEdad(fn) : null);
+        const peso = (receta.paciente_peso !== '' && receta.paciente_peso != null) ? receta.paciente_peso : (sv.peso_kg != null ? sv.peso_kg : '');
+        const talla = (receta.paciente_talla !== '' && receta.paciente_talla != null) ? receta.paciente_talla : (sv.talla_m != null ? sv.talla_m : '');
+        return {
+            folio: receta.folio || '',
+            expediente: receta.paciente_id || '',
+            medico: receta.medico_nombre || (medico && medico.nombre) || '',
+            especialidad: receta.medico_especialidad || (esp && esp.nombre) || (medico && medico.cargo) || '',
+            cedulas: receta.cedulas_impresas || textoCedulasFirma(medico),
+            paciente: (pac && pac.nombre_completo) || receta.paciente_nombre || '',
+            fecha: fechaHoraLegible(receta.fecha_hora),
+            fecha_nacimiento: fn ? fechaLegibleISO(fn) : '',
+            edad: (edadN === null || edadN === undefined || edadN === '') ? '' : (String(edadN).indexOf('año') >= 0 ? String(edadN) : (edadN + ' años')),
+            peso: conUnidadReceta(peso, 'kg', 'kg'),
+            talla: conUnidadReceta(talla, 'm', 'm'),
+            alergias: receta.paciente_alergias || (internamiento && internamiento.alergias) || '',
+            medicamentos: (receta.items || []).map(i => ({
+                nombre: i.nombre || '',
+                presentacion: [i.concentracion, nombreFormaFarmaceutica(i.forma_farmaceutica) || i.forma_farmaceutica].filter(Boolean).join(' · '),
+                cantidad: i.cantidad_prescrita != null ? i.cantidad_prescrita : (i.cantidad || ''),
+                instrucciones: i.dosis_indicacion || ''
+            }))
         };
     }
     function htmlCuerpoReceta(op) {
-        const d = datosReceta(op);
-        const e = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const folioSistema = d.folio_sistema ? '<p><strong>Folio del sistema:</strong> ' + e(d.folio_sistema) + '</p>' : '';
-        const conteo = d.numero ? '<p><strong>Receta individual:</strong> ' + e(d.numero) + ' de ' + e(d.de) + '</p><p><strong>Caja / lote:</strong> ' + e(d.lote) + ' · <strong>Receta especial:</strong> ' + e(d.folio_receta_especial) + '</p>' : '';
-        const post = d.datos_postanestesicos ? '<p><strong>Datos post-anestésicos:</strong> ' + e(d.datos_postanestesicos) + '</p>' : '';
-        const bloqueCedula = d.cedulas_texto ? e(d.cedulas_texto).replace(/\n/g, '<br>') : ('<strong>Cédula:</strong> ' + e(d.cedula || 'No registrada'));
-        return '<div style="font-family:Georgia,serif;color:#1e293b;max-width:680px"><h1 style="font-size:20px;margin:0">Sanatorio Belén</h1><h2 style="font-size:14px;font-weight:normal;color:#64748b;margin:4px 0 16px">' + e(d.titulo) + '</h2><div style="border:1px solid #cbd5e1;border-radius:8px;padding:16px"><p><strong>Paciente:</strong> ' + e(d.paciente) + (d.edad ? ' · ' + e(d.edad) : '') + (d.cama ? ' · ' + e(d.cama) : '') + '</p><p><strong>Fecha:</strong> ' + e(fechaHoraLegible(d.fecha)) + '</p><p><strong>Médico:</strong> ' + e(d.medico) + '<br>' + bloqueCedula + '</p></div><div style="border:1px solid #cbd5e1;border-radius:8px;padding:16px;margin-top:12px"><p><strong>Denominación:</strong> ' + e(d.denominacion) + '</p><p><strong>Dosis / indicación:</strong> ' + e(d.dosis || d.denominacion) + '</p><p><strong>Laboratorio:</strong> ' + e(d.laboratorio) + ' · <strong>Lote:</strong> ' + e(d.lote) + '</p><p><strong>Control normativo:</strong> ' + e(d.etiqueta) + '</p>' + folioSistema + conteo + post + '</div><div style="margin-top:48px;border-top:1px solid #334155;width:240px;padding-top:6px;font-size:12px">Firma del médico</div></div>';
+        const d = datosReceta(op || {});
+        const extra = [];
+        if (d.lote) extra.push('Lote: ' + d.lote);
+        if (d.laboratorio) extra.push('Laboratorio: ' + d.laboratorio);
+        if (d.etiqueta) extra.push(d.etiqueta);
+        if (d.numero) extra.push('Receta individual ' + d.numero + ' de ' + d.de + (d.folio_receta_especial ? '. Receta especial ' + d.folio_receta_especial : ''));
+        if (d.datos_postanestesicos) extra.push(d.datos_postanestesicos);
+        if (d.cama) extra.push('Cama/Habitación: ' + d.cama);
+        const instrucciones = [d.dosis || '', extra.join(' · ')].filter(Boolean).join('\n');
+        return htmlRecetaCarta({
+            folio: d.folio_sistema || d.folio_receta_especial || '',
+            expediente: d.expediente || '',
+            medico: d.medico || '',
+            especialidad: d.especialidad || '',
+            cedulas: d.cedulas_texto || (d.cedula ? ('Cédula: ' + d.cedula) : ''),
+            paciente: d.paciente || '',
+            fecha: fechaHoraLegible(d.fecha),
+            fecha_nacimiento: d.fecha_nacimiento || '',
+            edad: d.edad || '',
+            peso: conUnidadReceta(d.peso, 'kg', 'kg'),
+            talla: conUnidadReceta(d.talla, 'm', 'm'),
+            alergias: d.alergias || '',
+            medicamentos: [{
+                nombre: d.denominacion || '',
+                presentacion: d.presentacion || '',
+                cantidad: d.cantidad || '',
+                instrucciones: instrucciones
+            }]
+        });
     }
     function htmlRecetaImprimible(op) {
         return '<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Receta</title></head><body style="margin:32px">' + htmlCuerpoReceta(op) + '</body></html>';
@@ -5522,6 +5610,144 @@
         return true;
     }
 
+    function prefillHojaQuirurgica(turnoId) {
+        const t = obtenerTurno(turnoId) || {};
+        const i = t.turno_id ? internamientoDeTurno(t.turno_id) : null;
+        const p = t.paciente_id ? (buscarPacientePorId(t.paciente_id) || {}) : {};
+        const cir = ((i && i.cirugia_id) ? listarCirugias().find(c => c.cirugia_id === i.cirugia_id) : null)
+            || listarCirugias().find(c => c.turno_id === t.turno_id) || {};
+        const fn = p.fecha_nacimiento || t.fecha_nacimiento || '';
+        const edad = fn ? calcularEdad(fn) : null;
+        const sexo = (p.sexo || t.sexo) === 'F' ? 'Femenino' : ((p.sexo || t.sexo) === 'M' ? 'Masculino' : '');
+        const cama = i ? etiquetaCama(i.cama_codigo || i.cama) : (t.cama ? etiquetaCama(t.cama_codigo || t.cama) : '');
+        return {
+            expediente: t.paciente_id || p.paciente_id || '',
+            nombre: p.nombre_completo || t.paciente_nombre || '',
+            edad: edad === null || edad === undefined ? '' : (edad + (edad === 1 ? ' año' : ' años')),
+            sexo: sexo,
+            servicio: (i && (i.area_destino || nombreAreaEstancia(i.area_codigo))) || t.area_destino || '',
+            cama: cama || '',
+            fecha_programacion: cir.fecha ? fechaLegibleISO(cir.fecha) : (cir.fecha_hora ? fechaHoraLegible(cir.fecha_hora) : ''),
+            dx_pre: (i && (i.diagnostico_ingreso || i.diagnostico_actual)) || t.dx_principal || '',
+            operacion: cir.procedimiento || '',
+            fecha_hora_quirurgica: cir.fecha_hora ? fechaHoraLegible(cir.fecha_hora) : '',
+            cirujano: cir.medico_cirujano_nombre || (i && i.medico_tratante_nombre) || t.medico_nombre || '',
+            anestesiologo: cir.anestesiologo_nombre || '',
+            medico: (i && i.medico_tratante_nombre) || t.medico_nombre || ''
+        };
+    }
+    function leerNotaPostoperatoria(raiz) {
+        const q = sel => raiz && raiz.querySelector(sel);
+        const val = sel => (q(sel) && q(sel).value) || '';
+        const si = val('#po-patologia') === 'si';
+        const pron = limpiarEspacios(val('#po-pronostico'));
+        return {
+            entrada: true, pausa: true, salida: true, conteo: true,
+            dx_pre: val('#po-dxpre'), dx_post: val('#po-dxpost'), operacion: val('#po-op'),
+            tecnica: val('#po-tecnica'), hallazgos: val('#po-hallazgos'),
+            sangrado_ml: val('#po-sangrado'), patologia: val('#po-patologia') || 'no',
+            pronostico: pron || 'Reservado a evolución',
+            estudio_biopsia_id: si ? val('#po-estudio') : '',
+            cargar_biopsia: !!(si && q('#po-cargar') && q('#po-cargar').checked),
+            servicio: val('#po-servicio'), fecha_programacion: val('#po-fprog'),
+            fecha_hora_quirurgica: val('#po-fhq'), recuento: val('#po-recuento'),
+            uresis: val('#po-uresis'), tipo_anestesia: val('#po-anestesia'),
+            cirujano: val('#po-cirujano'), ayudante: val('#po-ayudante'),
+            anestesiologo: val('#po-anestesiologo'), instrumentista: val('#po-instrumentista'),
+            circulante: val('#po-circulante'), otro: val('#po-otro')
+        };
+    }
+    function htmlModalHojaQuirurgica(prefill) {
+        const p = prefill || {};
+        const e = escHtmlCuenta;
+        const cls = 'w-full border border-slate-300 rounded-lg p-2 text-sm bg-white';
+        const lab = (t, id) => '<label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="' + id + '">' + t + '</label>';
+        const biopsias = listarEstudios().filter(est => est.categoria === 'PATOLOGIA' || normalizar(est.nombre).indexOf('biopsia') >= 0);
+        const opts = biopsias.length
+            ? biopsias.map(b => '<option value="' + e(b.estudio_id) + '">' + e(b.nombre) + ' · ' + e(formatoMoneda(b.precio_unitario)) + '</option>').join('')
+            : '<option value="">Sin estudios de patología en el catálogo</option>';
+        return '<div class="space-y-3 text-left text-sm text-slate-800">'
+            + '<p class="text-center font-extrabold tracking-wide">HOJA QUIRÚRGICA</p>'
+            + '<p class="text-[11px] text-right text-slate-500">Exp: <b>' + e(p.expediente || '') + '</b> · Cama/Habitación: <b>' + e(p.cama || 'Por asignar por Enfermería') + '</b></p>'
+            + '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">'
+            + '<div>' + lab('SERVICIO', 'po-servicio') + '<input id="po-servicio" class="' + cls + '" value="' + e(p.servicio || '') + '"></div>'
+            + '<div>' + lab('FECHA DE PROGRAMACIÓN', 'po-fprog') + '<input id="po-fprog" class="' + cls + '" value="' + e(p.fecha_programacion || '') + '"></div></div>'
+            + '<div class="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs">'
+            + '<p><b>Nombre del/la paciente:</b><br>' + e(p.nombre || '') + '</p>'
+            + '<p><b>Edad:</b><br>' + e(p.edad || '') + '</p>'
+            + '<p><b>Sexo:</b><br>' + e(p.sexo || '') + '</p></div>'
+            + '<div>' + lab('Dx Preoperatorio', 'po-dxpre') + '<input id="po-dxpre" class="' + cls + '" value="' + e(p.dx_pre || '') + '"></div>'
+            + '<p class="text-xs text-justify leading-relaxed border border-slate-200 rounded-lg p-3">Autorizo a SANATORIO BELÉN S.A. de C.V. para que sus médicos, enfermeras y personal quirúrgico realicen en mi persona la intervención descrita en esta hoja, bajo la supervisión del médico tratante, y acepto los procedimientos que durante el acto quirúrgico se consideren necesarios.</p>'
+            + '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-center">'
+            + '<div class="border-t border-slate-400 pt-2">Paciente</div><div class="border-t border-slate-400 pt-2">Familiar/testigo</div></div>'
+            + '<div>' + lab('Operación Programada', 'po-op') + '<input id="po-op" class="' + cls + '" value="' + e(p.operacion || '') + '"></div>'
+            + '<div>' + lab('Fecha y hora quirúrgica', 'po-fhq') + '<input id="po-fhq" class="' + cls + '" value="' + e(p.fecha_hora_quirurgica || '') + '"></div>'
+            + '<div>' + lab('Técnica Quirúrgica', 'po-tecnica') + '<textarea id="po-tecnica" rows="3" class="' + cls + '"></textarea></div>'
+            + '<div>' + lab('Hallazgos', 'po-hallazgos') + '<textarea id="po-hallazgos" rows="3" class="' + cls + '"></textarea></div>'
+            + '<div>' + lab('Recuento de material médico y quirúrgico', 'po-recuento') + '<textarea id="po-recuento" rows="2" class="' + cls + '"></textarea></div>'
+            + '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">'
+            + '<div>' + lab('Sangrado (ml)', 'po-sangrado') + '<input id="po-sangrado" type="number" min="0" value="0" class="' + cls + '"></div>'
+            + '<div>' + lab('Uresis', 'po-uresis') + '<input id="po-uresis" class="' + cls + '"></div>'
+            + '<div>' + lab('Tipo de Anestesia', 'po-anestesia') + '<input id="po-anestesia" class="' + cls + '"></div></div>'
+            + '<div>' + lab('Dx Postoperatorio', 'po-dxpost') + '<input id="po-dxpost" class="' + cls + '"></div>'
+            + '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">'
+            + '<div>' + lab('Cirujana/o', 'po-cirujano') + '<input id="po-cirujano" class="' + cls + '" value="' + e(p.cirujano || '') + '"></div>'
+            + '<div>' + lab('Ayudante', 'po-ayudante') + '<input id="po-ayudante" class="' + cls + '"></div>'
+            + '<div>' + lab('Anestesióloga/o', 'po-anestesiologo') + '<input id="po-anestesiologo" class="' + cls + '" value="' + e(p.anestesiologo || '') + '"></div>'
+            + '<div>' + lab('Instrumentista', 'po-instrumentista') + '<input id="po-instrumentista" class="' + cls + '"></div>'
+            + '<div>' + lab('Circulante', 'po-circulante') + '<input id="po-circulante" class="' + cls + '"></div>'
+            + '<div>' + lab('Otra/o', 'po-otro') + '<input id="po-otro" class="' + cls + '"></div></div>'
+            + '<div class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">'
+            + '<p class="text-[11px] font-bold uppercase text-slate-500">Registro electrónico complementario</p>'
+            + '<div>' + lab('Pronóstico', 'po-pronostico') + '<input id="po-pronostico" class="' + cls + '" placeholder="Reservado a evolución"></div>'
+            + '<div>' + lab('Pieza enviada a patología', 'po-patologia') + '<select id="po-patologia" class="' + cls + '" onchange="var bx=document.getElementById(\'po-bx\'); if(bx) bx.classList.toggle(\'hidden\', this.value!==\'si\')"><option value="no">No</option><option value="si">Sí</option></select></div>'
+            + '<div id="po-bx" class="hidden space-y-2">' + lab('Estudio de biopsia del catálogo', 'po-estudio') + '<select id="po-estudio" class="' + cls + '">' + opts + '</select>'
+            + '<label class="flex items-center gap-2 text-xs font-semibold"><input id="po-cargar" type="checkbox" checked class="rounded"> Cargar estudio de Biopsia automáticamente a la cuenta del paciente</label></div></div>'
+            + '<p id="po-error" class="text-xs text-red-600 hidden"></p></div>';
+    }
+    function htmlHojaQuirurgica(nota, ficha) {
+        const e = escHtmlCuenta;
+        const n = nota || {};
+        const f = ficha || {};
+        const firm = n.firmantes || {};
+        const txt = (a, b) => {
+            if (a !== undefined && a !== null && String(a).trim() !== '') return String(a);
+            return b ? String(b) : '';
+        };
+        const linea = (et, val) => '<p style="margin:2px 0;"><strong>' + et + ':</strong> ' + e(val || '') + '</p>';
+        const firma = (et, nombre) => '<div style="width:31%;text-align:center;font-size:9px;margin-top:22px;"><div style="min-height:16px;font-weight:bold;">' + e(nombre || '') + '</div><div style="border-top:1px solid #000;padding-top:3px;">' + et + '</div></div>';
+        const cama = txt(f.cama, '') || 'Por asignar por Enfermería';
+        const sangrado = (n.sangrado_ml !== undefined && n.sangrado_ml !== null && n.sangrado_ml !== '') ? (n.sangrado_ml + ' ml') : '';
+        return '<article style="font-family:Arial,sans-serif;font-size:11px;color:#000;line-height:1.35;">'
+            + '<p style="text-align:right;margin:0 0 4px;"><strong>Exp:</strong> ' + e(txt(f.expediente, '')) + ' &nbsp; <strong>No. de Cama/Habitación:</strong> ' + e(cama) + '</p>'
+            + '<p style="text-align:center;font-size:14px;font-weight:bold;margin:0 0 8px;">HOJA QUIRÚRGICA</p>'
+            + '<div style="display:flex;justify-content:space-between;gap:12px;border:1px solid #000;padding:4px 6px;margin-bottom:6px;"><span><strong>SERVICIO:</strong> ' + e(txt(n.servicio, f.servicio)) + '</span><span><strong>FECHA DE PROGRAMACIÓN:</strong> ' + e(txt(n.fecha_programacion, f.fecha_programacion)) + '</span></div>'
+            + linea('Nombre del/la paciente', txt(f.nombre, ''))
+            + '<p style="margin:2px 0;"><strong>Edad:</strong> ' + e(txt(f.edad, '')) + ' &nbsp; <strong>Sexo:</strong> ' + e(txt(f.sexo, '')) + '</p>'
+            + linea('Dx Preoperatorio', txt(n.dx_pre, f.dx_pre))
+            + '<p style="text-align:justify;margin:8px 0;">Autorizo a SANATORIO BELÉN S.A. de C.V. para que sus médicos, enfermeras y personal quirúrgico realicen en mi persona la intervención descrita en esta hoja, bajo la supervisión del médico tratante, y acepto los procedimientos que durante el acto quirúrgico se consideren necesarios.</p>'
+            + '<div style="display:flex;justify-content:space-between;gap:16px;margin:18px 0 8px;">'
+            + '<div style="width:42%;text-align:center;font-size:9px;border-top:1px solid #000;padding-top:3px;">Paciente</div>'
+            + '<div style="width:42%;text-align:center;font-size:9px;border-top:1px solid #000;padding-top:3px;">Familiar/testigo</div></div>'
+            + linea('Operación Programada', txt(n.operacion, f.operacion))
+            + linea('Fecha y hora quirúrgica', txt(n.fecha_hora_quirurgica, f.fecha_hora_quirurgica))
+            + '<p style="margin:2px 0;"><strong>Técnica Quirúrgica:</strong></p><div style="white-space:pre-wrap;margin:0 0 6px 8px;">' + e(txt(n.tecnica, '')) + '</div>'
+            + '<p style="margin:2px 0;"><strong>Hallazgos:</strong></p><div style="white-space:pre-wrap;margin:0 0 6px 8px;">' + e(txt(n.hallazgos, '')) + '</div>'
+            + '<p style="margin:2px 0;"><strong>Recuento de material médico y quirúrgico:</strong></p><div style="white-space:pre-wrap;margin:0 0 6px 8px;">' + e(txt(n.recuento, '')) + '</div>'
+            + linea('Sangrado', sangrado)
+            + linea('Uresis', txt(n.uresis, ''))
+            + linea('Tipo de Anestesia', txt(n.tipo_anestesia, ''))
+            + linea('Dx Postoperatorio', txt(n.dx_post, ''))
+            + '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;">'
+            + firma('Cirujana/o', txt(firm.cirujano, f.cirujano))
+            + firma('Ayudante', txt(firm.ayudante, ''))
+            + firma('Anestesióloga/o', txt(firm.anestesiologo, f.anestesiologo))
+            + firma('Instrumentista', txt(firm.instrumentista, ''))
+            + firma('Circulante', txt(firm.circulante, ''))
+            + firma('Otra/o', txt(firm.otro, ''))
+            + '</div></article>';
+    }
+
     // Borra TODA la información operativa del demo (no toca los machotes) y vuelve a sembrar
     function restablecerDemo() {
         [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.estudios, CLAVES.estudiosV3, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.recetasFoliadas, CLAVES.recetas, CLAVES.folioRecetaSeq, CLAVES.folioExternoSeq, CLAVES.demoQxActivo, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
@@ -5539,7 +5765,7 @@
         listarTurnos, obtenerTurno, actualizarTurno, siguienteNumeroTurno, crearTurno, ordenarPorLlegada, turnoVisiblePara, filaDe, colaEspera, pacientesEnConsulta, posicionEnCola, posicionNuevaEnCola, siguienteEnCola, corteDiario, metricas24h,
         listarCirugias, fichaCirugia, proximasCirugias, cirugiasVisibles, cirugiaVisiblePara, cirugiaPara, cirujanos, anestesiologos, disponibilidadQuirofano, validarCirugia, programarCirugia, asignarAnestesiologo, puedeIngresarAmbulatorio, ingresarPacienteAmbulatorio, hospitalizadosDe, hospitalizadoVisiblePara,
         camasLibres, flujoQuirofanoDe, pasarPacienteAQuirofano, recibirEnQuirofano, regresarAHospitalizacion, datosHojaTransanestesica,
-        guardarNotaPostanestesica, guardarNotaPostoperatoria, altaAmbulatoriaQx, convertirAmbulatorioAPiso,
+        guardarNotaPostanestesica, guardarNotaPostoperatoria, prefillHojaQuirurgica, htmlModalHojaQuirurgica, leerNotaPostoperatoria, htmlHojaQuirurgica, altaAmbulatoriaQx, convertirAmbulatorioAPiso,
         puedeImprimirHojaTrans, puedeNotaPostanestesica, puedeNotaPostoperatoria, puedeAltaAmbulatoria, puedeConvertirAPiso, puedeRegresarAPiso,
         validarSignos, signosCompletos, resumenSignos, guardarSignos,
         pasarAMedico, iniciarConsulta, accesoExpediente,

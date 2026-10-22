@@ -613,7 +613,7 @@
                             <div data-area="OBSERVACION" data-desc="Observación" data-texto="Observación (1 cama disp)" onclick="seleccionarArea(this, 'OBSERVACION', 'Observación')" class="area-destino border-2 border-slate-200 bg-slate-50 text-slate-600 p-4 rounded-xl cursor-pointer text-center font-bold hover:shadow-md transition text-sm">Observación (1 cama disp)</div>
                             <div data-area="CONSULTORIO_EXTRA" data-desc="Consultorio extra" data-texto="Consultorio extra" onclick="seleccionarArea(this, 'CONSULTORIO_EXTRA', 'Consultorio extra')" class="area-destino border-2 border-slate-200 bg-slate-50 text-slate-600 p-4 rounded-xl cursor-pointer text-center font-bold hover:shadow-md transition text-sm">Consultorio extra</div>
                         </div>
-                        <p class="mt-4 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><i class="fas fa-bed text-slate-400 mr-1"></i> Cama: <span class="font-bold text-slate-700">Por asignar por Enfermería</span></p>
+                        <p class="mt-4 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><i class="fas fa-bed text-slate-400 mr-1"></i> Cama: <span class="out-cama font-bold text-slate-700">Por asignar por Enfermería</span></p>
                     </div>
 
                     <div class="flex justify-end pb-10">
@@ -626,7 +626,7 @@
                         <div class="w-10 h-10 rounded-xl bg-cyan-700 text-white flex items-center justify-center shadow-md"><i class="fas fa-file-signature"></i></div>
                         <div>
                             <h3 class="text-lg font-extrabold text-slate-900 leading-tight">Consentimientos</h3>
-                            <p class="text-xs text-slate-500">El consentimiento de ingreso es fijo. Agregue los consentimientos de procedimientos que se requieran.</p>
+                            <p class="text-xs text-slate-500">El consentimiento de intervención es fijo. Con él se imprimen el contrato hospitalario, la carta de anestesia, el consentimiento de riesgo quirúrgico y la hoja quirúrgica. Agregue los consentimientos de procedimientos que se requieran.</p>
                         </div>
                     </div>
 
@@ -648,7 +648,19 @@
 
                     <button type="button" onclick="agregarConsentimientoProcedimiento()" class="w-full border-2 border-dashed border-cyan-300 bg-cyan-50/50 text-cyan-700 font-bold text-sm rounded-2xl py-4 hover:bg-cyan-50 hover:border-cyan-400 transition inline-flex justify-center items-center gap-2"><i class="fas fa-plus"></i> Agregar otro Consentimiento</button>
 
-                    <div class="flex justify-end pb-10">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-2">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-file-contract text-cyan-500 mr-2"></i>Formatos oficiales que se imprimen con este expediente</h3>
+                        <p class="text-xs text-slate-600">Se autollenan con el paciente, la cama asignada y el médico tratante. No piden captura extra.</p>
+                        <ul class="text-xs text-slate-700 space-y-1 list-disc pl-4">
+                            <li>Contrato de prestación de servicios hospitalarios (PROFECO 6648-2023).</li>
+                            <li>Carta de consentimiento bajo información para la aplicación de anestesia.</li>
+                            <li>Consentimiento de riesgo y complicaciones quirúrgicas.</li>
+                            <li>Hoja quirúrgica (nota post-operatoria oficial).</li>
+                        </ul>
+                    </div>
+
+                    <div class="flex flex-col md:flex-row justify-end items-stretch gap-3 pb-10">
+                        <button type="button" data-solo-lectura-ok onclick="imprimirDesdePestanas('consentimiento')" class="bg-cyan-700 text-white px-6 py-3 rounded-xl font-bold shadow hover:bg-cyan-800"><i class="fas fa-print"></i> Imprimir formatos de consentimiento</button>
                         <button type="button" onclick="guardarYContinuar('consentimientos')" class="w-full md:w-auto bg-slate-900 text-white px-10 py-4 rounded-xl text-base font-bold shadow-xl hover:bg-slate-800 hover:-translate-y-0.5 transition-all inline-flex justify-center items-center gap-3">Guardar y Continuar <i class="fas fa-arrow-right"></i></button>
                     </div>
                 </div>
@@ -852,6 +864,7 @@
         <div style="text-align: right; margin-bottom: 5px;">
             <p id="titulo-impresion-nota" style="margin: 0; font-size: 14px; font-weight: bold; text-decoration: underline;">NOTA DE CONSULTA MÉDICA</p>
             <p style="margin: 0;">Fecha y Hora: <span id="print-fecha" class="put-fecha"></span></p>
+            <p style="margin: 0;"><strong>No. de Expediente:</strong> <span class="out-expediente"></span> &nbsp;&nbsp; <strong>No. de Cama/Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span></p>
         </div>
         <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
             <p style="margin: 2px 0;"><strong>NOMBRE:</strong> <span class="out-paciente"></span> &nbsp;&nbsp; <strong>EDAD:</strong> <span class="out-edad">87 años</span> &nbsp;&nbsp; <strong>SEXO:</strong> <span class="out-sexo">Femenino</span></p>
@@ -880,6 +893,7 @@
 
     <div id="print-ingreso" class="zona-impresion hidden">
         <div class="hoja-titulo">HOJA FRONTAL DE INGRESO HOSPITALARIO</div>
+        <div style="text-align: right; margin-bottom: 8px;"><strong>No. de Expediente:</strong> <span class="out-expediente"></span> &nbsp; <strong>No. de Cama/Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span></div>
         <div style="text-align: right; margin-bottom: 15px;"><strong>Fecha y Hora de Ingreso:</strong> <span class="put-fecha"></span></div>
         <div class="cuadro-datos">
             <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">I. DATOS DEL PACIENTE</h4>
@@ -916,62 +930,207 @@
         </div>
     </div>
 
-    <div id="print-cons-gral" class="zona-impresion hidden">
-        <div style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px;">CONSENTIMIENTO PARA EL TRATAMIENTO E INTERVENCIÓN MÉDICA</div>
-        <div style="line-height: 1.8; margin-bottom: 15px;">
-            <strong>Paciente:</strong> <span class="linea-input out-paciente" style="width:250px;"></span> &nbsp;&nbsp; <strong>Área:</strong> <span class="linea-input out-area" style="width:130px;"></span><br>
-            <strong>Fecha de Ingreso:</strong> <span class="linea-input put-fecha" style="width:150px;"></span> &nbsp;&nbsp; <strong>Peso:</strong> <span class="linea-input out-peso" style="width:50px;"></span> &nbsp;&nbsp; <strong>Talla:</strong> <span class="linea-input out-talla" style="width:50px;"></span><br>
-            <strong>Familiar Responsable:</strong> <span class="linea-input out-resp" style="width:250px;"></span>
-        </div>
-        <p style="text-align: justify; margin-bottom: 10px;">Por medio de este documento autorizo al personal de salud de Sanatorio Belén para que efectúen la atención médica necesaria...</p>
-        <p><strong>Diagnóstico al Ingreso:</strong> <span class="linea-input out-dx-prin"></span></p>
-        <ol style="margin-top:10px; padding-left:20px; text-align: justify; margin-bottom: 30px;">
-            <li>Autorizo que se me administren vía intramuscular o intravenosa sueros, medicamentos y vacunas.</li>
-            <li>Acepto ser hospitalizado de manera ambulatoria o indefinida bajo la indicación de mi médico.</li>
+    <div id="print-cons-gral" class="zona-impresion hidden" data-titulo="Hoja de intervención">
+        <p style="text-align:right;margin:0 0 6px;"><strong>No. de Expediente:</strong> <span class="out-expediente"></span> &nbsp; <strong>No. de Cama/Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span></p>
+        <div style="text-align:center;font-size:13px;font-weight:bold;margin-bottom:8px;">CONSENTIMIENTO PARA EL TRATAMIENTO E INTERVENCIÓN MÉDICA</div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:11px;">
+            <tr>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Nombre del Paciente:</strong> <span class="out-paciente"></span></td>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Fecha de Nacimiento:</strong> <span class="out-fn"></span></td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Fecha de Ingreso:</strong> <span class="out-fecha-ingreso"></span></td>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Hora de Ingreso:</strong> <span class="out-hora-ingreso"></span></td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>No. Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span></td>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Peso:</strong> <span class="out-peso"></span> &nbsp; <strong>Talla:</strong> <span class="out-talla"></span> &nbsp; <strong>Edad:</strong> <span class="out-edad"></span></td>
+            </tr>
+            <tr>
+                <td colspan="2" style="border:1px solid #000;padding:3px 6px;"><strong>Alergias:</strong> <span class="out-alergias"></span></td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Familiar responsable:</strong> <span class="out-resp"></span></td>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Ocupación del paciente:</strong> <span class="out-ocupacion"></span></td>
+            </tr>
+            <tr>
+                <td colspan="2" style="border:1px solid #000;padding:3px 6px;"><strong>Domicilio del paciente:</strong> <span class="out-domicilio"></span></td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Col.:</strong> <span class="out-col"></span></td>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Municipio:</strong> <span class="out-municipio"></span></td>
+            </tr>
+            <tr>
+                <td colspan="2" style="border:1px solid #000;padding:3px 6px;"><strong>Tel./Cel.:</strong> <span class="out-tel"></span></td>
+            </tr>
+        </table>
+        <p style="text-align:justify;margin:0 0 8px;">Por medio de este documento autorizo al personal de salud, incluyendo médicos, enfermeros, técnicos y/o auxiliares de Sanatorio Belén para que efectúen la atención médica necesaria para realizar un diagnóstico certero por medio de consulta, exploración física, estudios de imagen y/o estudios de laboratorio.</p>
+        <p style="margin:0 0 8px;"><strong>Diagnóstico al Ingreso:</strong> <span class="linea-input out-dx-prin"></span></p>
+        <p style="text-align:justify;margin:0 0 8px;">Una vez que se tenga un probable diagnóstico, acepto recibir los tratamientos que sean necesarios realizarse en mi persona bajo la supervisión e indicación del médico tratante, el/la doctor/a: <strong class="out-medico"></strong> para la solución y la total recuperación de la enfermedad o padecimiento que presente. Por lo cual, hago constar que acepto los siguientes puntos:</p>
+        <ol style="margin:0 0 8px;padding-left:18px;text-align:justify;">
+            <li>Autorizo que se me administren vía intramuscular o intravenosa sueros o soluciones, hemoderivados, medicamentos, vacunas y otros.</li>
+            <li>Acepto recibir terapia física y/o procedimientos físicos que se consideran necesarios para el tratamiento del padecimiento.</li>
+            <li>Acepto la colocación de yesos, férulas, fibra de vidrio, cabestrillos, collarines, fajas o cualquier otro inmovilizador para tratar alguna lesión o fractura de cualquier parte de mi cuerpo.</li>
+            <li>Acepto que se me realicen suturas, curaciones, aseos, drenaje y debridación de cualquier herida que presente.</li>
+            <li>Acepto ser hospitalizado de manera ambulatoria o indefinida bajo la indicación de mi médico tratante.</li>
         </ol>
-        <p id="aviso-menor-print-gral" style="display: none; text-align: justify; margin-bottom: 10px; border: 1px solid #000; padding: 6px;"></p>
-        <div style="display: flex; justify-content: space-between; margin-top: 50px;">
-            <div class="firma-box" id="firma-izq-cons-gral" style="margin-left:0;">FIRMA DEL PACIENTE</div>
-            <div class="firma-box" style="margin-right:0;">FIRMA DEL MÉDICO</div>
+        <p style="text-align:justify;margin:0 0 8px;">Estoy consciente y de acuerdo que se me ha explicado que durante el curso de mi tratamiento pueden presentarse nuevos hallazgos clínicos que cambien el diagnóstico inicial y haya necesidad de modificar o complementar los procedimientos médicos y el tratamiento a seguir, así como el pronóstico de este. Yo, por consiguiente, autorizo que el médico tratante junto con su equipo realicen los cambios que se consideren necesarios y beneficiosos para mi persona, en el ejercicio de su juicio profesional.</p>
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-end;margin-top:28px;">
+            <div style="flex:1;text-align:center;font-size:9px;"><div style="border-top:1px solid #000;padding-top:4px;">FIRMA DEL PACIENTE</div></div>
+            <div style="flex:1;text-align:center;font-size:9px;"><div class="out-medico" style="font-weight:bold;min-height:12px;"></div><div style="border-top:1px solid #000;padding-top:4px;">FIRMA DEL MÉDICO</div></div>
+            <div style="flex:1.3;text-align:center;font-size:9px;"><div class="out-resp" style="font-weight:bold;min-height:12px;"></div><div style="border-top:1px solid #000;padding-top:4px;">FAMILIAR O TUTOR (En caso de paciente menor de edad, inconsciente o discapacitado)</div></div>
+            <div style="width:96px;height:108px;border:1px solid #000;font-size:8px;display:flex;align-items:flex-end;justify-content:center;text-align:center;padding:4px;">HUELLA DACTILAR DEL PACIENTE</div>
         </div>
     </div>
 
     <!-- Consentimientos de procedimientos: se generan por JS (uno por cada consentimiento agregado) -->
     <div id="print-cons-esp-lista"></div>
 
-    <div id="print-indicaciones" class="zona-impresion hidden">
-        <div style="text-align: right; margin-bottom: 5px;">
-            <strong>Fecha y Hora:</strong> <span class="put-fecha"></span>
+    <div id="print-contrato" class="zona-impresion hidden" data-titulo="Contrato de servicios hospitalarios">
+        <p style="text-align:right;margin:0 0 6px;font-size:11px;"><strong>No. de Expediente:</strong> <span class="out-expediente"></span> &nbsp; <strong>No. de Cama/Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span></p>
+        <div style="text-align:center;font-size:13px;font-weight:bold;margin-bottom:8px;">CONTRATO DE PRESTACIÓN DE SERVICIOS HOSPITALARIOS</div>
+        <p style="font-weight:bold;margin:8px 0 4px;">DECLARACIONES</p>
+        <p style="text-align:justify;margin:0 0 6px;"><strong>I. Declara SANATORIO BELÉN</strong>, a quien en lo sucesivo se le denominará "EL HOSPITAL", que es una persona moral constituida conforme a las leyes mexicanas, según consta en la Escritura pública 18,599, Tomo XLII, Folio 23455-23461, Apéndice 457, Libro VIII del 23 de abril de 2009, otorgada ante el Lic. RODOLFO GÓMEZ DE LA PAZ, Notario Público No. 02 de Puerto Vallarta, Jalisco. Que su Representante Legal es Héctor Alfonso López Rodríguez. Que su RFC es SBE0904239J3. Que su teléfono es 322 224 0564. Que su correo electrónico es clin_belen@hotmail.com. Que su domicilio se ubica en Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, C.P. 48290, Puerto Vallarta, Jalisco.</p>
+        <p style="text-align:justify;margin:0 0 6px;"><strong>II. Declara "EL USUARIO"</strong>, <span class="out-paciente" style="font-weight:bold;"></span>, por propio derecho, que solicita los servicios hospitalarios y que los datos de identificación asentados en este expediente son ciertos.</p>
+        <p style="text-align:justify;margin:0 0 8px;"><strong>III. Declara "EL DEMANDANTE DEL SERVICIO"</strong>, <span class="out-resp" style="font-weight:bold;"></span>, que comparece a solicitar y, en su caso, a obligarse al pago de los servicios prestados a EL USUARIO.</p>
+        <p style="font-weight:bold;margin:8px 0 4px;">CLÁUSULAS</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>PRIMERA. Objeto.</strong> El presente contrato tiene por objeto la prestación de servicios hospitalarios de EL HOSPITAL a EL USUARIO, incluyendo el uso de instalaciones, hospedaje clínico, atención de enfermería y los servicios que indique el médico tratante.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>SEGUNDA. Autorización de atención.</strong> EL USUARIO autoriza al personal de EL HOSPITAL a brindarle la atención médica, de enfermería y auxiliar que su estado de salud requiera, conforme a las indicaciones del médico tratante.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>TERCERA. Insumos y medicamentos.</strong> Los medicamentos, material de curación, soluciones y demás insumos utilizados durante la estancia serán suministrados por EL HOSPITAL o por la farmacia que corresponda y se cargarán a la cuenta de EL USUARIO.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>CUARTA. Precio y Forma de Pago.</strong> EL USUARIO y EL DEMANDANTE DEL SERVICIO se obligan a cubrir el precio de los servicios, honorarios, insumos y medicamentos conforme al tarifario vigente, al momento del alta o en los plazos que EL HOSPITAL señale. El saldo vencido generará un interés moratorio del 5% mensual.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>QUINTA. Admisión Hospitalaria.</strong> La admisión queda sujeta a la disponibilidad de cama o habitación, a la integración del expediente y a la identificación de EL USUARIO y de quien solicita el servicio.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>SEXTA. Resguardo de Objetos Personales.</strong> EL HOSPITAL no se hace responsable por dinero, alhajas, documentos o aparatos electrónicos que EL USUARIO conserve consigo. El resguardo, cuando se solicite, se hará únicamente mediante inventario firmado.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>SÉPTIMA. Reglamento Interno.</strong> EL USUARIO y sus acompañantes se obligan a observar el reglamento interno de EL HOSPITAL, los horarios de visita y las indicaciones del personal de salud.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>OCTAVA. Alta del Usuario y pase de salida.</strong> El alta médica la determina el médico tratante. EL USUARIO no podrá abandonar las instalaciones sin el pase de salida y la liquidación de la cuenta, salvo urgencia justificada o traslado formal.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>NOVENA. Traslado a otro Hospital.</strong> Si el estado de EL USUARIO requiere recursos que EL HOSPITAL no tenga disponibles, se gestionará el traslado a otra unidad, con autorización de EL USUARIO o de EL DEMANDANTE DEL SERVICIO, salvo urgencia vital.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>DÉCIMA. Límites de responsabilidad con terceros.</strong> EL HOSPITAL no responde por actos, honorarios u omisiones de médicos, laboratorios o proveedores que actúen como terceros independientes y no formen parte de su personal.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>DÉCIMA PRIMERA. Confidencialidad.</strong> EL HOSPITAL resguardará la información clínica de EL USUARIO y solo la revelará al propio usuario, a quien lo represente, al equipo tratante o a la autoridad que lo requiera conforme a la ley.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>DÉCIMA SEGUNDA. Cancelación.</strong> EL USUARIO podrá cancelar los servicios programados que no hayan iniciado, dentro de los 5 días hábiles siguientes a la contratación, sin perjuicio de los cargos ya erogados.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>DÉCIMA TERCERA. Quejas.</strong> Las quejas se presentarán por escrito en el domicilio de EL HOSPITAL y serán atendidas en un plazo de 10 días hábiles.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>DÉCIMA CUARTA. Pena convencional.</strong> El incumplimiento de las obligaciones de pago faculta a EL HOSPITAL a exigir una pena convencional del 10% sobre el saldo insoluto, además del interés moratorio pactado.</p>
+        <p style="text-align:justify;margin:0 0 4px;"><strong>DÉCIMA QUINTA. Aviso de privacidad.</strong> EL USUARIO manifiesta que se le hizo saber el aviso de privacidad de EL HOSPITAL y que sus datos personales y sensibles se tratarán para la prestación de los servicios de salud.</p>
+        <p style="text-align:justify;margin:0 0 8px;"><strong>DÉCIMA SEXTA. Competencia.</strong> Para la interpretación y el cumplimiento de este contrato, las partes se someten a la competencia de la Procuraduría Federal del Consumidor (PROFECO).</p>
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-top:28px;">
+            <div style="width:30%;text-align:center;font-size:9px;border-top:1px solid #000;padding-top:4px;">EL HOSPITAL</div>
+            <div style="width:30%;text-align:center;font-size:9px;border-top:1px solid #000;padding-top:4px;">EL USUARIO<br><span class="out-paciente"></span></div>
+            <div style="width:30%;text-align:center;font-size:9px;border-top:1px solid #000;padding-top:4px;">DEMANDANTE DEL SERVICIO<br><span class="out-resp"></span></div>
         </div>
-        <div class="hoja-titulo">INDICACIONES MÉDICAS HOSPITALARIAS</div>
+        <p style="margin-top:16px;font-size:10px;text-align:center;">Registro PROFECO número 6648-2023 de fecha 17 de julio de 2023, expediente PFC.B.E.7/006661-2023.</p>
+    </div>
 
-        <div class="cuadro-datos">
-            <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">DATOS DEL PACIENTE</h4>
-            <div class="fila"><span><strong>Nombre:</strong> <span id="print-ind-nombre"></span></span> <span><strong>Edad:</strong> <span id="print-ind-edad"></span></span> <span><strong>Área:</strong> <span class="out-area"></span></span></div>
-            <p style="margin:2px 0;"><strong>Alergias:</strong> <span id="print-ind-alergias"></span></p>
+    <div id="print-cons-anestesia" class="zona-impresion hidden" data-titulo="Consentimiento de anestesia">
+        <p style="text-align:right;margin:0 0 6px;"><strong>No. de Expediente:</strong> <span class="out-expediente"></span> &nbsp; <strong>No. de Cama/Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span></p>
+        <div style="text-align:center;font-size:13px;font-weight:bold;margin-bottom:8px;">CARTA DE CONSENTIMIENTO BAJO INFORMACIÓN PARA LA APLICACIÓN DE ANESTESIA</div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+            <tr>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>NOMBRE:</strong> <span class="out-paciente"></span></td>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>EDAD:</strong> <span class="out-edad"></span></td>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>SEXO:</strong> <span class="out-sexo"></span></td>
+            </tr>
+            <tr>
+                <td colspan="3" style="border:1px solid #000;padding:3px 6px;"><strong>DIAGNÓSTICO:</strong> <span class="out-dx-prin"></span></td>
+            </tr>
+            <tr>
+                <td colspan="3" style="border:1px solid #000;padding:3px 6px;"><strong>CIRUGÍA PROGRAMADA:</strong> <span class="out-cirugia"></span></td>
+            </tr>
+        </table>
+        <ol style="margin:0;padding-left:18px;text-align:justify;">
+            <li>Aceptación del Dr.(a) anestesiólogo que habrá de aplicar el procedimiento anestésico.</li>
+            <li>Se me informaron los riesgos menores como daño dental, lesión de labios/lengua, dolor de espalda/punción, cefalea, dificultad para orinar, molestias oculares/garganta, y los riesgos severos como aspiración gástrica, descompensación crónica, alteraciones cardiacas/renales/TA/pulmonares, reacciones a medicamentos/transfusionales, lesiones nerviosas o de médula espinal, secuelas permanentes o fallecimiento, y el beneficio de realizar el procedimiento quirúrgico.</li>
+            <li>Comprendo los riesgos inherentes al estado de salud.</li>
+            <li>Acepto los tratamientos complementarios o el traslado que el equipo médico considere necesarios.</li>
+            <li>Aceptación de anestesia tipo _________ de tipo Electivo ___ Urgente ___.</li>
+            <li>Otorgo mi consentimiento y autorización para cambiar la técnica anestésica cuando el anestesiólogo lo considere necesario.</li>
+        </ol>
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;margin-top:28px;">
+            <div style="width:48%;text-align:center;font-size:9px;margin-top:22px;border-top:1px solid #000;padding-top:4px;">NOMBRE Y FIRMA DEL MÉDICO</div>
+            <div style="width:48%;text-align:center;font-size:9px;margin-top:22px;border-top:1px solid #000;padding-top:4px;">NOMBRE Y FIRMA DEL PACIENTE Y/O REPRESENTANTE LEGAL</div>
+            <div style="width:48%;text-align:center;font-size:9px;margin-top:22px;border-top:1px solid #000;padding-top:4px;">NOMBRE Y FIRMA DEL PERSONAL DE LA INSTITUCIÓN</div>
+            <div style="width:48%;text-align:center;font-size:9px;margin-top:22px;border-top:1px solid #000;padding-top:4px;">NOMBRE Y FIRMA DE TESTIGO</div>
         </div>
+    </div>
 
-        <div class="cuadro-datos">
-            <h4 style="margin:0 0 10px 0; font-size: 14px; border-bottom:1px solid #000; padding-bottom: 4px;">INDICACIONES</h4>
-            <p style="margin: 0 0 2px 0;"><strong>1. DIETA:</strong></p>
-            <div id="print-ind-dieta" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
-            <p style="margin: 0 0 2px 0;"><strong>2. SOLUCIONES PARENTERALES:</strong></p>
-            <div id="print-ind-soluciones" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
-            <p style="margin: 0 0 2px 0;"><strong>3. MEDICAMENTOS:</strong></p>
-            <div id="print-ind-medicamentos" style="white-space: pre-wrap; margin: 0 0 10px 15px;"></div>
-            <p style="margin: 0 0 2px 0;"><strong>4. MEDIDAS GENERALES:</strong></p>
-            <div id="print-ind-medidas" style="white-space: pre-wrap; margin: 0 0 0 15px;"></div>
-            <div id="bloque-print-interconsulta" style="display: none; margin-top: 10px;">
-                <p style="margin: 0 0 2px 0;"><strong>5. INTERCONSULTA:</strong></p>
-                <div id="print-ind-interconsulta" style="margin: 0 0 0 15px;"></div>
-            </div>
+    <div id="print-cons-riesgo-qx" class="zona-impresion hidden" data-titulo="Consentimiento de riesgo quirúrgico">
+        <p style="text-align:right;margin:0 0 6px;"><strong>No. de Expediente:</strong> <span class="out-expediente"></span> &nbsp; <strong>No. de Cama/Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span></p>
+        <div style="text-align:center;font-size:13px;font-weight:bold;margin-bottom:8px;">CONSENTIMIENTO DE RIESGO Y COMPLICACIONES QUIRÚRGICAS</div>
+        <p style="margin:0 0 6px;"><strong>Nombre del Paciente:</strong> <span class="out-paciente"></span> &nbsp; <strong>Edad:</strong> <span class="out-edad"></span></p>
+        <p style="text-align:justify;margin:0 0 8px;">Autorizo a los médicos de SANATORIO BELÉN, bajo la supervisión del Dr./Dra. tratante <strong class="out-medico"></strong>, para que realicen el procedimiento quirúrgico que se me ha explicado, y acepto lo siguiente:</p>
+        <ol style="margin:0;padding-left:18px;text-align:justify;">
+            <li>La administración de antibióticos, analgésicos, paquetes de sangre, plaquetas, plasma y los riesgos de pérdida de sangre, infección, paro cardio-respiratorio.</li>
+            <li>Las situaciones imprevistas que prolonguen o requieran procedimientos adicionales por doctores, enfermeras, ayudantes y/o asociados.</li>
+            <li>La aplicación de anestesia general, regional o local.</li>
+            <li>El uso de drogas anestésicas.</li>
+        </ol>
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-top:36px;">
+            <div style="width:30%;text-align:center;font-size:9px;border-top:1px solid #000;padding-top:4px;">FIRMA DEL PACIENTE</div>
+            <div style="width:30%;text-align:center;font-size:9px;border-top:1px solid #000;padding-top:4px;">FAMILIAR DEL PACIENTE<br><span class="out-resp"></span></div>
+            <div style="width:30%;text-align:center;font-size:9px;border-top:1px solid #000;padding-top:4px;">TESTIGO</div>
         </div>
+    </div>
 
-        <div class="firma-box" style="margin-top: 60px;">
-            <p style="margin: 0; font-weight: bold; font-size: 12px;" id="print-ind-firma"></p>
-            <p class="cedulas-firma" id="print-cedulas-ind" style="margin: 0; font-size: 10px; white-space: pre-line;"></p>
-            <p style="margin: 0; font-size: 10px;">Médico que Elabora / Valora</p>
-        </div>
+    <div id="print-hoja-qx" class="zona-impresion hidden" data-titulo="Hoja Quirúrgica"></div>
+
+    <div id="print-indicaciones" class="zona-impresion hidden" data-titulo="Indicaciones médicas">
+        <p style="text-align:right;margin:0 0 4px;"><strong>No. de Expediente:</strong> <span class="out-expediente"></span> &nbsp; <strong>No. de Cama/Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span> &nbsp; <strong>Folio:</strong> <span id="print-ind-folio"></span></p>
+        <div class="hoja-titulo">INDICACIONES MÉDICAS</div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+            <tr>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Nombre:</strong> <span id="print-ind-nombre"></span></td>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Sexo:</strong> <span id="print-ind-sexo"></span></td>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Edad:</strong> <span id="print-ind-edad"></span></td>
+            </tr>
+            <tr>
+                <td style="border:1px solid #000;padding:3px 6px;"><strong>Fecha de Nacimiento:</strong> <span id="print-ind-fn"></span></td>
+                <td colspan="2" style="border:1px solid #000;padding:3px 6px;"><strong>Fecha y hora de Ingreso:</strong> <span id="print-ind-ingreso"></span></td>
+            </tr>
+            <tr>
+                <td colspan="3" style="border:1px solid #000;padding:3px 6px;"><strong>Diagnóstico:</strong> <span id="print-ind-dx" class="out-dx-prin"></span></td>
+            </tr>
+            <tr>
+                <td colspan="3" style="border:1px solid #000;padding:3px 6px;"><strong>Médico tratante:</strong> <span id="print-ind-tratante"></span></td>
+            </tr>
+            <tr>
+                <td colspan="3" style="border:1px solid #000;padding:3px 6px;">
+                    <strong>Urgencias</strong> <span id="print-ind-urg">☐</span>
+                    &nbsp;&nbsp; <strong>Hospital (Cama)</strong> <span id="print-ind-hosp">☐</span> <span class="out-cama">Por asignar por Enfermería</span>
+                    &nbsp;&nbsp; <strong>Cunero</strong> <span id="print-ind-cunero">☐</span>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3" style="border:1px solid #000;padding:3px 6px;">
+                    <strong>Alergias a medicamentos:</strong>
+                    Sí <span id="print-ind-alg-si">☐</span>
+                    &nbsp; No <span id="print-ind-alg-no">☐</span>
+                    &nbsp; <strong>Nombre del medicamento:</strong> <span id="print-ind-alergias"></span>
+                </td>
+            </tr>
+        </table>
+        <table style="width:100%;border-collapse:collapse;">
+            <tr>
+                <th style="width:28%;border:1px solid #000;padding:6px;text-align:center;">FECHA Y HORA</th>
+                <th style="border:1px solid #000;padding:6px;text-align:left;">Especificar nombre del medicamento, dosis, vía y periodicidad</th>
+            </tr>
+            <tr>
+                <td id="print-ind-fecha" class="put-fecha" style="border:1px solid #000;vertical-align:top;padding:8px;"></td>
+                <td style="border:1px solid #000;vertical-align:top;padding:8px;">
+                    <p style="margin:0 0 4px;"><strong>Dieta:</strong></p>
+                    <div id="print-ind-dieta" style="white-space:pre-wrap;margin:0 0 8px;"></div>
+                    <p style="margin:0 0 4px;"><strong>Soluciones:</strong></p>
+                    <div id="print-ind-soluciones" style="white-space:pre-wrap;margin:0 0 8px;"></div>
+                    <p style="margin:0 0 4px;"><strong>Medicamentos:</strong></p>
+                    <div id="print-ind-medicamentos" style="white-space:pre-wrap;margin:0 0 8px;"></div>
+                    <p style="margin:0 0 4px;"><strong>Medidas:</strong></p>
+                    <div id="print-ind-medidas" style="white-space:pre-wrap;margin:0 0 8px;"></div>
+                    <div id="bloque-print-interconsulta" style="display:none;margin-bottom:8px;">
+                        <p style="margin:0 0 4px;"><strong>Interconsulta:</strong></p>
+                        <div id="print-ind-interconsulta"></div>
+                    </div>
+                    <p style="margin:14px 0 0;"><strong>Nombre, Cédula y Firma del médico</strong></p>
+                    <p id="print-ind-firma" style="margin:6px 0 0;font-weight:bold;"></p>
+                    <p class="cedulas-firma" id="print-cedulas-ind" style="margin:0;white-space:pre-line;"></p>
+                </td>
+            </tr>
+        </table>
     </div>
 
     <div id="print-historia-clinica" class="zona-impresion hidden">
@@ -982,6 +1141,7 @@
     <div id="print-evolucion" class="zona-impresion hidden">
         <div style="text-align: right; margin-bottom: 5px;">
             <p id="ev-titulo" style="margin: 0; font-size: 14px; font-weight: bold; text-decoration: underline;">NOTA DE EVOLUCIÓN (SOAP)</p>
+            <p style="margin: 0;"><strong>No. de Expediente:</strong> <span class="out-expediente"></span> &nbsp;&nbsp; <strong>No. de Cama/Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span></p>
             <p style="margin: 0;">Folio: <span id="ev-folio"></span> &nbsp;&nbsp; Fecha y Hora: <span id="ev-fecha"></span></p>
         </div>
         <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
@@ -1021,6 +1181,7 @@
     <div id="print-egreso" class="zona-impresion hidden">
         <div style="text-align: right; margin-bottom: 5px;">
             <p style="margin: 0; font-size: 14px; font-weight: bold; text-decoration: underline;">NOTA DE EGRESO</p>
+            <p style="margin: 0;"><strong>No. de Expediente:</strong> <span class="out-expediente"></span> &nbsp;&nbsp; <strong>No. de Cama/Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span></p>
             <p style="margin: 0;">Folio: <span id="eg-folio"></span> &nbsp;&nbsp; Fecha y Hora: <span id="eg-fecha"></span></p>
         </div>
         <div style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">
@@ -1068,8 +1229,8 @@
         </div>
     </div>
 
-    <script src="js/belen-store.js?v=f10"></script>
-    <script src="js/belen-ui.js?v=f10"></script>
+    <script src="js/belen-store.js?v=f11"></script>
+    <script src="js/belen-ui.js?v=f11"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
@@ -1374,6 +1535,126 @@
             return { pac: pac, nombre: pac.nombre_completo, edad: edad,
                      edadTxt: edad === null ? 'No registrada' : edad + ' ' + (edad === 1 ? 'año' : 'años'), sexoTxt: pac.sexo === 'F' ? 'Femenino' : (pac.sexo === 'M' ? 'Masculino' : 'No registrado') };
         }
+        function valorInput(id) {
+            const n = document.getElementById(id);
+            if (!n) return '';
+            const tag = n.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return String(n.value || '').trim();
+            return String(n.textContent || '').trim();
+        }
+        function textoExpedienteImpreso() { return (TURNO && TURNO.paciente_id) || ''; }
+        function pistaCamaActual() {
+            const i = (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO) ? INTERNAMIENTO : (TURNO && BelenStore.internamientoDeTurno(TURNO.turno_id));
+            return (i && (i.cama || i.cama_codigo)) || (TURNO && (TURNO.cama || TURNO.cama_codigo)) || '';
+        }
+        function textoCamaImpresa() {
+            const pista = pistaCamaActual();
+            if (!pista) return 'Por asignar por Enfermería';
+            return BelenStore.etiquetaCama(pista) || String(pista);
+        }
+        function partesDomicilio(dir) {
+            const t = String(dir || '').trim();
+            if (!t) return { domicilio: '', colonia: '', municipio: '' };
+            const m = t.match(/^(.*?)(?:,\s*)?\bCol(?:onia)?\.?\s+([^,]+)(?:,\s*(.+))?$/i);
+            if (!m) return { domicilio: t, colonia: '', municipio: '' };
+            return { domicilio: String(m[1] || '').replace(/,\s*$/, '').trim() || t, colonia: String(m[2] || '').trim(), municipio: String(m[3] || '').trim() };
+        }
+        function fechaHoraIngresoImpresa() {
+            const iso = (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO && INTERNAMIENTO.fecha_ingreso) || '';
+            const d = iso ? new Date(iso) : null;
+            if (d && !isNaN(d.getTime())) {
+                return { fecha: d.toLocaleDateString('es-MX'), hora: d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) };
+            }
+            const ahora = new Date();
+            return { fecha: ahora.toLocaleDateString('es-MX'), hora: ahora.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }) };
+        }
+        function ponerTexto(selector, texto) {
+            document.querySelectorAll(selector).forEach(el => { el.textContent = texto == null ? '' : String(texto); });
+        }
+        function conUnidad(valor, unidad) {
+            if (valor === null || valor === undefined || valor === '') return '';
+            const s = String(valor).trim();
+            if (!s) return '';
+            if (new RegExp('\\b' + unidad + '\\b', 'i').test(s)) return s;
+            return s + ' ' + unidad;
+        }
+        function marcasEstancia() {
+            const area = BelenStore.normalizar([valorInput('val-area-desc'), (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO && INTERNAMIENTO.area_destino) || '', (TURNO && TURNO.area_destino) || ''].join(' '));
+            const cunero = area.indexOf('cunero') >= 0 || area.indexOf('neonat') >= 0;
+            const hospital = !cunero && (area.indexOf('hospital') >= 0 || !!pistaCamaActual());
+            return { urgencias: !hospital && !cunero, hospital: hospital, cunero: cunero };
+        }
+        function aplicarMarcasEstancia(raiz) {
+            const marca = (id, on) => { const n = raiz.querySelector('#' + id); if (n) n.textContent = on ? '☑' : '☐'; };
+            const m = marcasEstancia();
+            marca('print-ind-urg', m.urgencias);
+            marca('print-ind-hosp', m.hospital);
+            marca('print-ind-cunero', m.cunero);
+        }
+        function aplicarAlergiaIndicacion(raiz, texto) {
+            const alg = String(texto || '').trim();
+            const niega = !alg || /ningun|negad|no ref|no conoc/i.test(alg);
+            const si = raiz.querySelector('#print-ind-alg-si');
+            const no = raiz.querySelector('#print-ind-alg-no');
+            const nom = raiz.querySelector('#print-ind-alergias');
+            if (si) si.textContent = niega ? '☐' : '☑';
+            if (no) no.textContent = niega ? '☑' : '☐';
+            if (nom) nom.textContent = niega ? '' : alg;
+        }
+        function rellenarFichaImpresion() {
+            if (!TURNO) return;
+            const p = datosPacienteVigentes();
+            const pac = p.pac || {};
+            const pre = BelenStore.prefillHojaQuirurgica(TURNO.turno_id);
+            const sv = TURNO.signos_vitales || {};
+            const nombre = valorInput('paciente-nombre') || p.nombre;
+            const fn = BelenStore.fechaLegibleISO(pac.fecha_nacimiento || valorInput('comp-fn')) || '';
+            const peso = conUnidad(valorInput('val-peso') || (sv.peso_kg != null ? sv.peso_kg : ''), 'kg');
+            const talla = conUnidad(valorInput('val-talla') || (sv.talla_m != null ? sv.talla_m : ''), 'm');
+            const chkAlg = document.getElementById('chk-alergias');
+            const alergias = (chkAlg && chkAlg.checked && valorInput('val-alergias')) || (INTERNAMIENTO && INTERNAMIENTO.alergias) || (chkAlg ? 'Ninguna referida' : (pre.dx_pre ? '' : 'Ninguna referida'));
+            const dir = valorInput('comp-dir') || pac.direccion || '';
+            const dom = partesDomicilio(dir);
+            const ingreso = fechaHoraIngresoImpresa();
+            const medico = valorInput('val-medico') || (INTERNAMIENTO && INTERNAMIENTO.medico_tratante_nombre) || TURNO.medico_nombre || '';
+            const dx = (document.querySelector('.out-dx-prin') && document.querySelector('.out-dx-prin').textContent.trim()) || (INTERNAMIENTO && (INTERNAMIENTO.diagnostico_ingreso || INTERNAMIENTO.diagnostico_actual)) || pre.dx_pre || '';
+            const cirugia = (typeof consentimientosEspeciales !== 'undefined' && consentimientosEspeciales[0] && consentimientosEspeciales[0].procedimiento) || pre.operacion || '';
+            ponerTexto('.out-expediente', textoExpedienteImpreso());
+            ponerTexto('.out-cama', textoCamaImpresa());
+            ponerTexto('.out-paciente', nombre);
+            ponerTexto('.out-edad', p.edadTxt);
+            ponerTexto('.out-sexo', p.sexoTxt);
+            ponerTexto('.out-fn', fn);
+            ponerTexto('.out-peso', peso);
+            ponerTexto('.out-talla', talla);
+            ponerTexto('.out-alergias', alergias || 'Ninguna referida');
+            ponerTexto('.out-resp', valorInput('val-responsable') || '');
+            ponerTexto('.out-ocupacion', valorInput('comp-ocu') || pac.ocupacion || '');
+            ponerTexto('.out-domicilio', dom.domicilio);
+            ponerTexto('.out-col', dom.colonia);
+            ponerTexto('.out-municipio', dom.municipio);
+            ponerTexto('.out-tel', valorInput('comp-tel') || pac.telefono || '');
+            ponerTexto('.out-medico', medico);
+            ponerTexto('.out-fecha-ingreso', ingreso.fecha);
+            ponerTexto('.out-hora-ingreso', ingreso.hora);
+            ponerTexto('.out-cirugia', cirugia);
+            if (dx) ponerTexto('.out-dx-prin', dx);
+            const sexoInd = document.getElementById('print-ind-sexo');
+            if (sexoInd) sexoInd.textContent = p.sexoTxt;
+            const fnInd = document.getElementById('print-ind-fn');
+            if (fnInd) fnInd.textContent = fn;
+            const ingInd = document.getElementById('print-ind-ingreso');
+            if (ingInd) ingInd.textContent = [ingreso.fecha, ingreso.hora].filter(Boolean).join(' ');
+            const trat = document.getElementById('print-ind-tratante');
+            if (trat) trat.textContent = (INTERNAMIENTO && INTERNAMIENTO.medico_tratante_nombre) || medico;
+            aplicarMarcasEstancia(document);
+            aplicarAlergiaIndicacion(document, alergias);
+            const hoja = document.getElementById('print-hoja-qx');
+            if (hoja) hoja.innerHTML = BelenStore.htmlHojaQuirurgica(null, Object.assign({}, pre, {
+                expediente: textoExpedienteImpreso(), nombre: nombre, edad: p.edadTxt, sexo: p.sexoTxt,
+                cama: pistaCamaActual() ? textoCamaImpresa() : '', dx_pre: dx || pre.dx_pre
+            }));
+        }
         function etiquetaRelacion(doc) {
             return doc.relacion === 'interconsultante'
                 ? 'Médico Interconsultante' + (doc.interconsulta_especialidad ? ' · ' + doc.interconsulta_especialidad : '') : 'Médico que Elabora / Valora';
@@ -1387,11 +1668,13 @@
             aplicarContextoPaciente();      // identidad vigente del catálogo (la captura guardada puede traer la anterior)
             actualizarEdadDesdeFN();
             compilarDatosNota();
-            document.querySelectorAll('.out-cama').forEach(el => { el.innerText = INTERNAMIENTO.cama || 'Por asignar por Enfermería'; });
+            document.querySelectorAll('.out-cama').forEach(el => { el.innerText = textoCamaImpresa(); });
+            const zonasCons = zonasDeConsentimientos();
             HTML_CAPTURADO = {
                 hoja: zonaComoDocumento($('print-ingreso')),
                 nota: zonaComoDocumento($('print-nota')),
-                consentimientos: zonasDeConsentimientos().map(zonaComoDocumento),
+                consentimientos: zonasCons.map(zonaComoDocumento),
+                titulosConsentimiento: zonasCons.map((z, i) => z.getAttribute('data-titulo') || ('Consentimiento ' + (i + 1))),
                 historia: ''
             };
             try {
@@ -1421,11 +1704,20 @@
             const z = document.getElementById('print-indicaciones').cloneNode(true);
             const q = id => z.querySelector('#' + id);
             const p = datosPacienteVigentes();
+            const ingreso = fechaHoraIngresoImpresa();
             z.querySelectorAll('.put-fecha').forEach(e => { e.textContent = BelenStore.fechaHoraLegible(h.fecha_hora); });
-            z.querySelectorAll('.out-area').forEach(e => { e.textContent = areaVisor(); });
+            z.querySelectorAll('.out-expediente').forEach(e => { e.textContent = textoExpedienteImpreso(); });
+            z.querySelectorAll('.out-cama').forEach(e => { e.textContent = textoCamaImpresa(); });
             q('print-ind-nombre').textContent = p.nombre;
+            q('print-ind-sexo').textContent = p.sexoTxt;
             q('print-ind-edad').textContent = p.edadTxt;
-            q('print-ind-alergias').textContent = textoAlergiasVisor();
+            q('print-ind-fn').textContent = BelenStore.fechaLegibleISO(p.pac.fecha_nacimiento) || '';
+            q('print-ind-ingreso').textContent = [ingreso.fecha, ingreso.hora].filter(Boolean).join(' ');
+            q('print-ind-dx').textContent = INTERNAMIENTO.diagnostico_actual || INTERNAMIENTO.diagnostico_ingreso || '';
+            q('print-ind-tratante').textContent = INTERNAMIENTO.medico_tratante_nombre || '';
+            if (q('print-ind-folio')) q('print-ind-folio').textContent = h.folio || '';
+            aplicarMarcasEstancia(z);
+            aplicarAlergiaIndicacion(z, textoAlergiasVisor());
             q('print-ind-dieta').textContent = h.dieta || 'No especificada.';
             q('print-ind-soluciones').textContent = h.soluciones_parenterales || 'No se indican.';
             q('print-ind-medicamentos').textContent = h.medicamentos || 'No se indican medicamentos.';
@@ -1434,9 +1726,8 @@
             q('print-ind-firma').textContent = h.autor_nombre;
             const cedInd = q('print-cedulas-ind');
             if (cedInd) cedInd.textContent = textoCedulasDe(h.autor_id);
-            z.firstElementChild.insertAdjacentHTML('afterbegin', '<span style="float:left;"><strong>Folio:</strong> ' + BelenUI.esc(h.folio) + '</span>');
             const vinculo = (h.medicamentos_vinculados || []).map(m => m.requiere_receta_retenida ? (m.nombre + ' requiere receta retenida SB-REC') : (m.folio_hoja ? (m.nombre + ' amparado por ' + m.folio_hoja) : '')).filter(Boolean);
-            if (vinculo.length) z.firstElementChild.insertAdjacentHTML('beforeend', '<p style="clear:both;font-size:11px;margin-top:8px;"><strong>Cobertura de la hoja:</strong> ' + BelenUI.esc(vinculo.join(' · ')) + '</p>');
+            if (vinculo.length && q('print-ind-medidas')) q('print-ind-medidas').insertAdjacentHTML('afterend', '<p style="font-size:11px;margin-top:8px;"><strong>Cobertura de la hoja:</strong> ' + BelenUI.esc(vinculo.join(' · ')) + '</p>');
             return zonaComoDocumento(z);
         }
 
@@ -1449,11 +1740,13 @@
             z.querySelectorAll('.out-paciente').forEach(e => { e.textContent = p.nombre; });
             z.querySelectorAll('.out-edad').forEach(e => { e.textContent = p.edadTxt; });
             z.querySelectorAll('.out-sexo').forEach(e => { e.textContent = p.sexoTxt; });
+            z.querySelectorAll('.out-expediente').forEach(e => { e.textContent = textoExpedienteImpreso(); });
+            z.querySelectorAll('.out-cama').forEach(e => { e.textContent = textoCamaImpresa(); });
             q('ev-titulo').textContent = soap ? 'NOTA DE EVOLUCIÓN (SOAP)' : 'NOTA DE EVOLUCIÓN';
             q('ev-folio').textContent = n.folio;
             q('ev-fecha').textContent = BelenStore.fechaHoraLegible(n.fecha_hora);
             q('ev-area').textContent = areaVisor();
-            q('ev-cama').textContent = INTERNAMIENTO.cama || 'Sin asignar';
+            q('ev-cama').textContent = textoCamaImpresa();
             q('ev-alergias').textContent = textoAlergiasVisor();
             q('ev-dx-ingreso').textContent = INTERNAMIENTO.diagnostico_ingreso || 'No registrado';
             if (soap) {
@@ -1486,10 +1779,12 @@
             z.querySelectorAll('.out-paciente').forEach(e => { e.textContent = p.nombre; });
             z.querySelectorAll('.out-edad').forEach(e => { e.textContent = p.edadTxt; });
             z.querySelectorAll('.out-sexo').forEach(e => { e.textContent = p.sexoTxt; });
+            z.querySelectorAll('.out-expediente').forEach(e => { e.textContent = textoExpedienteImpreso(); });
+            z.querySelectorAll('.out-cama').forEach(e => { e.textContent = textoCamaImpresa(); });
             q('eg-folio').textContent = n.folio;
             q('eg-fecha').textContent = BelenStore.fechaHoraLegible(n.fecha_hora);
             q('eg-area').textContent = areaVisor();
-            q('eg-cama').textContent = INTERNAMIENTO.cama || 'Sin asignar';
+            q('eg-cama').textContent = textoCamaImpresa();
             q('eg-alergias').textContent = textoAlergiasVisor();
             q('eg-dx-ingreso').textContent = INTERNAMIENTO.diagnostico_ingreso || 'No registrado';
             q('eg-motivo').textContent = n.motivo_egreso || '';
@@ -1623,15 +1918,30 @@
                 if (el) pintarAlertasCofepris(el);
             });
         }
+        function complementoReceta(medico) {
+            const p = datosPacienteVigentes();
+            const sv = (TURNO && TURNO.signos_vitales) || {};
+            const u = medico || {};
+            const esp = BelenStore.especialidadPorCodigo(u.especialidad_codigo);
+            return {
+                expediente: textoExpedienteImpreso(), paciente_id: TURNO && TURNO.paciente_id,
+                fecha_nacimiento: BelenStore.fechaLegibleISO(p.pac.fecha_nacimiento) || '',
+                peso: valorInput('val-peso') || (sv.peso_kg != null ? sv.peso_kg : ''),
+                talla: valorInput('val-talla') || (sv.talla_m != null ? sv.talla_m : ''),
+                alergias: (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO && INTERNAMIENTO.alergias) || '',
+                especialidad: (esp && esp.nombre) || u.cargo || (TURNO && TURNO.especialidad) || '',
+                cama: textoCamaImpresa()
+            };
+        }
         function datosImpresionReceta(producto, dosis, folio) {
             const p = datosPacienteVigentes();
             const medico = BelenStore.USUARIOS[SESION.usuario_id] || {};
-            return {
+            return Object.assign({
                 tipo: 'respaldo', folio_sistema: folio, producto: producto,
-                paciente: p.nombre, edad: p.edadTxt, cama: BelenStore.etiquetaCama(INTERNAMIENTO && (INTERNAMIENTO.cama_codigo || INTERNAMIENTO.cama)),
+                paciente: p.nombre, edad: p.edadTxt,
                 medico: medico.nombre || SESION.nombre, cedulas_texto: BelenStore.textoCedulasFirma(medico),
                 dosis: dosis, denominacion: producto.nombre
-            };
+            }, complementoReceta(medico));
         }
         function generarRecetaSistema(sku, dosis) {
             if (!TURNO || !SESION) return;
@@ -2046,55 +2356,18 @@
         function abrirNotaPostoperatoriaVisor() {
             const S = BelenStore;
             if (!INTERNAMIENTO || !S.puedeNotaPostoperatoria(SESION, INTERNAMIENTO)) { BelenUI.toast('Solo el cirujano o Dirección pueden registrar la nota post-operatoria.', 'alerta'); return; }
-            const biopsias = S.listarEstudios().filter(est => est.categoria === 'PATOLOGIA' || S.normalizar(est.nombre).indexOf('biopsia') >= 0);
-            const esc = t => BelenUI.esc(t);
-            const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white';
             BelenUI.modal({
-                titulo: 'Nota Post-Operatoria', subtitulo: 'Si hay pieza a patología, puede cargarse el estudio a la cuenta.', icono: 'fa-notes-medical', ancho: 'lg',
-                html: `<div class="space-y-3 text-left text-sm">
-                    <label class="flex items-center gap-2"><input id="po-entrada" type="checkbox" checked class="rounded"> Entrada</label>
-                    <label class="flex items-center gap-2"><input id="po-pausa" type="checkbox" checked class="rounded"> Pausa</label>
-                    <label class="flex items-center gap-2"><input id="po-salida" type="checkbox" checked class="rounded"> Salida</label>
-                    <label class="flex items-center gap-2"><input id="po-conteo" type="checkbox" checked class="rounded"> Conteo completo</label>
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Diagnóstico preoperatorio</label><input id="po-dxpre" class="${cls}">
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Diagnóstico postoperatorio</label><input id="po-dxpost" class="${cls}">
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Operación realizada</label><input id="po-op" class="${cls}">
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Técnica quirúrgica</label><textarea id="po-tecnica" rows="2" class="${cls}"></textarea>
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Hallazgos</label><textarea id="po-hallazgos" rows="2" class="${cls}"></textarea>
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Sangrado (ml)</label><input id="po-sangrado" type="number" min="0" value="0" class="${cls}">
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Pieza enviada a patología</label>
-                    <select id="po-patologia" class="${cls}"><option value="no">No</option><option value="si">Sí</option></select>
-                    <div id="po-bx" class="hidden space-y-2 rounded-xl border border-violet-200 bg-violet-50 p-3">
-                        <label class="block text-[11px] font-bold text-violet-800 uppercase">Estudio de biopsia del catálogo</label>
-                        <select id="po-estudio" class="${cls}">${biopsias.map(b => `<option value="${esc(b.estudio_id)}">${esc(b.nombre)} · ${esc(S.formatoMoneda(b.precio_unitario))}</option>`).join('')}</select>
-                        <label class="flex items-center gap-2 font-semibold text-slate-800"><input id="po-cargar" type="checkbox" checked class="rounded border-slate-300 text-violet-700"> Cargar estudio de Biopsia automáticamente a la cuenta del paciente</label>
-                    </div>
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase">Pronóstico</label><input id="po-pronostico" class="${cls}">
-                    <p id="po-error" class="text-xs text-red-600 hidden"></p>
-                </div>`,
-                alMostrar: c => {
-                    const sync = () => c.el.querySelector('#po-bx').classList.toggle('hidden', c.el.querySelector('#po-patologia').value !== 'si');
-                    c.el.querySelector('#po-patologia').addEventListener('change', sync);
-                    sync();
-                },
+                titulo: 'Hoja Quirúrgica', subtitulo: 'Nota post-operatoria oficial', icono: 'fa-notes-medical', ancho: 'xl',
+                html: S.htmlModalHojaQuirurgica(S.prefillHojaQuirurgica(TURNO.turno_id)),
                 botones: [
                     { texto: 'Cancelar', estilo: 'secundario' },
                     { texto: 'Guardar nota', estilo: 'exito', alPulsar: c => {
-                        const val = id => c.el.querySelector(id).value;
-                        const si = val('#po-patologia') === 'si';
-                        const r = S.guardarNotaPostoperatoria(TURNO.turno_id, {
-                            entrada: c.el.querySelector('#po-entrada').checked, pausa: c.el.querySelector('#po-pausa').checked,
-                            salida: c.el.querySelector('#po-salida').checked, conteo: c.el.querySelector('#po-conteo').checked,
-                            dx_pre: val('#po-dxpre'), dx_post: val('#po-dxpost'), operacion: val('#po-op'), tecnica: val('#po-tecnica'),
-                            hallazgos: val('#po-hallazgos'), sangrado_ml: val('#po-sangrado'), patologia: val('#po-patologia'),
-                            pronostico: val('#po-pronostico'),
-                            estudio_biopsia_id: si ? val('#po-estudio') : '',
-                            cargar_biopsia: si && c.el.querySelector('#po-cargar').checked
-                        }, SESION);
+                        const entrada = S.leerNotaPostoperatoria(c.el);
+                        const r = S.guardarNotaPostoperatoria(TURNO.turno_id, entrada, SESION);
                         const error = c.el.querySelector('#po-error');
                         if (!r.ok) { error.textContent = (r.errores && Object.values(r.errores)[0]) || r.motivo; error.classList.remove('hidden'); return false; }
-                        BelenUI.toast(si && c.el.querySelector('#po-cargar').checked ? 'Nota guardada y biopsia cargada a la cuenta.' : 'Nota post-operatoria guardada.', 'exito');
-                        if (typeof refrescarVisor === 'function') refrescarVisor();
+                        BelenUI.toast(entrada.cargar_biopsia ? 'Nota guardada y biopsia cargada a la cuenta.' : 'Hoja quirúrgica guardada.', 'exito');
+                        if (typeof refrescarVisor === 'function') refrescarVisor('po-' + r.nota.nota_id);
                     } }
                 ]
             });
@@ -2144,13 +2417,12 @@
                             BelenUI.toast('Ámpula ' + r.uso.numero + ' de ' + r.uso.de + ' cargada a la cuenta.', 'exito');
                             const pac = datosPacienteVigentes();
                             const medico = S.USUARIOS[c.el.querySelector('#exp-quien').value] || {};
-                            const datos = S.datosReceta({
+                            const datos = S.datosReceta(Object.assign({
                                 tipo: 'individual', producto: r.producto, paciente: pac.nombre, edad: pac.edadTxt,
-                                cama: (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO && INTERNAMIENTO.cama) || S.nombreAreaCaja(r.area),
                                 medico: medico.nombre || r.uso.aplicador_nombre, cedula: BelenStore.resumenCedulas(medico), cedulas_texto: BelenStore.textoCedulasFirma(medico),
                                 denominacion: r.producto.nombre, dosis: dosis || r.producto.nombre, lote: r.uso.lote, laboratorio: r.producto.laboratorio, fraccion: 'I',
                                 numero: r.uso.numero, de: r.uso.de, folio_receta_especial: r.uso.folio_receta_especial, datos_postanestesicos: r.uso.datos_postanestesicos
-                            });
+                            }, complementoReceta(medico)));
                             setTimeout(() => imprimirHtmlEnVisor(S.htmlCuerpoReceta(datos)), 200);
                             if (typeof refrescarVisor === 'function') refrescarVisor();
                         } }
@@ -2160,11 +2432,11 @@
             }
             const pac = datosPacienteVigentes();
             const medico = S.USUARIOS[SESION.usuario_id] && SESION.rol === 'medico' ? S.USUARIOS[SESION.usuario_id] : (S.USUARIOS[TURNO.medico_id] || null);
-            const datos = S.datosReceta({
-                tipo: 'respaldo', producto: prod, paciente: pac.nombre, edad: pac.edadTxt, cama: (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO && INTERNAMIENTO.cama) || TURNO.area_destino || 'Consulta',
+            const datos = S.datosReceta(Object.assign({
+                tipo: 'respaldo', producto: prod, paciente: pac.nombre, edad: pac.edadTxt,
                 medico: medico ? medico.nombre : (TURNO.medico_nombre || SESION.nombre), cedula: medico ? BelenStore.resumenCedulas(medico) : '', cedulas_texto: medico ? BelenStore.textoCedulasFirma(medico) : '',
                 denominacion: prod.nombre, dosis: dosis || prod.nombre, lote: prod.lote, laboratorio: prod.laboratorio, fraccion: prod.fraccion_cofepris
-            });
+            }, complementoReceta(medico)));
             imprimirHtmlEnVisor(S.htmlCuerpoReceta(datos));
         }
 
@@ -2179,10 +2451,14 @@
             const cir = (BelenStore.listarCirugias().find(c => c.cirugia_id === INTERNAMIENTO.cirugia_id)) || {};
             const ind = cir.indicaciones_preoperatorias || ((INTERNAMIENTO.hojas_indicaciones || [])[0] || {}).medidas_generales || 'Sin indicaciones preoperatorias.';
             const cuando = BelenStore.fechaHoraLegible(cir.fecha_hora || INTERNAMIENTO.fecha_ingreso);
-            const hoja = hojaPapel('HOJA FRONTAL · CIRUGÍA AMBULATORIA', `<p><strong>Paciente:</strong> ${e(p.nombre)} &nbsp; <strong>Nacimiento:</strong> ${e(BelenStore.fechaLegibleISO(p.pac.fecha_nacimiento))} &nbsp; <strong>Edad:</strong> ${e(p.edadTxt)} &nbsp; <strong>Sexo:</strong> ${e(p.sexoTxt)}</p><p><strong>Área:</strong> ${e(areaVisor())}</p><p><strong>Cama de piso:</strong> No aplica. Entra y sale el mismo día.</p><p><strong>Procedimiento:</strong> ${e(cir.procedimiento || INTERNAMIENTO.diagnostico_ingreso || '')}</p><p><strong>Cirujano:</strong> ${e(INTERNAMIENTO.medico_tratante_nombre)} &nbsp; <strong>Programada:</strong> ${e(cuando)}</p><p><strong>Indicaciones preoperatorias:</strong> ${e(ind)}</p><p style="margin-top:28px">Firma de Enfermería: ___________________________</p>`);
-            const ingreso = hojaPapel('CONSENTIMIENTO DE INGRESO A QUIRÓFANO AMBULATORIO', `<p>Autorizo mi ingreso a ${e(areaVisor())} para el procedimiento <strong>${e(cir.procedimiento || '')}</strong>, el ${e(cuando)}, sin pasar por consulta ni ocupar cama de hospitalización.</p><p style="margin-top:28px">Firma del paciente o responsable: ___________________________</p>`);
-            const proc = hojaPapel('CONSENTIMIENTO DEL PROCEDIMIENTO', `<p><strong>Paciente:</strong> ${e(p.nombre)}</p><p><strong>Procedimiento:</strong> ${e(cir.procedimiento || '')}</p><p><strong>Cirujano:</strong> ${e(INTERNAMIENTO.medico_tratante_nombre)}</p><p>Se me informaron los riesgos propios del procedimiento y de la anestesia. Este ingreso no sustituye una nota de consulta médica.</p><p style="margin-top:28px">Firma del paciente o responsable: ___________________________</p>`);
-            return { hoja: hoja, nota: '', historia: '', consentimientos: [ingreso, proc] };
+            rellenarFichaImpresion();
+            const hoja = hojaPapel('HOJA FRONTAL · CIRUGÍA AMBULATORIA', `<p style="text-align:right"><strong>No. de Expediente:</strong> ${e(textoExpedienteImpreso())} &nbsp; <strong>No. de Cama/Habitación:</strong> ${e(textoCamaImpresa())}</p><p><strong>Paciente:</strong> ${e(p.nombre)} &nbsp; <strong>Nacimiento:</strong> ${e(BelenStore.fechaLegibleISO(p.pac.fecha_nacimiento))} &nbsp; <strong>Edad:</strong> ${e(p.edadTxt)} &nbsp; <strong>Sexo:</strong> ${e(p.sexoTxt)}</p><p><strong>Área:</strong> ${e(areaVisor())}</p><p><strong>Procedimiento:</strong> ${e(cir.procedimiento || INTERNAMIENTO.diagnostico_ingreso || '')}</p><p><strong>Cirujano:</strong> ${e(INTERNAMIENTO.medico_tratante_nombre)} &nbsp; <strong>Programada:</strong> ${e(cuando)}</p><p><strong>Indicaciones preoperatorias:</strong> ${e(ind)}</p><p style="margin-top:28px">Firma de Enfermería: ___________________________</p>`);
+            const zonas = zonasDeConsentimientos();
+            return {
+                hoja: hoja, nota: '', historia: '',
+                consentimientos: zonas.map(zonaComoDocumento),
+                titulosConsentimiento: zonas.map((z, i) => z.getAttribute('data-titulo') || ('Consentimiento ' + (i + 1)))
+            };
         }
         function abrirProgramarCirugiaVisor() {
             if (!BelenStore.puede('programar_cirugia') || !TURNO || TURNO.estatus !== 'internado') { BelenUI.toast('Su perfil no puede programar cirugías de este paciente.', 'alerta'); return; }
@@ -2281,10 +2557,11 @@
             if (!sinNota) itemsIngreso.push({ id: 'nota-ingreso', titulo: 'Nota de Ingreso', sub: ingreso, meta: tituloNota + ' · ' + ingreso, htmls: () => [HTML_CAPTURADO.nota] });
             itemsIngreso.push({ id: 'hoja-frontal', titulo: 'Hoja Frontal', sub: ingreso, meta: 'Documento de ingreso · ' + ingreso, htmls: () => [HTML_CAPTURADO.hoja] });
             (HTML_CAPTURADO.consentimientos || []).forEach((h, i) => {
+                const titulo = (HTML_CAPTURADO.titulosConsentimiento || [])[i] || 'Consentimiento';
                 itemsIngreso.push({
                     id: 'cons-' + i,
-                    titulo: i === 0 ? 'Consentimientos' : 'Consentimiento: ' + ((consentimientosEspeciales[i - 1] || {}).procedimiento || 'procedimiento'),
-                    sub: ingreso, meta: 'Consentimiento informado · ' + ingreso, htmls: () => [h]
+                    titulo: titulo,
+                    sub: ingreso, meta: titulo + ' · ' + ingreso, htmls: () => [h]
                 });
             });
             if (!sinNota) itemsIngreso.push({ id: 'historia-clinica', titulo: 'Historia Clínica', sub: ingreso, meta: 'Historia Clínica · ' + ingreso, htmls: () => [HTML_CAPTURADO.historia] });
@@ -2305,6 +2582,22 @@
                 sub: S.fechaHoraLegible(h.fecha_hora),
                 meta: h.folio + ' · ' + S.fechaHoraLegible(h.fecha_hora) + ' · ' + h.autor_nombre + ' (' + etiquetaRelacion(h) + ')' + (k === 0 ? ' · VIGENTE' : ' · reemplazada por una hoja más reciente'),
                 htmls: () => [htmlHojaIndicaciones(h)] })), { vacio: 'Sin hojas de indicaciones' });
+
+            const postop = (INTERNAMIENTO.notas_postoperatorias || []).slice().reverse();
+            const fichaQx = () => {
+                const pqx = datosPacienteVigentes();
+                return Object.assign({}, S.prefillHojaQuirurgica(TURNO.turno_id), {
+                    expediente: textoExpedienteImpreso(), nombre: pqx.nombre, edad: pqx.edadTxt, sexo: pqx.sexoTxt,
+                    cama: pistaCamaActual() ? textoCamaImpresa() : ''
+                });
+            };
+            nodo('quirurgicas', 'Hojas Quirúrgicas', 'fa-kit-medical', postop.map(n => ({
+                id: 'po-' + n.nota_id,
+                titulo: 'Hoja Quirúrgica ' + (n.folio || ''),
+                sub: S.fechaHoraLegible(n.fecha_hora) + ' · ' + (n.autor_nombre || ''),
+                meta: (n.folio || 'Hoja quirúrgica') + ' · ' + S.fechaHoraLegible(n.fecha_hora),
+                htmls: () => [S.htmlHojaQuirurgica(n, fichaQx())]
+            })), { vacio: 'Sin hoja quirúrgica' });
 
             const notas = (INTERNAMIENTO.notas_evolucion || []).slice().reverse();
             nodo('evolucion', 'Evolución', 'fa-notes-medical', notas.map(n => ({
@@ -2391,7 +2684,8 @@
             const fila = (et, v) => `<div><p class="text-[10px] font-bold text-slate-400 uppercase leading-none">${et}</p><p class="mt-0.5 text-slate-800">${v}</p></div>`;
             const ics = (INTERNAMIENTO.interconsultas || []);
             $('visor-resumen').innerHTML =
-                `<div class="grid grid-cols-2 gap-2">${fila('Cama', INTERNAMIENTO.cama ? `<b>${e(BelenStore.etiquetaCama(INTERNAMIENTO.cama_codigo || INTERNAMIENTO.cama))}</b>` : '<span class="text-slate-400">Sin asignar</span>')}${fila('Área', e(areaVisor()))}</div>` +
+                `<div class="grid grid-cols-2 gap-2">${fila('Expediente', `<b>${e(textoExpedienteImpreso())}</b>`)}${fila('Cama', `<b>${e(textoCamaImpresa())}</b>`)}</div>` +
+                `<div class="grid grid-cols-2 gap-2">${fila('Área', e(areaVisor()))}</div>` +
                 fila('Médico tratante', `<b>${e(INTERNAMIENTO.medico_tratante_nombre)}</b>`) +
                 fila('Diagnóstico actual', e(INTERNAMIENTO.diagnostico_actual || 'No registrado')) +
                 `<div class="${INTERNAMIENTO.alergias ? 'bg-red-50 border border-red-300 text-red-700' : 'bg-slate-50 border border-slate-200 text-slate-500'} rounded-lg px-2.5 py-2">
@@ -3578,15 +3872,6 @@
             if (antro.imc !== null) lineaSV += ` | IMC: ${antro.imc}`;
             document.getElementById('print-sv-linea').innerText = lineaSV;
 
-            // Consentimientos de un MENOR: firma el Familiar Responsable, no el paciente
-            const menorPrint = esMenorDeEdad();
-            const respPrint = escaparHTML(document.getElementById('val-responsable').value.trim() || '________________');
-            const parentPrint = escaparHTML(document.getElementById('val-parentesco').value || 'Familiar');
-            const nombrePac = escaparHTML(document.getElementById('paciente-nombre').innerText.trim());
-            const avisoGral = document.getElementById('aviso-menor-print-gral');
-            avisoGral.style.display = menorPrint ? 'block' : 'none';
-            avisoGral.innerHTML = menorPrint ? `<strong>PACIENTE MENOR DE EDAD:</strong> el presente consentimiento es otorgado por su Familiar Responsable, ${respPrint} (${parentPrint}), quien firma en representación del paciente.` : '';
-            document.getElementById('firma-izq-cons-gral').innerHTML = menorPrint ? `<strong>${respPrint}</strong><br>FIRMA DEL FAMILIAR RESPONSABLE (${parentPrint})` : 'FIRMA DEL PACIENTE';
             document.querySelectorAll('.out-peso').forEach(el => el.innerText = document.getElementById('val-peso').value ? document.getElementById('val-peso').value + ' kg' : '');
             document.querySelectorAll('.out-talla').forEach(el => el.innerText = document.getElementById('val-talla').value ? document.getElementById('val-talla').value + ' m' : '');
 
@@ -3613,6 +3898,7 @@
 
             // Un consentimiento impreso por cada procedimiento agregado
             compilarConsentimientosEspeciales();
+            rellenarFichaImpresion();
         }
 
         function ocultarTodosLosPrints() {
@@ -4590,7 +4876,8 @@
             const fecha = e(document.getElementById('print-fecha').textContent);
             const total = consentimientosEspeciales.length;
             document.getElementById('print-cons-esp-lista').innerHTML = consentimientosEspeciales.map((c, i) => `
-                <div id="print-cons-esp-${i + 1}" class="zona-impresion hidden">
+                <div id="print-cons-esp-${i + 1}" class="zona-impresion hidden" data-titulo="Consentimiento: ${e(c.procedimiento || 'procedimiento')}">
+                    <p style="text-align:right;margin:0 0 6px;"><strong>No. de Expediente:</strong> ${e(textoExpedienteImpreso())} &nbsp; <strong>No. de Cama/Habitación:</strong> ${e(textoCamaImpresa())}</p>
                     <div style="text-align: center; font-size: 14px; font-weight: bold; margin-bottom: 15px;">CONSENTIMIENTO INFORMADO (PROCEDIMIENTO${total > 1 ? ' ' + (i + 1) + ' DE ' + total : ''})</div>
                     <div style="line-height: 1.8; margin-bottom: 15px;">
                         <strong>Paciente:</strong> <span class="linea-input" style="width:250px;">${paciente}</span> &nbsp;&nbsp; <strong>Área:</strong> <span class="linea-input" style="width:130px;">${area}</span><br>
@@ -4609,7 +4896,9 @@
         }
 
         function zonasDeConsentimientos() {
-            return [document.getElementById('print-cons-gral')].concat(Array.from(document.querySelectorAll('#print-cons-esp-lista .zona-impresion')));
+            return ['print-cons-gral', 'print-contrato', 'print-cons-anestesia', 'print-cons-riesgo-qx', 'print-hoja-qx']
+                .map(id => document.getElementById(id)).filter(Boolean)
+                .concat(Array.from(document.querySelectorAll('#print-cons-esp-lista .zona-impresion')));
         }
 
         // ============================================================
@@ -4954,6 +5243,7 @@
             let interrog = '';
 
             html += '<div class="hc-titulo">HISTORIA CLÍNICA</div>';
+            html += '<p class="hc-p" style="text-align:right"><strong>No. de Expediente:</strong> ' + e((d.meta && d.meta.paciente_id) || textoExpedienteImpreso()) + ' &nbsp; <strong>No. de Cama/Habitación:</strong> ' + e(textoCamaImpresa()) + '</p>';
 
             // I. FICHA DE IDENTIFICACIÓN
             const sexoTxt = p.sexo === 'F' ? 'Femenino' : (p.sexo === 'M' ? 'Masculino' : null);

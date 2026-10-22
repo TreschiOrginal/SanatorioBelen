@@ -971,56 +971,20 @@ const AdminController = {
     abrirCargarEstudio: function (turnoId) { this.abrirTerminalEstudios(turnoId); },
 
     abrirNotaPostoperatoria: function (turnoId) {
-        const S = BelenStore, e = t => this.e(t);
+        const S = BelenStore;
         const i = S.internamientoDeTurno(turnoId);
         if (!i || !S.puedeNotaPostoperatoria(this.sesion, i)) { BelenUI.toast('Solo el cirujano o Dirección pueden registrar la nota post-operatoria.', 'alerta'); return; }
-        const biopsias = S.listarEstudios().filter(est => est.categoria === 'PATOLOGIA' || S.normalizar(est.nombre).indexOf('biopsia') >= 0);
-        const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white';
         BelenUI.modal({
-            titulo: 'Nota Post-Operatoria', subtitulo: 'Si hay pieza a patología, puede cargarse el estudio a la cuenta.', icono: 'fa-notes-medical', ancho: 'lg',
-            html: `<div class="space-y-3 text-left text-sm">
-                <label class="flex items-center gap-2"><input id="po-entrada" type="checkbox" checked class="rounded"> Entrada</label>
-                <label class="flex items-center gap-2"><input id="po-pausa" type="checkbox" checked class="rounded"> Pausa</label>
-                <label class="flex items-center gap-2"><input id="po-salida" type="checkbox" checked class="rounded"> Salida</label>
-                <label class="flex items-center gap-2"><input id="po-conteo" type="checkbox" checked class="rounded"> Conteo completo</label>
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Diagnóstico preoperatorio</label><input id="po-dxpre" class="${cls}">
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Diagnóstico postoperatorio</label><input id="po-dxpost" class="${cls}">
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Operación realizada</label><input id="po-op" class="${cls}">
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Técnica quirúrgica</label><textarea id="po-tecnica" rows="2" class="${cls}"></textarea>
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Hallazgos</label><textarea id="po-hallazgos" rows="2" class="${cls}"></textarea>
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Sangrado (ml)</label><input id="po-sangrado" type="number" min="0" value="0" class="${cls}">
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Pieza enviada a patología</label>
-                <select id="po-patologia" class="${cls}"><option value="no">No</option><option value="si">Sí</option></select>
-                <div id="po-bx" class="hidden space-y-2 rounded-xl border border-violet-200 bg-violet-50 p-3">
-                    <label class="block text-[11px] font-bold text-violet-800 uppercase">Estudio de biopsia del catálogo</label>
-                    <select id="po-estudio" class="${cls}">${biopsias.map(b => `<option value="${e(b.estudio_id)}">${e(b.nombre)} · ${e(S.formatoMoneda(b.precio_unitario))}</option>`).join('')}</select>
-                    <label class="flex items-center gap-2 font-semibold text-slate-800"><input id="po-cargar" type="checkbox" checked class="rounded border-slate-300 text-violet-700"> Cargar estudio de Biopsia automáticamente a la cuenta del paciente</label>
-                </div>
-                <label class="block text-[11px] font-bold text-slate-500 uppercase">Pronóstico</label><input id="po-pronostico" class="${cls}">
-                <p id="po-error" class="text-xs text-red-600 hidden"></p>
-            </div>`,
-            alMostrar: c => {
-                const sync = () => c.el.querySelector('#po-bx').classList.toggle('hidden', c.el.querySelector('#po-patologia').value !== 'si');
-                c.el.querySelector('#po-patologia').addEventListener('change', sync);
-                sync();
-            },
+            titulo: 'Hoja Quirúrgica', subtitulo: 'Nota post-operatoria oficial', icono: 'fa-notes-medical', ancho: 'xl',
+            html: S.htmlModalHojaQuirurgica(S.prefillHojaQuirurgica(turnoId)),
             botones: [
                 { texto: 'Cancelar', estilo: 'secundario' },
                 { texto: 'Guardar nota', estilo: 'exito', alPulsar: c => {
-                    const val = id => c.el.querySelector(id).value;
-                    const si = val('#po-patologia') === 'si';
-                    const r = S.guardarNotaPostoperatoria(turnoId, {
-                        entrada: c.el.querySelector('#po-entrada').checked, pausa: c.el.querySelector('#po-pausa').checked,
-                        salida: c.el.querySelector('#po-salida').checked, conteo: c.el.querySelector('#po-conteo').checked,
-                        dx_pre: val('#po-dxpre'), dx_post: val('#po-dxpost'), operacion: val('#po-op'), tecnica: val('#po-tecnica'),
-                        hallazgos: val('#po-hallazgos'), sangrado_ml: val('#po-sangrado'), patologia: val('#po-patologia'),
-                        pronostico: val('#po-pronostico'),
-                        estudio_biopsia_id: si ? val('#po-estudio') : '',
-                        cargar_biopsia: si && c.el.querySelector('#po-cargar').checked
-                    }, this.sesion);
+                    const entrada = S.leerNotaPostoperatoria(c.el);
+                    const r = S.guardarNotaPostoperatoria(turnoId, entrada, this.sesion);
                     const error = c.el.querySelector('#po-error');
                     if (!r.ok) { error.textContent = (r.errores && Object.values(r.errores)[0]) || r.motivo; error.classList.remove('hidden'); return false; }
-                    BelenUI.toast(si && c.el.querySelector('#po-cargar').checked ? 'Nota guardada y biopsia cargada a la cuenta.' : 'Nota post-operatoria guardada.', 'exito');
+                    BelenUI.toast(entrada.cargar_biopsia ? 'Nota guardada y biopsia cargada a la cuenta.' : 'Hoja quirúrgica guardada.', 'exito');
                     this.render();
                 } }
             ]
@@ -2150,11 +2114,30 @@ const AdminController = {
         const paciente = this.pacienteCargoActual();
         const turno = paciente ? S.obtenerTurno(paciente.turno_id) : null;
         const medico = turno && S.USUARIOS[turno.medico_id];
+        const pac = turno && S.buscarPacientePorId(turno.paciente_id);
+        const internamiento = turno && S.internamientoDeTurno(turno.turno_id);
+        const sv = (turno && turno.signos_vitales) || {};
+        const esp = medico && S.especialidadPorCodigo(medico.especialidad_codigo);
+        const camaReal = (internamiento && (internamiento.cama || internamiento.cama_codigo)) || (turno && (turno.cama || turno.cama_codigo)) || (paciente && paciente.cama);
         return S.datosReceta(Object.assign({
-            producto: producto, paciente: paciente ? paciente.nombre : '', cama: paciente ? paciente.cama : '',
+            producto: producto, paciente: paciente ? paciente.nombre : '',
+            cama: camaReal ? (S.etiquetaCama(camaReal) || camaReal) : 'Por asignar por Enfermería',
             medico: medico ? medico.nombre : (turno && turno.medico_nombre) || '', cedula: medico ? S.resumenCedulas(medico) : '', cedulas_texto: medico ? S.textoCedulasFirma(medico) : '',
             denominacion: producto.nombre, dosis: extra && extra.dosis || producto.nombre, lote: producto.lote, laboratorio: producto.laboratorio,
-            fraccion: producto.fraccion_cofepris
+            fraccion: producto.fraccion_cofepris,
+            expediente: (turno && turno.paciente_id) || (pac && pac.paciente_id) || '',
+            paciente_id: (turno && turno.paciente_id) || '',
+            fecha_nacimiento: pac ? S.fechaLegibleISO(pac.fecha_nacimiento) : '',
+            edad: (function () {
+                const ed = pac && pac.fecha_nacimiento ? S.calcularEdad(pac.fecha_nacimiento) : null;
+                if (ed === null || ed === undefined || ed === '') return (paciente && paciente.edad) || '';
+                const s = String(ed);
+                return s.indexOf('año') >= 0 ? s : (ed + (Number(ed) === 1 ? ' año' : ' años'));
+            })(),
+            peso: sv.peso_kg != null ? sv.peso_kg : '',
+            talla: sv.talla_m != null ? sv.talla_m : '',
+            alergias: (internamiento && internamiento.alergias) || '',
+            especialidad: (esp && esp.nombre) || (medico && medico.cargo) || (turno && turno.especialidad) || ''
         }, extra || {}));
     },
 
@@ -2627,11 +2610,25 @@ const AdminController = {
                     this.render();
                     const pac = S.obtenerTurno(r.uso.turno_id);
                     const medico = S.USUARIOS[r.uso.aplicador_id] || {};
+                    const internamiento = pac && S.internamientoDeTurno(pac.turno_id);
+                    const pacReg = pac && S.buscarPacientePorId(pac.paciente_id);
+                    const sv = (pac && pac.signos_vitales) || {};
+                    const esp = S.especialidadPorCodigo(medico.especialidad_codigo);
+                    const camaReal = (internamiento && (internamiento.cama || internamiento.cama_codigo)) || (pac && (pac.cama || pac.cama_codigo));
+                    const edadN = pacReg && pacReg.fecha_nacimiento ? S.calcularEdad(pacReg.fecha_nacimiento) : null;
                     this.imprimirRecetaDatos(S.datosReceta({
                         tipo: 'individual', producto: r.producto, paciente: pac ? pac.paciente_nombre : r.uso.paciente_nombre,
-                        cama: S.nombreAreaCaja(r.area), medico: medico.nombre || r.uso.aplicador_nombre, cedula: S.resumenCedulas(medico), cedulas_texto: S.textoCedulasFirma(medico),
+                        cama: camaReal ? (S.etiquetaCama(camaReal) || camaReal) : 'Por asignar por Enfermería',
+                        medico: medico.nombre || r.uso.aplicador_nombre, cedula: S.resumenCedulas(medico), cedulas_texto: S.textoCedulasFirma(medico),
                         denominacion: r.producto.nombre, dosis: r.producto.nombre, lote: r.uso.lote, laboratorio: r.producto.laboratorio, fraccion: 'I',
-                        numero: r.uso.numero, de: r.uso.de, folio_receta_especial: r.uso.folio_receta_especial, datos_postanestesicos: r.uso.datos_postanestesicos
+                        numero: r.uso.numero, de: r.uso.de, folio_receta_especial: r.uso.folio_receta_especial, datos_postanestesicos: r.uso.datos_postanestesicos,
+                        expediente: (pac && pac.paciente_id) || '',
+                        fecha_nacimiento: pacReg ? S.fechaLegibleISO(pacReg.fecha_nacimiento) : '',
+                        edad: (edadN === null || edadN === undefined || edadN === '') ? '' : (String(edadN).indexOf('año') >= 0 ? String(edadN) : (edadN + (Number(edadN) === 1 ? ' año' : ' años'))),
+                        peso: sv.peso_kg != null ? sv.peso_kg : '',
+                        talla: sv.talla_m != null ? sv.talla_m : '',
+                        alergias: (internamiento && internamiento.alergias) || '',
+                        especialidad: (esp && esp.nombre) || medico.cargo || (pac && pac.especialidad) || ''
                     }));
                 } }
             ]
