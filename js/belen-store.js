@@ -5677,9 +5677,9 @@
             + '<p><b>Edad:</b><br>' + e(p.edad || '') + '</p>'
             + '<p><b>Sexo:</b><br>' + e(p.sexo || '') + '</p></div>'
             + '<div>' + lab('Dx Preoperatorio', 'po-dxpre') + '<input id="po-dxpre" class="' + cls + '" value="' + e(p.dx_pre || '') + '"></div>'
-            + '<p class="text-xs text-justify leading-relaxed border border-slate-200 rounded-lg p-3">Autorizo a SANATORIO BELÉN S.A. de C.V. para que sus médicos, enfermeras y personal quirúrgico realicen en mi persona la intervención descrita en esta hoja, bajo la supervisión del médico tratante, y acepto los procedimientos que durante el acto quirúrgico se consideren necesarios.</p>'
+            + '<p class="text-xs text-justify leading-relaxed border border-slate-200 rounded-lg p-3">Autorizo al/el médico tratante que labora en <b><i>SANATORIO BELÉN S.A. de C.V.</i></b>, para que efectúe la(s) intervención(es) quirúrgica(s) que sea(n) necesaria(s) para el tratamiento y curación de mi padecimiento/enfermedad, entiendo y acepto que me han informado correcta y comprensiblemente todos los posibles riesgos a los que quedo sujeta/o por el procedimiento anestésico, quirúrgico y por los medicamentos que me sean aplicados, antes, durante y después de realizar el procedimiento quirúrgico.</p>'
             + '<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-center">'
-            + '<div class="border-t border-slate-400 pt-2">Paciente</div><div class="border-t border-slate-400 pt-2">Familiar/testigo</div></div>'
+            + '<div class="border-t border-slate-400 pt-2">Nombre y firma del Paciente</div><div class="border-t border-slate-400 pt-2">Nombre y firma del familiar/testigo</div></div>'
             + '<div>' + lab('Operación Programada', 'po-op') + '<input id="po-op" class="' + cls + '" value="' + e(p.operacion || '') + '"></div>'
             + '<div>' + lab('Fecha y hora quirúrgica', 'po-fhq') + '<input id="po-fhq" class="' + cls + '" value="' + e(p.fecha_hora_quirurgica || '') + '"></div>'
             + '<div>' + lab('Técnica Quirúrgica', 'po-tecnica') + '<textarea id="po-tecnica" rows="3" class="' + cls + '"></textarea></div>'
@@ -5720,31 +5720,35 @@
         const sangrado = (n.sangrado_ml !== undefined && n.sangrado_ml !== null && n.sangrado_ml !== '') ? (n.sangrado_ml + ' ml') : '';
         return '<article style="font-family:Arial,sans-serif;font-size:11px;color:#000;line-height:1.35;">'
             + '<p style="text-align:right;margin:0 0 4px;"><strong>Exp:</strong> ' + e(txt(f.expediente, '')) + ' &nbsp; <strong>No. de Cama/Habitación:</strong> ' + e(cama) + '</p>'
-            + '<p style="text-align:center;font-size:14px;font-weight:bold;margin:0 0 8px;">HOJA QUIRÚRGICA</p>'
-            + '<div style="display:flex;justify-content:space-between;gap:12px;border:1px solid #000;padding:4px 6px;margin-bottom:6px;"><span><strong>SERVICIO:</strong> ' + e(txt(n.servicio, f.servicio)) + '</span><span><strong>FECHA DE PROGRAMACIÓN:</strong> ' + e(txt(n.fecha_programacion, f.fecha_programacion)) + '</span></div>'
-            + linea('Nombre del/la paciente', txt(f.nombre, ''))
-            + '<p style="margin:2px 0;"><strong>Edad:</strong> ' + e(txt(f.edad, '')) + ' &nbsp; <strong>Sexo:</strong> ' + e(txt(f.sexo, '')) + '</p>'
-            + linea('Dx Preoperatorio', txt(n.dx_pre, f.dx_pre))
-            + '<p style="text-align:justify;margin:8px 0;">Autorizo a SANATORIO BELÉN S.A. de C.V. para que sus médicos, enfermeras y personal quirúrgico realicen en mi persona la intervención descrita en esta hoja, bajo la supervisión del médico tratante, y acepto los procedimientos que durante el acto quirúrgico se consideren necesarios.</p>'
-            + '<div style="display:flex;justify-content:space-between;gap:16px;margin:18px 0 8px;">'
-            + '<div style="width:42%;text-align:center;font-size:9px;border-top:1px solid #000;padding-top:3px;">Paciente</div>'
-            + '<div style="width:42%;text-align:center;font-size:9px;border-top:1px solid #000;padding-top:3px;">Familiar/testigo</div></div>'
+            + '<p style="margin:0 0 8px;"><strong>SERVICIO:</strong> ' + e(txt(n.servicio, f.servicio)) + '. &nbsp;&nbsp; <strong>FECHA DE PROGRAMACIÓN:</strong> ' + e(txt(n.fecha_programacion, f.fecha_programacion)) + '.</p>'
+            + '<p style="margin:2px 0;">Nombre del/la paciente: ' + e(txt(f.nombre, '')) + '. &nbsp; Edad: ' + e(txt(f.edad, '')) + '. &nbsp; Sexo: ' + e(txt(f.sexo, '')) + '.</p>'
+            + '<p style="margin:2px 0;">Dx Preoperatorio: ' + e(txt(n.dx_pre, f.dx_pre)) + '.</p>'
+            + '<p style="text-align:justify;margin:8px 0;">Autorizo al/el médico tratante que labora en <strong><em>SANATORIO BELÉN S.A. de C.V.</em></strong>, para que efectúe la(s) intervención(es) quirúrgica(s) que sea(n) necesaria(s) para el tratamiento y curación de mi padecimiento/enfermedad, entiendo y acepto que me han informado correcta y comprensiblemente todos los posibles riesgos a los que quedo sujeta/o por el procedimiento anestésico, quirúrgico y por los medicamentos que me sean aplicados, antes, durante y después de realizar el procedimiento quirúrgico.</p>'
+            + '<div style="display:flex;justify-content:space-between;gap:16px;margin:22px 0 10px;">'
+            + '<div style="width:42%;text-align:center;font-size:10px;border-top:1px solid #000;padding-top:3px;">Nombre y firma del Paciente</div>'
+            + '<div style="width:42%;text-align:center;font-size:10px;border-top:1px solid #000;padding-top:3px;">Nombre y firma del familiar/testigo</div></div>'
             + linea('Operación Programada', txt(n.operacion, f.operacion))
             + linea('Fecha y hora quirúrgica', txt(n.fecha_hora_quirurgica, f.fecha_hora_quirurgica))
-            + '<p style="margin:2px 0;"><strong>Técnica Quirúrgica:</strong></p><div style="white-space:pre-wrap;margin:0 0 6px 8px;">' + e(txt(n.tecnica, '')) + '</div>'
-            + '<p style="margin:2px 0;"><strong>Hallazgos:</strong></p><div style="white-space:pre-wrap;margin:0 0 6px 8px;">' + e(txt(n.hallazgos, '')) + '</div>'
-            + '<p style="margin:2px 0;"><strong>Recuento de material médico y quirúrgico:</strong></p><div style="white-space:pre-wrap;margin:0 0 6px 8px;">' + e(txt(n.recuento, '')) + '</div>'
+            + '<p style="margin:8px 0 2px;text-align:center;"><strong>Técnica Quirúrgica:</strong></p><div style="white-space:pre-wrap;min-height:48px;border-bottom:1px solid #000;margin:0 0 8px;">' + e(txt(n.tecnica, '')) + '</div>'
+            + '<p style="margin:8px 0 2px;text-align:center;"><strong>Hallazgos:</strong></p><div style="white-space:pre-wrap;min-height:48px;border-bottom:1px solid #000;margin:0 0 8px;">' + e(txt(n.hallazgos, '')) + '</div>'
+            + linea('Recuento de material médico y quirúrgico', txt(n.recuento, ''))
             + linea('Sangrado', sangrado)
             + linea('Uresis', txt(n.uresis, ''))
             + linea('Tipo de Anestesia', txt(n.tipo_anestesia, ''))
             + linea('Dx Postoperatorio', txt(n.dx_post, ''))
+            + linea('Cirujana/o', txt(firm.cirujano, f.cirujano))
+            + linea('Ayudante', txt(firm.ayudante, ''))
+            + linea('Anestesióloga/o', txt(firm.anestesiologo, f.anestesiologo))
+            + linea('Instrumentista', txt(firm.instrumentista, ''))
+            + linea('Circulante', txt(firm.circulante, ''))
+            + linea('Otra/o', txt(firm.otro, ''))
             + '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;">'
-            + firma('Cirujana/o', txt(firm.cirujano, f.cirujano))
-            + firma('Ayudante', txt(firm.ayudante, ''))
-            + firma('Anestesióloga/o', txt(firm.anestesiologo, f.anestesiologo))
-            + firma('Instrumentista', txt(firm.instrumentista, ''))
-            + firma('Circulante', txt(firm.circulante, ''))
-            + firma('Otra/o', txt(firm.otro, ''))
+            + firma('Firma del Cirujana/o', '')
+            + firma('Firma del Ayudante', '')
+            + firma('Firma del Anestesióloga/o', '')
+            + firma('Firma del Instrumentista', '')
+            + firma('Firma del Circulante', '')
+            + firma('Firma Otra/o', '')
             + '</div></article>';
     }
 
