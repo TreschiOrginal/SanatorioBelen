@@ -287,17 +287,26 @@
                         </div>
                         <div id="contenedor-app" class="space-y-4">
                             <div class="flex flex-col sm:flex-row gap-2 sm:items-center bg-white p-2 rounded-lg border border-red-100">
-                                <label class="w-full sm:w-32 flex items-center gap-2 text-xs font-bold text-red-600 cursor-pointer"><input type="checkbox" id="chk-alergias" onchange="toggleSubAPP('alergias')" class="text-red-600"> Alergias</label>
+                                <div class="w-full sm:w-64 flex items-center justify-between gap-2">
+                                    <label class="flex items-center gap-2 text-xs font-bold text-red-600 cursor-pointer"><input type="checkbox" id="chk-alergias" onchange="toggleSubAPP('alergias')" class="text-red-600"> Alergias</label>
+                                    <span id="etiq-alergias" class="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">Negado</span>
+                                </div>
                                 <div id="div-alergias" class="hidden flex-1"><input type="text" id="val-alergias" placeholder="Especifique a qué es alérgico..." class="w-full bg-slate-50 border border-red-200 rounded p-2 text-xs text-red-700 font-bold focus:border-red-500"></div>
                             </div>
                             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 <div class="bg-white p-2 rounded border border-slate-200">
-                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-hta" onchange="toggleSubAPP('hta')" class="text-cyan-600"> Hipertensión Arterial</label>
+                                    <div class="flex items-center justify-between gap-2 mb-2">
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-hta" onchange="toggleSubAPP('hta')" class="text-cyan-600"> Hipertensión Arterial</label>
+                                        <span id="etiq-hta" class="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">Negado</span>
+                                    </div>
                                     <div id="div-hta" class="hidden grid grid-cols-1 gap-2"><input type="text" id="hta-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="hta-meds" placeholder="Medicamento y Dosis" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="hta-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
                                 </div>
                                 <div class="bg-white p-2 rounded border border-slate-200">
-                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer mb-2"><input type="checkbox" id="chk-dm2" onchange="toggleSubAPP('dm2')" class="text-cyan-600"> Diabetes Mellitus tipo 2</label>
-                                    <div id="div-dm2" class="hidden grid grid-cols-1 gap-2"><input type="text" id="dm2-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="dm2-meds" placeholder="Medicamento/Insulina" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="dm2-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
+                                    <div class="flex items-center justify-between gap-2 mb-2">
+                                        <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-dm2" onchange="toggleSubAPP('dm2')" class="text-cyan-600"> Diabetes Mellitus tipo 2</label>
+                                        <span id="etiq-dm2" class="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">Negado</span>
+                                    </div>
+                                    <div id="div-dm2" class="hidden grid grid-cols-1 gap-2"><input type="text" id="dm2-tiempo" placeholder="¿Hace cuánto?" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><input type="text" id="dm2-meds" placeholder="Medicamento y Dosis" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><select id="dm2-apego" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs"><option>Buen apego</option><option>Mal apego</option><option>Sin tratamiento</option></select></div>
                                 </div>
                             </div>
                             <div>
@@ -305,14 +314,20 @@
                                 <input type="text" id="val-otras-app" placeholder="Especifique..." class="w-full bg-white border border-slate-200 rounded p-2 text-xs focus:border-cyan-500">
                             </div>
                             <div class="bg-white p-3 rounded-lg border border-slate-200">
-                                <div class="flex justify-between items-center mb-2">
+                                <div class="flex justify-between items-center mb-2 gap-2">
                                     <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-qx" onchange="toggleSubAPP('qx')" class="text-cyan-600"> Antecedentes Quirúrgicos</label>
+                                    <div class="flex items-center gap-2">
+                                        <span id="etiq-qx" class="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">Negado</span>
                                         <button type="button" id="btn-add-qx" onclick="agregarCirugiaDOM()" class="hidden text-[10px] bg-cyan-100 text-cyan-700 font-bold px-2 py-1 rounded shadow-sm hover:bg-cyan-200">+ Agregar Cirugía</button>
+                                    </div>
                                 </div>
                                 <div id="div-qx" class="hidden space-y-2"><div id="qx-container"></div></div>
                             </div>
                             <div class="bg-white p-2 rounded-lg border border-slate-200">
-                                <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-hemo" onchange="toggleSubAPP('hemo')" class="text-cyan-600"> Transfusiones (Hemoderivados)</label>
+                                <div class="flex items-center justify-between gap-2">
+                                    <label class="flex items-center gap-2 text-xs font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="chk-hemo" onchange="toggleSubAPP('hemo')" class="text-cyan-600"> Transfusiones (Hemoderivados)</label>
+                                    <span id="etiq-hemo" class="text-[10px] font-extrabold uppercase tracking-wide text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5 shrink-0">Negado</span>
+                                </div>
                                 <div id="div-hemo" class="hidden mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     <input type="text" id="hemo-tipo" placeholder="¿Cuántos y de qué tipo? (Ej. 2 CE)" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs">
                                     <input type="text" id="hemo-comp" placeholder="Complicaciones (o Ninguna)" class="bg-slate-50 border border-slate-200 rounded p-1.5 text-xs">
@@ -330,6 +345,16 @@
                                     <div class="sm:col-span-2"><label class="text-[9px] uppercase text-pink-700">Fecha de última menstruación (Día/Mes/Año)</label><input type="text" id="ago-fum" placeholder="O indicar Menopausia" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"></div>
                                 <div><label class="text-[9px] uppercase text-pink-700">Ritmo</label><select id="ago-ritmo" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"><option>Regular</option><option>Irregular</option><option>N/A</option></select></div>
                                 <div><label class="text-[9px] uppercase text-pink-700">Anticonceptivos</label><input type="text" id="ago-mpf" placeholder="Ninguno, DIU, etc." class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs"></div>
+                                <div class="sm:col-span-2 md:col-span-4">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label for="ago-higiene-tipo" class="text-[9px] uppercase text-pink-700">Toallas / tampones</label>
+                                        <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-higiene-nr" data-targets="ago-higiene-tipo,ago-higiene-cant" onchange="toggleNoReferido(this)" class="text-pink-600"> No referido</label>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <select id="ago-higiene-tipo" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"><option value="">Seleccione...</option><option value="TOALLAS">Toallas sanitarias</option><option value="TAMPONES">Tampones</option><option value="AMBOS">Ambos</option><option value="COPA">Copa menstrual</option></select>
+                                        <input type="text" id="ago-higiene-cant" placeholder="Ej. 3 al día" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
+                                    </div>
+                                </div>
                             </div>
                             <div class="bg-white p-3 rounded-lg border border-pink-200 overflow-x-auto">
                                 <div class="flex flex-wrap items-center gap-3 mb-3 min-w-max">
@@ -365,16 +390,6 @@
                                                 <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-parejas-nr" data-targets="ago-parejas" onchange="toggleNoReferido(this)" class="text-pink-600"> No referido</label>
                                             </div>
                                             <input type="number" id="ago-parejas" min="0" placeholder="0" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
-                                        </div>
-                                        <div>
-                                            <div class="flex justify-between items-center mb-1">
-                                                <label for="ago-higiene-tipo" class="text-[9px] uppercase text-pink-700">Toallas / tampones</label>
-                                                <label class="flex items-center gap-1 text-[9px] text-slate-500 font-bold cursor-pointer"><input type="checkbox" id="chk-ago-higiene-nr" data-targets="ago-higiene-tipo,ago-higiene-cant" onchange="toggleNoReferido(this)" class="text-pink-600"> No referido</label>
-                                            </div>
-                                            <div class="grid grid-cols-2 gap-2">
-                                                <select id="ago-higiene-tipo" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"><option value="">Seleccione...</option><option value="TOALLAS">Toallas sanitarias</option><option value="TAMPONES">Tampones</option><option value="AMBOS">Ambos</option><option value="COPA">Copa menstrual</option></select>
-                                                <input type="text" id="ago-higiene-cant" placeholder="Ej. 3 al día" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
-                                            </div>
                                         </div>
                     </div>
                 </div>
@@ -454,7 +469,7 @@
                                 <label class="text-sm font-bold text-slate-800 uppercase tracking-wide block">Estudios Auxiliares <span class="text-red-500">*</span></label>
                             <label class="flex items-center gap-1 text-[10px] bg-slate-100 p-1 rounded cursor-pointer font-bold text-slate-600"><input type="checkbox" id="chk-omitir-estudios" onchange="toggleOmitir('estudios')" class="text-cyan-600"> No hay / Omitir</label>
                         </div>
-                        <textarea id="val-estudios" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-24" placeholder="Ej. Rx Abdomen..."></textarea>
+                        <textarea id="val-estudios" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-40 resize-y" placeholder="Ej. Rx Abdomen..."></textarea>
                     </div>
                     <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
                             <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Diagnósticos <span class="text-red-500">*</span></label>
@@ -470,24 +485,33 @@
                 <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
                         <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Análisis Clínico <span class="text-red-500">*</span></label>
                     <textarea id="val-analisis" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Análisis del caso, integración diagnóstica..."></textarea>
-                    <div id="bloques-receta" class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-6">
+                    <div id="bloques-receta" class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
                         <section class="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
-                            <h3 class="text-sm font-extrabold text-rose-950">💉 Medicamentos a Aplicar Ahorita en Clínica / Urgencias</h3>
-                            <p class="text-[11px] text-rose-800 mt-1 mb-3">Se puede enviar a media consulta. Enfermería y Farmacia ven el folio de inmediato.</p>
-                            <input id="busca-aplica" type="search" autocomplete="off" placeholder="Buscar medicamento del catálogo" class="w-full bg-white border border-rose-200 rounded-xl p-2.5 text-sm outline-none focus:border-rose-500">
+                            <h3 class="text-sm font-extrabold text-rose-950">💉 Aplicar en Clínica / Urgencias</h3>
+                            <p class="text-[11px] text-rose-800 mt-1 mb-3">Solo medicamentos del inventario. Estas órdenes sí van a la cola de pendientes de surtir de Farmacia.</p>
+                            <input id="busca-aplica" type="search" autocomplete="off" placeholder="Buscar medicamento del inventario" class="w-full bg-white border border-rose-200 rounded-xl p-2.5 text-sm outline-none focus:border-rose-500">
                             <div id="lista-aplica" class="mt-2 flex flex-col gap-1"></div>
                             <div id="lineas-aplica" class="mt-3 space-y-2"></div>
-                            <button type="button" id="btn-orden-aplicacion" class="mt-3 w-full bg-rose-700 hover:bg-rose-800 text-white text-sm font-extrabold py-2.5 rounded-xl">⚡ Enviar Orden de Aplicación a Enfermería/Farmacia Ahora</button>
+                            <button type="button" id="btn-orden-aplicacion" class="mt-3 w-full bg-rose-700 hover:bg-rose-800 text-white text-sm font-extrabold py-2.5 rounded-xl">⚡ Enviar a la cola de Farmacia e imprimir comprobante</button>
                         </section>
                         <section class="rounded-2xl border border-cyan-200 bg-cyan-50/70 p-4">
-                            <h3 class="text-sm font-extrabold text-cyan-950">📄 Receta Médica para Llevar a Casa</h3>
-                            <p class="text-[11px] text-cyan-800 mt-1 mb-3">Cantidad en piezas o cajas. Si hoy ya se aplicó una dosis, recete solo lo que falta.</p>
-                            <input id="busca-casa" type="search" autocomplete="off" placeholder="Buscar medicamento para llevar" class="w-full bg-white border border-cyan-200 rounded-xl p-2.5 text-sm outline-none focus:border-cyan-500">
+                            <h3 class="text-sm font-extrabold text-cyan-950">📄 Receta Médica para Casa</h3>
+                            <p class="text-[11px] text-cyan-800 mt-1 mb-3">No se envía a Farmacia. Puede ser del catálogo o un texto libre si el hospital no lo tiene.</p>
+                            <div class="flex flex-wrap gap-2 mb-2">
+                                <button type="button" id="btn-copiar-aplica-casa" class="bg-white border border-cyan-300 text-cyan-900 text-xs font-extrabold px-3 py-2 rounded-lg">⤵️ Copiar de Aplicación en Clínica a Receta para Casa</button>
+                                <button type="button" id="btn-renglon-casa" class="bg-white border border-slate-300 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg">+ Renglón libre</button>
+                            </div>
+                            <input id="busca-casa" type="search" autocomplete="off" placeholder="Autocompletar del catálogo (opcional)" class="w-full bg-white border border-cyan-200 rounded-xl p-2.5 text-sm outline-none focus:border-cyan-500">
                             <div id="lista-casa" class="mt-2 flex flex-col gap-1"></div>
                             <div id="lineas-casa" class="mt-3 space-y-2"></div>
                             <button type="button" id="btn-receta-casa" class="mt-3 w-full bg-cyan-800 hover:bg-cyan-900 text-white text-sm font-extrabold py-2.5 rounded-xl">🖨️ Generar e Imprimir Receta para Casa</button>
                         </section>
                     </div>
+                    <section id="panel-recetas-consulta" class="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                        <h3 class="text-sm font-extrabold text-slate-800">📋 Recetas y Órdenes de esta Consulta</h3>
+                        <p class="text-[11px] text-slate-500 mt-1">Reimprima, cambie el medicamento o cancele sin cerrar la consulta. Farmacia solo ve las órdenes de aplicación que siguen pendientes.</p>
+                        <div id="lista-recetas-consulta" class="mt-3 space-y-2 text-sm text-slate-500">Todavía no hay órdenes en esta consulta.</div>
+                    </section>
                         <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Plan y Tratamiento <span class="text-red-500">*</span></label>
                     <textarea id="val-plan" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28" placeholder="Ej. Desimpactación manual, Paracetamol..."></textarea>
                     <div id="alerta-cofepris-plan" class="mb-6 mt-3 space-y-2"></div>
@@ -1044,8 +1068,8 @@
         </div>
     </div>
 
-    <script src="js/belen-store.js?v=f9"></script>
-    <script src="js/belen-ui.js?v=f9"></script>
+    <script src="js/belen-store.js?v=f10"></script>
+    <script src="js/belen-ui.js?v=f10"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
@@ -1197,18 +1221,12 @@
             b.classList.toggle('hidden', !textoAutollenadoActual); b.classList.toggle('flex', !!textoAutollenadoActual);
         }
 
-        function marcarCirugiaAutomatica(id, origen) {
-            const fila = document.getElementById('qx-row-' + id);
-            if (!fila || fila.querySelector('[data-badge-auto]')) return;
-            fila.dataset.auto = origen;
-            fila.insertAdjacentHTML('afterbegin', `<span data-badge-auto class="absolute -top-2 left-3 bg-cyan-600 text-white text-[9px] font-bold uppercase px-2 py-0.5 rounded-full">${escaparHTML(origen)}</span>`);
-        }
+        function marcarCirugiaAutomatica() {}
 
-        // Pre-llena la Nota Médica con la ÚLTIMA visita guardada del paciente y suma las cirugías confirmadas en
-        // episodios anteriores. NO precarga lo que cambia en cada consulta (FUM, embarazo, signos, narrativa clínica).
+        // Pre-llena la Nota Médica con la ÚLTIMA visita guardada del paciente y las cirugías de notas post-operatorias.
+        // NO precarga lo que cambia en cada consulta (FUM, embarazo, signos, narrativa clínica).
         function aplicarAutollenadoLongitudinal() {
             const ctx = BelenStore.antecedentesLongitudinales(TURNO.paciente_id, TURNO.turno_id);
-            if (!ctx.total_visitas) return false;
             const $ = id => document.getElementById(id);
             const ponerValor = (id, v) => {
                 const n = $(id);
@@ -1222,14 +1240,16 @@
             let campos = 0;
             const cuenta = ok => { if (ok) campos++; };
 
-            const ex = ctx.ultima_visita, p = ex.paciente || {}, a = ex.antecedentes || {};
+            const ex = ctx.ultima_visita || null;
+            const p = (ex && ex.paciente) || {};
+            const a = (ex && ex.antecedentes) || {};
             const cat = BelenStore.buscarPacientePorId(TURNO.paciente_id) || {};
 
-            // Demografía (prioridad al catálogo, que siempre guarda lo más reciente)
             cuenta(ponerValor('comp-civil', cat.estado_civil || p.estado_civil));
             cuenta(ponerValor('comp-tel', cat.telefono || p.telefono));
             cuenta(ponerValor('comp-ocu', cat.ocupacion || p.ocupacion));
             cuenta(ponerValor('comp-dir', cat.direccion || p.direccion));
+            if (!ex && !ctx.cirugias_detectadas.length) return campos > 0;
 
             // Grupo y Rh
             if (p.grupo_sanguineo) { ponerCheck('chk-sangre-omitir', false); cuenta(ponerValor('val-sangre', p.grupo_sanguineo)); }
@@ -1259,7 +1279,6 @@
                 }
             }
 
-            // Antecedentes quirúrgicos: lo ya registrado + procedimientos confirmados en hospitalizaciones anteriores
             let detectadas = 0;
             if (ctx.cirugias_detectadas.length && !(app && app.negado_todo)) {
                 ponerCheck('chk-app-neg', false);
@@ -1267,10 +1286,10 @@
                 ctx.cirugias_detectadas.forEach(q => {
                     agregarCirugiaDOM();
                     const id = cirugiasAgregadas[cirugiasAgregadas.length - 1];
-                    $('qx-nombre-' + id).value = q.procedimiento;
+                    $('qx-nombre-' + id).value = q.procedimiento || '';
                     $('qx-fecha-' + id).value = q.fecha_texto || '';
-                    $('qx-comp-' + id).value = q.complicaciones || '';
-                    if (q.origen === 'consentimiento_quirurgico') { marcarCirugiaAutomatica(id, 'Detectada en hospitalización anterior'); detectadas++; }
+                    $('qx-comp-' + id).value = q.complicaciones || 'Ninguna';
+                    detectadas++;
                     campos++;
                 });
             }
@@ -1298,11 +1317,12 @@
                 toggleDetallesAGO();
             }
 
-            const fecha = ((ex.consulta || {}).fecha_hora || '').slice(0, 10);
-            const medico = (ex.meta || {}).medico_nombre || (ex.consulta || {}).medico_tratante || '';
+            const fecha = (((ex && ex.consulta) || {}).fecha_hora || '').slice(0, 10);
+            const medico = (ex && ex.meta && ex.meta.medico_nombre) || ((ex && ex.consulta) || {}).medico_tratante || '';
+            const pieVisita = ex ? `Se completaron ${campos} datos con la visita del ${BelenStore.fechaLegibleISO(fecha)}${medico ? ' (' + medico + ')' : ''}. ` : '';
             mostrarBannerAutollenado(
-                `Se completaron ${campos} datos con la visita del ${BelenStore.fechaLegibleISO(fecha)}${medico ? ' (' + medico + ')' : ''}. ` +
-                (detectadas ? `Se agregaron ${detectadas} cirugía${detectadas === 1 ? '' : 's'} confirmada${detectadas === 1 ? '' : 's'} en hospitalizaciones anteriores. ` : '') +
+                pieVisita +
+                (detectadas ? `Se precargaron ${detectadas} antecedente${detectadas === 1 ? '' : 's'} quirúrgico${detectadas === 1 ? '' : 's'} (nombre, fecha y complicaciones). ` : '') +
                 'Revise y actualice solo lo que haya cambiado.');
             return true;
         }
@@ -1654,29 +1674,68 @@
             caja.querySelectorAll('[data-idx]').forEach(row => {
                 const i = parseInt(row.getAttribute('data-idx'), 10);
                 if (!base[i]) return;
-                base[i].dosis_indicacion = row.querySelector('[data-dosis]').value;
-                base[i].cantidad = parseInt(row.querySelector('[data-cant]').value, 10) || 1;
+                const dosis = row.querySelector('[data-dosis]');
+                const cant = row.querySelector('[data-cant]');
+                if (dosis) base[i].dosis_indicacion = dosis.value;
+                if (cant) base[i].cantidad = parseInt(cant.value, 10) || 1;
+                if (destino === 'casa') {
+                    const nombre = row.querySelector('[data-nombre]');
+                    const conc = row.querySelector('[data-concentracion]');
+                    const pres = row.querySelector('[data-presentacion]');
+                    if (nombre) base[i].nombre = nombre.value;
+                    if (conc) base[i].concentracion = conc.value;
+                    if (pres) base[i].presentacion = pres.value;
+                }
             });
             return base;
+        }
+        function guardarCasaSiAplica() {
+            if (TURNO) BelenStore.guardarBorradorRecetaCasa(TURNO.turno_id, borradorCasa);
         }
         function pintarLineasReceta(destino) {
             const caja = document.getElementById(destino === 'casa' ? 'lineas-casa' : 'lineas-aplica');
             if (!caja) return;
             const e = BelenUI.esc;
             const base = arregloReceta(destino);
-            caja.innerHTML = base.map((item, i) => `<div data-idx="${i}" class="bg-white border border-slate-200 rounded-xl p-2">
-                <div class="flex items-center justify-between gap-2"><p class="text-sm font-bold text-slate-800">${e(item.nombre)}</p>
-                    <button type="button" data-quitar="${i}" class="text-xs font-bold text-red-600">Quitar</button></div>
-                <div class="grid grid-cols-3 gap-2 mt-2">
-                    <input data-dosis value="${e(item.dosis_indicacion || '')}" placeholder="${destino === 'casa' ? 'Ej. 1 frasco cada 24 h por 3 días' : 'Ej. 1 ámpula IM ahora'}" class="col-span-2 border border-slate-200 rounded-lg p-2 text-xs">
-                    <input data-cant type="number" min="1" max="99" value="${e(String(item.cantidad || 1))}" class="border border-slate-200 rounded-lg p-2 text-xs" aria-label="Cantidad">
-                </div></div>`).join('');
+            caja.innerHTML = base.map((item, i) => {
+                if (destino !== 'casa') {
+                    return `<div data-idx="${i}" class="bg-white border border-slate-200 rounded-xl p-2">
+                        <div class="flex items-center justify-between gap-2"><p class="text-sm font-bold text-slate-800">${e(item.nombre)}</p>
+                            <button type="button" data-quitar="${i}" class="text-xs font-bold text-red-600">Quitar</button></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 mt-2">
+                            <input data-dosis value="${e(item.dosis_indicacion || '')}" placeholder="Instrucción / Vía. Ej. 1 ámpula IM ahora" class="sm:col-span-3 border border-slate-200 rounded-lg p-2 text-xs">
+                            <input data-cant type="number" min="1" max="99" value="${e(String(item.cantidad || 1))}" class="border border-slate-200 rounded-lg p-2 text-xs" aria-label="Cantidad">
+                        </div></div>`;
+                }
+                return `<div data-idx="${i}" class="bg-white border border-cyan-100 rounded-xl p-2 space-y-2">
+                    <div class="flex justify-end"><button type="button" data-quitar="${i}" class="text-xs font-bold text-red-600">Quitar</button></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                        <input data-nombre value="${e(item.nombre || '')}" placeholder="Medicamento" class="sm:col-span-5 border border-slate-200 rounded-lg p-2 text-xs">
+                        <input data-concentracion value="${e(item.concentracion || '')}" placeholder="Concentración" class="sm:col-span-3 border border-slate-200 rounded-lg p-2 text-xs">
+                        <input data-presentacion value="${e(item.presentacion || item.forma_farmaceutica || '')}" placeholder="Presentación" class="sm:col-span-2 border border-slate-200 rounded-lg p-2 text-xs">
+                        <input data-cant type="number" min="1" max="99" value="${e(String(item.cantidad || 1))}" aria-label="Cantidad" class="sm:col-span-2 border border-slate-200 rounded-lg p-2 text-xs">
+                    </div>
+                    <textarea data-dosis rows="3" placeholder="Instrucciones de toma o aplicación" class="w-full border border-slate-200 rounded-lg p-2 text-xs h-24 resize-y">${e(item.dosis_indicacion || '')}</textarea>
+                </div>`;
+            }).join('');
             caja.querySelectorAll('[data-quitar]').forEach(b => b.addEventListener('click', () => {
                 leerLineasReceta(destino);
                 arregloReceta(destino).splice(parseInt(b.getAttribute('data-quitar'), 10), 1);
-                if (destino === 'casa' && TURNO) BelenStore.guardarBorradorRecetaCasa(TURNO.turno_id, borradorCasa);
+                if (destino === 'casa') guardarCasaSiAplica();
                 pintarLineasReceta(destino);
             }));
+            if (destino === 'casa') {
+                caja.querySelectorAll('input,textarea').forEach(n => n.addEventListener('change', () => { leerLineasReceta('casa'); guardarCasaSiAplica(); }));
+            }
+        }
+        function fichaDesdeProducto(prod, destino) {
+            return {
+                sku: prod.sku, nombre: prod.nombre,
+                concentracion: prod.concentracion || '',
+                presentacion: BelenStore.nombreFormaFarmaceutica(prod.forma_farmaceutica) || '',
+                dosis_indicacion: destino === 'casa' ? '' : '1 dosis ahora',
+                cantidad: 1
+            };
         }
         function buscarRecetaClinica(destino) {
             const input = document.getElementById(destino === 'casa' ? 'busca-casa' : 'busca-aplica');
@@ -1690,56 +1749,243 @@
                 if (!prod) return;
                 leerLineasReceta(destino);
                 const base = arregloReceta(destino);
-                if (base.some(x => x.sku === prod.sku)) { BelenUI.toast('Ese medicamento ya está en la lista.', 'alerta'); return; }
-                base.push({ sku: prod.sku, nombre: prod.nombre, dosis_indicacion: destino === 'casa' ? '' : '1 dosis ahora', cantidad: 1 });
+                if (prod.sku && base.some(x => x.sku === prod.sku)) { BelenUI.toast('Ese medicamento ya está en la lista.', 'alerta'); return; }
+                base.push(fichaDesdeProducto(prod, destino));
                 input.value = '';
                 lista.innerHTML = '';
-                if (destino === 'casa' && TURNO) BelenStore.guardarBorradorRecetaCasa(TURNO.turno_id, borradorCasa);
+                if (destino === 'casa') guardarCasaSiAplica();
                 pintarLineasReceta(destino);
             }));
+        }
+        function copiarAplicacionACasa() {
+            leerLineasReceta('aplica');
+            leerLineasReceta('casa');
+            let fuente = borradorAplicacion.slice();
+            if (!fuente.length && TURNO) {
+                const previa = BelenStore.recetasDeTurno(TURNO.turno_id).filter(r => r.tipo_origen === 'APLICACION_CONSULTA' && r.estatus_surtido !== 'CANCELADA').pop();
+                fuente = previa ? (previa.items || []).map(i => ({ sku: i.sku, nombre: i.nombre, concentracion: i.concentracion || '', presentacion: i.forma_farmaceutica || '', dosis_indicacion: i.dosis_indicacion || '', cantidad: i.cantidad_prescrita || 1 })) : [];
+            }
+            if (!fuente.length) { BelenUI.toast('No hay medicamentos en Aplicación en Clínica para copiar.', 'alerta'); return; }
+            fuente.forEach(item => {
+                if (item.sku && borradorCasa.some(x => x.sku === item.sku)) return;
+                borradorCasa.push({
+                    sku: item.sku || '', nombre: item.nombre || '', concentracion: item.concentracion || '',
+                    presentacion: item.presentacion || item.forma_farmaceutica || '',
+                    dosis_indicacion: item.dosis_indicacion || '', cantidad: item.cantidad || item.cantidad_prescrita || 1
+                });
+            });
+            guardarCasaSiAplica();
+            pintarLineasReceta('casa');
+            BelenUI.toast('Se copiaron los medicamentos a la receta para casa. Ajuste la cantidad que se lleva.', 'exito');
+        }
+        function agregarRenglonCasaLibre() {
+            leerLineasReceta('casa');
+            borradorCasa.push({ sku: '', nombre: '', concentracion: '', presentacion: '', dosis_indicacion: '', cantidad: 1, libre: true });
+            guardarCasaSiAplica();
+            pintarLineasReceta('casa');
+        }
+        function pintarPanelRecetasConsulta() {
+            const caja = document.getElementById('lista-recetas-consulta');
+            const panel = document.getElementById('panel-recetas-consulta');
+            if (!caja || !TURNO) return;
+            const puede = SESION && BelenStore.puedeEmitirRecetaMedica(SESION.rol);
+            if (panel) panel.classList.toggle('hidden', !puede);
+            if (!puede) return;
+            const e = BelenUI.esc;
+            const lista = BelenStore.recetasDeTurno(TURNO.turno_id).filter(r => r.tipo_origen === 'APLICACION_CONSULTA' || r.tipo_origen === 'RECETA_CASA');
+            if (!lista.length) { caja.innerHTML = '<p class="text-sm text-slate-500">Todavía no hay órdenes en esta consulta.</p>'; return; }
+            caja.innerHTML = lista.map(r => {
+                const tipo = r.tipo_origen === 'APLICACION_CONSULTA' ? 'Aplicación en clínica' : 'Receta para casa';
+                const meds = (r.items || []).map(i => e(i.nombre)).join(', ') || 'Sin medicamentos';
+                const pendiente = r.estatus_surtido === 'PENDIENTE';
+                const acciones = `<button type="button" data-reimprimir="${e(r.receta_id)}" class="text-xs font-bold bg-white border border-slate-300 rounded-lg px-2 py-1">🖨️ Ver / Reimprimir</button>`
+                    + (pendiente ? `<button type="button" data-modificar="${e(r.receta_id)}" class="text-xs font-bold bg-white border border-cyan-300 text-cyan-900 rounded-lg px-2 py-1">✏️ Modificar</button>
+                        <button type="button" data-cancelar="${e(r.receta_id)}" class="text-xs font-bold bg-white border border-red-300 text-red-700 rounded-lg px-2 py-1">🗑️ Cancelar</button>` : '');
+                return `<article class="bg-white border border-slate-200 rounded-xl p-3 ${r.estatus_surtido === 'CANCELADA' ? 'opacity-60' : ''}">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                        <div><p class="text-sm font-extrabold text-slate-800">${e(r.folio)} · ${tipo}</p>
+                        <p class="text-xs text-slate-600 mt-0.5">${meds}</p>
+                        <p class="text-[11px] font-bold text-slate-500 mt-1">${e(BelenStore.etiquetaEstatusReceta(r.estatus_surtido))}</p></div>
+                        <div class="flex flex-wrap gap-1">${acciones}</div>
+                    </div></article>`;
+            }).join('');
+            caja.querySelectorAll('[data-reimprimir]').forEach(b => b.addEventListener('click', () => reimprimirRecetaConsulta(b.getAttribute('data-reimprimir'))));
+            caja.querySelectorAll('[data-modificar]').forEach(b => b.addEventListener('click', () => abrirModificarRecetaConsulta(b.getAttribute('data-modificar'))));
+            caja.querySelectorAll('[data-cancelar]').forEach(b => b.addEventListener('click', () => cancelarRecetaConsultaUi(b.getAttribute('data-cancelar'))));
+        }
+        function reimprimirRecetaConsulta(recetaId) {
+            const receta = BelenStore.listarRecetas().find(r => r.receta_id === recetaId);
+            if (!receta) { BelenUI.toast('No se encontró la receta.', 'alerta'); return; }
+            imprimirHtmlEnVisor(BelenStore.htmlHojaReceta(receta));
+        }
+        function cancelarRecetaConsultaUi(recetaId) {
+            const receta = BelenStore.listarRecetas().find(r => r.receta_id === recetaId);
+            if (!receta) return;
+            BelenUI.confirmar({
+                titulo: 'Cancelar ' + receta.folio,
+                mensaje: receta.tipo_origen === 'APLICACION_CONSULTA'
+                    ? 'Si Farmacia aún no la surte, desaparece de la cola de pendientes.'
+                    : 'La receta para casa deja de poder reimprimirse como vigente.',
+                textoConfirmar: 'Cancelar orden', tipo: 'peligro',
+                alConfirmar: () => {
+                    const r = BelenStore.cancelarRecetaConsulta(recetaId, SESION);
+                    if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
+                    BelenUI.toast(receta.folio + ' quedó cancelada.', 'exito');
+                    pintarPanelRecetasConsulta();
+                }
+            });
+        }
+        function abrirModificarRecetaConsulta(recetaId) {
+            const receta = BelenStore.listarRecetas().find(r => r.receta_id === recetaId);
+            if (!receta) return;
+            if (receta.estatus_surtido !== 'PENDIENTE') { BelenUI.toast('Esa orden ya no está pendiente.', 'alerta'); return; }
+            const clinica = receta.tipo_origen === 'APLICACION_CONSULTA';
+            const e = BelenUI.esc;
+            const filas = (receta.items || []).map((item, i) => clinica
+                ? `<div class="border border-slate-200 rounded-lg p-2" data-item="${i}">
+                    <p class="text-xs font-bold text-slate-700">${e(item.nombre)}</p>
+                    <input data-sku type="hidden" value="${e(item.sku || '')}">
+                    <input data-nombre type="hidden" value="${e(item.nombre || '')}">
+                    <div class="grid grid-cols-4 gap-2 mt-2">
+                        <input data-dosis value="${e(item.dosis_indicacion || '')}" placeholder="Instrucción / Vía" class="col-span-3 border border-slate-200 rounded-lg p-2 text-xs">
+                        <input data-cant type="number" min="1" max="99" value="${e(String(item.cantidad_prescrita || 1))}" class="border border-slate-200 rounded-lg p-2 text-xs">
+                    </div>
+                    <button type="button" data-quitar-item class="mt-1 text-[11px] font-bold text-red-600">Quitar</button>
+                   </div>`
+                : `<div class="border border-slate-200 rounded-lg p-2 space-y-2" data-item="${i}">
+                    <input data-sku type="hidden" value="${e(item.sku || '')}">
+                    <div class="grid grid-cols-12 gap-2">
+                        <input data-nombre value="${e(item.nombre || '')}" placeholder="Medicamento" class="col-span-5 border rounded-lg p-2 text-xs">
+                        <input data-concentracion value="${e(item.concentracion || '')}" placeholder="Concentración" class="col-span-3 border rounded-lg p-2 text-xs">
+                        <input data-presentacion value="${e(item.forma_farmaceutica || '')}" placeholder="Presentación" class="col-span-2 border rounded-lg p-2 text-xs">
+                        <input data-cant type="number" min="1" max="99" value="${e(String(item.cantidad_prescrita || 1))}" class="col-span-2 border rounded-lg p-2 text-xs">
+                    </div>
+                    <textarea data-dosis rows="3" class="w-full border rounded-lg p-2 text-xs h-20 resize-y" placeholder="Instrucciones">${e(item.dosis_indicacion || '')}</textarea>
+                    <button type="button" data-quitar-item class="text-[11px] font-bold text-red-600">Quitar</button>
+                   </div>`).join('');
+            BelenUI.modal({
+                titulo: 'Modificar ' + receta.folio,
+                subtitulo: clinica ? 'Quite un medicamento y agregue otro del inventario. Farmacia ve el cambio si sigue pendiente.' : 'Puede cambiar el texto libre de la receta para casa.',
+                icono: 'fa-pen', ancho: 'lg',
+                html: `<div id="mod-items" class="space-y-2">${filas}</div>
+                    ${clinica ? `<input id="mod-busca" type="search" placeholder="Agregar medicamento del inventario" class="mt-3 w-full border border-slate-300 rounded-lg p-2 text-sm"><div id="mod-hits" class="mt-1 flex flex-col gap-1"></div>` : `<button type="button" id="mod-libre" class="mt-3 text-xs font-bold text-cyan-800">+ Renglón libre</button>`}
+                    <p id="mod-error" class="text-xs text-red-600 mt-2 hidden"></p>`,
+                alMostrar: c => {
+                    const quitar = () => c.el.querySelectorAll('[data-quitar-item]').forEach(b => b.addEventListener('click', () => b.closest('[data-item]').remove()));
+                    quitar();
+                    const busca = c.el.querySelector('#mod-busca');
+                    if (busca) busca.addEventListener('input', () => {
+                        const hits = BelenStore.buscarMedicamentosReceta(busca.value);
+                        c.el.querySelector('#mod-hits').innerHTML = hits.map(p => `<button type="button" data-sku="${e(p.sku)}" class="text-left text-xs bg-white border rounded-lg px-2 py-1">${e(p.nombre)}</button>`).join('');
+                        c.el.querySelectorAll('#mod-hits [data-sku]').forEach(b => b.addEventListener('click', () => {
+                            const prod = BelenStore.productoPorSku(b.getAttribute('data-sku'));
+                            if (!prod) return;
+                            c.el.querySelector('#mod-items').insertAdjacentHTML('beforeend', `<div class="border border-slate-200 rounded-lg p-2" data-item="nuevo">
+                                <p class="text-xs font-bold">${e(prod.nombre)}</p>
+                                <input data-sku type="hidden" value="${e(prod.sku)}"><input data-nombre type="hidden" value="${e(prod.nombre)}">
+                                <div class="grid grid-cols-4 gap-2 mt-2"><input data-dosis value="1 dosis ahora" class="col-span-3 border rounded-lg p-2 text-xs"><input data-cant type="number" min="1" max="99" value="1" class="border rounded-lg p-2 text-xs"></div>
+                                <button type="button" data-quitar-item class="mt-1 text-[11px] font-bold text-red-600">Quitar</button></div>`);
+                            busca.value = '';
+                            c.el.querySelector('#mod-hits').innerHTML = '';
+                            quitar();
+                        }));
+                    });
+                    const libre = c.el.querySelector('#mod-libre');
+                    if (libre) libre.addEventListener('click', () => {
+                        c.el.querySelector('#mod-items').insertAdjacentHTML('beforeend', `<div class="border border-slate-200 rounded-lg p-2 space-y-2" data-item="nuevo">
+                            <input data-sku type="hidden" value="">
+                            <div class="grid grid-cols-12 gap-2">
+                                <input data-nombre placeholder="Medicamento" class="col-span-5 border rounded-lg p-2 text-xs">
+                                <input data-concentracion placeholder="Concentración" class="col-span-3 border rounded-lg p-2 text-xs">
+                                <input data-presentacion placeholder="Presentación" class="col-span-2 border rounded-lg p-2 text-xs">
+                                <input data-cant type="number" min="1" max="99" value="1" class="col-span-2 border rounded-lg p-2 text-xs">
+                            </div>
+                            <textarea data-dosis rows="3" class="w-full border rounded-lg p-2 text-xs h-20" placeholder="Instrucciones"></textarea>
+                            <button type="button" data-quitar-item class="text-[11px] font-bold text-red-600">Quitar</button></div>`);
+                        quitar();
+                    });
+                },
+                botones: [
+                    { texto: 'Cerrar', estilo: 'secundario' },
+                    { texto: 'Guardar cambio', estilo: 'primario', alPulsar: c => {
+                        const items = Array.from(c.el.querySelectorAll('#mod-items [data-item]')).map(row => ({
+                            sku: (row.querySelector('[data-sku]') || {}).value || '',
+                            nombre: (row.querySelector('[data-nombre]') || {}).value || '',
+                            concentracion: (row.querySelector('[data-concentracion]') || {}).value || '',
+                            presentacion: (row.querySelector('[data-presentacion]') || {}).value || '',
+                            dosis_indicacion: (row.querySelector('[data-dosis]') || {}).value || '',
+                            cantidad: (row.querySelector('[data-cant]') || {}).value || 1
+                        })).filter(x => (x.sku && String(x.sku).trim()) || (x.nombre && String(x.nombre).trim().length >= 2));
+                        const r = BelenStore.modificarRecetaPendiente(recetaId, items, SESION);
+                        const error = c.el.querySelector('#mod-error');
+                        if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                        BelenUI.toast(receta.folio + ' actualizada. Farmacia ve la lista nueva si aún estaba pendiente.', 'exito');
+                        pintarPanelRecetasConsulta();
+                    } }
+                ]
+            });
         }
         function prepararRecetasConsulta() {
             const caja = document.getElementById('bloques-receta');
             if (!caja) return;
             const puede = SESION && BelenStore.puedeEmitirRecetaMedica(SESION.rol);
             caja.classList.toggle('hidden', !puede);
+            const panel = document.getElementById('panel-recetas-consulta');
+            if (panel) panel.classList.toggle('hidden', !puede);
             if (!puede) return;
             borradorCasa = ((TURNO && TURNO.receta_casa_borrador) || []).map(x => Object.assign({}, x));
             pintarLineasReceta('aplica');
             pintarLineasReceta('casa');
+            pintarPanelRecetasConsulta();
             const aplica = document.getElementById('busca-aplica');
             const casa = document.getElementById('busca-casa');
-            if (aplica) aplica.addEventListener('input', () => buscarRecetaClinica('aplica'));
-            if (casa) casa.addEventListener('input', () => buscarRecetaClinica('casa'));
+            if (aplica && !aplica.dataset.listo) { aplica.dataset.listo = '1'; aplica.addEventListener('input', () => buscarRecetaClinica('aplica')); }
+            if (casa && !casa.dataset.listo) { casa.dataset.listo = '1'; casa.addEventListener('input', () => buscarRecetaClinica('casa')); }
             const btnOrden = document.getElementById('btn-orden-aplicacion');
             const btnCasa = document.getElementById('btn-receta-casa');
-            if (btnOrden) btnOrden.addEventListener('click', enviarOrdenAplicacionAhora);
-            if (btnCasa) btnCasa.addEventListener('click', () => emitirRecetaCasaPendiente(true));
+            const btnCopiar = document.getElementById('btn-copiar-aplica-casa');
+            const btnLibre = document.getElementById('btn-renglon-casa');
+            if (btnOrden && !btnOrden.dataset.listo) { btnOrden.dataset.listo = '1'; btnOrden.addEventListener('click', enviarOrdenAplicacionAhora); }
+            if (btnCasa && !btnCasa.dataset.listo) { btnCasa.dataset.listo = '1'; btnCasa.addEventListener('click', () => emitirRecetaCasaPendiente(true)); }
+            if (btnCopiar && !btnCopiar.dataset.listo) { btnCopiar.dataset.listo = '1'; btnCopiar.addEventListener('click', copiarAplicacionACasa); }
+            if (btnLibre && !btnLibre.dataset.listo) { btnLibre.dataset.listo = '1'; btnLibre.addEventListener('click', agregarRenglonCasaLibre); }
         }
         function enviarOrdenAplicacionAhora() {
             leerLineasReceta('aplica');
             if (!borradorAplicacion.length) { BelenUI.toast('Agregue el medicamento que se va a aplicar.', 'alerta'); return; }
+            if (borradorAplicacion.some(x => !x.sku)) { BelenUI.toast('En clínica solo se aplican medicamentos del inventario.', 'alerta'); return; }
             if (!TURNO || !SESION) { BelenUI.toast('Abra la consulta de un paciente para enviar la orden.', 'alerta'); return; }
             const r = BelenStore.enviarOrdenAplicacion({ turno_id: TURNO.turno_id, items: borradorAplicacion, diagnostico: diagnosticoNotaActual() }, SESION);
             if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return; }
             TURNO = r.turno || BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
             borradorAplicacion = [];
             pintarLineasReceta('aplica');
-            BelenUI.toast('Orden ' + r.receta.folio + ' enviada a enfermería y farmacia.', 'exito');
+            pintarPanelRecetasConsulta();
+            BelenUI.modal({
+                titulo: 'Orden en la cola de Farmacia',
+                mensaje: 'La orden ' + r.receta.folio + ' ya está pendiente de surtir. Puede imprimir el comprobante interno sin cerrar la consulta.',
+                icono: 'fa-print', tipo: 'exito',
+                botones: [
+                    { texto: 'Ahora no', estilo: 'secundario' },
+                    { texto: 'Imprimir comprobante', estilo: 'primario', alPulsar: () => { imprimirHtmlEnVisor(BelenStore.htmlHojaReceta(r.receta)); } }
+                ]
+            });
         }
         function emitirRecetaCasaPendiente(imprimir) {
             leerLineasReceta('casa');
-            if (!borradorCasa.length || !TURNO || !SESION) return '';
-            const r = BelenStore.emitirReceta({ turno_id: TURNO.turno_id, tipo_origen: 'RECETA_CASA', items: borradorCasa, diagnostico: diagnosticoNotaActual() }, SESION);
+            const items = borradorCasa.filter(x => BelenStore.limpiarEspacios(x.nombre).length >= 2);
+            if (!items.length || !TURNO || !SESION) { BelenUI.toast('Escriba al menos un medicamento para la casa.', 'alerta'); return ''; }
+            const r = BelenStore.emitirReceta({ turno_id: TURNO.turno_id, tipo_origen: 'RECETA_CASA', items: items, diagnostico: diagnosticoNotaActual() }, SESION);
             if (!r.ok) { BelenUI.toast(r.motivo, 'alerta'); return ''; }
             borradorCasa = [];
             pintarLineasReceta('casa');
             BelenStore.guardarBorradorRecetaCasa(TURNO.turno_id, []);
             TURNO = BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
+            pintarPanelRecetasConsulta();
             const html = BelenStore.htmlHojaReceta(r.receta);
             if (imprimir) {
                 imprimirHtmlEnVisor(html);
-                BelenUI.toast('Receta ' + r.receta.folio + ' lista para la firma.', 'exito');
+                BelenUI.toast('Receta ' + r.receta.folio + ' lista para la firma. No se envió a la cola de Farmacia.', 'exito');
             }
             return html;
         }
@@ -2661,6 +2907,7 @@
                     if (TURNO) TURNO = BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
                     actualizarBotonCargarCuenta();
                 }
+                if (e.key === BelenStore.CLAVES.recetas || e.key === BelenStore.CLAVES.surtido) pintarPanelRecetasConsulta();
             });
 
             // Indicador de pendientes: se recalcula ante cualquier cambio en el formulario
@@ -2882,6 +3129,14 @@
             document.getElementById(`val-${id}`).disabled = omitir;
             document.getElementById(`val-${id}`).classList.toggle('opacity-50');
         }
+        function pintarEtiquetaAPP(id) {
+            const et = document.getElementById('etiq-' + id);
+            const chk = document.getElementById('chk-' + id);
+            if (!et || !chk) return;
+            const on = !!chk.checked;
+            et.textContent = on ? 'Sí presenta' : 'Negado';
+            et.className = 'text-[10px] font-extrabold uppercase tracking-wide rounded-full px-2 py-0.5 shrink-0 ' + (on ? 'text-emerald-800 bg-emerald-100 border border-emerald-300' : 'text-slate-500 bg-slate-100 border border-slate-200');
+        }
         function toggleAPP() {
             const isNegado = document.getElementById('chk-app-neg').checked;
             const contenedor = document.getElementById('contenedor-app');
@@ -2890,6 +3145,7 @@
                 ['hta', 'dm2', 'qx', 'alergias', 'hemo'].forEach(id => {
                     document.getElementById(`chk-${id}`).checked = false;
                     document.getElementById(`div-${id}`).style.display = 'none';
+                    pintarEtiquetaAPP(id);
                 });
             } else { contenedor.classList.remove('opacity-50', 'pointer-events-none'); }
         }
@@ -2897,6 +3153,7 @@
             const checked = document.getElementById(`chk-${id}`).checked;
             document.getElementById(`div-${id}`).style.display = checked ? (id==='alergias'?'block':'grid') : 'none';
             if(id === 'qx') document.getElementById('btn-add-qx').style.display = checked ? 'block' : 'none';
+            pintarEtiquetaAPP(id);
         }
         function agregarCirugiaDOM() {
             const id = (cirugiasAgregadas.length ? Math.max.apply(null, cirugiasAgregadas) : 0) + 1;
@@ -4038,7 +4295,7 @@
                 agregarCirugiaDOM();
                 const id = cirugiasAgregadas[cirugiasAgregadas.length - 1];
                 $('qx-nombre-' + id).value = q.nombre || ''; $('qx-fecha-' + id).value = q.fecha || ''; $('qx-comp-' + id).value = q.comp || '';
-                if (q.auto) marcarCirugiaAutomatica(id, q.auto);
+                if (q.auto) { /* las cirugías precargadas no llevan etiqueta visual */ }
             });
             consentimientosEspeciales = (b.consentimientos || []).map(c => ({ id: ++contadorConsentimientos, procedimiento: c.procedimiento || '', riesgos: c.riesgos || '' }));
             renderizarConsentimientosEspeciales();

@@ -493,5 +493,43 @@
         });
     }
 
-    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, TIPOS };
+    function htmlIdentidadPaciente(op) {
+        op = op || {};
+        const p = op.prefijo || 'id';
+        const cls = op.cls || 'w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 outline-none bg-white';
+        const v = op.valores || {};
+        const bloquear = !!op.bloquear;
+        const ro = bloquear ? 'readonly' : '';
+        const dis = bloquear ? 'disabled' : '';
+        const bg = bloquear ? 'bg-slate-50' : '';
+        const lab = (id, texto, obligatorio) => `<label for="${p}-${id}" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">${texto}${obligatorio === false ? '' : ' <span class="text-red-500">*</span>'}</label>`;
+        const err = k => `<p data-err="${k}" class="text-[11px] text-red-600 mt-1 hidden"></p>`;
+        const hoy = (global.BelenStore && global.BelenStore.hoyLocal) ? global.BelenStore.hoyLocal() : '';
+        const span = op.span || 'sm:col-span-2';
+        return `
+            <div class="${span}">${lab('nombres', 'Nombre(s)')}<input id="${p}-nombres" type="text" autocomplete="off" value="${esc(v.nombres || '')}" ${ro} placeholder="Ej. Juan Carlos" class="${cls} ${bg}" ${op.autofoco && !bloquear ? 'data-autofoco' : ''}>${err('nombres')}</div>
+            <div class="${span}">${lab('paterno', 'Apellido paterno')}<input id="${p}-paterno" type="text" autocomplete="off" value="${esc(v.apellido_paterno || '')}" ${ro} placeholder="Ej. Pérez" class="${cls} ${bg}">${err('paterno')}</div>
+            <div class="${span}">${lab('materno', 'Apellido materno', false)}<input id="${p}-materno" type="text" autocomplete="off" value="${esc(v.apellido_materno || '')}" ${ro} placeholder="Ej. Gómez" class="${cls} ${bg}">${err('materno')}</div>
+            ${op.sugerencias ? `<div class="sm:col-span-6" id="${p}-sugerencias"></div>` : ''}
+            <div class="${span}">${lab('fn', 'Fecha de nacimiento')}<input id="${p}-fn" type="date" min="1900-01-01" max="${esc(hoy)}" value="${esc(v.fecha_nacimiento || '')}" ${ro} class="${cls} ${bg}">${err('fn')}</div>
+            <div class="${span}">${lab('sexo', 'Sexo')}<select id="${p}-sexo" class="${cls} ${bg}" ${dis}><option value="">Seleccione…</option><option value="F" ${v.sexo === 'F' ? 'selected' : ''}>Femenino</option><option value="M" ${v.sexo === 'M' ? 'selected' : ''}>Masculino</option></select>${err('sexo')}</div>
+            <div class="${span}">${lab('tel', 'Teléfono / Celular')}<input id="${p}-tel" type="tel" inputmode="tel" maxlength="20" autocomplete="off" value="${esc(v.telefono || '')}" placeholder="10 dígitos" class="${cls}">${err('tel')}</div>
+            <div class="sm:col-span-6">${lab('dir', 'Dirección')}<input id="${p}-dir" type="text" maxlength="150" autocomplete="off" value="${esc(v.direccion || '')}" placeholder="Calle, número y colonia" class="${cls}">${err('dir')}</div>`;
+    }
+    function leerIdentidadPaciente(raiz, prefijo) {
+        const S = global.BelenStore;
+        const q = id => { const n = raiz.querySelector('#' + prefijo + '-' + id); return n ? n.value : ''; };
+        const nombres = S.limpiarEspacios(q('nombres'));
+        const paterno = S.limpiarEspacios(q('paterno'));
+        const materno = S.limpiarEspacios(q('materno'));
+        return {
+            nombres: nombres, apellido_paterno: paterno, apellido_materno: materno,
+            nombre_completo: S.limpiarEspacios([nombres, paterno, materno].filter(Boolean).join(' ')),
+            fecha_nacimiento: q('fn'), sexo: q('sexo'),
+            telefono: String(q('tel') || '').replace(/\D/g, ''),
+            direccion: S.limpiarEspacios(q('dir'))
+        };
+    }
+
+    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, htmlIdentidadPaciente, leerIdentidadPaciente, TIPOS };
 })(window);

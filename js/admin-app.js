@@ -687,13 +687,14 @@ const AdminController = {
         const tipos = S.TIPOS_ESTANCIA_QX.map(x => `<option value="${x.codigo}">${this.e(x.etiqueta)}</option>`).join('');
         const duraciones = S.DURACIONES_CIRUGIA.map(x => `<option value="${x.minutos}">${this.e(x.etiqueta)}</option>`).join('');
         const bloqueado = !!preset.paciente_id;
+        const pacPreset = bloqueado ? (S.buscarPacientePorId(preset.paciente_id) || {}) : {};
+        const partesPreset = S.partesDeNombre(pacPreset.nombre_completo ? pacPreset : { nombre_completo: preset.nombre || '' });
         const self = this;
         BelenUI.modal({
             titulo: 'Programar Cirugía', subtitulo: bloqueado ? 'Paciente ya internado. La cirugía queda en la agenda de la sala elegida.' : 'Busque al paciente o capture uno que todavía no esté en el catálogo.', icono: 'fa-kit-medical', ancho: 'xl',
             html: `<div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
-                ${bloqueado ? '' : `<div class="sm:col-span-6 relative"><label for="cx-buscar" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Buscar en el catálogo</label><input id="cx-buscar" type="text" autocomplete="off" placeholder="Escriba el nombre…" class="${cls}" data-autofoco><div id="cx-sugerencias" class="mt-1 flex flex-col gap-1"></div></div>`}
-                <div class="sm:col-span-6">${lab('cx-nombre', 'Nombre completo del paciente', true)}<input id="cx-nombre" type="text" autocomplete="off" value="${this.e(preset.nombre || '')}" ${bloqueado ? 'readonly' : ''} placeholder="Nombre y apellidos" class="${cls} ${bloqueado ? 'bg-slate-50' : ''}" ${bloqueado ? '' : 'data-autofoco'}>${err('nombre')}<input id="cx-paciente_id" type="hidden" value="${this.e(preset.paciente_id || '')}"></div>
-                <div class="sm:col-span-3">${lab('cx-fecha_nacimiento', 'Fecha de nacimiento', true)}<input id="cx-fecha_nacimiento" type="date" min="1900-01-01" max="${S.hoyLocal()}" value="${this.e(preset.fecha_nacimiento || '')}" ${bloqueado ? 'readonly' : ''} class="${cls} ${bloqueado ? 'bg-slate-50' : ''}">${err('fecha_nacimiento')}</div>
+                <input id="cx-paciente_id" type="hidden" value="${this.e(preset.paciente_id || '')}">
+                ${BelenUI.htmlIdentidadPaciente({ prefijo: 'cx', cls: cls, bloquear: bloqueado, sugerencias: !bloqueado, autofoco: !bloqueado, valores: { nombres: partesPreset.nombres, apellido_paterno: partesPreset.apellido_paterno, apellido_materno: partesPreset.apellido_materno, fecha_nacimiento: pacPreset.fecha_nacimiento || preset.fecha_nacimiento || '', sexo: pacPreset.sexo || '', telefono: pacPreset.telefono || '', direccion: pacPreset.direccion || '' } })}
                 <div class="sm:col-span-3">${lab('cx-edad', 'Edad')}<input id="cx-edad" type="text" readonly tabindex="-1" placeholder="Se calcula sola" class="${cls} bg-slate-50 text-slate-500"></div>
                 <div class="sm:col-span-6">${lab('cx-tipo_estancia', 'Tipo de estancia quirúrgica', true)}<select id="cx-tipo_estancia" class="${cls}"><option value="">Seleccione…</option>${tipos}</select>${err('tipo_estancia')}</div>
                 <div class="sm:col-span-6">${lab('cx-procedimiento', 'Nombre de la cirugía', true)}<input id="cx-procedimiento" type="text" maxlength="120" placeholder="Ej. Colecistectomía laparoscópica" class="${cls}">${err('procedimiento')}</div>
@@ -710,7 +711,7 @@ const AdminController = {
             </div>`,
             alMostrar: c => {
                 const q = sel => c.el.querySelector(sel);
-                const fn = q('#cx-fecha_nacimiento'), ed = q('#cx-edad');
+                const fn = q('#cx-fn'), ed = q('#cx-edad');
                 const calc = () => { const x = S.calcularEdad(fn.value); ed.value = x !== null ? x + ' años' : ''; };
                 fn.addEventListener('input', calc); fn.addEventListener('change', calc); calc();
                 const refrescar = () => self.pintarDisponibilidadQx(c.el);
@@ -719,21 +720,22 @@ const AdminController = {
                 const fin = () => self.actualizarHoraFinQx(c.el);
                 q('#cx-hora_inicio').addEventListener('input', fin);
                 q('#cx-duracion').addEventListener('change', fin);
-                const buscar = q('#cx-buscar');
-                if (buscar) buscar.addEventListener('input', () => {
-                    const lista = S.buscarPacientesPorNombre(buscar.value, 6);
-                    q('#cx-sugerencias').innerHTML = lista.map(p => `<button type="button" data-pac="${self.e(p.paciente_id)}" class="text-left text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 hover:border-violet-400"><b>${self.e(p.nombre_completo)}</b><span class="block text-slate-400">${self.e(S.fechaLegibleISO(p.fecha_nacimiento))} · ${S.calcularEdad(p.fecha_nacimiento) === null ? 'Edad no registrada' : S.calcularEdad(p.fecha_nacimiento) + ' años'}</span></button>`).join('');
-                    q('#cx-sugerencias').querySelectorAll('[data-pac]').forEach(b => b.addEventListener('click', () => {
+                const sugerir = () => {
+                    const caja = q('#cx-sugerencias');
+                    if (!caja) return;
+                    const idn = BelenUI.leerIdentidadPaciente(c.el, 'cx');
+                    const lista = q('#cx-paciente_id').value ? [] : S.buscarPacientesPorNombre(idn.nombre_completo, 6);
+                    caja.innerHTML = lista.map(p => `<button type="button" data-pac="${self.e(p.paciente_id)}" class="text-left text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 hover:border-violet-400"><b>${self.e(p.nombre_completo)}</b><span class="block text-slate-400">${self.e(S.fechaLegibleISO(p.fecha_nacimiento))} · ${S.calcularEdad(p.fecha_nacimiento) === null ? 'Edad no registrada' : S.calcularEdad(p.fecha_nacimiento) + ' años'}</span></button>`).join('');
+                    caja.querySelectorAll('[data-pac]').forEach(b => b.addEventListener('click', () => {
                         const p = S.buscarPacientePorId(b.getAttribute('data-pac'));
                         if (!p) return;
                         q('#cx-paciente_id').value = p.paciente_id;
-                        q('#cx-nombre').value = p.nombre_completo;
-                        fn.value = p.fecha_nacimiento;
+                        self.llenarIdentidad(c.el, 'cx', p);
+                        caja.innerHTML = '';
                         calc();
-                        q('#cx-sugerencias').innerHTML = '';
-                        buscar.value = p.nombre_completo;
                     }));
-                });
+                };
+                ['cx-nombres', 'cx-paterno', 'cx-materno'].forEach(id => { const n = q('#' + id); if (n) n.addEventListener('input', () => { q('#cx-paciente_id').value = ''; sugerir(); }); });
                 c.el.querySelectorAll('input,select,textarea').forEach(i => i.addEventListener('input', () => {
                     const clave = i.id === 'cx-duracion' ? 'duracion_minutos' : (i.id === 'cx-indicaciones' ? 'indicaciones_preoperatorias' : i.id.replace('cx-', ''));
                     const p = c.el.querySelector(`[data-err="${clave}"]`); if (p) p.classList.add('hidden'); i.classList.remove('border-red-500');
@@ -743,8 +745,10 @@ const AdminController = {
                 { texto: 'Cancelar', estilo: 'secundario' },
                 { texto: 'Guardar Cirugía', estilo: 'primario', id: 'cx-guardar', alPulsar: c => {
                     const q = sel => c.el.querySelector(sel);
+                    const idn = BelenUI.leerIdentidadPaciente(c.el, 'cx');
                     const r = S.programarCirugia({
-                        paciente_id: q('#cx-paciente_id').value, nombre: q('#cx-nombre').value, fecha_nacimiento: q('#cx-fecha_nacimiento').value,
+                        paciente_id: q('#cx-paciente_id').value, nombre: idn.nombre_completo, nombres: idn.nombres, apellido_paterno: idn.apellido_paterno, apellido_materno: idn.apellido_materno,
+                        fecha_nacimiento: idn.fecha_nacimiento, sexo: idn.sexo, telefono: idn.telefono, direccion: idn.direccion,
                         tipo_estancia: q('#cx-tipo_estancia').value, procedimiento: q('#cx-procedimiento').value, sala: q('#cx-sala').value,
                         fecha: q('#cx-fecha').value, hora_inicio: q('#cx-hora_inicio').value, duracion_minutos: q('#cx-duracion').value,
                         medico_cirujano_id: q('#cx-medico_cirujano_id').value, anestesiologo_id: q('#cx-anestesiologo_id').value,
@@ -753,8 +757,9 @@ const AdminController = {
                     if (!r.ok) {
                         c.el.querySelectorAll('[data-err]').forEach(p => p.classList.add('hidden'));
                         Object.keys(r.errores || {}).forEach(k => {
-                            const p = q(`[data-err="${k}"]`); if (p) { p.textContent = r.errores[k]; p.classList.remove('hidden'); }
-                            const mapa = { duracion_minutos: 'cx-duracion', indicaciones_preoperatorias: 'cx-indicaciones' };
+                            const aliasErr = { telefono: 'tel', direccion: 'dir', fecha_nacimiento: 'fn', nombre: 'nombres' };
+                            const p = q(`[data-err="${aliasErr[k] || k}"]`); if (p) { p.textContent = r.errores[k]; p.classList.remove('hidden'); }
+                            const mapa = { duracion_minutos: 'cx-duracion', indicaciones_preoperatorias: 'cx-indicaciones', fecha_nacimiento: 'cx-fn', telefono: 'cx-tel', direccion: 'cx-dir', apellido_paterno: 'cx-paterno', apellido_materno: 'cx-materno', nombres: 'cx-nombres', sexo: 'cx-sexo', nombre: 'cx-nombres' };
                             const i = q('#' + (mapa[k] || ('cx-' + k))); if (i) i.classList.add('border-red-500');
                         });
                         if (!r.errores) BelenUI.toast(r.motivo, 'peligro');
@@ -1728,8 +1733,10 @@ const AdminController = {
             </div>`;
             const titulo = est ? est.nombre : S.denominacionProducto(p);
             const detalle = est ? 'Estudio · ' + S.nombreTipoEstudio(est.tipo) : 'Lote ' + p.lote;
+            const lotesLinea = (!est && lin.confirmar_lote) ? S.lotesVigentesDeSku(p.sku) : [];
+            const selectorLote = lotesLinea.length ? `<label class="block text-[10px] font-bold uppercase text-slate-500 mt-2">Lote y caducidad</label><select onchange="AdminController.cambiarLoteLinea('${e(lin.linea_id)}', this.value)" class="mt-1 w-full max-w-sm border border-teal-300 rounded-lg p-1.5 text-xs bg-white">${lotesLinea.map(l => `<option value="${e(l.lote_id)}" ${l.lote_id === p.lote_id ? 'selected' : ''}>Lote ${e(l.lote)} · Caduca ${e(S.fechaLegibleISO(l.caducidad))} · ${l.stock} pzas${l.lote_id === lotesLinea[0].lote_id ? ' · FEFO' : ''}</option>`).join('')}</select>` : '';
             return `<tr class="border-t border-slate-100 align-top">
-                <td class="px-3 py-2"><p class="font-semibold text-slate-800">${e(titulo)}</p><p class="text-[11px] text-slate-400">${e(detalle)}${lin.paquete_nombre ? ' · ' + e(lin.paquete_nombre) : ''}</p>
+                <td class="px-3 py-2"><p class="font-semibold text-slate-800">${e(titulo)}</p><p class="text-[11px] text-slate-400">${e(detalle)}${lin.paquete_nombre ? ' · ' + e(lin.paquete_nombre) : ''}</p>${selectorLote}
                     ${gravable}${aviso ? `<p class="text-[11px] font-bold text-rose-700 mt-1">${e(aviso)}</p>${receta}` : ''}${frac}${respaldo}</td>
                 <td class="px-3 py-2 text-center">${control}</td>
                 <td class="px-3 py-2 text-right">${e(S.formatoMoneda(sub))}</td>
@@ -1826,6 +1833,25 @@ const AdminController = {
     quitarLineaCarrito: function (lineaId) {
         this.carritoFarmacia = this.carritoFarmacia.filter(l => l.linea_id !== lineaId);
         this.render();
+    },
+
+    cambiarLoteLinea: function (lineaId, loteId) {
+        const lin = this.carritoFarmacia.find(l => l.linea_id === lineaId);
+        if (!lin || lin.lote_id === loteId) return;
+        const S = BelenStore;
+        const actual = S.listarInventarioFarmacia(this.sesion).find(x => x.lote_id === lin.lote_id);
+        const sku = (actual && actual.sku) || lin.sku;
+        const lotes = S.lotesVigentesDeSku(sku);
+        const nuevo = lotes.find(x => x.lote_id === loteId);
+        if (!nuevo) { BelenUI.toast('Ese lote ya no tiene stock vigente.', 'alerta'); this.repintarCarritoFarmacia(); return; }
+        const fefo = lotes[0];
+        const aplicar = lote => { lin.lote_id = lote.lote_id; lin.sku = lote.sku; this.repintarCarritoFarmacia(); };
+        if (fefo && nuevo.lote_id !== fefo.lote_id && String(nuevo.caducidad) > String(fefo.caducidad)) {
+            this.avisarFefo({ lote: nuevo, alterno: fefo }, elegido => aplicar(elegido));
+            this.repintarCarritoFarmacia();
+            return;
+        }
+        aplicar(nuevo);
     },
 
     agregarLoteAlCarrito: function (loteId) {
@@ -1930,6 +1956,7 @@ const AdminController = {
             const misma = this.carritoFarmacia.find(l => l.lote_id === r.producto.lote_id && !l.caja_id && l.paquete_id === (op.paquete_id || null));
             if (misma) {
                 misma.cantidad += cant;
+                if (op.confirmar_lote) misma.confirmar_lote = true;
                 if (op.folio_receta) {
                     misma.folio_receta = op.folio_receta;
                     misma.medico_prescriptor_id = op.medico_prescriptor_id;
@@ -1943,7 +1970,8 @@ const AdminController = {
         }
         this.carritoFarmacia.push({
             linea_id: 'LIN-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
-            lote_id: r.producto.lote_id, cantidad: cant, ignorar_fefo: !!op.ignorar_fefo || !!op.lote_id,
+            lote_id: r.producto.lote_id, sku: r.producto.sku, confirmar_lote: !!op.confirmar_lote,
+            cantidad: cant, ignorar_fefo: !!op.ignorar_fefo || !!op.lote_id,
             paquete_id: op.paquete_id || null, paquete_nombre: op.paquete_nombre || null, servicio: !!op.servicio,
             caja_id: op.caja_id || null, datos_postanestesicos: op.datos_postanestesicos || '',
             receta_previa: op.receta_previa || '', folio_receta_especial: op.folio_receta_especial || '',
@@ -2166,7 +2194,7 @@ const AdminController = {
                 <button type="button" onclick="AdminController.cargarRecetaAlCarrito('${e(r.receta_id)}')" class="mt-3 bg-rose-700 hover:bg-rose-800 text-white text-xs font-extrabold px-3 py-2 rounded-lg">+ Cargar al Carrito con un Clic</button>
             </div>`;
         };
-        const recetas = S.recetasDeTurno(turno.turno_id);
+        const recetas = S.recetasDeTurno(turno.turno_id).filter(r => r.tipo_origen === 'APLICACION_CONSULTA' && r.estatus_surtido !== 'CANCELADA');
         if (elegido.area === 'consulta') return recetas.map(tarjetaReceta).join('');
         const internamiento = S.internamientoDeTurno(turno.turno_id);
         const hoja = internamiento && S.indicacionesVigentes(internamiento);
@@ -2176,7 +2204,7 @@ const AdminController = {
             <p class="mt-2 text-sm text-slate-800 whitespace-pre-line">${e(texto || 'Sin medicamentos en la hoja vigente.')}</p>
             <p class="mt-2 text-[11px] text-cyan-900">Al escanear un antibiótico se enlaza ${e(hoja.folio)}. Si era una indicación en papel, use «Folio en papel» en la línea del carrito.</p>
         </div>` : '';
-        const retenidas = recetas.map(r => {
+        const retenidas = S.recetasDeTurno(turno.turno_id).filter(r => r.tipo_origen !== 'RECETA_CASA' && r.estatus_surtido !== 'CANCELADA').map(r => {
             const control = (r.items || []).filter(i => {
                 const prod = S.productoPorSku(i.sku);
                 return prod && (prod.fraccion_cofepris === 'II' || prod.fraccion_cofepris === 'III' || prod.fraccion_cofepris === 'I') && (S.pendienteFolioSku(r.folio, i.sku) || 0) > 0;
@@ -2192,6 +2220,12 @@ const AdminController = {
         const S = BelenStore, e = t => this.e(t);
         const r = S.listarRecetas().find(x => x.receta_id === this.folioBuscadoId);
         if (!r) return '';
+        if (r.tipo_origen === 'RECETA_CASA') {
+            return `<div class="mb-3 rounded-xl border border-cyan-300 bg-cyan-50 px-3 py-3">
+                <p class="text-sm font-extrabold text-cyan-950">${e(r.folio)} · Receta para casa</p>
+                <p class="text-xs text-cyan-900 mt-1">Esta receta no entra a la cola de surtido de clínica. El paciente la lleva impresa.</p>
+            </div>`;
+        }
         const filas = (r.items || []).map(i => {
             const pendiente = (parseInt(i.cantidad_prescrita, 10) || 0) > 0 ? (S.pendienteFolioSku(r.folio, i.sku) || 0) : (r.estatus_surtido === 'COMPLETA_RETENIDA' ? 0 : 1);
             const boton = pendiente > 0
@@ -3428,8 +3462,11 @@ const AdminController = {
                 <td class="px-4 py-3 text-slate-600">${ultima}</td>
                 <td class="px-4 py-3 text-right whitespace-nowrap"><div class="inline-flex flex-wrap justify-end gap-2">${portafolio}${recetas}<button type="button" data-accion="ver-visitas" onclick="AdminController.verVisitasPaciente('${this.e(p.paciente_id)}')" class="text-xs font-bold text-cyan-700 hover:text-cyan-900 bg-cyan-50 hover:bg-cyan-100 rounded-lg px-3 py-1.5 transition" ${v.length ? '' : 'disabled style="opacity:.4;cursor:not-allowed"'}>Ver visitas</button></div></td></tr>`;
         }).join('');
-        return `<div class="mb-6"><h2 class="text-2xl font-extrabold text-slate-800">Búsqueda Histórica</h2>
-                    <p class="text-slate-500">${this.rolActual === 'medico' ? 'Archivo de los pacientes que usted ha atendido. Los expedientes cerrados ya no aparecen en los monitores activos.' : 'Archivo longitudinal. Un expediente cerrado sale de camas, fila y caja, y se consulta solo aquí.'}</p></div>
+        const fusion = (this.rolActual === 'admin' || this.rolActual === 'administrador')
+            ? `<button type="button" onclick="AdminController.abrirFusionExpedientes()" class="bg-white border border-violet-300 text-violet-800 hover:bg-violet-50 text-sm font-extrabold px-4 py-2.5 rounded-xl">🔗 Fusionar Expedientes Duplicados</button>`
+            : '';
+        return `<div class="mb-6 flex flex-wrap items-end justify-between gap-3"><div><h2 class="text-2xl font-extrabold text-slate-800">Búsqueda Histórica</h2>
+                    <p class="text-slate-500">${this.rolActual === 'medico' ? 'Archivo de los pacientes que usted ha atendido. Los expedientes cerrados ya no aparecen en los monitores activos.' : 'Archivo longitudinal. Un expediente cerrado sale de camas, fila y caja, y se consulta solo aquí.'}</p></div>${fusion}</div>
                 <div class="mb-4 relative max-w-xl">
                     <i class="fas fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
                     <input id="busqueda-historica" type="search" autocomplete="off" placeholder="Buscar por nombre, expediente o diagnóstico" oninput="AdminController.filtrarHistorico(this.value)"
@@ -3454,6 +3491,72 @@ const AdminController = {
         if (vacio) vacio.classList.toggle('hidden', !filas.length || visibles !== 0);
     },
 
+    llenarIdentidad: function (raiz, prefijo, paciente) {
+        const partes = BelenStore.partesDeNombre(paciente);
+        const set = (id, val) => { const n = raiz.querySelector('#' + prefijo + '-' + id); if (n && val !== undefined && val !== null) n.value = val; };
+        set('nombres', partes.nombres);
+        set('paterno', partes.apellido_paterno);
+        set('materno', partes.apellido_materno);
+        set('fn', paciente.fecha_nacimiento || '');
+        set('sexo', paciente.sexo || '');
+        set('tel', paciente.telefono || '');
+        set('dir', paciente.direccion || '');
+    },
+
+    abrirFusionExpedientes: function () {
+        if (this.rolActual !== 'admin' && this.rolActual !== 'administrador') { BelenUI.toast('Solo administración puede fusionar expedientes.', 'alerta'); return; }
+        const S = BelenStore, self = this;
+        const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm outline-none bg-white';
+        BelenUI.modal({
+            titulo: 'Fusionar expedientes duplicados',
+            subtitulo: 'El expediente que se absorbe desaparece. Sus visitas, turnos, cirugías y recetas pasan al que se conserva.',
+            icono: 'fa-link', ancho: 'lg',
+            html: `<div class="space-y-4 text-left">
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Expediente que se conserva</label>
+                    <input id="fusion-busca-destino" class="${cls}" placeholder="Nombre, en cualquier orden" autocomplete="off">
+                    <div id="fusion-lista-destino" class="mt-1 flex flex-col gap-1"></div>
+                    <p id="fusion-destino" class="text-xs font-bold text-emerald-800 mt-1"></p></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Expediente duplicado que se absorbe</label>
+                    <input id="fusion-busca-origen" class="${cls}" placeholder="Nombre del duplicado" autocomplete="off">
+                    <div id="fusion-lista-origen" class="mt-1 flex flex-col gap-1"></div>
+                    <p id="fusion-origen" class="text-xs font-bold text-rose-800 mt-1"></p></div>
+                <p id="fusion-error" class="text-xs text-red-600 hidden"></p>
+            </div>`,
+            alMostrar: c => {
+                c.destinoId = '';
+                c.origenId = '';
+                const enlazar = (entradaId, listaId, etiquetaId, clave) => {
+                    const input = c.el.querySelector(entradaId);
+                    input.addEventListener('input', () => {
+                        const caja = c.el.querySelector(listaId);
+                        const lista = S.buscarPacientesPorNombre(input.value, 6);
+                        caja.innerHTML = lista.map(p => `<button type="button" data-pac="${self.e(p.paciente_id)}" class="text-left text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 hover:border-violet-400"><b>${self.e(p.nombre_completo)}</b><span class="block text-slate-400">${self.e(p.paciente_id)} · ${self.e(S.fechaLegibleISO(p.fecha_nacimiento))}</span></button>`).join('');
+                        caja.querySelectorAll('[data-pac]').forEach(b => b.addEventListener('click', () => {
+                            const p = S.buscarPacientePorId(b.getAttribute('data-pac'));
+                            if (!p) return;
+                            c[clave] = p.paciente_id;
+                            input.value = p.nombre_completo;
+                            caja.innerHTML = '';
+                            c.el.querySelector(etiquetaId).textContent = p.paciente_id + ' · ' + p.nombre_completo;
+                        }));
+                    });
+                };
+                enlazar('#fusion-busca-destino', '#fusion-lista-destino', '#fusion-destino', 'destinoId');
+                enlazar('#fusion-busca-origen', '#fusion-lista-origen', '#fusion-origen', 'origenId');
+            },
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: 'Fusionar en un solo expediente', estilo: 'primario', alPulsar: c => {
+                    const error = c.el.querySelector('#fusion-error');
+                    const r = S.fusionarExpedientes(c.destinoId, c.origenId, this.sesion);
+                    if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
+                    BelenUI.toast(r.absorbido + ' quedó unido a ' + r.paciente.nombre_completo + '.', 'exito');
+                    this.render();
+                } }
+            ]
+        });
+    },
+
     verVisitasPaciente: function (pacienteId) {
         const p = BelenStore.buscarPacientePorId(pacienteId);
         if (!p || !this.pacientesVisibles().some(x => x.paciente_id === pacienteId)) { BelenUI.toast('No tiene acceso a ese expediente.', 'alerta'); return; }
@@ -3467,27 +3570,13 @@ const AdminController = {
         const S = BelenStore, s = this.sesion;
         const esMedico = modo === 'medico';
         if (!S.puede(esMedico ? 'registrar_consulta_directa' : 'registrar_paciente')) { BelenUI.toast('Su perfil no puede registrar pacientes.', 'alerta'); return; }
-        const hoy = S.hoyLocal();
         const optsEsp = S.ESPECIALIDADES.filter(x => !esMedico || x.codigo === s.especialidad_codigo)
             .map(x => `<option value="${x.codigo}">${this.e(x.nombre)}</option>`).join('');
         const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white';
         const campoErr = k => `<p data-err="${k}" class="text-[11px] text-red-600 mt-1 hidden"></p>`;
         const html = `
             <div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
-                <div class="sm:col-span-6 relative">
-                    <label for="reg-nombre" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Nombre completo del paciente <span class="text-red-500">*</span></label>
-                    <input id="reg-nombre" type="text" autocomplete="off" placeholder="Nombre y apellidos" class="${cls}" data-autofoco>
-                    <div id="reg-sugerencias" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-10 overflow-hidden"></div>
-                    ${campoErr('nombre')}
-                </div>
-                <div class="sm:col-span-3">
-                    <label for="reg-fn" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Fecha de nacimiento <span class="text-red-500">*</span></label>
-                    <input id="reg-fn" type="date" min="1900-01-01" max="${hoy}" class="${cls}">${campoErr('fn')}
-                </div>
-                <div class="sm:col-span-3">
-                    <label for="reg-sexo" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Sexo <span class="text-red-500">*</span></label>
-                    <select id="reg-sexo" class="${cls}"><option value="">Seleccione…</option><option value="F">Femenino</option><option value="M">Masculino</option></select>${campoErr('sexo')}
-                </div>
+                ${BelenUI.htmlIdentidadPaciente({ prefijo: 'reg', cls: cls, sugerencias: true, autofoco: true })}
                 <div id="reg-estado" class="sm:col-span-6 hidden"></div>
                 <div class="sm:col-span-3">
                     <label for="reg-especialidad" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Especialidad <span class="text-red-500">*</span></label>
@@ -3517,8 +3606,9 @@ const AdminController = {
     _montarRegistro: function (c, esMedico) {
         const S = BelenStore, s = this.sesion;
         const q = sel => c.el.querySelector(sel);
-        const nombre = q('#reg-nombre'), fn = q('#reg-fn'), sexo = q('#reg-sexo'), esp = q('#reg-especialidad'), med = q('#reg-medico');
+        const fn = q('#reg-fn'), sexo = q('#reg-sexo'), esp = q('#reg-especialidad'), med = q('#reg-medico');
         c.coincidencia = null;
+        const identidad = () => BelenUI.leerIdentidadPaciente(c.el, 'reg');
 
         const llenarMedicos = () => {
             const lista = esp.value ? S.medicosDeEspecialidad(esp.value) : [];
@@ -3528,7 +3618,8 @@ const AdminController = {
         const mostrarEstado = (html) => { const b = q('#reg-estado'); b.innerHTML = html || ''; b.classList.toggle('hidden', !html); };
 
         const evaluar = () => {
-            const n = S.limpiarEspacios(nombre.value);
+            const idn = identidad();
+            const n = idn.nombre_completo;
             const m = S.buscarPacientePorIdentidad(n, fn.value);
             c.coincidencia = m;
             if (m) {
@@ -3537,13 +3628,13 @@ const AdminController = {
                 mostrarEstado(`<div id="reg-badge-encontrado" class="flex items-center gap-3 bg-emerald-50 border border-emerald-300 rounded-lg px-4 py-3">
                     <i class="fas fa-folder-open text-emerald-600 text-xl"></i>
                     <div><p class="text-sm font-bold text-emerald-800">Expediente Encontrado</p>
-                    <p class="text-xs text-emerald-700">Vinculado al paciente <b>${this.e(m.paciente_id)}</b> · ${visitas} ${visitas === 1 ? 'visita previa' : 'visitas previas'}</p></div></div>`);
+                    <p class="text-xs text-emerald-700">Se reutiliza <b>${this.e(m.nombre_completo)}</b> · ${this.e(m.paciente_id)} · ${visitas} ${visitas === 1 ? 'visita previa' : 'visitas previas'}</p></div></div>`);
             } else {
                 sexo.disabled = false;
-                if (n.length >= 5 && fn.value) {
+                if (n.split(' ').filter(Boolean).length >= 2 && fn.value) {
                     const homo = S.homonimos(n, fn.value);
                     mostrarEstado(homo.length
-                        ? `<div class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800"><i class="fas fa-triangle-exclamation mt-0.5"></i><p>Existe un paciente con el mismo nombre pero otra fecha de nacimiento (${this.e(S.fechaLegibleISO(homo[0].fecha_nacimiento))}). Se creará un expediente nuevo.</p></div>`
+                        ? `<div class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-800"><i class="fas fa-triangle-exclamation mt-0.5"></i><p>Existe un paciente con los mismos nombres pero otra fecha de nacimiento (${this.e(S.fechaLegibleISO(homo[0].fecha_nacimiento))}). Se creará un expediente nuevo.</p></div>`
                         : `<div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-xs text-slate-600"><i class="fas fa-user-plus text-slate-400"></i><p>Paciente nuevo: se creará un expediente al confirmar.</p></div>`);
                 } else mostrarEstado('');
             }
@@ -3551,22 +3642,22 @@ const AdminController = {
 
         const sugerencias = () => {
             const caja = q('#reg-sugerencias');
-            const res = c.coincidencia ? [] : S.buscarPacientesPorNombre(nombre.value, 5);
-            if (!res.length || nombre.value.trim().length < 3) { caja.classList.add('hidden'); return; }
-            caja.innerHTML = res.map(p => `<button type="button" data-sug="${this.e(p.paciente_id)}" class="w-full text-left px-3 py-2 hover:bg-cyan-50 border-b border-slate-100 last:border-0">
+            if (!caja) return;
+            const idn = identidad();
+            const res = c.coincidencia ? [] : S.buscarPacientesPorNombre(idn.nombre_completo, 5);
+            if (!res.length || idn.nombre_completo.length < 2) { caja.innerHTML = ''; return; }
+            caja.innerHTML = res.map(p => `<button type="button" data-sug="${this.e(p.paciente_id)}" class="w-full text-left px-3 py-2 hover:bg-cyan-50 border border-slate-200 rounded-lg">
                 <span class="block text-sm font-semibold text-slate-800">${this.e(p.nombre_completo)}</span>
                 <span class="block text-[11px] text-slate-500">${this.e(S.fechaLegibleISO(p.fecha_nacimiento))} · ${this.e(p.paciente_id)}</span></button>`).join('');
-            caja.classList.remove('hidden');
             caja.querySelectorAll('[data-sug]').forEach(b => b.addEventListener('mousedown', ev => {
                 ev.preventDefault();
                 const p = S.buscarPacientePorId(b.getAttribute('data-sug'));
-                nombre.value = p.nombre_completo; fn.value = p.fecha_nacimiento; sexo.value = p.sexo || '';
-                caja.classList.add('hidden'); evaluar();
+                this.llenarIdentidad(c.el, 'reg', p);
+                caja.innerHTML = ''; evaluar();
             }));
         };
 
-        nombre.addEventListener('input', () => { evaluar(); sugerencias(); });
-        nombre.addEventListener('blur', () => setTimeout(() => q('#reg-sugerencias').classList.add('hidden'), 120));
+        ['reg-nombres', 'reg-paterno', 'reg-materno'].forEach(id => q('#' + id).addEventListener('input', () => { evaluar(); sugerencias(); }));
         fn.addEventListener('input', evaluar); fn.addEventListener('change', evaluar);
         esp.addEventListener('change', llenarMedicos);
 
@@ -3580,12 +3671,20 @@ const AdminController = {
     _revisarRegistro: function (c, esMedico) {
         const S = BelenStore;
         const q = sel => c.el.querySelector(sel);
+        const idn = BelenUI.leerIdentidadPaciente(c.el, 'reg');
         const v = {
-            nombre: S.limpiarEspacios(q('#reg-nombre').value), fn: q('#reg-fn').value, sexo: q('#reg-sexo').value,
+            nombres: idn.nombres, paterno: idn.apellido_paterno, materno: idn.apellido_materno, nombre: idn.nombre_completo,
+            fn: idn.fecha_nacimiento, sexo: idn.sexo, tel: idn.telefono, dir: idn.direccion,
             especialidad: q('#reg-especialidad').value, medico: q('#reg-medico').value, motivo: S.limpiarEspacios(q('#reg-motivo').value)
         };
+        const letra = t => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]{2,}$/.test(t);
         const errores = {};
-        if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]{5,}$/.test(v.nombre) || v.nombre.split(' ').filter(w => w.length > 1).length < 2) errores.nombre = 'Escriba nombre y apellido del paciente (solo letras).';
+        if (!letra(v.nombres)) errores.nombres = 'Escriba el nombre (solo letras).';
+        if (!letra(v.paterno)) errores.paterno = 'Escriba el apellido paterno (solo letras).';
+        if (v.materno && !letra(v.materno)) errores.materno = 'El apellido materno solo admite letras.';
+        if (!errores.nombres && !errores.paterno && v.nombre.split(' ').filter(w => w.length > 1).length < 2) errores.nombres = 'Escriba nombre y apellido del paciente.';
+        if (v.tel.length !== 10) errores.tel = 'Escriba 10 dígitos de teléfono o celular.';
+        if (v.dir.length < 8 || v.dir.length > 150) errores.dir = 'Escriba calle, número y colonia (mínimo 8 caracteres).';
         const f = S.parseFechaISO(v.fn);
         if (!f) errores.fn = 'Seleccione la fecha de nacimiento.';
         else if (v.fn > S.hoyLocal()) errores.fn = 'La fecha no puede ser futura.';
@@ -3615,7 +3714,9 @@ const AdminController = {
         BelenUI.modal({
             titulo: 'Confirme los datos del paciente', subtitulo: 'Revise antes de registrar', tipo: 'info', icono: 'fa-clipboard-check', ancho: 'md',
             html: `<div class="text-sm text-left" id="reg-resumen">
-                ${fila('Paciente', this.e(v.nombre))}
+                ${fila('Paciente', this.e(existente ? existente.nombre_completo : v.nombre))}
+                ${fila('Teléfono', this.e(v.tel))}
+                ${fila('Dirección', this.e(v.dir))}
                 ${fila('Expediente', existente ? `<span class="text-emerald-700">Existente · ${this.e(existente.paciente_id)}</span>` : '<span class="text-slate-600">Nuevo (se creará)</span>')}
                 ${fila('Nacimiento', this.e(S.fechaLegibleISO(v.fn)) + (edad !== null ? ` (${edad} años)` : ''))}
                 ${fila('Sexo', v.sexo === 'F' ? 'Femenino' : 'Masculino')}
@@ -3626,7 +3727,14 @@ const AdminController = {
             botones: [
                 { texto: 'Regresar y editar', estilo: 'secundario' },
                 { texto: 'Confirmar y Registrar', estilo: 'exito', id: 'reg-confirmar', alPulsar: () => {
-                    const pac = existente || S.guardarPaciente({ nombre_completo: v.nombre, fecha_nacimiento: v.fn, sexo: v.sexo });
+                    const pac = S.guardarPaciente(existente ? {
+                        paciente_id: existente.paciente_id, nombre_completo: existente.nombre_completo, fecha_nacimiento: existente.fecha_nacimiento,
+                        sexo: v.sexo || existente.sexo, telefono: v.tel, direccion: v.dir
+                    } : {
+                        nombres: v.nombres, apellido_paterno: v.paterno, apellido_materno: v.materno,
+                        nombre_completo: v.nombre, fecha_nacimiento: v.fn, sexo: v.sexo, telefono: v.tel, direccion: v.dir
+                    });
+                    if (!pac) { BelenUI.toast('No fue posible guardar al paciente.', 'peligro'); return false; }
                     const turno = S.crearTurno({ paciente_id: pac.paciente_id, especialidad_codigo: v.especialidad, medico_id: v.medico, motivo: v.motivo, registrado_por: this.sesion.nombre });
                     if (!turno) { BelenUI.toast('No fue posible registrar al paciente.', 'peligro'); return false; }
                     c.cerrar();

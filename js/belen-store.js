@@ -790,20 +790,53 @@
     // ---------------------------------------------------------------- Catálogo de pacientes
     function listarPacientes() { return leer(CLAVES.catalogo, []); }
 
+    function tokensNombre(texto) {
+        return normalizar(texto).split(/[^a-z0-9]+/).filter(t => t.length >= 2);
+    }
+    function tokensCubren(consulta, nombre) {
+        const q = tokensNombre(consulta);
+        if (!q.length) return false;
+        const n = tokensNombre(nombre);
+        return q.every(t => n.indexOf(t) >= 0);
+    }
+    function mismaIdentidadNombre(a, b) {
+        const ta = tokensNombre(a), tb = tokensNombre(b);
+        if (ta.length < 2 || tb.length < 2) return false;
+        const corto = ta.length <= tb.length ? ta : tb;
+        const largo = ta.length <= tb.length ? tb : ta;
+        return corto.every(t => largo.indexOf(t) >= 0);
+    }
+    function pacientePorIdentidadEn(lista, nombre, fechaNacimiento) {
+        if (!fechaNacimiento || tokensNombre(nombre).length < 2) return null;
+        const hits = (lista || []).filter(p => p.fecha_nacimiento === fechaNacimiento && mismaIdentidadNombre(nombre, p.nombre_completo));
+        hits.sort((a, b) => tokensNombre(a.nombre_completo).length - tokensNombre(b.nombre_completo).length);
+        return hits[0] || null;
+    }
+    function partesDeNombre(paciente) {
+        const p = paciente || {};
+        if (p.nombres || p.apellido_paterno || p.apellido_materno) {
+            return { nombres: p.nombres || '', apellido_paterno: p.apellido_paterno || '', apellido_materno: p.apellido_materno || '' };
+        }
+        const palabras = limpiarEspacios(p.nombre_completo).split(' ').filter(Boolean);
+        if (palabras.length >= 3) return { nombres: palabras.slice(0, -2).join(' '), apellido_paterno: palabras[palabras.length - 2], apellido_materno: palabras[palabras.length - 1] };
+        if (palabras.length === 2) return { nombres: palabras[0], apellido_paterno: palabras[1], apellido_materno: '' };
+        return { nombres: palabras[0] || '', apellido_paterno: '', apellido_materno: '' };
+    }
+    function nombreCanonico(datos) {
+        const partes = [datos && datos.nombres, datos && datos.apellido_paterno, datos && datos.apellido_materno].map(x => limpiarEspacios(x)).filter(Boolean);
+        if (partes.length) return limpiarEspacios(partes.join(' '));
+        return limpiarEspacios(datos && datos.nombre_completo);
+    }
     function buscarPacientePorIdentidad(nombre, fechaNacimiento) {
-        const n = normalizar(nombre);
-        if (!n || !fechaNacimiento) return null;
-        return listarPacientes().find(p => normalizar(p.nombre_completo) === n && p.fecha_nacimiento === fechaNacimiento) || null;
+        return pacientePorIdentidadEn(listarPacientes(), nombre, fechaNacimiento);
     }
     function buscarPacientesPorNombre(texto, limite) {
-        const n = normalizar(texto);
-        if (n.length < 2) return [];
-        return listarPacientes().filter(p => normalizar(p.nombre_completo).includes(n)).slice(0, limite || 6);
+        if (normalizar(texto).length < 2 || !tokensNombre(texto).length) return [];
+        return listarPacientes().filter(p => tokensCubren(texto, p.nombre_completo)).slice(0, limite || 6);
     }
     function buscarPacientePorId(id) { return listarPacientes().find(p => p.paciente_id === id) || null; }
     function homonimos(nombre, fechaNacimiento) {
-        const n = normalizar(nombre);
-        return listarPacientes().filter(p => normalizar(p.nombre_completo) === n && p.fecha_nacimiento !== fechaNacimiento);
+        return listarPacientes().filter(p => mismaIdentidadNombre(nombre, p.nombre_completo) && p.fecha_nacimiento !== fechaNacimiento);
     }
 
     function siguienteIdPaciente(lista) {
@@ -813,10 +846,13 @@
 
     // Crea el paciente si no existe (por nombre + fecha de nacimiento); si existe, completa/actualiza datos de contacto
     function guardarPaciente(datos) {
+        datos = datos || {};
         const lista = listarPacientes();
-        const nombre = limpiarEspacios(datos.nombre_completo);
-        let p = lista.find(x => normalizar(x.nombre_completo) === normalizar(nombre) && x.fecha_nacimiento === datos.fecha_nacimiento);
+        const nombre = nombreCanonico(datos);
+        let p = datos.paciente_id ? lista.find(x => x.paciente_id === datos.paciente_id) : null;
+        if (!p && nombre && datos.fecha_nacimiento) p = pacientePorIdentidadEn(lista, nombre, datos.fecha_nacimiento);
         if (!p) {
+            if (!nombre || !datos.fecha_nacimiento) return null;
             p = {
                 paciente_id: siguienteIdPaciente(lista),
                 nombre_completo: nombre,
@@ -826,10 +862,74 @@
             };
             lista.push(p);
         }
+        if (datos.nombres) p.nombres = limpiarEspacios(datos.nombres);
+        if (datos.apellido_paterno) p.apellido_paterno = limpiarEspacios(datos.apellido_paterno);
+        if (datos.apellido_materno) p.apellido_materno = limpiarEspacios(datos.apellido_materno);
+        if (nombre && (datos.nombres || datos.apellido_paterno)) {
+            const actuales = tokensNombre(p.nombre_completo);
+            const nuevos = tokensNombre(nombre);
+            if (!p.nombre_completo || nuevos.length >= actuales.length) p.nombre_completo = nombre;
+        } else if (nombre && !p.nombre_completo) p.nombre_completo = nombre;
         ['sexo', 'estado_civil', 'telefono', 'ocupacion', 'direccion'].forEach(k => { if (datos[k]) p[k] = datos[k]; });
         p.actualizado_en = new Date().toISOString();
         escribir(CLAVES.catalogo, lista);
         return p;
+    }
+    function fusionarExpedientes(conservarId, absorberId, s) {
+        if (!s || (s.rol !== 'admin' && s.rol !== 'administrador')) return { ok: false, motivo: 'Solo administración puede fusionar expedientes.' };
+        if (!conservarId || !absorberId || conservarId === absorberId) return { ok: false, motivo: 'Elija dos expedientes distintos: el que se conserva y el duplicado.' };
+        const cat = listarPacientes();
+        const destino = cat.find(p => p.paciente_id === conservarId);
+        const origen = cat.find(p => p.paciente_id === absorberId);
+        if (!destino || !origen) return { ok: false, motivo: 'No se encontró uno de los expedientes.' };
+        ['telefono', 'direccion', 'sexo', 'estado_civil', 'ocupacion', 'nombres', 'apellido_paterno', 'apellido_materno'].forEach(k => {
+            if (!destino[k] && origen[k]) destino[k] = origen[k];
+        });
+        if (!escribir(CLAVES.catalogo, cat.filter(p => p.paciente_id !== absorberId))) return { ok: false, motivo: 'No se pudo guardar el catálogo.' };
+        const turnos = listarTurnos();
+        turnos.forEach(t => {
+            if (t.paciente_id !== absorberId) return;
+            t.paciente_id = conservarId;
+            t.paciente_nombre = destino.nombre_completo;
+            if (destino.fecha_nacimiento) t.fecha_nacimiento = destino.fecha_nacimiento;
+            if (destino.sexo) t.sexo = destino.sexo;
+        });
+        escribir(CLAVES.turnos, turnos);
+        const tocarExp = e => {
+            if (!e || !e.meta || e.meta.paciente_id !== absorberId) return;
+            e.meta.paciente_id = conservarId;
+            e.paciente = e.paciente || {};
+            e.paciente.nombre_completo = destino.nombre_completo;
+            e.paciente.sexo = destino.sexo || e.paciente.sexo;
+            e.paciente.fecha_nacimiento = destino.fecha_nacimiento || e.paciente.fecha_nacimiento;
+            if (e.internamiento && e.internamiento.paciente_id === absorberId) e.internamiento.paciente_id = conservarId;
+        };
+        const visitas = listarVisitas(); visitas.forEach(tocarExp); escribir(CLAVES.visitas, visitas);
+        const hosp = listarHospitalizados(); hosp.forEach(tocarExp); escribir(CLAVES.hospitalizados, hosp);
+        const ints = leer(CLAVES.internamientos, []);
+        ints.forEach(i => { if (i && i.paciente_id === absorberId) i.paciente_id = conservarId; });
+        escribir(CLAVES.internamientos, ints);
+        const cir = listarCirugias();
+        cir.forEach(c => {
+            if (c.paciente_id !== absorberId) return;
+            c.paciente_id = conservarId;
+            c.paciente_nombre = destino.nombre_completo;
+            if (destino.fecha_nacimiento) c.fecha_nacimiento = destino.fecha_nacimiento;
+        });
+        escribir(CLAVES.cirugias, cir);
+        const recetas = listarRecetas();
+        recetas.forEach(r => {
+            if (r.paciente_id !== absorberId) return;
+            r.paciente_id = conservarId;
+            r.paciente_nombre = destino.nombre_completo;
+            if (destino.telefono) r.paciente_telefono = destino.telefono;
+            if (destino.direccion) r.paciente_direccion = destino.direccion;
+        });
+        escribir(CLAVES.recetas, recetas);
+        const cola = listarSurtido();
+        cola.forEach(sol => { if (sol.paciente_id === absorberId) sol.paciente_id = conservarId; });
+        escribir(CLAVES.surtido, cola);
+        return { ok: true, paciente: destino, absorbido: origen.nombre_completo };
     }
 
     // ---------------------------------------------------------------- Turnos
@@ -1184,26 +1284,29 @@
 
     // Autollenado longitudinal: última visita + cirugías confirmadas en episodios anteriores
     function antecedentesLongitudinales(pacienteId, excluirTurnoId) {
-        const visitas = visitasDePaciente(pacienteId).filter(v => !excluirTurnoId || v.meta.turno_id !== excluirTurnoId);
-        if (!visitas.length) return { total_visitas: 0, ultima_visita: null, cirugias_detectadas: [] };
-        const ultima = visitas[0];
+        const visitas = visitasDePaciente(pacienteId).filter(v => !excluirTurnoId || (v.meta && v.meta.turno_id !== excluirTurnoId));
+        const ultima = visitas[0] || null;
         const vistos = new Set();
         const cirugias = [];
-        const agregar = (procedimiento, fechaTexto, complicaciones, origen, fechaVisita) => {
+        const agregar = (procedimiento, fechaTexto, complicaciones, origen) => {
             const clave = normalizar(procedimiento);
             if (!clave || vistos.has(clave)) return;
             vistos.add(clave);
-            cirugias.push({ procedimiento: limpiarEspacios(procedimiento), fecha_texto: fechaTexto || null, complicaciones: complicaciones || null, origen: origen, fecha_visita: fechaVisita || null });
+            const comp = limpiarEspacios(complicaciones || '') || 'Ninguna';
+            cirugias.push({ procedimiento: limpiarEspacios(procedimiento), fecha_texto: fechaTexto || null, complicaciones: comp, origen: origen });
         };
-        // 1) Lo que el médico ya había registrado como antecedente quirúrgico en la última visita
-        (((ultima.antecedentes || {}).personales_patologicos || {}).cirugias_previas || [])
-            .forEach(q => agregar(q.procedimiento, q.fecha_texto, q.complicaciones, 'antecedente', null));
-        // 2) Procedimientos quirúrgicos confirmados (consentimiento firmado) en CUALQUIER episodio anterior
-        visitas.slice().reverse().forEach(v => {
-            const f = ((v.consulta || {}).fecha_hora || '');
-            const textoFecha = f ? fechaLegibleISO(f.slice(0, 10)) : null;
-            (((v.consentimientos || {}).procedimientos) || []).forEach(c => agregar(c.procedimiento, textoFecha, null, 'consentimiento_quirurgico', f));
+        listarInternamientos().forEach(i => {
+            if (!i || i.estatus === 'descartado' || i.paciente_id !== pacienteId) return;
+            if (excluirTurnoId && i.turno_id === excluirTurnoId) return;
+            (i.notas_postoperatorias || []).forEach(n => {
+                const comp = limpiarEspacios(n.complicaciones || n.hallazgos || '') || 'Ninguna';
+                agregar(n.operacion, n.fecha_hora ? fechaHoraLegible(n.fecha_hora) : null, comp, 'nota_postoperatoria');
+            });
         });
+        if (ultima) {
+            (((ultima.antecedentes || {}).personales_patologicos || {}).cirugias_previas || [])
+                .forEach(q => agregar(q.procedimiento, q.fecha_texto, q.complicaciones || 'Ninguna', 'antecedente'));
+        }
         return { total_visitas: visitas.length, ultima_visita: ultima, cirugias_detectadas: cirugias };
     }
 
@@ -1780,7 +1883,7 @@
         if (!p) return { ok: false, motivo: 'No se encontró el paciente.' };
         const edadActual = calcularEdad(p.fecha_nacimiento);
         const nuevaFN = r.valores.fecha_nacimiento || ((edadActual === r.valores.edad) ? p.fecha_nacimiento : fechaNacimientoParaEdad(p.fecha_nacimiento, r.valores.edad));
-        const choque = cat.find(x => x.paciente_id !== pacienteId && normalizar(x.nombre_completo) === normalizar(r.valores.nombre) && x.fecha_nacimiento === nuevaFN);
+        const choque = cat.find(x => x.paciente_id !== pacienteId && mismaIdentidadNombre(x.nombre_completo, r.valores.nombre) && x.fecha_nacimiento === nuevaFN);
         if (choque) return { ok: false, motivo: 'Ya existe otro expediente con ese nombre y esa fecha de nacimiento (' + choque.paciente_id + ').', errores: { nombre: 'Coincide con el expediente ' + choque.paciente_id + '.' } };
 
         const antes = { nombre: p.nombre_completo, edad: edadActual, sexo: p.sexo, fecha_nacimiento: p.fecha_nacimiento };
@@ -2015,15 +2118,29 @@
         return { ok: true, tramos: barra, ocupados: ocupadosVisibles, libres: piezas.filter(t => t.tipo === 'libre') };
     }
     function validarCirugia(entrada, ahora, s) {
+        const letra = t => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]{2,}$/.test(t);
         const v = {
+            nombres: limpiarEspacios(entrada.nombres), apellido_paterno: limpiarEspacios(entrada.apellido_paterno), apellido_materno: limpiarEspacios(entrada.apellido_materno),
             nombre: limpiarEspacios(entrada.nombre), fecha_nacimiento: entrada.fecha_nacimiento || '', paciente_id: entrada.paciente_id || '',
+            sexo: entrada.sexo || '', telefono: String(entrada.telefono || '').replace(/\D/g, ''), direccion: limpiarEspacios(entrada.direccion),
             procedimiento: limpiarEspacios(entrada.procedimiento), tipo_estancia: entrada.tipo_estancia || '', sala: entrada.sala || '',
             fecha: entrada.fecha || '', hora_inicio: entrada.hora_inicio || '', duracion_minutos: Number(entrada.duracion_minutos),
             medico_cirujano_id: entrada.medico_cirujano_id || '', anestesiologo_id: entrada.anestesiologo_id || '',
             indicaciones_preoperatorias: String(entrada.indicaciones_preoperatorias || '').trim(), notas: String(entrada.notas || '').trim()
         };
+        if (v.nombres || v.apellido_paterno || v.apellido_materno) v.nombre = limpiarEspacios([v.nombres, v.apellido_paterno, v.apellido_materno].filter(Boolean).join(' '));
         const errores = {};
-        if (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]{5,}$/.test(v.nombre) || v.nombre.split(' ').filter(w => w.length > 1).length < 2) errores.nombre = 'Escriba el nombre completo (nombre y apellido, solo letras).';
+        if (!v.paciente_id) {
+            if (!letra(v.nombres)) errores.nombres = 'Escriba el nombre (solo letras).';
+            if (!letra(v.apellido_paterno)) errores.paterno = 'Escriba el apellido paterno (solo letras).';
+            if (v.apellido_materno && !letra(v.apellido_materno)) errores.materno = 'El apellido materno solo admite letras.';
+            if (v.sexo !== 'F' && v.sexo !== 'M') errores.sexo = 'Seleccione el sexo.';
+        }
+        if (entrada.telefono !== undefined || entrada.direccion !== undefined) {
+            if (v.telefono.length !== 10) errores.telefono = 'Escriba 10 dígitos de teléfono o celular.';
+            if (v.direccion.length < 8 || v.direccion.length > 150) errores.direccion = 'Escriba calle, número y colonia (mínimo 8 caracteres).';
+        }
+        if (!errores.nombres && !errores.paterno && (!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]{5,}$/.test(v.nombre) || v.nombre.split(' ').filter(w => w.length > 1).length < 2)) errores.nombre = 'Escriba nombre y apellido (solo letras).';
         if (!parseFechaISO(v.fecha_nacimiento)) errores.fecha_nacimiento = 'Seleccione la fecha de nacimiento.';
         else if (v.fecha_nacimiento > hoyLocal() || v.fecha_nacimiento < '1900-01-01') errores.fecha_nacimiento = 'La fecha de nacimiento no es válida.';
         if (contarLetrasTxt(v.procedimiento) < 4) errores.procedimiento = 'Escriba el nombre de la cirugía.';
@@ -2071,7 +2188,14 @@
         const r = validarCirugia(entrada, null, s);
         if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
         const v = r.valores, m = USUARIOS[v.medico_cirujano_id], an = v.anestesiologo_id ? USUARIOS[v.anestesiologo_id] : null;
-        const pac = (v.paciente_id && buscarPacientePorId(v.paciente_id)) || buscarPacientePorIdentidad(v.nombre, v.fecha_nacimiento);
+        let pac = (v.paciente_id && buscarPacientePorId(v.paciente_id)) || buscarPacientePorIdentidad(v.nombre, v.fecha_nacimiento);
+        pac = guardarPaciente({
+            paciente_id: pac ? pac.paciente_id : '',
+            nombres: v.nombres, apellido_paterno: v.apellido_paterno, apellido_materno: v.apellido_materno,
+            nombre_completo: pac ? pac.nombre_completo : v.nombre,
+            fecha_nacimiento: v.fecha_nacimiento, sexo: v.sexo || (pac && pac.sexo) || '',
+            telefono: v.telefono, direccion: v.direccion
+        }) || pac;
         const inicio = new Date(v.fecha + 'T' + v.hora_inicio);
         const c = {
             cirugia_id: uid('CX'), paciente_id: pac ? pac.paciente_id : (v.paciente_id || null), paciente_nombre: pac ? pac.nombre_completo : v.nombre, fecha_nacimiento: v.fecha_nacimiento,
@@ -4571,12 +4695,9 @@
         if (!pacienteId && !t) return { ok: false, motivo: 'La receta necesita un paciente o un turno.' };
         const crudos = (entrada && entrada.items) || [];
         if (!crudos.length) return { ok: false, motivo: 'Agregue al menos un medicamento.' };
-        const items = [];
-        for (let k = 0; k < crudos.length; k++) {
-            const prod = productoPorSku(crudos[k].sku);
-            if (!prod) return { ok: false, motivo: 'Un medicamento de la receta no está en el catálogo.' };
-            items.push(itemRecetaDesdeProducto(prod, crudos[k]));
-        }
+        const armados = armarItemsReceta(tipo, crudos);
+        if (!armados.ok) return armados;
+        const items = armados.items;
         const folioExterno = limpiarEspacios((entrada && entrada.folio_externo) || '').toUpperCase();
         if (tipo === 'EXTERNA' && folioExterno.length < 3) return { ok: false, motivo: 'Anote el folio del recetario físico (mínimo 3 caracteres).' };
         if (tipo === 'EXTERNA' && listarRecetas().some(r => normalizar(r.folio_externo) === normalizar(folioExterno))) return { ok: false, motivo: 'Ese folio de recetario ya está registrado.' };
@@ -4602,7 +4723,96 @@
             devolverFolioReceta(folio);
             return { ok: false, motivo: 'No se pudo guardar la receta. El folio no se consumió.' };
         }
-        return { ok: true, receta: receta, producto: productoPorSku(items[0].sku) };
+        return { ok: true, receta: receta, producto: items[0].sku ? productoPorSku(items[0].sku) : null };
+    }
+    function armarItemsReceta(tipo, crudos) {
+        const items = [];
+        for (let k = 0; k < (crudos || []).length; k++) {
+            const crudo = crudos[k] || {};
+            const prod = crudo.sku ? productoPorSku(crudo.sku) : null;
+            if (tipo === 'RECETA_CASA' && !prod) {
+                const nombre = limpiarEspacios(crudo.nombre);
+                if (nombre.length < 2) return { ok: false, motivo: 'Escriba el medicamento de la receta para casa.' };
+                const cantidad = parseInt(crudo.cantidad, 10);
+                items.push({
+                    sku: null, nombre: nombre, libre: true,
+                    concentracion: limpiarEspacios(crudo.concentracion || ''),
+                    forma_farmaceutica: limpiarEspacios(crudo.presentacion || crudo.forma_farmaceutica || ''),
+                    fraccion_cofepris: 'NA', clasificacion_aware: null,
+                    dosis_indicacion: limpiarEspacios(crudo.dosis_indicacion || crudo.dosis || ''),
+                    cantidad_prescrita: cantidad >= 1 && cantidad <= 99 ? cantidad : 1,
+                    cantidad_surtida: 0, lotes_surtidos: []
+                });
+                continue;
+            }
+            if (!prod) return { ok: false, motivo: 'La aplicación en clínica solo admite medicamentos del inventario del hospital.' };
+            const item = itemRecetaDesdeProducto(prod, crudo);
+            if (crudo.concentracion) item.concentracion = limpiarEspacios(crudo.concentracion);
+            if (crudo.presentacion) item.forma_farmaceutica = limpiarEspacios(crudo.presentacion);
+            items.push(item);
+        }
+        if (!items.length) return { ok: false, motivo: 'Agregue al menos un medicamento.' };
+        return { ok: true, items: items };
+    }
+    function encolarOrdenAplicacion(turno, receta) {
+        if (!turno || !receta) return null;
+        return guardarSolicitud({
+            solicitud_id: uid('SR'), estatus: 'pendiente', origen: 'consulta', receta_id: receta.receta_id, folio: receta.folio,
+            hoja_id: null, turno_id: turno.turno_id, internamiento_id: null, paciente_id: turno.paciente_id, cama: null,
+            creada_en: new Date().toISOString(),
+            lineas: (receta.items || []).map(i => nuevaLineaSurtido({
+                nombre: [i.nombre, i.dosis_indicacion].filter(Boolean).join(' — '),
+                cantidad: i.cantidad_prescrita || 1, sku: i.sku
+            }))
+        });
+    }
+    function sincronizarColaDeReceta(receta) {
+        if (!receta || receta.tipo_origen !== 'APLICACION_CONSULTA') return;
+        const cola = listarSurtido();
+        let cambio = false;
+        cola.forEach(sol => {
+            if (sol.receta_id !== receta.receta_id || sol.estatus === 'cancelada' || sol.estatus === 'surtida') return;
+            if (receta.estatus_surtido === 'CANCELADA') { sol.estatus = 'cancelada'; cambio = true; return; }
+            if ((sol.lineas || []).some(l => (l.cantidad_surtida || 0) > 0)) return;
+            sol.lineas = (receta.items || []).map(i => nuevaLineaSurtido({
+                nombre: [i.nombre, i.dosis_indicacion].filter(Boolean).join(' — '),
+                cantidad: i.cantidad_prescrita || 1, sku: i.sku
+            }));
+            cambio = true;
+        });
+        if (cambio) escribir(CLAVES.surtido, cola);
+    }
+    function reflejarSurtidoEnCola(receta) {
+        if (!receta || receta.tipo_origen !== 'APLICACION_CONSULTA') return;
+        const cola = listarSurtido();
+        let cambio = false;
+        cola.forEach(sol => {
+            if (sol.receta_id !== receta.receta_id || sol.estatus === 'cancelada') return;
+            (sol.lineas || []).forEach(l => {
+                const item = (receta.items || []).find(i => l.sku && i.sku && normalizar(i.sku) === normalizar(l.sku));
+                if (!item) return;
+                const surtida = parseInt(item.cantidad_surtida, 10) || 0;
+                if ((l.cantidad_surtida || 0) !== surtida) { l.cantidad_surtida = surtida; cambio = true; }
+                const est = surtida >= (l.cantidad || 1) ? 'surtida' : 'pendiente';
+                if (l.estatus !== est) { l.estatus = est; cambio = true; }
+            });
+            if ((sol.lineas || []).length && sol.lineas.every(l => l.estatus === 'surtida') && sol.estatus !== 'surtida') {
+                sol.estatus = 'surtida'; sol.surtida_en = new Date().toISOString(); cambio = true;
+            }
+        });
+        if (cambio) escribir(CLAVES.surtido, cola);
+    }
+    function actualizarOrdenEnTurno(receta) {
+        const t = receta && receta.turno_id ? obtenerTurno(receta.turno_id) : null;
+        if (!t) return null;
+        const ordenes = (t.ordenes_aplicacion || []).map(o => {
+            if (o.receta_id !== receta.receta_id) return o;
+            return Object.assign({}, o, {
+                estatus: receta.estatus_surtido,
+                items: (receta.items || []).map(i => ({ sku: i.sku, nombre: i.nombre, dosis_indicacion: i.dosis_indicacion, cantidad_prescrita: i.cantidad_prescrita }))
+            });
+        });
+        return actualizarTurno(t.turno_id, { ordenes_aplicacion: ordenes });
     }
     function enviarOrdenAplicacion(entrada, s) {
         const t = obtenerTurno(entrada && entrada.turno_id);
@@ -4620,12 +4830,46 @@
         };
         const guardado = actualizarTurno(t.turno_id, { ordenes_aplicacion: (t.ordenes_aplicacion || []).concat([orden]) });
         if (!guardado) return { ok: false, motivo: 'La receta quedó foliada, pero no se pudo avisar a enfermería. Reimprímala desde el archivo.' };
+        encolarOrdenAplicacion(guardado, emitida.receta);
         return { ok: true, receta: emitida.receta, orden: orden, turno: guardado };
     }
     function guardarBorradorRecetaCasa(turnoId, items) {
         const t = obtenerTurno(turnoId);
         if (!t) return null;
         return actualizarTurno(turnoId, { receta_casa_borrador: items || [] });
+    }
+    function modificarRecetaPendiente(recetaId, itemsNuevos, s) {
+        if (!puedeEmitirRecetaMedica(s && s.rol)) return { ok: false, motivo: 'La receta la modifica el médico.' };
+        const receta = listarRecetas().find(r => r.receta_id === recetaId);
+        if (!receta) return { ok: false, motivo: 'No se encontró la receta.' };
+        if (receta.estatus_surtido !== 'PENDIENTE') return { ok: false, motivo: 'Farmacia ya surtió o la orden ya no está pendiente. No se puede cambiar el medicamento.' };
+        const cola = listarSurtido().filter(sol => sol.receta_id === recetaId && sol.estatus === 'pendiente');
+        if (cola.some(sol => (sol.lineas || []).some(l => (l.cantidad_surtida || 0) > 0))) return { ok: false, motivo: 'Farmacia ya empezó a surtir esta orden.' };
+        const armados = armarItemsReceta(receta.tipo_origen, itemsNuevos);
+        if (!armados.ok) return armados;
+        const actualizada = Object.assign({}, receta, { items: armados.items, estatus_surtido: 'PENDIENTE' });
+        const lista = listarRecetas().map(r => r.receta_id === recetaId ? actualizada : r);
+        if (!escribir(CLAVES.recetas, lista)) return { ok: false, motivo: 'No se pudo guardar el cambio.' };
+        if (receta.tipo_origen === 'APLICACION_CONSULTA') {
+            sincronizarColaDeReceta(actualizada);
+            actualizarOrdenEnTurno(actualizada);
+        }
+        return { ok: true, receta: actualizada };
+    }
+    function cancelarRecetaConsulta(recetaId, s) {
+        if (!puedeEmitirRecetaMedica(s && s.rol)) return { ok: false, motivo: 'La receta la cancela el médico.' };
+        const receta = listarRecetas().find(r => r.receta_id === recetaId);
+        if (!receta) return { ok: false, motivo: 'No se encontró la receta.' };
+        if (receta.estatus_surtido === 'CANCELADA') return { ok: true, receta: receta };
+        if (receta.estatus_surtido !== 'PENDIENTE') return { ok: false, motivo: 'Ya fue surtida. No se puede cancelar.' };
+        const actualizada = Object.assign({}, receta, { estatus_surtido: 'CANCELADA', cancelada_en: new Date().toISOString() });
+        const lista = listarRecetas().map(r => r.receta_id === recetaId ? actualizada : r);
+        if (!escribir(CLAVES.recetas, lista)) return { ok: false, motivo: 'No se pudo cancelar.' };
+        if (receta.tipo_origen === 'APLICACION_CONSULTA') {
+            sincronizarColaDeReceta(actualizada);
+            actualizarOrdenEnTurno(actualizada);
+        }
+        return { ok: true, receta: actualizada };
     }
     function registrarSurtidoReceta(folio, lineas) {
         const receta = recetaPorFolio(folio);
@@ -4646,9 +4890,12 @@
         });
         const actualizada = Object.assign({}, receta, { items: items, estatus_surtido: estatusSurtidoDe(items) });
         const lista = listarRecetas().map(r => r.receta_id === receta.receta_id ? actualizada : r);
-        return escribir(CLAVES.recetas, lista) ? actualizada : null;
+        if (!escribir(CLAVES.recetas, lista)) return null;
+        reflejarSurtidoEnCola(actualizada);
+        return actualizada;
     }
     function etiquetaEstatusReceta(estatus) {
+        if (estatus === 'CANCELADA') return 'Cancelada';
         if (estatus === 'COMPLETA_RETENIDA') return 'Surtido completo';
         if (estatus === 'PARCIAL_SELLADA') return 'Surtido parcial';
         return 'Pendiente de surtir';
@@ -4706,7 +4953,7 @@
         const t = obtenerTurno(turnoId);
         const prod = productoPorSku(sku);
         if (!t || !prod) return null;
-        const recetas = recetasDeTurno(turnoId).filter(r => (r.items || []).some(i => normalizar(i.sku) === normalizar(sku) && pendienteItemReceta(i) > 0));
+        const recetas = recetasDeTurno(turnoId).filter(r => r.tipo_origen !== 'RECETA_CASA' && r.estatus_surtido !== 'CANCELADA' && (r.items || []).some(i => normalizar(i.sku) === normalizar(sku) && pendienteItemReceta(i) > 0));
         if (recetas.length) {
             const r = recetas[recetas.length - 1];
             const item = r.items.find(i => normalizar(i.sku) === normalizar(sku));
@@ -4735,13 +4982,14 @@
         }
         return null;
     }
-    function loteParaSurtir(sku) {
+    function lotesVigentesDeSku(sku) {
         const hoy = hoyLocal();
         return listarFarmacia().filter(p => normalizar(p.sku) === normalizar(sku) && p.stock > 0 && String(p.caducidad) >= hoy)
-            .sort((a, b) => String(a.caducidad).localeCompare(String(b.caducidad)))[0] || null;
+            .sort((a, b) => String(a.caducidad).localeCompare(String(b.caducidad)) || String(a.lote).localeCompare(String(b.lote)));
     }
+    function loteParaSurtir(sku) { return lotesVigentesDeSku(sku)[0] || null; }
     function lineasSugeridasDeReceta(receta, soloSku, cantidadForzada) {
-        if (!receta) return [];
+        if (!receta || receta.estatus_surtido === 'CANCELADA' || receta.tipo_origen === 'RECETA_CASA') return [];
         const externa = receta.tipo_origen === 'EXTERNA' || String(receta.folio || '').indexOf('EXT-') === 0;
         const tipo = externa ? 'Receta Externa (EXT)' : 'Receta Interna (SB-REC)';
         const cedula = receta.cedulas_impresas || cedulaDeUsuario(receta.medico_id);
@@ -4758,7 +5006,7 @@
             const cant = Math.min(cantidadForzada ? parseInt(cantidadForzada, 10) || 1 : tope, tope, lote.stock);
             if (cant < 1) return;
             out.push({
-                lote_id: lote.lote_id, cantidad: cant, folio_confirmado: true,
+                lote_id: lote.lote_id, sku: lote.sku, cantidad: cant, folio_confirmado: true, confirmar_lote: true,
                 folio_receta: receta.folio, medico_prescriptor_id: receta.medico_id || '',
                 medico_prescriptor_nombre: receta.medico_nombre || '',
                 cedula_prescriptor: cedula, tipo_respaldo: tipo
@@ -5287,7 +5535,7 @@
         leer, escribir, normalizar, limpiarEspacios, hoyLocal, parseFechaISO, calcularEdad, fechaLegibleISO, iniciales, formatoReloj, hashContrasena, colorDeUsuario,
         iniciarSesion, sesion, cerrarSesion, puede, esEnfermeria, moduloAplicaARol, permisoModuloDe, permisoModuloExplicito, establecerPermisoModulo, permisoAccionDe, establecerPermisoAccion, restablecerPermisosPersonal, leerPermisosPersonal, especialidadPorCodigo, medicosDeEspecialidad, identificarOperadorFarmacia,
         guardarUsuario, desactivarUsuario, reactivarUsuario, eliminarUsuario, listarPapeleria, agregarDocumentoPersonal, eliminarDocumentoPersonal,
-        listarPacientes, buscarPacientePorIdentidad, buscarPacientesPorNombre, buscarPacientePorId, homonimos, guardarPaciente,
+        listarPacientes, buscarPacientePorIdentidad, buscarPacientesPorNombre, buscarPacientePorId, homonimos, guardarPaciente, partesDeNombre, fusionarExpedientes,
         listarTurnos, obtenerTurno, actualizarTurno, siguienteNumeroTurno, crearTurno, ordenarPorLlegada, turnoVisiblePara, filaDe, colaEspera, pacientesEnConsulta, posicionEnCola, posicionNuevaEnCola, siguienteEnCola, corteDiario, metricas24h,
         listarCirugias, fichaCirugia, proximasCirugias, cirugiasVisibles, cirugiaVisiblePara, cirugiaPara, cirujanos, anestesiologos, disponibilidadQuirofano, validarCirugia, programarCirugia, asignarAnestesiologo, puedeIngresarAmbulatorio, ingresarPacienteAmbulatorio, hospitalizadosDe, hospitalizadoVisiblePara,
         camasLibres, flujoQuirofanoDe, pasarPacienteAQuirofano, recibirEnQuirofano, regresarAHospitalizacion, datosHojaTransanestesica,
@@ -5313,10 +5561,10 @@
         resumenTubosEstudios, puedeGestionarTarifario, puedeAlterarMontoEstudio, puedeAjustarCuenta, episodioAbiertoParaEstudios, turnoActivoParaEstudios,
         cuentasAuditoria, establecerFacturaCuenta, establecerFiscalCuenta, fiscalDeTurno, ajustarLineaCuenta, htmlEstadoCuenta, metaCargoCuenta,
         listarPaquetes, guardarPaquete, eliminarPaquete, lineasDePaquete, sumaRealPaquete, aplicarPaqueteAPaciente,
-        enfermerasActivas, pacientesTerminalFarmacia, prepararLineaCarrito, loteMasProximo, confirmarCarritoFarmacia,
+        enfermerasActivas, pacientesTerminalFarmacia, prepararLineaCarrito, loteMasProximo, lotesVigentesDeSku, confirmarCarritoFarmacia,
         cajasAbiertasDe, restantesCaja, etiquetaCajaAbierta, abrirCajaEstupefaciente, dispensarAmpulas, listarCajas, listarCajasEstupefacientes, AREAS_CAJA, nombreAreaCaja, areaResguardoDeSesion, areaResguardoDeTurno, cajasDeArea, usarAmpulaDesdeNota,
         listarSalidasFarmacia, registrarRetiroAdministracion, filtrarMovimientosFarmacia, personasBitacora, presentacionesBitacora, lotesDePresentacion, presentacionMovimiento, awareDeMovimiento, carpetasMovimientosFarmacia, csvMovimientosFarmacia, alertasCofeprisEnTexto, medicamentosDetectadosEnTexto,
-        listarRecetas, recetaPorFolio, recetasDeTurno, recetasDePaciente, buscarMedicamentosReceta, emitirReceta, enviarOrdenAplicacion, guardarBorradorRecetaCasa, registrarSurtidoReceta, htmlHojaReceta, etiquetaEstatusReceta,
+        listarRecetas, recetaPorFolio, recetasDeTurno, recetasDePaciente, buscarMedicamentosReceta, emitirReceta, enviarOrdenAplicacion, guardarBorradorRecetaCasa, modificarRecetaPendiente, cancelarRecetaConsulta, registrarSurtidoReceta, htmlHojaReceta, etiquetaEstatusReceta,
         respaldoParaSurtido, lineasSugeridasDeReceta, loteParaSurtir, textoSurtidoItem, textoEstatusBitacora, inferirTipoRespaldo, cedulaDeUsuario, pendienteFolioSku, confirmarSurtidoMostrador,
         folioRecetaVigente, guardarRecetaFoliada, datosReceta, htmlCuerpoReceta, htmlRecetaImprimible,
         validarCorreccionPaciente, corregirDatosPaciente, fechaNacimientoParaEdad, fechaHoraLegible,
