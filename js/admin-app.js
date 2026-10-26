@@ -3283,6 +3283,7 @@ const AdminController = {
                         </div>
                     </div>
                 </div>
+                ${(this.rolActual === 'admin' || this.rolActual === 'administrador') ? `<div id="rh-costo-wrap"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-costo">Costo de consulta (MXN)</label><input id="rh-costo" type="number" min="0" step="1" class="${cls}" value="${u && u.costo_consulta != null ? e(u.costo_consulta) : ''}" placeholder="400 general · 800 especialista"><p data-err="costo_consulta" class="text-[11px] text-red-600 mt-1 hidden"></p></div>` : ''}
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-color">Color distintivo</label><select id="rh-color" class="${cls}">${colores}</select></div>
                 <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-etiqueta">Etiqueta informal</label><input id="rh-etiqueta" class="${cls}" maxlength="80" value="${u ? e(u.etiqueta_admin || '') : ''}" placeholder="Nota visible solo para administración"><p data-err="etiqueta_admin" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
             </div>`,
@@ -3294,6 +3295,7 @@ const AdminController = {
                     if (!medico) esp.value = '';
                     c.el.querySelector('#rh-cedulas-med').classList.toggle('hidden', !medico);
                     c.el.querySelector('#rh-cedula-wrap').classList.toggle('hidden', medico);
+                    const costoWrap = c.el.querySelector('#rh-costo-wrap'); if (costoWrap) costoWrap.classList.toggle('hidden', !medico);
                     const general = medico && esp.value === 'MEDICINA_GENERAL';
                     c.el.querySelector('#rh-visibles').classList.toggle('hidden', !medico || general);
                     c.el.querySelector('#rh-aviso-general').classList.toggle('hidden', !medico || !general);
@@ -3319,6 +3321,12 @@ const AdminController = {
                         Object.keys(r.errores || {}).forEach(k => { const p = c.el.querySelector(`[data-err="${k}"]`); if (p) { p.textContent = r.errores[k]; p.classList.remove('hidden'); } });
                         if (!r.errores) BelenUI.toast(r.motivo, 'alerta');
                         return false;
+                    }
+                    const costoEl = c.el.querySelector('#rh-costo');
+                    if (costoEl && rol === 'medico' && String(costoEl.value).trim() !== '' && S.actualizarCostoConsultaMedico) {
+                        const idGuardado = (r.usuario && r.usuario.id) || (u ? u.id : q('#rh-id').trim());
+                        const rc = S.actualizarCostoConsultaMedico(idGuardado, costoEl.value, this.sesion);
+                        if (rc && rc.ok === false) BelenUI.toast('Datos guardados, pero el costo de consulta no: ' + (rc.motivo || ''), 'alerta');
                     }
                     BelenUI.toast(u ? 'Datos actualizados.' : 'Persona dada de alta.', 'exito');
                     this.render();
@@ -3849,8 +3857,11 @@ const AdminController = {
                         nombre_completo: v.nombre, fecha_nacimiento: v.fn, sexo: v.sexo, telefono: v.tel, direccion: v.dir
                     });
                     if (!pac) { BelenUI.toast('No fue posible guardar al paciente.', 'peligro'); return false; }
-                    const turno = S.crearTurno({ paciente_id: pac.paciente_id, especialidad_codigo: v.especialidad, medico_id: v.medico, motivo: v.motivo, registrado_por: this.sesion.nombre });
-                    if (!turno) { BelenUI.toast('No fue posible registrar al paciente.', 'peligro'); return false; }
+                    const dupTurno = S.turnoActivoEnEspecialidad ? S.turnoActivoEnEspecialidad(pac.paciente_id, v.especialidad, v.medico) : null;
+                    if (dupTurno) { BelenUI.toast('El paciente ya tiene un turno activo en esta especialidad con este médico (' + (dupTurno.especialidad || '') + ' · ' + (dupTurno.medico_nombre || '') + ').', 'peligro', 6000); return false; }
+                    const regTurno = S.registrarTurno ? S.registrarTurno({ paciente_id: pac.paciente_id, especialidad_codigo: v.especialidad, medico_id: v.medico, motivo: v.motivo, registrado_por: this.sesion.nombre }, this.sesion) : null;
+                    const turno = regTurno ? (regTurno.ok ? regTurno.turno : null) : S.crearTurno({ paciente_id: pac.paciente_id, especialidad_codigo: v.especialidad, medico_id: v.medico, motivo: v.motivo, registrado_por: this.sesion.nombre });
+                    if (!turno) { BelenUI.toast((regTurno && regTurno.motivo) || 'No fue posible registrar al paciente: revise especialidad y médico.', 'peligro', 6000); return false; }
                     c.cerrar();
                     if (esMedico) {
                         S.iniciarConsulta(turno.turno_id, this.sesion);

@@ -3966,8 +3966,13 @@
                 // Se guarda ANTES de imprimir: si el almacenamiento falla, no se imprime ni se cierra la consulta.
                 const datosGenerados = recolectarExpediente();
                 console.log("ENVIANDO AL BACKEND:", datosGenerados);
-                const conCargos = ((TURNO && TURNO.cargos) || []).length > 0;
-                const estatusAlta = conCargos ? 'alta_medica_pendiente_pago' : 'alta';
+                if (TURNO && !TURNO.cuenta_pagada && BelenStore.asegurarCargoConsulta) {
+                    BelenStore.asegurarCargoConsulta(TURNO.turno_id, SESION);
+                    TURNO = BelenStore.obtenerTurno(TURNO.turno_id) || TURNO;
+                }
+                const yaPagada = !!(TURNO && TURNO.cuenta_pagada === true);
+                const conCargos = !yaPagada && ((TURNO && TURNO.cargos) || []).length > 0;
+                const estatusAlta = yaPagada ? ((BelenStore.ESTATUS && BelenStore.ESTATUS.CERRADO_HISTORICO) || 'cerrado_historico') : (conCargos ? 'alta_medica_pendiente_pago' : 'alta');
                 if (!persistirConsultaConcluida(datosGenerados, estatusAlta)) {
                     ocultarTodosLosPrints();
                     avisar('No se pudo guardar la consulta', 'El almacenamiento local del navegador no está disponible o está lleno. La consulta NO se cerró; intente de nuevo.', 'error');
@@ -3983,7 +3988,7 @@
                 ocultarTodosLosPrints();
 
                 descartarBorrador();
-                mostrarToast(conCargos ? 'Alta registrada. Los cargos pasan a Cuentas por Cobrar.' : 'Alta registrada. Regresando al Dashboard...', 'exito');
+                mostrarToast(yaPagada ? 'Alta registrada. La cuenta ya estaba pagada en Caja; expediente cerrado.' : conCargos ? 'Alta registrada. Los cargos pasan a Cuentas por Cobrar.' : 'Alta registrada. Regresando al Dashboard...', 'exito');
                 setTimeout(() => window.location.href = 'dashboard.html', 1000);
                 } else {
                 // SIMULACRO DE BACKEND: aquí irá el POST (la nota se guarda aunque todavía no se imprima)
@@ -4849,12 +4854,15 @@
                 } }] });
         }
         // ---------- Anestesia: pre / trans / post (con candado Fracción I) ----------
+        function abrirNotaPostanestesica() { return abrirHojaAnestesia('post'); }
         function abrirHojaAnestesia(tipo) {
             const S = BelenStore, tid = turnoVisor(); if (!tid) return;
             const pend = tipo === 'post' && S.ampulasFraccionIPendientes ? (S.ampulasFraccionIPendientes(tid) || []) : [];
             const titulo = tipo === 'pre' ? 'Nota Preanestésica' : (tipo === 'trans' ? 'Registro Transanestésico' : 'Nota Postanestésica');
-            const fx = pend.map((u, k) => '<div class="border border-rose-200 bg-rose-50 rounded-lg p-2 mb-2 text-xs"><b>Fracción I · ' + (u.producto || u.nombre || u.uso_id) + '</b>' +
-                '<input id="fx-lote-' + k + '" placeholder="Lote" value="' + (u.lote || '') + '" class="w-full border rounded p-1 mt-1"><input id="fx-dosis-' + k + '" placeholder="Dosis administrada" class="w-full border rounded p-1 mt-1"><input id="fx-merma-' + k + '" placeholder="Merma / desecho" class="w-full border rounded p-1 mt-1"></div>').join('');
+            const escFx = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const fx = !pend.length ? (tipo === 'post' ? '<p class="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-2 mb-2">Sin ámpulas de Fracción I pendientes de justificar.</p>' : '')
+                : '<div class="mb-3"><p class="text-xs font-extrabold uppercase text-rose-700 mb-1"><i class="fas fa-lock mr-1"></i>Ámpulas Fracción I dispensadas a este paciente (' + pend.length + ') · obligatorio para cerrar la nota</p>' + pend.map((u, k) => '<div class="border border-rose-200 bg-rose-50 rounded-lg p-2 mb-2 text-xs"><b>' + (k + 1) + '. ' + escFx(u.producto || u.nombre || u.uso_id) + '</b>' + (u.numero ? ' · ámpula ' + escFx(u.numero) + (u.de ? ' de ' + escFx(u.de) : '') : '') + (u.fecha_hora ? ' · ' + escFx(new Date(u.fecha_hora).toLocaleString('es-MX')) : '') +
+                '<div class="grid grid-cols-3 gap-2 mt-1"><label>Lote<input id="fx-lote-' + k + '" value="' + escFx(u.lote || '') + '" class="w-full border rounded p-1"></label><label>Dosis administrada<input id="fx-dosis-' + k + '" placeholder="ej. 100 mcg" class="w-full border rounded p-1"></label><label>Merma / desecho<input id="fx-merma-' + k + '" placeholder="ej. 0 ml" class="w-full border rounded p-1"></label></div></div>').join('') + '</div>';
             BelenUI.modal({ titulo: titulo, icono: 'fa-syringe', ancho: 'lg',
                 html: fx + '<textarea id="an-texto" rows="6" placeholder="Valoración / registro / plan" class="w-full border border-slate-200 rounded-lg p-2 text-sm"></textarea>',
                 botones: [{ texto: 'Cancelar' }, { texto: 'Guardar', primario: true, accion: () => {

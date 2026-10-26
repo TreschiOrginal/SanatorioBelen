@@ -150,7 +150,7 @@
         cargar_consumos:           ['admin', 'administrador'].concat(ENFERMERIAS),
         ver_cuentas_cobrar:        ['admin', 'administrador'],
         cerrar_expediente_pago:    ['admin', 'administrador'],
-        cargar_cuenta_consulta:    ['admin'],
+        cargar_cuenta_consulta:    ['admin', 'administrador'],
         gestionar_farmacia:        ['admin', 'administrador', 'enf_farmacia'],
         farmacia_paquetes:         ['admin'],
         farmacia_estupefacientes:  ['admin'],
@@ -990,6 +990,10 @@
         const lista = listarTurnos();
         const t = lista.find(x => x.turno_id === id);
         if (!t) return null;
+        if (parche && parche.estatus === ESTATUS.ALTA_PENDIENTE_PAGO && (t.cuenta_pagada === true || parche.cuenta_pagada === true) && parche.cuenta_pagada !== false) {
+            // Ya se cobró en Caja (pre-cobro): al cerrar la consulta pasa directo a histórico, sin volver a Cuentas por Cobrar.
+            parche = Object.assign({}, parche, { estatus: ESTATUS.CERRADO_HISTORICO, cerrado_en: t.cerrado_en || new Date().toISOString(), lista_para_cobro: false });
+        }
         Object.assign(t, parche);
         t.actualizado_en = new Date().toISOString();
         escribir(CLAVES.turnos, lista);
@@ -1861,6 +1865,7 @@
         const actualizado = actualizarTurno(turnoId, { cargos: cargos, cuenta_actual: total, cuenta_actual_total: total });
         if (!actualizado) return { ok: false, motivo: 'No se pudo guardar.' };
         encolarSurtidoConsulta(actualizado, cargos[cargos.length - 1]);
+        sincronizarCuentaEspejo(turnoId);
         return { ok: true, cargo: cargos[cargos.length - 1], turno: actualizado };
     }
     function validarNotaEgreso(entrada) {
@@ -1967,10 +1972,20 @@
         escribir(CLAVES.cuentas, mapCuentas);
         return { ok: true, turno: actualizado, total: total, cargos: cargos };
     }
+    // Garantiza el cargo de consulta al cerrar con Alta aunque no se haya pulsado "Liberar a Caja".
+    function asegurarCargoConsulta(turnoId, s) {
+        const t = obtenerTurno(turnoId);
+        if (!t) return { ok: false, motivo: 'No se encontró la consulta.' };
+        if (t.cuenta_pagada === true) return { ok: true, turno: t, ya_pagada: true };
+        const ya = (t.cargos || []).some(c => c && (c.origen === 'consulta_medica' || /consulta m[eé]dica/i.test(c.concepto || '')));
+        if (ya) return { ok: true, turno: t };
+        return liberarConsultaACaja(turnoId, s);
+    }
+    function guardarNotaEgreso(internamientoId, entrada, s) { return registrarEgreso(internamientoId, entrada, s); }
     function cuentasPorCobrar(s) {
         if (!s || !PERMISOS.ver_cuentas_cobrar.includes(s.rol)) return [];
         return listarTurnos()
-            .filter(t => t.estatus === ESTATUS.ALTA_PENDIENTE_PAGO || ((t.lista_para_cobro || t.liberado_a_caja) && !t.cuenta_pagada && t.estatus !== ESTATUS.CERRADO_HISTORICO))
+            .filter(t => t.cuenta_pagada !== true).filter(t => t.estatus === ESTATUS.ALTA_PENDIENTE_PAGO || ((t.lista_para_cobro || t.liberado_a_caja) && !t.cuenta_pagada && t.estatus !== ESTATUS.CERRADO_HISTORICO))
             .sort((a, b) => String(b.actualizado_en || b.timestamp_llegada).localeCompare(String(a.actualizado_en || a.timestamp_llegada)));
     }
     function fichaCuenta(turno) {
@@ -1992,6 +2007,7 @@
         if (!s || !PERMISOS.cerrar_expediente_pago.includes(s.rol)) return { ok: false, motivo: 'Solo Administración puede cerrar el expediente por pago.' };
         const t = obtenerTurno(turnoId);
         if (!t) return { ok: false, motivo: 'No se encontró el episodio.' };
+        if (t.cuenta_pagada === true) return { ok: false, motivo: 'Esta cuenta ya fue cobrada y liquidada previamente.' };
         const esPreCobroConsulta = t.estatus !== ESTATUS.ALTA_PENDIENTE_PAGO && !!t.lista_para_cobro && !t.cuenta_pagada;
         if (t.estatus !== ESTATUS.ALTA_PENDIENTE_PAGO && !esPreCobroConsulta) return { ok: false, motivo: 'Este expediente no está pendiente de pago.' };
         const ahora = new Date().toISOString();
@@ -3315,6 +3331,8 @@
         if (!escribir(CLAVES.farmacia, lista)) return { ok: false, motivo: 'No se pudo guardar el ingreso.' };
         const quien = USUARIOS[entrada.operador_id] || USUARIOS[s.usuario_id];
         const mov = movimientoEntrada(v, quien, entrada.modo_stock === 'cajas', parseInt(entrada.numero_cajas, 10));
+        const loteFinal = ya || lista[lista.length - 1];
+        mov.lote_id = loteFinal.lote_id; mov.saldo_lote = Number(loteFinal.stock) || 0;
         if (!anexarMovimientos([mov])) {
             escribir(CLAVES.farmacia, JSON.parse(snap));
             return { ok: false, motivo: 'No se pudo registrar la bitácora. El ingreso no se guardó.' };
@@ -3899,7 +3917,20 @@
         if (enInternamiento) {
             if (!guardarInternamiento(i)) return { ok: false, motivo: 'No se pudo guardar el ajuste.' };
         } else if (!actualizarTurno(turnoId, { cargos: lista })) return { ok: false, motivo: 'No se pudo guardar el ajuste.' };
-        return { ok: true, total: recalcularCuentaTurno(turnoId) };
+        const totalAjustado = recalcularCuentaTurno(turnoId);
+        sincronizarCuentaEspejo(turnoId);
+        return { ok: true, total: totalAjustado };
+    }
+    function sincronizarCuentaEspejo(turnoId) {
+        const mapCuentas = leer(CLAVES.cuentas, {}) || {};
+        if (!mapCuentas[turnoId]) return;
+        const t = obtenerTurno(turnoId);
+        if (!t) return;
+        const cargos = cargosDeEpisodio(t);
+        mapCuentas[turnoId].cargos = cargos;
+        mapCuentas[turnoId].total = totalCargos(cargos);
+        mapCuentas[turnoId].actualizada_en = new Date().toISOString();
+        escribir(CLAVES.cuentas, mapCuentas);
     }
     function escHtmlCuenta(s) {
         return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -4098,7 +4129,8 @@
         const catalogo = listarFarmacia();
         const lote = catalogo.find(p => p.lote_id === entrada.lote_id);
         if (!lote || lote.fraccion_cofepris !== 'I') return { ok: false, motivo: 'Seleccione un medicamento de Fracción I del almacén.' };
-        const piezas = parseInt(lote.piezas_por_caja, 10) || 1;
+        let piezas = parseInt(lote.piezas_por_caja, 10) || 1;
+        if (lote.stock < piezas && lote.stock > 0 && listarMovimientosFarmacia().some(m => m.tipo === 'BAJA' && (m.lote_id === lote.lote_id || m.lote === lote.lote))) piezas = Math.min(piezas, Number(lote.stock));
         if (lote.stock < piezas) return { ok: false, motivo: 'No hay una caja completa en el almacén (' + piezas + ' ámpulas, lote ' + lote.lote + ').' };
         const folio = limpiarEspacios(entrada.folio_receta_especial).toUpperCase();
         if (!/^[A-Z0-9][A-Z0-9-]{2,29}$/.test(folio)) return { ok: false, motivo: 'Escriba el folio o código de barras de la receta física especial.' };
@@ -4429,6 +4461,9 @@
         return guardarHojaAnestesia('notas_preanestesicas', 'PRE', turnoId, e, s);
     }
     function guardarRegistroTransanestesico(turnoId, entrada, s) {
+        const e = entrada || {};
+        const lleno = v => Array.isArray(v) ? v.some(x => x && (typeof x !== 'object' || Object.values(x).some(y => String(y == null ? '' : y).trim()))) : (v != null && typeof v === 'object' ? Object.values(v).some(y => String(y == null ? '' : y).trim()) : String(v == null ? '' : v).trim() !== '');
+        if (!['signos_trans', 'medicamentos_trans', 'liquidos_trans', 'eventos', 'notas', 'signos', 'medicamentos', 'liquidos', 'texto', 'valoracion'].some(k => lleno(e[k]))) return { ok: false, motivo: 'Capture al menos signos, medicamentos, líquidos, eventos o notas del registro transanestésico.' };
         return guardarHojaAnestesia('registros_transanestesicos', 'TRA', turnoId, entrada, s);
     }
     // ---------------------------------------------------------------- Secciones editables (ambulatorio Qx)
@@ -4488,19 +4523,30 @@
     }
     function guardarHojaEnfermeria(turnoId, datos, s) {
         if (!s || ['admin', 'enf_hospital', 'enf_quirofano', 'enf_triage', 'medico'].indexOf(s.rol) < 0) return { ok: false, motivo: 'Su perfil no puede registrar la Hoja de Enfermería.' };
-        if (!obtenerTurno(turnoId)) return { ok: false, motivo: 'No se encontró el episodio.' };
+        const tHe = obtenerTurno(turnoId);
+        if (!tHe) return { ok: false, motivo: 'No se encontró el episodio.' };
+        if (s.rol === 'medico') {
+            const iHe = internamientoDeTurno(turnoId);
+            const vinculado = relacionMedico(iHe, tHe, s) || listarCirugias().some(c => (c.turno_id === turnoId || (c.paciente_id && c.paciente_id === tHe.paciente_id)) && (c.medico_cirujano_id === s.medico_id || c.anestesiologo_id === s.medico_id));
+            if (!vinculado) return { ok: false, motivo: 'Solo el médico tratante, interconsultante, cirujano o anestesiólogo de este paciente puede escribir en la Hoja de Enfermería.' };
+        }
         const d = datos || {};
+        const glFuera = (d.signos || []).find(x => x && x.glucosa_mg_dl !== '' && x.glucosa_mg_dl != null && Number.isFinite(Number(x.glucosa_mg_dl)) && (Number(x.glucosa_mg_dl) < 20 || Number(x.glucosa_mg_dl) > 600));
+        if (glFuera) return { ok: false, motivo: 'La glucosa capilar debe estar entre 20 y 600 mg/dL.' };
         const h = obtenerHojaEnfermeria(turnoId);
         const sello = { usuario_id: s.usuario_id, usuario_nombre: s.nombre, registrado_en: new Date().toISOString() };
         (d.kardex || []).forEach(k => { if (limpiarEspacios(k.medicamento)) h.kardex.push(Object.assign({ id: uid('KDX'), hora: k.hora || '' }, k, sello)); });
         (d.signos || []).forEach(x => {
             const turno = String(x.turno || '').toUpperCase();
             if (TURNOS_ENFERMERIA.indexOf(turno) < 0) return;
-            h.signos.push(Object.assign({ id: uid('SVE') }, x, { turno: turno, glucosa_mg_dl: x.glucosa_mg_dl === '' || x.glucosa_mg_dl == null ? null : Number(x.glucosa_mg_dl) }, sello));
+            h.signos.push(Object.assign({ id: uid('SVE') }, x, { turno: turno, glucosa_mg_dl: x.glucosa_mg_dl === '' || x.glucosa_mg_dl == null || !Number.isFinite(Number(x.glucosa_mg_dl)) ? null : Number(x.glucosa_mg_dl) }, sello));
         });
         const bal = d.balance || {};
         ['ingresos', 'egresos'].forEach(k => (bal[k] || []).forEach(x => { if (Number(x.ml) > 0) h.balance[k].push(Object.assign({ id: uid('BH') }, x, { ml: Number(x.ml) }, sello)); }));
-        if (d.observaciones != null) h.observaciones = String(d.observaciones);
+        if (d.observaciones != null && String(d.observaciones).trim()) {
+            h.observaciones = String(d.observaciones);
+            h.bitacora_observaciones = (h.bitacora_observaciones || []).concat([Object.assign({ id: uid('OBS'), texto: String(d.observaciones) }, sello)]);
+        }
         const todas = leer(CLAVES.hojasEnfermeria, {}) || {};
         delete h.balance.total_ingresos; delete h.balance.total_egresos; delete h.balance.balance;
         todas[turnoId] = h;
@@ -4568,6 +4614,9 @@
         if (!lote) return { ok: false, motivo: 'No se encontró el lote.' };
         const cant = parseInt(o.cantidad, 10);
         if (!Number.isInteger(cant) || cant < 1 || cant > Number(lote.stock)) return { ok: false, motivo: 'Cantidad inválida (existencia: ' + lote.stock + ').' };
+        const detallePrevio = limpiarEspacios(o.detalle || o.observaciones || '');
+        if (motivo === 'OTRO' && detallePrevio.length < 5) return { ok: false, motivo: 'Para el motivo "Otro" escriba la justificación (mínimo 5 caracteres).' };
+        if (lote.fraccion_cofepris === 'I' && !limpiarEspacios(o.folio_acta || o.testigo || o.acta_cofepris || '')) return { ok: false, motivo: 'La baja de un medicamento de Fracción I requiere folio de acta COFEPRIS o testigo.' };
         lote.stock = Number(lote.stock) - cant;
         if (!escribir(CLAVES.farmacia, catalogo)) return { ok: false, motivo: 'No se pudo actualizar el inventario.' };
         const detalle = limpiarEspacios(o.detalle || o.observaciones || '');
@@ -4575,6 +4624,7 @@
         const registro = {
             salida_id: uid('BAJA'), tipo: 'baja', tipo_movimiento: 'BAJA_' + motivo, motivo: motivo, detalle: detalle,
             lote_id: lote.lote_id, sku: lote.sku, nombre: denominacionProducto(lote), lote: lote.lote, caducidad: lote.caducidad,
+            folio_acta: limpiarEspacios(o.folio_acta || o.acta_cofepris || ''), testigo: limpiarEspacios(o.testigo || ''),
             cantidad: cant, saldo_lote: lote.stock, fecha_hora: ahora, operador_id: s.usuario_id, operador_nombre: s.nombre
         };
         escribir(CLAVES.salidasFarmacia, listarSalidasFarmacia().concat([registro]));
@@ -6176,7 +6226,8 @@
         devolverSalidaFarmacia, darBajaInsumoFarmacia, MOTIVOS_BAJA_FARMACIA, puedeDevolverFarmacia, listarMovimientosFarmacia,
         ampulasFraccionIPendientes, justificarAmpulasFraccionI, guardarNotaPreanestesica, guardarRegistroTransanestesico,
         puedeEditarSeccion, SECCIONES_QX_AMBULATORIO, sincronizarPaseAutomaticoQuirofano, listarCirugiasSincronizadas, listarInternamientosSincronizados,
-        obtenerHojaEnfermeria, guardarHojaEnfermeria, TURNOS_ENFERMERIA
+        obtenerHojaEnfermeria, guardarHojaEnfermeria, TURNOS_ENFERMERIA,
+        liberarConsultaACaja, actualizarCostoConsultaMedico, registrarTurno, turnoActivoEnEspecialidad, buscarPacientes, guardarNotaEgreso, asegurarCargoConsulta, sincronizarCuentaEspejo
     };
     sembrarUsuariosSiHaceFalta();
     completarAnestesiologoCirugias();
