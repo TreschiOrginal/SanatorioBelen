@@ -1518,6 +1518,25 @@
             i.finalizado_en = new Date().toISOString();
             if (extra.snapshot) i.snapshot_formulario = extra.snapshot;
             if (datos.indicaciones) {
+                const icForm = datos.indicaciones.interconsulta;
+                if (icForm && icForm.solicitada && icForm.medico && icForm.medico.codigo) {
+                    const medId = icForm.medico.codigo;
+                    const uMed = USUARIOS[medId] || Object.values(USUARIOS).find(u => u.id === medId || u.medico_id === medId);
+                    const realId = (uMed && (uMed.medico_id || uMed.id)) || medId;
+                    i.interconsultas = i.interconsultas || [];
+                    if (!i.interconsultas.some(x => x.medico_id === realId)) {
+                        i.interconsultas.push({
+                            interconsulta_id: uid("IC"),
+                            especialidad_codigo: (icForm.especialidad && icForm.especialidad.codigo) || (uMed && uMed.especialidad_codigo) || "ESPECIALIDAD",
+                            especialidad: (icForm.especialidad && icForm.especialidad.descripcion) || (uMed && uMed.cargo) || "Especialidad",
+                            medico_id: realId,
+                            medico_nombre: (uMed && uMed.nombre) || icForm.medico.nombre || realId,
+                            solicitada_por_id: t.medico_id,
+                            solicitada_por_nombre: t.medico_nombre,
+                            fecha_hora: new Date().toISOString()
+                        });
+                    }
+                }
                 const textos = textosIndicaciones(datos.indicaciones);
                 const hojas = i.hojas_indicaciones || [];
                 const primera = hojas.find(h => h.origen === 'ingreso');

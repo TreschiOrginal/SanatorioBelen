@@ -4875,9 +4875,9 @@
             try {
                 const reales = (BelenStore.listarUsuarios() || []).filter(u => u.rol === 'medico' && u.activo !== false);
                 reales.forEach(u => {
-                    const cod = String(u.especialidad || 'MEDICINA_GENERAL').toUpperCase();
+                    const cod = String(u.especialidad_codigo || u.especialidad || 'MEDICINA_GENERAL').toUpperCase();
                     let esp = CATALOGO_INTERCONSULTA.find(e => e.codigo === cod);
-                    if (!esp) { esp = { codigo: cod, nombre: u.especialidad_nombre || u.especialidad || 'Medicina General', medicos: [] }; CATALOGO_INTERCONSULTA.push(esp); }
+                    if (!esp) { esp = { codigo: cod, nombre: u.especialidad_nombre || u.cargo || u.especialidad || 'Medicina General', medicos: [] }; CATALOGO_INTERCONSULTA.push(esp); }
                     if (!esp.medicos.some(m => m.codigo === (u.usuario_id || u.id))) esp.medicos.unshift({ codigo: u.usuario_id || u.id, nombre: u.nombre });
                 });
             } catch (e) { console.warn(e); }
