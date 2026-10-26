@@ -110,15 +110,70 @@
 
         overlay.querySelectorAll('[data-cerrar]').forEach(b => b.addEventListener('click', () => ctrl.cerrar()));
         overlay.addEventListener('mousedown', e => { if (e.target === overlay && cerrable) ctrl.cerrar(); });
+        const draftKey = (function () {
+            if (op.sinBorrador) return null;
+            const t = String(op.titulo || '').toLowerCase();
+            if (!t || /confirm|eliminar|desactivar|restablecer|acceso|aviso|fefo|asignar|cambiar área|registrar paciente|consulta directa|fusionar|receta externa|nuevo ingreso|editar insumo|editar personal|agregar personal/.test(t)) return null;
+            const params = new URLSearchParams(window.location.search);
+            const turno = params.get('turno') || params.get('id') || 'global';
+            return 'belen_draft_modal_' + turno + '_' + t.replace(/[^a-z0-9]+/g, '_');
+        })();
+        const limpiarBorradorModal = () => {
+            if (draftKey) { try { sessionStorage.removeItem(draftKey); } catch (e) {} }
+        };
+        ctrl.limpiarBorrador = limpiarBorradorModal;
         overlay.querySelectorAll('[data-boton]').forEach(btn => {
             btn.addEventListener('click', () => {
-                const def = botones[+btn.getAttribute('data-boton')];
+                const idx = +btn.getAttribute('data-boton');
+                const def = botones[idx];
+                const esAccion = def.estilo === 'primario' || def.estilo === 'exito' || def.estilo === 'alerta' || def.estilo === 'peligro' || (idx === botones.length - 1 && botones.length > 1 && def.estilo !== 'secundario');
                 const r = typeof def.alPulsar === 'function' ? def.alPulsar(ctrl) : undefined;
-                if (r !== false) ctrl.cerrar();
+                if (r !== false) {
+                    if (esAccion) limpiarBorradorModal();
+                    ctrl.cerrar();
+                }
             });
         });
         requestAnimationFrame(() => { overlay.classList.remove('opacity-0'); overlay.firstElementChild.classList.remove('scale-95'); });
         if (typeof op.alMostrar === 'function') op.alMostrar(ctrl);
+        if (draftKey) {
+            try {
+                const raw = sessionStorage.getItem(draftKey);
+                if (raw) {
+                    const saved = JSON.parse(raw);
+                    let restaurados = 0;
+                    Object.keys(saved || {}).forEach(id => {
+                        const el = overlay.querySelector('#' + id);
+                        if (!el || el.readOnly || el.disabled || el.type === 'hidden' || el.type === 'password') return;
+                        if (el.type === 'checkbox') {
+                            if (el.checked !== !!saved[id]) { el.checked = !!saved[id]; el.dispatchEvent(new Event('change', { bubbles: true })); restaurados++; }
+                        } else if (String(saved[id] || '').trim() !== '' && el.value !== saved[id]) {
+                            el.value = saved[id];
+                            el.dispatchEvent(new Event('input', { bubbles: true }));
+                            el.dispatchEvent(new Event('change', { bubbles: true }));
+                            restaurados++;
+                        }
+                    });
+                    if (restaurados > 0 && ctrl.cuerpo) {
+                        const aviso = document.createElement('div');
+                        aviso.className = 'mb-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold rounded-lg px-3 py-1.5 flex items-center justify-between';
+                        aviso.innerHTML = '<span><i class="fas fa-floppy-disk mr-1.5"></i>Se recuperó automáticamente su borrador sin guardar.</span><button type="button" class="text-[11px] underline ml-2">Limpiar</button>';
+                        aviso.querySelector('button').addEventListener('click', () => { limpiarBorradorModal(); aviso.remove(); });
+                        ctrl.cuerpo.insertBefore(aviso, ctrl.cuerpo.firstChild);
+                    }
+                }
+                const guardarDraft = () => {
+                    const data = {};
+                    overlay.querySelectorAll('input[id], textarea[id], select[id]').forEach(el => {
+                        if (el.readOnly || el.disabled || el.type === 'hidden' || el.type === 'password') return;
+                        data[el.id] = el.type === 'checkbox' ? el.checked : el.value;
+                    });
+                    sessionStorage.setItem(draftKey, JSON.stringify(data));
+                };
+                overlay.addEventListener('input', guardarDraft);
+                overlay.addEventListener('change', guardarDraft);
+            } catch (e) {}
+        }
         const foco = overlay.querySelector('[data-autofoco]') || overlay.querySelector('[data-boton]:last-child');
         if (foco) setTimeout(() => foco.focus(), 60);
         return ctrl;
@@ -184,6 +239,7 @@
                 ${campo('spo2_porcentaje', 'Saturación de oxígeno', '%', true, 'step="1" min="50" max="100"')}
                 ${campo('peso_kg', 'Peso', 'kg', false, 'step="0.1" min="0.3" max="400"')}
                 ${campo('talla_m', 'Talla', 'm', false, 'step="0.01" min="0.3" max="2.6"')}
+                <div class="col-span-2">${campo('glucemia', 'Glucosa capilar / Dxtx', 'mg/dL', false, 'step="1" min="20" max="600"')}</div>
             </div>
             <p id="svm-error-general" class="hidden mt-3 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>`;
 
@@ -235,7 +291,7 @@
         const dx = (exp.diagnosticos || []).map(d => `${d.cie10_codigo ? d.cie10_codigo + ' · ' : ''}${d.descripcion}`).join('\n');
         const ind = exp.indicaciones || {};
         const vit = (sv.ta_sistolica ? `TA ${sv.ta_sistolica}/${sv.ta_diastolica}` : '') + (sv.frecuencia_cardiaca ? ` · FC ${sv.frecuencia_cardiaca}` : '') +
-                    (sv.frecuencia_respiratoria ? ` · FR ${sv.frecuencia_respiratoria}` : '') + (sv.temperatura_c ? ` · Temp ${sv.temperatura_c}` : '') + (sv.spo2_porcentaje ? ` · SpO2 ${sv.spo2_porcentaje}%` : '');
+                    (sv.frecuencia_respiratoria ? ` · FR ${sv.frecuencia_respiratoria}` : '') + (sv.temperatura_c ? ` · Temp ${sv.temperatura_c}` : '') + (sv.spo2_porcentaje ? ` · SpO2 ${sv.spo2_porcentaje}%` : '') + (sv.glucemia ? ` · Dxtx ${sv.glucemia} mg/dL` : '');
         const ef = textoExploracionVisita(exp);
         return bloque('Motivo de consulta', c.motivo_consulta) + bloque('Padecimiento actual', c.padecimiento_actual) + bloque('Signos vitales', vit) +
                bloque('Exploración física', ef) +
@@ -379,6 +435,7 @@
         if (!estudios.length) { toast('El catálogo de estudios está vacío.', 'alerta'); return null; }
         const admin = S.puedeAlterarMontoEstudio(s);
         const enfermeria = S.esEnfermeria(s.rol);
+        const ocultarPrecios = enfermeria || (s && s.rol === 'medico');
         const bloques = [
             { id: 'lab', titulo: '🧪 Laboratorios y Tubos', cats: ['LABORATORIO'] },
             { id: 'pat', titulo: '🧫 Biopsias / Patología', cats: ['PATOLOGIA'] },
@@ -389,7 +446,7 @@
         const chip = est => {
             const tubo = est.tubo_muestra && est.tubo_muestra !== 'N/A' ? est.tubo_muestra : '';
             const emoji = tubo ? S.resumenTubosEstudios([est.estudio_id]).texto.split(' ')[0] : '';
-            const precio = enfermeria ? '' : (admin
+            const precio = ocultarPrecios ? '' : (admin
                 ? `<input data-precio="${esc(est.estudio_id)}" type="number" min="0.01" step="0.01" value="${est.precio_unitario}" class="mt-1 w-28 border border-slate-300 rounded-lg px-2 py-1 text-xs">`
                 : `<input data-precio="${esc(est.estudio_id)}" type="text" readonly disabled value="${esc(S.formatoMoneda(est.precio_unitario))}" class="mt-1 w-28 border border-slate-200 rounded-lg px-2 py-1 text-xs bg-slate-100 text-slate-600">`);
             const q = S.normalizar([est.codigo, est.nombre, S.nombreTipoEstudio(est.categoria), tubo].join(' '));
@@ -421,7 +478,7 @@
                 ${paneles}
                 <label class="block text-[11px] font-bold text-slate-500 uppercase">Observaciones de toma / Laboratorio externo al que se envía</label>
                 <textarea id="toma-obs" maxlength="240" rows="2" placeholder="Opcional. Ej. Se envía a Laboratorio Patología del Puerto." class="w-full border border-slate-300 rounded-lg p-2.5 text-sm"></textarea>
-                <p class="text-[11px] text-slate-500">${enfermeria ? 'Usted ve el estudio, la categoría y el tubo. Los importes los registra Caja.' : (admin ? 'Dirección puede corregir un monto en esta orden. El catálogo no cambia.' : 'Precio oficial bloqueado. Caja y el resto del personal no pueden modificarlo.')}</p>
+                <p class="text-[11px] text-slate-500">${ocultarPrecios ? 'Usted ve el estudio, la categoría y el tubo. Los importes los registra Caja.' : (admin ? 'Dirección puede corregir un monto en esta orden. El catálogo no cambia.' : 'Precio oficial bloqueado. Caja y el resto del personal no pueden modificarlo.')}</p>
                 <p id="toma-error" class="text-xs text-red-600 hidden"></p>
             </div>`,
             alMostrar: c => {
@@ -484,7 +541,7 @@
                     const error = c.el.querySelector('#toma-error');
                     if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
                     const n = r.cargos.length;
-                    toast(enfermeria
+                    toast(ocultarPrecios
                         ? (n + (n === 1 ? ' estudio cargado a la cuenta.' : ' estudios cargados a la cuenta.'))
                         : (n + (n === 1 ? ' estudio cargado' : ' estudios cargados') + ' · ' + S.formatoMoneda(r.total) + ' en la cuenta.'), 'exito');
                     if (op && typeof op.alGuardar === 'function') op.alGuardar(r);

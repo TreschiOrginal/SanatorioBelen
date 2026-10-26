@@ -370,6 +370,8 @@ const AdminController = {
         const espera = S.colaEspera(s);
         const hosp = S.hospitalizadosDe(s);
         const cirugias = S.cirugiasVisibles(s).slice(0, 4);
+        const listos = espera.filter(t => t.estatus === 'listo_para_medico' || t.pase_por_rol || S.signosCompletos(t.signos_vitales));
+        const avisoGrande = (enConsulta.length || espera.length) ? `<div id="aviso-paciente-listo" class="mb-6 rounded-2xl border-4 border-emerald-500 bg-emerald-50 px-6 py-5 shadow-lg flex flex-wrap items-center gap-4"><i class="fas fa-bell text-4xl text-emerald-600 animate-pulse"></i><div><p class="text-2xl font-extrabold text-emerald-900">${enConsulta.length ? 'Paciente listo en consulta: ' + this.e(enConsulta[0].paciente_nombre) : 'Tiene ' + espera.length + ' paciente(s) esperando'}</p><p class="text-base text-emerald-800">${listos.length ? listos.length + ' con signos vitales listos. ' : ''}Puede pasar a consulta aunque aún no tenga signos vitales; los captura dentro de la nota.</p></div></div>` : '';
 
         const tarjetaConsulta = t => {
             const id = this.e(t.turno_id);
@@ -412,7 +414,7 @@ const AdminController = {
                 </div></div>`;
         };
 
-        return `<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
+        return avisoGrande + `<div class="flex flex-wrap justify-between items-end gap-4 mb-8">
                     <div><h2 class="text-2xl font-extrabold text-slate-800">Mi Consultorio</h2>
                         <p class="text-slate-500"><span class="font-semibold text-slate-700">${this.e(s.nombre)}</span> · ${this.e(s.especialidad)} · Solo se muestran sus pacientes.</p></div>
                     <button type="button" id="btn-consulta-directa" onclick="AdminController.abrirRegistro('medico')" class="bg-cyan-700 hover:bg-cyan-800 text-white font-bold py-3 px-6 rounded-xl shadow-md transition flex items-center gap-2"><i class="fas fa-plus-circle"></i> Nueva Consulta Directa</button>
@@ -622,6 +624,7 @@ const AdminController = {
 
     htmlCirugias: function () {
         const S = BelenStore;
+        if (S.sincronizarPaseAutomaticoQuirofano) S.sincronizarPaseAutomaticoQuirofano();
         const lista = S.cirugiasVisibles(this.sesion);
         const boton = S.puede('programar_cirugia')
             ? `<button type="button" id="btn-programar-cirugia" onclick="AdminController.abrirProgramarCirugia()" class="bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2"><i class="fas fa-plus-circle"></i> + Programar Cirugía</button>` : '';
@@ -637,6 +640,8 @@ const AdminController = {
         return `<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
                     <div><h2 class="text-2xl font-extrabold text-slate-800">Próximas Cirugías</h2><p class="text-slate-500">${this.e(aviso)}</p></div>${boton}</div>
                 ${this.htmlPanelEstupefacientes('QUIROFANO')}
+                ${this.htmlCalendarioQuirofano(lista)}
+                ${this.htmlControlesQuirofano()}
                 <div id="lista-cirugias" class="grid grid-cols-1 xl:grid-cols-2 gap-4">${lista.length ? lista.map(c => this.htmlTarjetaCirugia(c)).join('') : '<div class="xl:col-span-2 text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-kit-medical text-4xl mb-3 text-slate-300"></i><p>No hay cirugías programadas.</p></div>'}</div>`;
     },
 
@@ -811,6 +816,105 @@ const AdminController = {
         BelenUI.aviso('Pre-cuenta de ' + nombre, 'Cuenta actual: ' + monto.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' }), 'info');
     },
 
+    // ================= Parche Sanatorio Belén: costo de consulta, mini-paquetes, devoluciones, quirófano =================
+    abrirCostoConsulta: function (usuarioId) {
+        const S = BelenStore, u = S.USUARIOS[usuarioId];
+        if (!u) return;
+        const actual = u.costo_consulta != null ? u.costo_consulta : (u.especialidad_codigo === 'MEDICINA_GENERAL' ? 400 : 800);
+        BelenUI.modal({
+            titulo: 'Costo de consulta', subtitulo: u.nombre, icono: 'fa-money-bill', ancho: 'sm',
+            html: '<label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Precio de la consulta (MXN)</label><input id="cc-monto" type="number" min="0" step="1" value="' + this.e(actual) + '" class="w-full border border-slate-300 rounded-lg p-3 text-lg"><p id="cc-error" class="text-xs text-red-600 mt-1"></p>',
+            botones: [{ texto: 'Cancelar', estilo: 'secundario' }, { texto: 'Guardar', estilo: 'exito', alPulsar: c => {
+                const r = S.actualizarCostoConsultaMedico(usuarioId, c.el.querySelector('#cc-monto').value, this.sesion);
+                if (r && r.ok === false) { c.el.querySelector('#cc-error').textContent = r.motivo || 'No se pudo guardar.'; return false; }
+                BelenUI.toast('Costo de consulta actualizado.', 'exito'); this.render();
+            } }]
+        });
+    },
+    htmlMiniPaquetesTerminal: function () {
+        const S = BelenStore, e = t => this.e(t);
+        if (!this.operadorFarmacia() || this.modoRetiroAdmin) return '';
+        const paqs = S.listarPaquetes();
+        const crear = S.puede('gestionar_farmacia') ? '<button type="button" onclick="AdminController.abrirEditorPaquete()" class="px-3 py-2 rounded-lg border border-dashed border-teal-500 text-teal-800 text-xs font-bold"><i class="fas fa-plus mr-1"></i>Crear mini-paquete</button>' : '';
+        return '<div id="mini-paquetes-terminal" class="mb-4 flex flex-wrap gap-2 items-center"><span class="text-[11px] font-extrabold uppercase text-slate-400 mr-1">Mini-paquetes:</span>'
+            + paqs.map(p => '<button type="button" onclick="AdminController.meterPaqueteEnCarrito(\'' + e(p.paquete_id) + '\')" class="px-4 py-2 rounded-lg bg-teal-700 hover:bg-teal-800 text-white text-sm font-bold"><i class="fas fa-kit-medical mr-1"></i>' + e(p.nombre) + '</button>').join('')
+            + (paqs.length ? '' : '<span class="text-xs text-slate-400">Sin paquetes (ej. Inyección, Canalización, Paquete Cesárea).</span>') + crear + '</div>';
+    },
+    abrirDevolucionFarmacia: function (movimientoId) {
+        const S = BelenStore;
+        const m = (S.listarMovimientosFarmacia() || []).find(x => x.movimiento_id === movimientoId);
+        if (!m) return;
+        const cls = 'w-full border border-slate-300 rounded-lg p-2 text-sm';
+        BelenUI.modal({
+            titulo: 'Devolver / Cancelar surtido', subtitulo: (m.principio_activo || '') + ' · lote ' + (m.lote || ''), icono: 'fa-rotate-left', tipo: 'alerta', ancho: 'md',
+            html: '<div class="space-y-3 text-left text-sm"><p>Salida de <b>' + this.e(m.cantidad_piezas) + '</b> pzas a ' + this.e(m.paciente_nombre || m.area_paciente || '') + '.</p>'
+                + '<label class="block text-[11px] font-bold text-slate-500 uppercase">Piezas a devolver</label><input id="dev-cant" type="number" min="1" max="' + this.e(m.cantidad_piezas) + '" value="' + this.e(m.cantidad_piezas) + '" class="' + cls + '">'
+                + '<label class="block text-[11px] font-bold text-slate-500 uppercase">Motivo</label><input id="dev-motivo" class="' + cls + '" placeholder="Ej. no se aplicó, cambio de indicación"><p id="dev-error" class="text-xs text-red-600"></p></div>',
+            botones: [{ texto: 'Cancelar', estilo: 'secundario' }, { texto: 'Devolver al inventario', estilo: 'peligro', alPulsar: c => {
+                const r = S.devolverSalidaFarmacia(movimientoId, { cantidad: c.el.querySelector('#dev-cant').value, motivo: c.el.querySelector('#dev-motivo').value }, this.sesion);
+                if (!r.ok) { c.el.querySelector('#dev-error').textContent = r.motivo; return false; }
+                BelenUI.toast('Devolución registrada. Saldo del lote: ' + r.saldo_lote + '.', 'exito'); this.render();
+            } }]
+        });
+    },
+    abrirBajaFarmacia: function (loteId) {
+        const S = BelenStore;
+        const p = S.listarInventarioFarmacia(this.sesion).find(x => x.lote_id === loteId);
+        if (!p) return;
+        const cls = 'w-full border border-slate-300 rounded-lg p-2 text-sm';
+        BelenUI.modal({
+            titulo: 'Dar de baja por caducidad / merma', subtitulo: p.nombre + ' · lote ' + p.lote + ' · cad. ' + S.fechaLegibleISO(p.caducidad), icono: 'fa-trash-can', tipo: 'alerta', ancho: 'md',
+            html: '<div class="space-y-3 text-left text-sm"><p>Existencia actual: <b>' + this.e(p.stock) + '</b> pzas.</p>'
+                + '<label class="block text-[11px] font-bold text-slate-500 uppercase">Motivo</label><select id="baja-motivo" class="' + cls + '"><option value="CADUCIDAD">Caducidad</option><option value="MERMA_ROTURA">Merma / Rotura</option><option value="OTRO">Otro</option></select>'
+                + '<label class="block text-[11px] font-bold text-slate-500 uppercase">Piezas</label><input id="baja-cant" type="number" min="1" max="' + this.e(p.stock) + '" value="1" class="' + cls + '">'
+                + '<label class="block text-[11px] font-bold text-slate-500 uppercase">Detalle (opcional)</label><input id="baja-detalle" class="' + cls + '"><p id="baja-error" class="text-xs text-red-600"></p></div>',
+            botones: [{ texto: 'Cancelar', estilo: 'secundario' }, { texto: 'Dar de baja', estilo: 'peligro', alPulsar: c => {
+                const r = S.darBajaInsumoFarmacia(loteId, { motivo: c.el.querySelector('#baja-motivo').value, cantidad: c.el.querySelector('#baja-cant').value, detalle: c.el.querySelector('#baja-detalle').value }, this.sesion);
+                if (!r.ok) { c.el.querySelector('#baja-error').textContent = r.motivo; return false; }
+                BelenUI.toast('Baja registrada. Saldo del lote: ' + r.saldo_lote + '.', 'exito'); this.render();
+            } }]
+        });
+    },
+    htmlCalendarioQuirofano: function (lista) {
+        const S = BelenStore, e = t => this.e(t);
+        const fichas = (lista || []).map(c => (S.fichaCirugia ? S.fichaCirugia(c) : c)).filter(Boolean);
+        if (!fichas.length) return '';
+        const dias = {};
+        fichas.forEach(f => { const k = f.fecha || String(f.fecha_hora || '').slice(0, 10) || 'Sin fecha'; (dias[k] = dias[k] || []).push(f); });
+        const claves = Object.keys(dias).sort().slice(0, 7);
+        return '<div id="calendario-quirofano" class="mb-6 bg-white rounded-2xl border border-violet-200 shadow-sm p-4 overflow-x-auto"><h3 class="text-sm font-extrabold uppercase text-violet-700 mb-3"><i class="fas fa-calendar-days mr-1"></i>Calendario de quirófano</h3><div class="grid gap-3" style="grid-template-columns:repeat(' + claves.length + ',minmax(180px,1fr))">'
+            + claves.map(k => '<div class="border border-slate-200 rounded-xl p-2 bg-slate-50"><p class="text-xs font-extrabold text-slate-700 mb-2">' + e(dias[k][0].fecha_texto || k) + '</p>'
+                + dias[k].sort((a, b) => String(a.hora_inicio).localeCompare(String(b.hora_inicio))).map(f => '<div class="mb-2 rounded-lg px-2 py-1 text-[11px] ' + (String(f.sala || f.sala_codigo || '').indexOf('GRANDE') >= 0 ? 'bg-violet-100 border-l-4 border-violet-500' : 'bg-cyan-100 border-l-4 border-cyan-500') + '"><b>' + e(f.hora_inicio || '') + (f.hora_fin ? '–' + e(f.hora_fin) : '') + '</b> · ' + e(f.sala_nombre || '') + '<br>' + e(f.procedimiento || '') + '<br><span class="text-slate-600">' + e(f.paciente_nombre || '') + ' · ' + e(f.medico_cirujano || '') + '</span></div>').join('') + '</div>').join('')
+            + '</div></div>';
+    },
+    htmlControlesQuirofano: function () {
+        const S = BelenStore, e = t => this.e(t);
+        if (!S.listarInternamientos) return '';
+        const ints = S.listarInternamientos().filter(i => i && i.estatus === 'activo' && (i.ubicacion === 'EN_TRANSITO_QUIROFANO' || i.ubicacion === 'QUIROFANO' || i.modalidad === S.MODALIDAD_AMBULATORIO_QX));
+        if (!ints.length) return '';
+        const filas = ints.map(i => {
+            const t = S.obtenerTurno(i.turno_id) || {};
+            const id = e(i.turno_id);
+            const recibir = ['REC-1', 'REC-2', 'REC-GINECO'].map(cama => '<button type="button" onclick="AdminController.accionQx(\'recibir\',\'' + id + '\',\'' + cama + '\')" class="px-3 py-2 rounded-lg bg-violet-700 text-white text-xs font-bold">Recibir · ' + cama + '</button>').join('');
+            return '<div class="flex flex-wrap items-center gap-2 border-t border-slate-100 py-2"><span class="font-bold text-slate-800 mr-2">' + e(t.paciente_nombre || '') + '</span><span class="text-xs text-slate-500 mr-2">' + e(i.ubicacion || '') + (i.cama ? ' · ' + e(i.cama) : '') + '</span>'
+                + recibir
+                + '<button type="button" onclick="AdminController.accionQx(\'piso\',\'' + id + '\')" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold">Regresar a hospitalización</button>'
+                + '<button type="button" onclick="AdminController.accionQx(\'alta\',\'' + id + '\')" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">Alta ambulatoria Qx</button></div>';
+        }).join('');
+        return '<div id="controles-quirofano" class="mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-4"><h3 class="text-sm font-extrabold uppercase text-slate-600 mb-2"><i class="fas fa-bed-pulse mr-1"></i>Pacientes en flujo quirúrgico</h3>' + filas + '</div>';
+    },
+    accionQx: function (accion, turnoId, cama) {
+        const S = BelenStore;
+        let r;
+        if (accion === 'recibir') r = S.recibirEnQuirofano(turnoId, cama, this.sesion);
+        else if (accion === 'piso') {
+            const destino = window.prompt('Cama de piso destino (vacío = cama de origen):', '') || '';
+            r = S.regresarAHospitalizacion(turnoId, destino, this.sesion);
+        } else if (accion === 'alta') r = S.altaAmbulatoriaQx ? S.altaAmbulatoriaQx(turnoId, this.sesion) : { ok: false, motivo: 'Función no disponible.' };
+        if (!r || !r.ok) { BelenUI.toast((r && r.motivo) || 'No se pudo completar la acción.', 'alerta'); return; }
+        BelenUI.toast('Listo.', 'exito'); this.render();
+    },
+
     htmlCuentasPorCobrar: function () {
         const S = BelenStore, e = t => this.e(t);
         const filas = S.cuentasPorCobrar(this.sesion).map(t => S.fichaCuenta(t));
@@ -819,7 +923,7 @@ const AdminController = {
             return `<button type="button" data-turno="${e(f.turno_id)}" onclick="AdminController.abrirDesgloseCuenta('${e(f.turno_id)}')"
                 class="w-full text-left bg-white border border-amber-200 hover:border-amber-400 hover:shadow-md rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 transition">
                 <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2"><h4 class="text-base font-extrabold text-slate-900">${e(f.nombre)}</h4>${this.badgeEstatus({ estatus: f.estatus })}</div>
+                    <div class="flex flex-wrap items-center gap-2"><h4 class="text-base font-extrabold text-slate-900">${e(f.nombre)}</h4>${this.badgeEstatus({ estatus: f.estatus })}${(S.obtenerTurno(f.turno_id) || {}).liberado_a_caja && f.estatus === 'en_consulta' ? '<span class="text-[10px] font-bold uppercase bg-cyan-100 text-cyan-800 rounded px-2 py-0.5">Pre-cobro · médico sigue escribiendo nota</span>' : ''}</div>
                     <p class="text-xs text-slate-500 mt-0.5">${e(origen)}${f.cama ? ' · ' + e(f.cama) : ''} · ${e(f.medico_nombre)}</p>
                     ${f.diagnostico ? `<p class="text-xs text-slate-600 mt-1">${e(f.diagnostico)}</p>` : ''}
                 </div>
@@ -1222,8 +1326,8 @@ const AdminController = {
             <td class="px-3 py-3 font-mono text-xs">${e(p.lote)}</td>
             <td class="px-3 py-3">${e(S.fechaLegibleISO(p.caducidad))}${p.alerta && p.dias_caducidad !== null && p.dias_caducidad < 30 ? ' <i class="fas fa-triangle-exclamation text-red-600"></i>' : ''}</td>
             <td class="px-3 py-3"><span class="font-bold">${e(stock.piezas)}</span>${p.stock < 5 ? ' <i class="fas fa-triangle-exclamation text-red-600"></i>' : ''}<span class="block text-[11px] text-slate-500">${e(stock.cajas)}</span></td>
-            <td class="px-3 py-3 font-bold">${e(S.formatoMoneda(p.precio_unitario))}${p.aplica_iva ? '<span class="block text-[10px] font-normal text-amber-700">Grava 16% al facturar</span>' : '<span class="block text-[10px] font-normal text-slate-400">Tasa 0%</span>'}</td>
-            <td class="px-3 py-3"><button type="button" onclick="AdminController.abrirIngresoFarmacia('${e(p.lote_id)}')" class="text-xs font-bold text-teal-800 hover:underline">Editar</button></td></tr>`;
+            <td class="px-3 py-3 font-bold">${this.rolActual === 'medico' ? '—' : e(S.formatoMoneda(p.precio_unitario))}${this.rolActual === 'medico' ? '' : p.aplica_iva ? '<span class="block text-[10px] font-normal text-amber-700">Grava 16% al facturar</span>' : '<span class="block text-[10px] font-normal text-slate-400">Tasa 0%</span>'}</td>
+            <td class="px-3 py-3"><button type="button" onclick="AdminController.abrirIngresoFarmacia('${e(p.lote_id)}')" class="text-xs font-bold text-teal-800 hover:underline">Editar</button>${S.puedeDevolverFarmacia && S.puedeDevolverFarmacia(this.sesion) && p.stock > 0 ? `<button type="button" onclick="AdminController.abrirBajaFarmacia('${e(p.lote_id)}')" class="block mt-1 text-xs font-bold text-red-700 hover:underline whitespace-nowrap">Dar de baja por caducidad / merma</button>` : ''}</td></tr>`;
         };
         return `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
             <table class="w-full text-sm text-left" id="tabla-farmacia">
@@ -1566,6 +1670,7 @@ const AdminController = {
             <aside class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 max-h-[70vh] overflow-y-auto">${retiro}${externoBtn}${bloques}</aside>
             <section class="lg:col-span-3 bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
                 ${banner}
+                ${this.htmlMiniPaquetesTerminal()}
                 <label for="busca-folio-receta" class="block text-[11px] font-bold text-slate-500 uppercase mb-1">🔍 Buscar / Surtir por Folio de Receta</label>
                 <div class="flex gap-2 mb-2">
                     <input id="busca-folio-receta" value="${e(this.folioBuscadoTexto || '')}" autocomplete="off" placeholder="SB-REC-00001" class="flex-1 border border-amber-400 rounded-lg p-2.5 text-sm font-mono uppercase" onkeydown="if(event.key==='Enter'){event.preventDefault();AdminController.buscarFolioReceta();}">
@@ -2458,11 +2563,12 @@ const AdminController = {
                 ? `<span class="block text-[11px] text-slate-600">${e(m.tipo_respaldo || '')}${m.folio_receta ? ' · ' + e(m.folio_receta) : ''}${m.medico_prescriptor ? ' · ' + e(m.medico_prescriptor) : ''}${m.cedula_prescriptor ? ' · ' + e(m.cedula_prescriptor) : ''}${m.estatus_receta ? ' · ' + e(m.estatus_receta) : ''}</span>` : '';
             return `<tr class="border-t border-slate-100">
                 <td class="px-3 py-2 whitespace-nowrap">${e(S.fechaHoraLegible(m.fecha_hora))}</td>
-                <td class="px-3 py-2 font-bold ${m.tipo === 'ENTRADA' ? 'text-teal-800' : 'text-rose-800'}">${m.tipo === 'ENTRADA' ? 'Entrada' : 'Salida'}</td>
+                <td class="px-3 py-2 font-bold ${m.tipo === 'ENTRADA' ? 'text-teal-800' : 'text-rose-800'}">${m.tipo === 'ENTRADA' ? 'Entrada' : (m.tipo === 'DEVOLUCION' ? 'Devolución' : (m.tipo === 'BAJA' ? 'Baja' : 'Salida'))}</td>
                 <td class="px-3 py-2">${e(m.nombre)}<span class="block text-[11px] text-slate-400">${e(m.cedula_profesional || 'Sin cédula')}</span></td>
                 <td class="px-3 py-2">${e(S.presentacionMovimiento(m) || m.principio_activo)}${m.nombre_comercial ? '<span class="block text-[11px] text-slate-400">' + e(m.nombre_comercial) + '</span>' : ''}<span class="block text-[11px] text-slate-400">${e(S.nombreFraccionCofepris(m.fraccion_cofepris))}${S.awareDeMovimiento(m) ? ' · ' + e((S.CLASIFICACION_AWARE.find(a => a.codigo === S.awareDeMovimiento(m)) || {}).nombre || S.awareDeMovimiento(m)) : ''} · lote ${e(m.lote)}</span></td>
                 <td class="px-3 py-2">${e(piezas)}</td>
-                <td class="px-3 py-2">${e(destino)}${contacto}${respaldo}</td>
+                <td class="px-3 py-2">${e(destino)}${contacto}${respaldo}${m.saldo_lote != null && m.saldo_lote !== '' ? '<span class="block text-[11px] text-slate-500">Saldo lote: ' + e(m.saldo_lote) + '</span>' : ''}${m.motivo ? '<span class="block text-[11px] text-amber-700">' + e(m.motivo) + '</span>' : ''}</td>
+                <td class="px-3 py-2">${m.tipo === 'SALIDA' && S.puedeDevolverFarmacia && S.puedeDevolverFarmacia(this.sesion) ? `<button type="button" onclick="AdminController.abrirDevolucionFarmacia('${e(m.movimiento_id)}')" class="text-xs font-bold text-rose-700 hover:underline whitespace-nowrap">Devolver / Cancelar surtido</button>` : ''}</td>
             </tr>`;
         };
         return anios.map(anio => {
@@ -2473,7 +2579,7 @@ const AdminController = {
                 const semanas = mes.semanas.map(sem => {
                     const claveSem = claveMes + '-' + sem.semana;
                     const semAbierta = !!this.bitacoraAbiertas[claveSem];
-                    const tabla = semAbierta ? `<table class="w-full text-xs mt-2"><thead class="text-[10px] uppercase text-slate-400"><tr><th class="px-3 py-1 text-left">Fecha</th><th class="px-3 py-1 text-left">Tipo</th><th class="px-3 py-1 text-left">Personal</th><th class="px-3 py-1 text-left">Producto</th><th class="px-3 py-1 text-left">Piezas</th><th class="px-3 py-1 text-left">Destino</th></tr></thead><tbody>${sem.movimientos.map(fila).join('')}</tbody></table>` : '';
+                    const tabla = semAbierta ? `<table class="w-full text-xs mt-2"><thead class="text-[10px] uppercase text-slate-400"><tr><th class="px-3 py-1 text-left">Fecha</th><th class="px-3 py-1 text-left">Tipo</th><th class="px-3 py-1 text-left">Personal</th><th class="px-3 py-1 text-left">Producto</th><th class="px-3 py-1 text-left">Piezas</th><th class="px-3 py-1 text-left">Destino</th><th class="px-3 py-1 text-left">Acción</th></tr></thead><tbody>${sem.movimientos.map(fila).join('')}</tbody></table>` : '';
                     return `<div class="ml-4 mt-2"><button type="button" onclick="AdminController.alternarCarpetaBitacora('${claveSem}')" class="text-left text-sm font-bold text-slate-700"><i class="fas fa-folder${semAbierta ? '-open' : ''} text-amber-500 mr-2"></i>${e(sem.etiqueta)} <span class="text-[11px] font-medium text-slate-400">${sem.movimientos.length}</span></button>${tabla}</div>`;
                 }).join('');
                 return `<div class="ml-3 mt-2"><button type="button" onclick="AdminController.alternarCarpetaBitacora('${claveMes}')" class="text-left font-extrabold text-slate-800"><i class="fas fa-folder${mesAbierto ? '-open' : ''} text-teal-600 mr-2"></i>${e(mes.nombre)}</button>${mesAbierto ? semanas : ''}</div>`;
@@ -2854,7 +2960,7 @@ const AdminController = {
             <td class="px-3 py-3 font-semibold text-slate-900">${e(est.nombre)}</td>
             <td class="px-3 py-3 text-xs">${e(S.nombreTipoEstudio(est.categoria))}</td>
             <td class="px-3 py-3 text-xs">${(est.categoria === 'LABORATORIO' || est.categoria === 'PATOLOGIA') ? e(est.tubo_muestra || '—') : '—'}</td>
-            <td class="px-3 py-3 font-bold">${e(S.formatoMoneda(est.precio_unitario))}${est.aplica_iva ? '<span class="block text-[10px] font-normal text-amber-700">Grava 16% al facturar</span>' : '<span class="block text-[10px] font-normal text-slate-400">Tasa 0%</span>'}</td>
+            <td class="px-3 py-3 font-bold">${this.rolActual === 'medico' ? '—' : e(S.formatoMoneda(est.precio_unitario))}${this.rolActual === 'medico' ? '' : est.aplica_iva ? '<span class="block text-[10px] font-normal text-amber-700">Grava 16% al facturar</span>' : '<span class="block text-[10px] font-normal text-slate-400">Tasa 0%</span>'}</td>
             <td class="px-3 py-3 text-right whitespace-nowrap">
                 <button type="button" onclick="AdminController.abrirEditorEstudio('${e(est.estudio_id)}')" class="text-xs font-bold text-cyan-800 px-2 py-1">Editar</button>
                 <button type="button" onclick="AdminController.confirmarEliminarEstudio('${e(est.estudio_id)}')" class="text-xs font-bold text-red-600 px-2 py-1">Eliminar</button>
@@ -3112,6 +3218,7 @@ const AdminController = {
                 ${S.MODULOS.map(m => `<td class="px-4 py-3 text-center">${interruptor(u, m)}</td>`).join('')}
                 <td class="px-4 py-3"><div class="flex flex-wrap gap-1 justify-end">
                     ${btn('abrirEditarPersonal', 'Editar')}
+                    ${u.rol === 'medico' && (this.rolActual === 'admin' || this.rolActual === 'administrador') ? btn('abrirCostoConsulta', 'Consulta: ' + S.formatoMoneda(u.costo_consulta != null ? u.costo_consulta : (u.especialidad_codigo === 'MEDICINA_GENERAL' ? 400 : 800)), 'text-emerald-700') : ''}
                     ${btn('abrirPapeleria', 'Carpeta / Papelería (' + docs + ')')}
                     ${u.rol === 'admin' ? '' : btn('abrirPermisosAvanzados', 'Permisos avanzados')}
                     ${u.rol === 'admin' ? '<span class="text-[11px] text-slate-400 px-1">Acceso total</span>' : (u.activo === false ? btn('confirmarReactivar', 'Reactivar') + btn('confirmarEliminarPersonal', 'Eliminar', 'text-red-600') : btn('confirmarDesactivar', 'Desactivar', 'text-red-600'))}
@@ -3620,7 +3727,6 @@ const AdminController = {
             const m = S.buscarPacientePorIdentidad(n, fn.value);
             c.coincidencia = m;
             if (m) {
-                sexo.value = m.sexo || ''; sexo.disabled = true;
                 const visitas = S.visitasDePaciente(m.paciente_id).length;
                 mostrarEstado(`<div id="reg-badge-encontrado" class="flex items-center gap-3 bg-emerald-50 border border-emerald-300 rounded-lg px-4 py-3">
                     <i class="fas fa-folder-open text-emerald-600 text-xl"></i>
@@ -3638,18 +3744,29 @@ const AdminController = {
         };
 
         const sugerencias = () => {
-            const caja = q('#reg-sugerencias');
-            if (!caja) return;
+            // Tirita discreta: nunca abre popups, no mueve el foco ni autocompleta. Solo actúa si el usuario hace clic.
+            let caja = q('#sugerencias-homonimos-discretas');
+            if (!caja) {
+                const ancla = q('#reg-materno') || q('#reg-paterno') || q('#reg-nombres');
+                if (!ancla) return;
+                caja = document.createElement('div');
+                caja.id = 'sugerencias-homonimos-discretas';
+                caja.className = 'mt-1 flex flex-col gap-1 text-xs';
+                (ancla.closest('div') || ancla.parentNode).appendChild(caja);
+                const vieja = q('#reg-sugerencias'); if (vieja) vieja.innerHTML = '';
+            }
             const idn = identidad();
-            const res = c.coincidencia ? [] : S.buscarPacientesPorNombre(idn.nombre_completo, 5);
-            if (!res.length || idn.nombre_completo.length < 2) { caja.innerHTML = ''; return; }
-            caja.innerHTML = res.map(p => `<button type="button" data-sug="${this.e(p.paciente_id)}" class="w-full text-left px-3 py-2 hover:bg-cyan-50 border border-slate-200 rounded-lg">
-                <span class="block text-sm font-semibold text-slate-800">${this.e(p.nombre_completo)}</span>
-                <span class="block text-[11px] text-slate-500">${this.e(S.fechaLegibleISO(p.fecha_nacimiento))} · ${this.e(p.paciente_id)}</span></button>`).join('');
-            caja.querySelectorAll('[data-sug]').forEach(b => b.addEventListener('mousedown', ev => {
+            if (c.coincidencia || idn.nombre_completo.length < 3) { caja.innerHTML = ''; return; }
+            const res = (S.buscarPacientes ? S.buscarPacientes(idn.nombre_completo, 4) : S.buscarPacientesPorNombre(idn.nombre_completo, 4)) || [];
+            caja.innerHTML = res.length ? '<p class="text-[11px] text-slate-500"><i class="fas fa-circle-info mr-1"></i>Posibles expedientes existentes (opcional):</p>' + res.map(p => `<div class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+                <span class="truncate text-slate-700"><b>${this.e(p.nombre_completo)}</b> · ${this.e(S.fechaLegibleISO(p.fecha_nacimiento))} · ${this.e(p.paciente_id)}</span>
+                <button type="button" tabindex="-1" data-usar-exp="${this.e(p.paciente_id)}" class="shrink-0 text-[11px] font-bold text-cyan-700 hover:underline">Usar expediente existente</button></div>`).join('') : '';
+            caja.querySelectorAll('[data-usar-exp]').forEach(b => b.addEventListener('click', ev => {
                 ev.preventDefault();
-                const p = S.buscarPacientePorId(b.getAttribute('data-sug'));
+                const p = S.buscarPacientePorId(b.getAttribute('data-usar-exp'));
+                if (!p) return;
                 this.llenarIdentidad(c.el, 'reg', p);
+                if (p.sexo) sexo.value = p.sexo;
                 caja.innerHTML = ''; evaluar();
             }));
         };

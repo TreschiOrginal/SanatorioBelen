@@ -85,6 +85,8 @@
         body.modo-enfermeria #btn-datos-prueba, body.modo-enfermeria #btn-imprimir-todo, body.modo-enfermeria #btn-descartar-internamiento,
         body.modo-enfermeria #btn-finalizar-expediente, body.modo-enfermeria #btn-historial-visitas, body.modo-enfermeria #indicador-pendientes,
         body.modo-enfermeria #btn-cargar-cuenta { display: none !important; }
+        #visor-hospitalizado .flex-wrap > button { font-size: .875rem !important; padding: .7rem 1.1rem !important; }
+        body.rol-medico .precio-medico, body.rol-medico #btn-cargar-cuenta { display: none !important; }
         .solo-admin-demo { display: none; }
         body[data-rol="admin"] .solo-admin-demo { display: inline-block; }
 
@@ -145,6 +147,7 @@
                     <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">FR</p><p id="sv-fr" class="text-xs font-bold text-slate-800">--</p></div>
                     <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">Temp</p><p id="sv-temp" class="text-xs font-bold text-slate-800">--</p></div>
                     <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">SpO2</p><p id="sv-spo2" class="text-xs font-bold text-slate-800">--</p></div>
+                    <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">Glucosa (Dxtx)</p><p id="sv-gluc" class="text-xs font-bold text-slate-800">--</p></div>
                 </div>
                 <!-- Candado de signos vitales: sin TA, FC, FR, Temp y SpO2 no se puede cerrar la Nota Médica -->
                 <div id="alerta-signos" class="hidden mt-2 items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-2.5 py-2 text-[11px] font-semibold leading-snug">
@@ -487,7 +490,7 @@
                     <textarea id="val-analisis" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Análisis del caso, integración diagnóstica..."></textarea>
                     <div id="bloques-receta" class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
                         <section class="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
-                            <h3 class="text-sm font-extrabold text-rose-950">💉 Aplicar en Clínica / Urgencias</h3>
+                            <h3 class="text-sm font-extrabold text-rose-950">💉 Aplicación en Clínica</h3>
                             <p class="text-[11px] text-rose-800 mt-1 mb-3">Solo medicamentos del inventario. Estas órdenes sí van a la cola de pendientes de surtir de Farmacia.</p>
                             <input id="busca-aplica" type="search" autocomplete="off" placeholder="Buscar medicamento del inventario" class="w-full bg-white border border-rose-200 rounded-xl p-2.5 text-sm outline-none focus:border-rose-500">
                             <div id="lista-aplica" class="mt-2 flex flex-col gap-1"></div>
@@ -817,6 +820,10 @@
                     <button type="button" id="btn-nota-postoperatoria" onclick="abrirNotaPostoperatoriaVisor()" class="hidden bg-violet-700 hover:bg-violet-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-notes-medical"></i> Nota Post-Operatoria</button>
                     <button type="button" id="btn-cambiar-area" onclick="abrirCambiarAreaVisor()" class="hidden bg-white border border-indigo-300 text-indigo-800 hover:bg-indigo-50 text-xs font-bold px-3.5 py-2 rounded-lg transition items-center gap-1.5">🔄 Cambiar Área de Estancia</button>
                     <button type="button" id="btn-dar-alta-egreso" onclick="abrirNotaEgreso()" class="hidden bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-door-open"></i> Dar de Alta (Egreso)</button>
+                    <button type="button" onclick="abrirHojaEnfermeria()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg"><i class="fas fa-notes-medical mr-1"></i> Hoja de Enfermería</button>
+                    <button type="button" onclick="abrirHojaAnestesia('pre')" class="bg-white border border-violet-300 text-violet-700 font-bold rounded-lg">Preanestésica</button>
+                    <button type="button" onclick="abrirHojaAnestesia('trans')" class="bg-white border border-violet-300 text-violet-700 font-bold rounded-lg">Transanestésica</button>
+                    <button type="button" onclick="abrirHojaAnestesia('post')" class="bg-white border border-violet-300 text-violet-700 font-bold rounded-lg">Postanestésica</button>
                     <button type="button" id="btn-imprimir-documento" onclick="imprimirDocumentoVisor()" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-print"></i> Imprimir este documento</button>
                 </div>
             </div>
@@ -842,9 +849,12 @@
     <div id="modal-destino" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm transition-opacity opacity-0 pointer-events-none print:hidden p-4">
         <div class="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6 text-center transform scale-95 transition-transform" id="modal-content">
             <div class="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-emerald-600 text-2xl mx-auto mb-4"><i class="fas fa-database"></i></div>
-            <h3 class="text-xl font-extrabold text-slate-900 mb-1">Destino del Paciente</h3>
+            <h3 class="text-xl font-extrabold text-slate-900 mb-1">Terminar Consulta</h3>
             <p class="text-sm text-slate-500 mb-6">El alta imprime la nota y termina. Observación u Hospitalización continúan con el papeleo, sin imprimir todavía.</p>
             <div class="space-y-3">
+                <button type="button" onclick="liberarPacienteACaja()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-extrabold py-4 text-base rounded-xl transition flex justify-between px-6 items-center">
+                    <span><i class="fas fa-cash-register mr-2"></i> Liberar paciente a Caja (Seguir escribiendo nota)</span> <i class="fas fa-pen"></i>
+                </button>
                 <button type="button" onclick="finalizarProceso('Alta')" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-3 rounded-xl transition flex justify-between px-6 items-center">
                     <span><i class="fas fa-door-open mr-2"></i> Alta Médica (Imprimir Nota)</span> <i class="fas fa-print text-slate-400"></i>
                 </button>
@@ -1114,7 +1124,7 @@
                 <td colspan="3" style="border:1px solid #000;padding:3px 6px;"><strong>Médico tratante:</strong> <span id="print-ind-tratante"></span></td>
             </tr>
             <tr>
-                <td style="border:1px solid #000;padding:3px 6px;width:33%;"><strong>Urgencias:</strong> <span id="print-ind-urg">☐</span></td>
+                <td style="border:1px solid #000;padding:3px 6px;width:33%;"><strong>Sala de Observación:</strong> <span id="print-ind-urg">☐</span></td>
                 <td style="border:1px solid #000;padding:3px 6px;width:34%;"><strong>Hospital:</strong> <span id="print-ind-hosp">☐</span> <span class="out-cama">Por asignar por Enfermería</span></td>
                 <td style="border:1px solid #000;padding:3px 6px;width:33%;"><strong>Cunero:</strong> <span id="print-ind-cunero">☐</span></td>
             </tr>
@@ -1325,6 +1335,7 @@
             $('sv-fr').innerText = v(sv.frecuencia_respiratoria);
             $('sv-temp').innerText = v(sv.temperatura_c);
             $('sv-spo2').innerText = sv.spo2_porcentaje ? sv.spo2_porcentaje + '%' : '--';
+            if ($('sv-gluc')) $('sv-gluc').innerText = sv.glucemia ? sv.glucemia + ' mg/dL' : '--';
             [['val-peso', sv.peso_kg], ['val-talla', sv.talla_m]].forEach(([id, valor]) => {
                 if (valor && (forzarAntropometria || !$(id).value)) $(id).value = valor;
             });
@@ -2641,7 +2652,7 @@
                     htmls: () => [htmlNotaEgreso(eg)]
                 }], { directo: true });
             }
-            if (ACCESO_VISOR && ACCESO_VISOR.puede_ver_cuenta) {
+            if (ACCESO_VISOR && ACCESO_VISOR.puede_ver_cuenta && !(SESION && SESION.rol === 'medico')) {
                 const enfermeraCuenta = SESION && S.esEnfermeria(SESION.rol);
                 const listaCuenta = enfermeraCuenta ? (INTERNAMIENTO.cargos || []).filter(c => c.cargado_por_id === SESION.usuario_id) : (INTERNAMIENTO.cargos || []);
                 const nCargos = listaCuenta.length;
@@ -3151,7 +3162,7 @@
 
         function initApp() {
             // --- Sesión, turno y permisos ---
-            SESION = BelenStore.sesion();
+            SESION = BelenStore.sesion(); if (SESION && SESION.rol) document.body.classList.add("rol-" + SESION.rol);
             if (!SESION) { window.location.replace('login.html'); return; }
             const params = new URLSearchParams(window.location.search);
             if (params.get('modo') === 'hospitalizado') { initVisorHospitalizado(params); enlazarAlertasCofepris(); return; }   // visor longitudinal de hospitalización
@@ -4808,7 +4819,68 @@
             { codigo: 'ENDOCRINOLOGIA', nombre: 'Endocrinología', medicos: [{ codigo: 'EN-01', nombre: 'Dra. Daniela Quiroz Hidalgo' }, { codigo: 'EN-02', nombre: 'Dr. Alberto Lugo Mendoza' }] }
         ];
 
+
+        // ---------- Liberar a caja: el paciente paga mientras el médico termina la nota ----------
+        function liberarPacienteACaja() {
+            if (!TURNO) { BelenUI.toast('No hay consulta activa.', 'alerta'); return; }
+            persistirDatosNota();
+            const r = BelenStore.liberarConsultaACaja(TURNO.turno_id, SESION);
+            if (!r || r.ok === false) { BelenUI.toast((r && r.motivo) || 'No se pudo liberar a caja.', 'error'); return; }
+            document.getElementById('modal-destino').classList.add('opacity-0', 'pointer-events-none');
+            BelenUI.toast('Paciente liberado a Caja. Puede seguir escribiendo la nota.', 'exito');
+        }
+        // ---------- Hoja de Enfermería (kardex, signos por turno, balance) ----------
+        function turnoVisor() { return INTERNAMIENTO ? (INTERNAMIENTO.turno_id || INTERNAMIENTO.internamiento_id) : (TURNO && TURNO.turno_id); }
+        function abrirHojaEnfermeria() {
+            const S = BelenStore, tid = turnoVisor(); if (!tid) return;
+            const h = S.obtenerHojaEnfermeria(tid);
+            const ult = (h.signos || []).slice(-5).map(x => '<li>' + (x.registrado_en || '').slice(0, 16).replace('T', ' ') + ' · ' + (x.turno || '') + ' · ' + (x.texto || '') + '</li>').join('') || '<li class="text-slate-400">Sin registros</li>';
+            const inp = (id, ph) => '<input id="' + id + '" placeholder="' + ph + '" class="w-full border border-slate-200 rounded-lg p-2 text-sm mb-2">';
+            BelenUI.modal({ titulo: 'Hoja de Enfermería', icono: 'fa-notes-medical', ancho: 'lg',
+                html: '<p class="text-xs mb-2">Ingresos: <b>' + h.balance.total_ingresos + ' ml</b> · Egresos: <b>' + h.balance.total_egresos + ' ml</b> · Balance: <b>' + h.balance.balance + ' ml</b></p><ul class="text-xs mb-3 space-y-1">' + ult + '</ul>' +
+                    '<select id="he-turno" class="w-full border border-slate-200 rounded-lg p-2 text-sm mb-2">' + (S.TURNOS_ENFERMERIA || ['Matutino', 'Vespertino', 'Nocturno']).map(t => '<option>' + (t.nombre || t) + '</option>').join('') + '</select>' +
+                    inp('he-signos', 'Signos vitales (TA, FC, FR, Temp, SpO2)') + inp('he-kardex', 'Medicamento administrado (kardex)') + inp('he-ing', 'Ingresos (ml)') + inp('he-egr', 'Egresos (ml)') + inp('he-obs', 'Observaciones'),
+                botones: [{ texto: 'Cancelar' }, { texto: 'Guardar', primario: true, accion: () => {
+                    const v = id => (document.getElementById(id).value || '').trim(), t = v('he-turno');
+                    const r = S.guardarHojaEnfermeria(tid, { kardex: v('he-kardex') ? [{ turno: t, texto: v('he-kardex') }] : [], signos: v('he-signos') ? [{ turno: t, texto: v('he-signos') }] : [],
+                        balance: { ingresos: v('he-ing') ? [{ turno: t, ml: Number(v('he-ing')) }] : [], egresos: v('he-egr') ? [{ turno: t, ml: Number(v('he-egr')) }] : [] }, observaciones: v('he-obs') }, SESION);
+                    if (!r || r.ok === false) { BelenUI.toast((r && r.motivo) || 'No se pudo guardar.', 'error'); return false; }
+                    BelenUI.toast('Hoja de Enfermería guardada.', 'exito');
+                } }] });
+        }
+        // ---------- Anestesia: pre / trans / post (con candado Fracción I) ----------
+        function abrirHojaAnestesia(tipo) {
+            const S = BelenStore, tid = turnoVisor(); if (!tid) return;
+            const pend = tipo === 'post' && S.ampulasFraccionIPendientes ? (S.ampulasFraccionIPendientes(tid) || []) : [];
+            const titulo = tipo === 'pre' ? 'Nota Preanestésica' : (tipo === 'trans' ? 'Registro Transanestésico' : 'Nota Postanestésica');
+            const fx = pend.map((u, k) => '<div class="border border-rose-200 bg-rose-50 rounded-lg p-2 mb-2 text-xs"><b>Fracción I · ' + (u.producto || u.nombre || u.uso_id) + '</b>' +
+                '<input id="fx-lote-' + k + '" placeholder="Lote" value="' + (u.lote || '') + '" class="w-full border rounded p-1 mt-1"><input id="fx-dosis-' + k + '" placeholder="Dosis administrada" class="w-full border rounded p-1 mt-1"><input id="fx-merma-' + k + '" placeholder="Merma / desecho" class="w-full border rounded p-1 mt-1"></div>').join('');
+            BelenUI.modal({ titulo: titulo, icono: 'fa-syringe', ancho: 'lg',
+                html: fx + '<textarea id="an-texto" rows="6" placeholder="Valoración / registro / plan" class="w-full border border-slate-200 rounded-lg p-2 text-sm"></textarea>',
+                botones: [{ texto: 'Cancelar' }, { texto: 'Guardar', primario: true, accion: () => {
+                    const txt = document.getElementById('an-texto').value.trim();
+                    const e = { valoracion: txt, plan: txt, texto: txt };
+                    let r;
+                    if (tipo === 'pre') r = S.guardarNotaPreanestesica(tid, e, SESION);
+                    else if (tipo === 'trans') r = S.guardarRegistroTransanestesico(tid, e, SESION);
+                    else {
+                        e.fraccion_i = pend.map((u, k) => ({ uso_id: u.uso_id, lote: document.getElementById('fx-lote-' + k).value.trim(), dosis_administrada: document.getElementById('fx-dosis-' + k).value.trim(), merma: document.getElementById('fx-merma-' + k).value.trim() }));
+                        r = S.guardarNotaPostanestesica(tid, e, SESION);
+                    }
+                    if (!r || r.ok === false) { BelenUI.toast((r && (r.motivo || (r.errores && Object.values(r.errores)[0]))) || 'No se pudo guardar.', 'error'); return false; }
+                    BelenUI.toast(titulo + ' guardada.', 'exito');
+                } }] });
+        }
         function poblarEspecialidadesInterconsulta() {
+            try {
+                const reales = (BelenStore.listarUsuarios() || []).filter(u => u.rol === 'medico' && u.activo !== false);
+                reales.forEach(u => {
+                    const cod = String(u.especialidad || 'MEDICINA_GENERAL').toUpperCase();
+                    let esp = CATALOGO_INTERCONSULTA.find(e => e.codigo === cod);
+                    if (!esp) { esp = { codigo: cod, nombre: u.especialidad_nombre || u.especialidad || 'Medicina General', medicos: [] }; CATALOGO_INTERCONSULTA.push(esp); }
+                    if (!esp.medicos.some(m => m.codigo === (u.usuario_id || u.id))) esp.medicos.unshift({ codigo: u.usuario_id || u.id, nombre: u.nombre });
+                });
+            } catch (e) { console.warn(e); }
             document.getElementById('ind-interconsulta-especialidad').innerHTML =
                 '<option value="">Seleccione una especialidad...</option>' +
                 CATALOGO_INTERCONSULTA.map(e => `<option value="${e.codigo}">${e.nombre}</option>`).join('');
@@ -5033,7 +5105,7 @@
                 BelenStore.guardarSignos(TURNO.turno_id, { ta_sistolica: 120, ta_diastolica: 80, frecuencia_cardiaca: 76, frecuencia_respiratoria: 18, temperatura_c: 36.5, spo2_porcentaje: 98, peso_kg: 70, talla_m: 1.7 }, SESION);
                 sincronizarSignosDesdeTurno(true);
             }
-            poner('val-peso', 70); poner('val-talla', 1.70);
+            if (!document.getElementById('val-peso').value) poner('val-peso', 70); if (!document.getElementById('val-talla').value) poner('val-talla', 1.70);
             poner('val-motivo', L); poner('val-padecimiento', L + ' dolor sit amet, consectetur adipiscing elit.');
             poner_check('chk-omitir-estudios', false); poner('val-estudios', L);
             poner('val-analisis', L + ' dolor sit amet, consectetur adipiscing elit.');
