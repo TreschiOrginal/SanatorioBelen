@@ -85,7 +85,7 @@
         };
         const pie = botones.length
             ? `<div class="px-6 pb-5 pt-2 flex flex-col-reverse sm:flex-row gap-2 ${centrado ? 'sm:justify-center' : 'sm:justify-end'}">
-                   ${botones.map((b, i) => `<button type="button" data-boton="${i}" ${b.id ? `id="${esc(b.id)}"` : ''} class="px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${estilos[b.estilo || 'secundario']}">${esc(b.texto)}</button>`).join('')}
+                   ${botones.map((b, i) => `<button type="button" data-boton="${i}" ${b.id ? `id="${esc(b.id)}"` : ''} class="px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${estilos[b.estilo || (b.primario ? 'primario' : 'secundario')]}">${esc(b.texto)}</button>`).join('')}
                </div>` : '';
 
         overlay.innerHTML = `<div class="bg-white rounded-2xl shadow-2xl w-full ${anchos[op.ancho || 'md']} flex flex-col max-h-[92vh] transition-transform duration-200 scale-95" data-caja>${cabecera}${cuerpo}${pie}</div>`;
@@ -127,7 +127,8 @@
                 const idx = +btn.getAttribute('data-boton');
                 const def = botones[idx];
                 const esAccion = def.estilo === 'primario' || def.estilo === 'exito' || def.estilo === 'alerta' || def.estilo === 'peligro' || (idx === botones.length - 1 && botones.length > 1 && def.estilo !== 'secundario');
-                const r = typeof def.alPulsar === 'function' ? def.alPulsar(ctrl) : undefined;
+                const fn = typeof def.alPulsar === 'function' ? def.alPulsar : (typeof def.accion === 'function' ? def.accion : null);
+                const r = fn ? fn(ctrl) : undefined;
                 if (r !== false) {
                     if (esAccion) limpiarBorradorModal();
                     ctrl.cerrar();

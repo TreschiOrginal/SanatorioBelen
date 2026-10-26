@@ -5817,6 +5817,12 @@
     }
     function semillaPaquetesFarmacia() {
         return [
+            { paquete_id: 'PAQ-INYECCION', nombre: 'Inyección (Jeringa + Aguja / Aplicación)', items: [
+                { sku: 'JER-10', cantidad: 1 }, { sku: 'GUA-M', cantidad: 1 }
+            ] },
+            { paquete_id: 'PAQ-CANALIZACION', nombre: 'Canalización IV (Punzocat + Venoclisis + Solución)', items: [
+                { sku: 'PUN-18', cantidad: 1 }, { sku: 'VEN-18', cantidad: 1 }, { sku: 'SOL-1000', cantidad: 1 }, { sku: 'GUA-M', cantidad: 1 }
+            ] },
             { paquete_id: 'PAQ-CESAREA', nombre: 'Paquete Cesárea', items: [
                 { sku: 'GUA-M', cantidad: 2 }, { sku: 'JER-10', cantidad: 4 }, { sku: 'VEN-18', cantidad: 1 }, { sku: 'PUN-18', cantidad: 2 },
                 { sku: 'CEF-1G', cantidad: 1 }, { sku: 'SOL-1000', cantidad: 1 }, { sku: 'BH', cantidad: 1 }, { sku: 'EKG', cantidad: 1 }

@@ -1264,8 +1264,8 @@
         </div>
     </div>
 
-    <script src="js/belen-store.js?v=f15"></script>
-    <script src="js/belen-ui.js?v=f15"></script>
+    <script src="js/belen-store.js?v=f16"></script>
+    <script src="js/belen-ui.js?v=f16"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
@@ -4839,15 +4839,15 @@
         function abrirHojaEnfermeria() {
             const S = BelenStore, tid = turnoVisor(); if (!tid) return;
             const h = S.obtenerHojaEnfermeria(tid);
-            const ult = (h.signos || []).slice(-5).map(x => '<li>' + (x.registrado_en || '').slice(0, 16).replace('T', ' ') + ' · ' + (x.turno || '') + ' · ' + (x.texto || '') + '</li>').join('') || '<li class="text-slate-400">Sin registros</li>';
+            const ult = (h.signos || []).slice(-5).map(x => '<li><b>Signos (' + (x.turno || '') + '):</b> ' + (x.texto || x.ta || '') + (x.glucosa_mg_dl ? ' · Dxtx: ' + x.glucosa_mg_dl + ' mg/dL' : '') + '</li>').concat((h.kardex || []).slice(-5).map(k => '<li><b>Kardex (' + (k.turno || '') + '):</b> ' + (k.medicamento || k.texto || '') + '</li>')).join('') || '<li class="text-slate-400">Sin registros</li>';
             const inp = (id, ph) => '<input id="' + id + '" placeholder="' + ph + '" class="w-full border border-slate-200 rounded-lg p-2 text-sm mb-2">';
             BelenUI.modal({ titulo: 'Hoja de Enfermería', icono: 'fa-notes-medical', ancho: 'lg',
                 html: '<p class="text-xs mb-2">Ingresos: <b>' + h.balance.total_ingresos + ' ml</b> · Egresos: <b>' + h.balance.total_egresos + ' ml</b> · Balance: <b>' + h.balance.balance + ' ml</b></p><ul class="text-xs mb-3 space-y-1">' + ult + '</ul>' +
                     '<select id="he-turno" class="w-full border border-slate-200 rounded-lg p-2 text-sm mb-2">' + (S.TURNOS_ENFERMERIA || ['Matutino', 'Vespertino', 'Nocturno']).map(t => '<option>' + (t.nombre || t) + '</option>').join('') + '</select>' +
                     inp('he-signos', 'Signos vitales (TA, FC, FR, Temp, SpO2)') + inp('he-kardex', 'Medicamento administrado (kardex)') + inp('he-ing', 'Ingresos (ml)') + inp('he-egr', 'Egresos (ml)') + inp('he-obs', 'Observaciones'),
-                botones: [{ texto: 'Cancelar' }, { texto: 'Guardar', primario: true, accion: () => {
+                botones: [{ texto: 'Cancelar' }, { texto: 'Guardar', estilo: 'primario', alPulsar: () => {
                     const v = id => (document.getElementById(id).value || '').trim(), t = v('he-turno');
-                    const r = S.guardarHojaEnfermeria(tid, { kardex: v('he-kardex') ? [{ turno: t, texto: v('he-kardex') }] : [], signos: v('he-signos') ? [{ turno: t, texto: v('he-signos') }] : [],
+                    const r = S.guardarHojaEnfermeria(tid, { kardex: v('he-kardex') ? [{ turno: t, medicamento: v('he-kardex'), texto: v('he-kardex') }] : [], signos: v('he-signos') ? [{ turno: t, texto: v('he-signos') }] : [],
                         balance: { ingresos: v('he-ing') ? [{ turno: t, ml: Number(v('he-ing')) }] : [], egresos: v('he-egr') ? [{ turno: t, ml: Number(v('he-egr')) }] : [] }, observaciones: v('he-obs') }, SESION);
                     if (!r || r.ok === false) { BelenUI.toast((r && r.motivo) || 'No se pudo guardar.', 'error'); return false; }
                     BelenUI.toast('Hoja de Enfermería guardada.', 'exito');
@@ -4865,7 +4865,7 @@
                 '<div class="grid grid-cols-3 gap-2 mt-1"><label>Lote<input id="fx-lote-' + k + '" value="' + escFx(u.lote || '') + '" class="w-full border rounded p-1"></label><label>Dosis administrada<input id="fx-dosis-' + k + '" placeholder="ej. 100 mcg" class="w-full border rounded p-1"></label><label>Merma / desecho<input id="fx-merma-' + k + '" placeholder="ej. 0 ml" class="w-full border rounded p-1"></label></div></div>').join('') + '</div>';
             BelenUI.modal({ titulo: titulo, icono: 'fa-syringe', ancho: 'lg',
                 html: fx + '<textarea id="an-texto" rows="6" placeholder="Valoración / registro / plan" class="w-full border border-slate-200 rounded-lg p-2 text-sm"></textarea>',
-                botones: [{ texto: 'Cancelar' }, { texto: 'Guardar', primario: true, accion: () => {
+                botones: [{ texto: 'Cancelar' }, { texto: 'Guardar', estilo: 'primario', alPulsar: () => {
                     const txt = document.getElementById('an-texto').value.trim();
                     const e = { valoracion: txt, plan: txt, texto: txt };
                     let r;
