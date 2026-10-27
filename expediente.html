@@ -34,15 +34,17 @@
             /* Hojas con membrete pre-impreso: el espacio superior lo da la PAGINA (@page), no el contenedor.
                Así, si un documento se desborda a la hoja 2, también respeta el membrete físico.
                Los márgenes laterales/inferior también viven aquí; .zona-impresion NO lleva padding. */
-            @page { margin-top: 4.2cm; margin-bottom: 1.5cm; margin-left: 1.8cm; margin-right: 1.8cm; }
+            @page { margin-top: 3.6cm; margin-bottom: 1.1cm; margin-left: 1.6cm; margin-right: 1.6cm; }
             .zona-impresion {
                 position: static; width: 100%;
                 background: white; padding: 0;
-                font-family: Arial, sans-serif; font-size: 11px; line-height: 1.5; color: black !important;
+                font-family: Arial, sans-serif; font-size: 10.5px; line-height: 1.35; color: black !important;
             }
             .linea-input { border-bottom: 1px solid black; display: inline-block; padding: 0 5px; font-weight: bold; }
-            .firma-box { text-align: center; width: 220px; border-top: 1px solid black; padding-top: 5px; font-size: 10px; margin-left: auto; margin-right: auto; }
+            .firma-box { text-align: center; width: 220px; border-top: 1px solid black; padding-top: 4px; font-size: 9.5px; margin-left: auto; margin-right: auto; page-break-inside: avoid; break-inside: avoid; }
             .salto-pagina { page-break-after: always; }
+            .hoja-titulo { margin-bottom: 10px; font-size: 14px; }
+            .cuadro-datos { padding: 7px 9px; margin-bottom: 8px; page-break-inside: avoid; break-inside: avoid; }
         }
 
         /* Paquete completo: las zonas fluyen una tras otra (no apiladas en top:0)
@@ -150,11 +152,12 @@
                     <div class="bg-slate-50 rounded p-1"><p class="text-[9px] text-slate-500 uppercase">Glucosa (Dxtx)</p><p id="sv-gluc" class="text-xs font-bold text-slate-800">--</p></div>
                 </div>
                 <!-- Candado de signos vitales: sin TA, FC, FR, Temp y SpO2 no se puede cerrar la Nota Médica -->
-                <div id="alerta-signos" class="hidden mt-2 items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-2.5 py-2 text-[11px] font-semibold leading-snug">
-                    <i class="fas fa-triangle-exclamation mt-0.5"></i>
-                    <span>El paciente llegó sin signos vitales. Capture TA, FC, FR, Temp y SpO2: la Nota Médica no se podrá cerrar sin ellos.</span>
-            </div>
-                <button type="button" id="btn-capturar-signos" onclick="abrirCapturaSignos()" class="mt-2 w-full bg-white border border-cyan-300 text-cyan-700 hover:bg-cyan-50 text-[11px] font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5"><i class="fas fa-heart-pulse"></i> Capturar / Editar Signos Vitales</button>
+                <div id="alerta-signos" class="hidden mt-2 items-start gap-2 bg-amber-50 border-2 border-amber-400 text-amber-950 rounded-xl px-3 py-2.5 text-[11px] font-semibold leading-snug shadow-sm">
+                    <i class="fas fa-triangle-exclamation text-amber-600 mt-0.5 text-sm"></i>
+                    <span><b>Paciente sin signos vitales de Triage.</b> Haz clic en el botón de abajo para capturar TA, FC, FR, Temp y SpO₂.</span>
+                </div>
+                <div id="sv-alertas-criticas" class="hidden mt-2 rounded-lg bg-red-50 border border-red-300 px-2.5 py-1.5 text-[10px] text-red-900 font-bold leading-snug"></div>
+                <button type="button" id="btn-capturar-signos" onclick="abrirCapturaSignos()" class="mt-2 w-full bg-white border border-cyan-300 text-cyan-700 hover:bg-cyan-50 text-[11px] font-bold py-2 rounded-lg transition flex items-center justify-center gap-1.5"><i class="fas fa-heart-pulse"></i> Editar Signos Vitales</button>
                 <!-- Antropometría: se captura una sola vez aquí y el Consentimiento la lee automáticamente -->
                 <div class="grid grid-cols-3 gap-2 text-center mt-2 pt-2 border-t border-slate-100">
                     <div>
@@ -221,7 +224,8 @@
 
                 <div id="vista-nota" class="max-w-4xl w-full mx-auto flex flex-col h-full space-y-5 pb-20 fade-in block">
                     <!-- ===== INICIO BOTON TEMPORAL DE PRUEBAS (BORRAR ESTE BLOQUE Y LA FUNCION llenarDatosDePrueba) ===== -->
-                    <div class="flex justify-end -mb-3">
+                    <div class="flex flex-wrap justify-end items-center gap-2 -mb-3">
+                        <button type="button" id="btn-caso-michelle" onclick="cargarCasoRealMichelle()" class="text-[11px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 px-3 py-1 rounded-full transition flex items-center gap-1 shadow-sm" title="Carga el expediente real de Michelle Alejandra Guerrero Peña (Octubre 2026) de Google Drive">📋 Cargar caso real: Michelle Alejandra Guerrero Peña (Oct 2026)</button>
                         <button type="button" id="btn-datos-prueba" onclick="llenarDatosDePrueba()" class="text-[10px] text-slate-400 hover:text-slate-600 underline opacity-60 hover:opacity-100 transition">Llenar datos de prueba</button>
                     </div>
                     <!-- ===== FIN BOTON TEMPORAL DE PRUEBAS ===== -->
@@ -238,10 +242,22 @@
                         <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-user-edit text-cyan-500 mr-1"></i> Datos Complementarios y Fecha</h3>
                         <input type="datetime-local" id="input-fecha" class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-sm font-bold text-slate-700 focus:outline-none focus:border-cyan-500">
                     </div>
-                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
                         <div>
-                                <div class="flex justify-between items-center mb-1"><label for="comp-fn" class="text-[10px] font-bold text-slate-500 uppercase">Fecha de Nacimiento <span class="text-red-500">*</span></label></div>
+                                <div class="flex justify-between items-center mb-1"><label for="comp-fn" class="text-[10px] font-bold text-slate-500 uppercase">Fecha de Nacimiento <span class="text-red-500">*</span></label><span id="comp-fn-edad-badge" class="text-[10px] font-extrabold text-cyan-800 bg-cyan-50 border border-cyan-200 px-1.5 py-0.5 rounded hidden"></span></div>
                                 <input type="date" id="comp-fn" onchange="actualizarEdadDesdeFN()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                        </div>
+                        <div>
+                                <div class="flex justify-between items-center mb-1"><label for="comp-nac" class="text-[10px] font-bold text-slate-500 uppercase">Nacionalidad</label></div>
+                                <input type="text" id="comp-nac" list="dl-nacionalidades-exp" value="Mexicana" placeholder="Mexicana o país" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:border-cyan-500">
+                                <datalist id="dl-nacionalidades-exp">
+                                    <option value="Mexicana"></option>
+                                    <option value="Estadounidense (EE. UU.)"></option>
+                                    <option value="Canadiense"></option>
+                                    <option value="Colombiana"></option>
+                                    <option value="Argentina"></option>
+                                    <option value="Española"></option>
+                                </datalist>
                         </div>
                         <div>
                                 <div class="flex justify-between items-center mb-1"><label for="comp-civil" class="text-[10px] font-bold text-slate-500 uppercase">Estado Civil <span class="text-red-500">*</span></label></div>
@@ -397,31 +413,94 @@
                     </div>
                 </div>
 
-                                <div class="bg-white p-3 rounded-lg border border-pink-200">
-                                    <label class="flex items-center gap-2 text-xs font-bold text-pink-800 cursor-pointer"><input type="checkbox" id="chk-embarazo" onchange="toggleEmbarazo()" class="text-pink-600"> <i class="fas fa-baby-carriage"></i> ¿Embarazo Actual?</label>
+                                <div class="bg-white p-3.5 rounded-xl border border-pink-200 shadow-sm">
+                                    <label class="flex items-center gap-2 text-xs font-bold text-pink-800 cursor-pointer"><input type="checkbox" id="chk-embarazo" onchange="toggleEmbarazo()" class="text-pink-600"> <i class="fas fa-baby-carriage"></i> ¿Embarazo Actual? (Control Prenatal y Exploración Obstétrica)</label>
                                     <div id="div-embarazo" class="hidden mt-3 space-y-3">
-                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+                                        <div class="bg-pink-50/90 border border-pink-200 rounded-lg px-3 py-2 text-[11px] text-pink-950 flex flex-wrap items-center justify-between gap-2">
+                                            <div><b>Fórmula FUM (Regla de Naegele):</b> <span class="font-mono">FPP = FUM + 280 días (40 SDG)</span> · <span class="font-mono">SDG exactas = ⌊días / 7⌋ semanas + (días % 7) días</span></div>
+                                            <div id="emb-resumen-calculo" class="font-bold text-pink-800"></div>
+                                        </div>
+                                        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
                                             <div>
-                                                <label for="emb-metodo" class="text-[9px] uppercase text-pink-700 block mb-1">Semanas de gestación calculadas por</label>
-                                                <select id="emb-metodo" onchange="actualizarEmbarazo()" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs font-bold focus:border-pink-400 outline-none"><option value="FUM">FUM</option><option value="USG">USG</option></select>
+                                                <label for="emb-metodo" class="text-[9px] uppercase text-pink-700 block mb-1">Método de datación</label>
+                                                <select id="emb-metodo" onchange="actualizarEmbarazo()" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs font-bold focus:border-pink-400 outline-none">
+                                                    <option value="FUM">Por FUM (Naegele 280d)</option>
+                                                    <option value="USG">Por USG (1.º, 2.º o 3.er trim.)</option>
+                                                </select>
                                             </div>
                                             <div>
                                                 <label for="emb-sdg" class="text-[9px] uppercase text-pink-700 block mb-1">Semanas de gestación <span class="text-red-500">*</span></label>
-                                                <input type="number" id="emb-sdg" min="1" max="42" placeholder="Ej. 24" oninput="actualizarEmbarazo()" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs font-bold focus:border-pink-400 outline-none">
+                                                <div class="flex items-center gap-1">
+                                                    <input type="number" id="emb-sdg" min="1" max="42" placeholder="Sem (24)" oninput="actualizarEmbarazo()" class="w-3/5 bg-white border border-pink-200 rounded p-1.5 text-xs font-bold focus:border-pink-400 outline-none">
+                                                    <input type="number" id="emb-sdg-dias" min="0" max="6" placeholder="+días" oninput="actualizarEmbarazo()" title="Días adicionales (0 a 6)" class="w-2/5 bg-white border border-pink-200 rounded p-1.5 text-xs font-semibold focus:border-pink-400 outline-none">
+                                                </div>
                                             </div>
                                             <div>
-                                                <button type="button" id="btn-calc-fum" onclick="calcularSDGporFUM()" class="w-full bg-pink-100 text-pink-700 border border-pink-200 text-[10px] font-bold px-2 py-2 rounded hover:bg-pink-200 transition"><i class="fas fa-calculator mr-1"></i> Calcular por fecha de última menstruación</button>
+                                                <label for="emb-fpp" class="text-[9px] uppercase text-pink-700 block mb-1">Fecha Probable de Parto (FPP)</label>
+                                                <input type="date" id="emb-fpp" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs font-semibold focus:border-pink-400 outline-none">
+                                            </div>
+                                            <div>
+                                                <button type="button" id="btn-calc-fum" onclick="calcularSDGporFUM()" class="w-full bg-pink-100 text-pink-700 border border-pink-200 text-[10px] font-bold px-2 py-2 rounded hover:bg-pink-200 transition"><i class="fas fa-calculator mr-1"></i> Calcular exacto por FUM</button>
                                             </div>
                                             <div class="text-center">
                                                 <span id="emb-trimestre" class="inline-block bg-pink-50 text-pink-700 border border-pink-200 text-[10px] font-bold px-3 py-2 rounded-full w-full">—</span>
                                             </div>
                                         </div>
-                                        <div class="grid grid-cols-2 gap-3">
+
+                                        <!-- Bloque de datación por Ultrasonido (USG) por trimestre -->
+                                        <div id="div-emb-usg" class="hidden grid grid-cols-1 md:grid-cols-4 gap-2.5 bg-purple-50/75 p-2.5 rounded-lg border border-purple-200">
+                                            <div>
+                                                <label for="emb-usg-trimestre" class="text-[9px] font-bold uppercase text-purple-900 block mb-1">Trimestre del USG de referencia</label>
+                                                <select id="emb-usg-trimestre" onchange="calcularSDGporUSG()" class="w-full bg-white border border-purple-300 rounded p-1.5 text-xs font-semibold outline-none">
+                                                    <option value="1er trimestre (margen ±5-7 días · Mayor precisión)">1.er Trimestre (&lt; 14 SDG · ±5–7 días · Mayor precisión)</option>
+                                                    <option value="2do trimestre (margen ±10-14 días)">2.º Trimestre (14–27.6 SDG · ±10–14 días)</option>
+                                                    <option value="3er trimestre (margen ±21 días)">3.er Trimestre (≥ 28 SDG · ±21 días)</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label for="emb-usg-fecha" class="text-[9px] font-bold uppercase text-purple-900 block mb-1">Fecha en que se tomó el USG</label>
+                                                <input type="date" id="emb-usg-fecha" onchange="calcularSDGporUSG()" class="w-full bg-white border border-purple-300 rounded p-1.5 text-xs outline-none">
+                                            </div>
+                                            <div>
+                                                <label class="text-[9px] font-bold uppercase text-purple-900 block mb-1">SDG que reportó ese USG</label>
+                                                <div class="flex items-center gap-1">
+                                                    <input type="number" id="emb-usg-sem" min="4" max="42" placeholder="Sem (ej. 11)" oninput="calcularSDGporUSG()" class="w-1/2 bg-white border border-purple-300 rounded p-1.5 text-xs outline-none">
+                                                    <input type="number" id="emb-usg-dias" min="0" max="6" placeholder="Días (0-6)" oninput="calcularSDGporUSG()" class="w-1/2 bg-white border border-purple-300 rounded p-1.5 text-xs outline-none">
+                                                </div>
+                                            </div>
+                                            <div class="flex flex-col justify-center">
+                                                <span class="text-[9px] font-bold uppercase text-purple-900">Cálculo traspolado hoy</span>
+                                                <div id="emb-usg-resultado" class="text-[11px] font-semibold text-purple-950 leading-tight mt-0.5">Ingrese fecha y SDG del USG para traspolar a hoy y comparar vs. FUM.</div>
+                                            </div>
+                                        </div>
+
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5 pt-2 border-t border-pink-100">
+                                            <div>
+                                                <label for="emb-riesgo" class="text-[9px] uppercase text-pink-700 block mb-1">Riesgo obstétrico</label>
+                                                <select id="emb-riesgo" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
+                                                    <option value="Bajo riesgo">Bajo riesgo</option>
+                                                    <option value="Alto riesgo">Alto riesgo obstétrico</option>
+                                                </select>
+                                            </div>
                                             <div><label for="emb-consultas" class="text-[9px] uppercase text-pink-700 block mb-1">Consultas prenatales</label><input type="number" id="emb-consultas" min="0" placeholder="0" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
-                                            <div><label for="emb-usg" class="text-[9px] uppercase text-pink-700 block mb-1">Ultrasonidos</label><input type="number" id="emb-usg" min="0" placeholder="0" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                            <div><label for="emb-usg" class="text-[9px] uppercase text-pink-700 block mb-1">N.º de Ultrasonidos</label><input type="number" id="emb-usg" min="0" placeholder="0" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                            <div><label for="emb-micronutrientes" class="text-[9px] uppercase text-pink-700 block mb-1">Micronutrientes</label><input type="text" id="emb-micronutrientes" placeholder="Ácido fólico, Hierro, Calcio" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                            <div><label for="emb-afu" class="text-[9px] uppercase text-pink-700 block mb-1">Fondo Uterino (AFU cm)</label><input type="text" id="emb-afu" placeholder="Ej. 28 cm" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                            <div><label for="emb-fcf" class="text-[9px] uppercase text-pink-700 block mb-1">FCF (lpm)</label><input type="text" id="emb-fcf" placeholder="Ej. 145 lpm" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                            <div><label for="emb-movimientos" class="text-[9px] uppercase text-pink-700 block mb-1">Movimientos fetales</label><input type="text" id="emb-movimientos" placeholder="Presentes / Normales (++++)" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                            <div><label for="emb-dinamica" class="text-[9px] uppercase text-pink-700 block mb-1">Actividad uterina</label><input type="text" id="emb-dinamica" placeholder="Ausente / Sin contracciones" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                            <div class="col-span-2"><label for="emb-leopold" class="text-[9px] uppercase text-pink-700 block mb-1">Maniobras de Leopold (Situación / Presentación / Posición)</label><input type="text" id="emb-leopold" placeholder="Ej. Longitudinal, Cefálico, Dorso izquierdo" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                            <div class="col-span-2"><label for="emb-cervix" class="text-[9px] uppercase text-pink-700 block mb-1">Exploración cervical / Membranas (si aplica)</label><input type="text" id="emb-cervix" placeholder="Cerrado, formado, sin pérdidas transvaginales, membranas íntegras" class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none"></div>
+                                            <div class="col-span-2 md:col-span-4">
+                                                <div class="flex flex-wrap justify-between items-center gap-1 mb-1">
+                                                    <label for="emb-alarma" class="text-[9px] uppercase text-pink-700">Datos de alarma obstétrica / Observaciones prenatales</label>
+                                                    <button type="button" onclick="document.getElementById('emb-alarma').value='Sin datos de alarma obstétrica: Niega cefalea, acúfenos, fosfenos, epigastralgia, sangrado o pérdidas transvaginales; movimientos fetales presentes.'" class="text-[10px] font-bold text-pink-700 hover:underline">+ Llenar sin datos de alarma</button>
+                                                </div>
+                                                <input type="text" id="emb-alarma" placeholder="Sin datos de alarma: Niega cefalea, acúfenos, fosfenos, sangrado o salida de líquido transvaginal..." class="w-full bg-white border border-pink-200 rounded p-1.5 text-xs focus:border-pink-400 outline-none">
+                                            </div>
                                         </div>
                                         <div>
-                                            <p class="text-[9px] uppercase text-pink-700 mb-1">Vacunas aplicadas</p>
+                                            <p class="text-[9px] uppercase text-pink-700 mb-1">Vacunas aplicadas en el embarazo</p>
                                             <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
                                                 <label class="flex items-center gap-1 text-[11px] text-slate-600 font-medium cursor-pointer"><input type="checkbox" data-vacuna-emb="Tdpa" class="text-pink-600"> Tdpa</label>
                                                 <label class="flex items-center gap-1 text-[11px] text-slate-600 font-medium cursor-pointer"><input type="checkbox" data-vacuna-emb="Influenza" class="text-pink-600"> Influenza</label>
@@ -475,11 +554,17 @@
                         <textarea id="val-estudios" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:border-cyan-500 outline-none h-40 resize-y" placeholder="Ej. Rx Abdomen..."></textarea>
                     </div>
                     <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-slate-200">
-                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide mb-2 block">Diagnósticos <span class="text-red-500">*</span></label>
-                        <div class="flex gap-2 mb-3">
-                            <input list="cie10-list" id="input-dx" placeholder="Buscar CIE-10 o libre..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm focus:border-cyan-500 outline-none">
-                            <datalist id="cie10-list"><option value="J03.9 Amigdalitis aguda"><option value="E11.9 Diabetes mellitus 2"><option value="K56.4 Impactación fecal"><option value="R14.X Distensión abdominal"></datalist>
-                                <button type="button" onclick="agregarDx()" class="bg-cyan-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-cyan-700 transition"><i class="fas fa-plus"></i></button>
+                        <div class="flex flex-wrap justify-between items-center gap-1 mb-2">
+                            <label class="text-sm font-bold text-slate-800 uppercase tracking-wide block">Diagnósticos <span class="text-red-500">*</span> <span class="text-[11px] font-normal text-slate-500">(Catálogo CIE-10 o libre)</span></label>
+                            <span class="text-[10px] font-bold text-cyan-800 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded-full">Presiona Enter o + para guardar</span>
+                        </div>
+                        <div class="relative mb-3">
+                            <div class="flex gap-2">
+                                <input list="cie10-list" id="input-dx" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarDx();}" oninput="mostrarSugerenciasCIE10(this.value)" onfocus="mostrarSugerenciasCIE10(this.value)" placeholder="Escribe código o diagnóstico CIE-10 (ej. J02, colitis, embarazo, diabetes) y presiona Enter..." class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-2 text-sm focus:border-cyan-500 outline-none">
+                                <datalist id="cie10-list"><option value="J03.9 Amigdalitis aguda"><option value="E11.9 Diabetes mellitus 2"><option value="K56.4 Impactación fecal"><option value="R14.X Distensión abdominal"></datalist>
+                                <button type="button" onclick="agregarDx()" class="bg-cyan-600 text-white px-3.5 py-2 rounded-xl text-xs font-bold hover:bg-cyan-700 transition whitespace-nowrap flex items-center gap-1"><i class="fas fa-plus"></i> Agregar</button>
+                            </div>
+                            <div id="sugerencias-cie10" class="hidden absolute z-30 left-0 right-0 mt-1 bg-white border border-cyan-300 rounded-xl shadow-xl max-h-60 overflow-y-auto divide-y divide-slate-100"></div>
                         </div>
                         <ul id="lista-dx" class="space-y-1"></ul>
                     </div>
@@ -490,9 +575,9 @@
                     <textarea id="val-analisis" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm md:text-base focus:border-cyan-500 outline-none h-28 mb-6" placeholder="Análisis del caso, integración diagnóstica..."></textarea>
                     <div id="bloques-receta" class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-4">
                         <section class="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
-                            <h3 class="text-sm font-extrabold text-rose-950">💉 Aplicación en Clínica</h3>
-                            <p class="text-[11px] text-rose-800 mt-1 mb-3">Solo medicamentos del inventario. Estas órdenes sí van a la cola de pendientes de surtir de Farmacia.</p>
-                            <input id="busca-aplica" type="search" autocomplete="off" placeholder="Buscar medicamento del inventario" class="w-full bg-white border border-rose-200 rounded-xl p-2.5 text-sm outline-none focus:border-rose-500">
+                            <h3 class="text-sm font-extrabold text-rose-950">💉 Aplicación en Clínica (Farmacia Sanatorio)</h3>
+                            <p class="text-[11px] text-rose-900 mt-1 mb-2 leading-snug">1) Busca y selecciona el medicamento en existencia. 2) Elige o escribe la indicación de aplicación y pon cuántas piezas saldrán de Farmacia (ej. <b>1</b> ámpula). <i>En Farmacia/Enfermería agregan jeringa, aguja o solución.</i></p>
+                            <input id="busca-aplica" type="search" autocomplete="off" placeholder="🔎 Buscar en inventario de Farmacia (ej. Ceftriaxona, Ketorolaco, Solución)..." class="w-full bg-white border border-rose-200 rounded-xl p-2.5 text-sm outline-none focus:border-rose-500">
                             <div id="lista-aplica" class="mt-2 flex flex-col gap-1"></div>
                             <div id="lineas-aplica" class="mt-3 space-y-2"></div>
                             <button type="button" id="btn-orden-aplicacion" class="mt-3 w-full bg-rose-700 hover:bg-rose-800 text-white text-sm font-extrabold py-2.5 rounded-xl">⚡ Enviar a la cola de Farmacia e imprimir comprobante</button>
@@ -503,6 +588,7 @@
                             <div class="flex flex-wrap gap-2 mb-2">
                                 <button type="button" id="btn-copiar-aplica-casa" class="bg-white border border-cyan-300 text-cyan-900 text-xs font-extrabold px-3 py-2 rounded-lg">⤵️ Copiar de Aplicación en Clínica a Receta para Casa</button>
                                 <button type="button" id="btn-renglon-casa" class="bg-white border border-slate-300 text-slate-700 text-xs font-bold px-3 py-2 rounded-lg">+ Renglón libre</button>
+                                <button type="button" onclick="expandirAbreviaturasRecetaCasa()" class="bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-extrabold px-3 py-2 rounded-lg hover:bg-emerald-100" title="Convierte iv → vía intravenosa, vo → vía oral, c/8h → cada 8 horas, gr → gramos">✨ Expandir abreviaturas</button>
                             </div>
                             <input id="busca-casa" type="search" autocomplete="off" placeholder="Autocompletar del catálogo (opcional)" class="w-full bg-white border border-cyan-200 rounded-xl p-2.5 text-sm outline-none focus:border-cyan-500">
                             <div id="lista-casa" class="mt-2 flex flex-col gap-1"></div>
@@ -616,7 +702,16 @@
                             <div data-area="OBSERVACION" data-desc="Observación" data-texto="Observación (1 cama disp)" onclick="seleccionarArea(this, 'OBSERVACION', 'Observación')" class="area-destino border-2 border-slate-200 bg-slate-50 text-slate-600 p-4 rounded-xl cursor-pointer text-center font-bold hover:shadow-md transition text-sm">Observación (1 cama disp)</div>
                             <div data-area="CONSULTORIO_EXTRA" data-desc="Consultorio extra" data-texto="Consultorio extra" onclick="seleccionarArea(this, 'CONSULTORIO_EXTRA', 'Consultorio extra')" class="area-destino border-2 border-slate-200 bg-slate-50 text-slate-600 p-4 rounded-xl cursor-pointer text-center font-bold hover:shadow-md transition text-sm">Consultorio extra</div>
                         </div>
-                        <p class="mt-4 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><i class="fas fa-bed text-slate-400 mr-1"></i> Cama: <span class="out-cama font-bold text-slate-700">Por asignar por Enfermería</span></p>
+                        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 items-center bg-slate-50 border border-slate-200 rounded-xl p-3">
+                            <div>
+                                <label for="val-cama-ingreso" class="text-xs font-bold text-slate-700 uppercase block mb-1"><i class="fas fa-bed text-cyan-600 mr-1"></i> Cama / Habitación asignada (Plano 2D)</label>
+                                <p class="text-[11px] text-slate-500">Opcional: el médico o recepción puede asignar la habitación desde el ingreso o dejarla para Enfermería.</p>
+                            </div>
+                            <select id="val-cama-ingreso" onchange="actualizarCamaIngresoSeleccionada()" class="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs font-bold text-slate-800 focus:border-cyan-500 outline-none">
+                                <option value="">Por asignar por Enfermería en Monitor de Camas 2D</option>
+                            </select>
+                        </div>
+                        <p class="mt-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2"><i class="fas fa-bed text-slate-400 mr-1"></i> Cama en Hoja Frontal: <span class="out-cama font-bold text-slate-700">Por asignar por Enfermería</span></p>
                     </div>
 
                     <div class="flex justify-end pb-10">
@@ -649,7 +744,19 @@
                     <!-- Consentimientos de procedimientos (N) -->
                     <div id="lista-consentimientos-extra" class="space-y-4"></div>
 
-                    <button type="button" onclick="agregarConsentimientoProcedimiento()" class="w-full border-2 border-dashed border-cyan-300 bg-cyan-50/50 text-cyan-700 font-bold text-sm rounded-2xl py-4 hover:bg-cyan-50 hover:border-cyan-400 transition inline-flex justify-center items-center gap-2"><i class="fas fa-plus"></i> Agregar otro Consentimiento</button>
+                    <div class="bg-cyan-50/60 border border-cyan-200 rounded-2xl p-4 space-y-2">
+                        <label class="text-xs font-extrabold text-cyan-900 uppercase block"><i class="fas fa-kit-medical mr-1"></i> + Agregar Consentimiento de Procedimiento Especial (Plantillas NOM-004)</label>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" onclick="agregarConsentimientoPlantilla('CVC')" class="bg-white border border-cyan-300 text-cyan-900 hover:bg-cyan-100 text-xs font-bold px-3 py-2 rounded-xl">+ Catéter Venoso Central (CVC)</button>
+                            <button type="button" onclick="agregarConsentimientoPlantilla('PARACENTESIS')" class="bg-white border border-cyan-300 text-cyan-900 hover:bg-cyan-100 text-xs font-bold px-3 py-2 rounded-xl">+ Paracentesis</button>
+                            <button type="button" onclick="agregarConsentimientoPlantilla('TORACOCENTESIS')" class="bg-white border border-cyan-300 text-cyan-900 hover:bg-cyan-100 text-xs font-bold px-3 py-2 rounded-xl">+ Toracocentesis</button>
+                            <button type="button" onclick="agregarConsentimientoPlantilla('INTUBACION')" class="bg-white border border-cyan-300 text-cyan-900 hover:bg-cyan-100 text-xs font-bold px-3 py-2 rounded-xl">+ Intubación Endotraqueal</button>
+                            <button type="button" onclick="agregarConsentimientoPlantilla('TRANSFUSION')" class="bg-white border border-cyan-300 text-cyan-900 hover:bg-cyan-100 text-xs font-bold px-3 py-2 rounded-xl">+ Transfusión Sanguínea</button>
+                            <button type="button" onclick="agregarConsentimientoPlantilla('LEGRADO')" class="bg-white border border-cyan-300 text-cyan-900 hover:bg-cyan-100 text-xs font-bold px-3 py-2 rounded-xl">+ Legrado / AMEU</button>
+                            <button type="button" onclick="agregarConsentimientoPlantilla('CESAREA')" class="bg-white border border-cyan-300 text-cyan-900 hover:bg-cyan-100 text-xs font-bold px-3 py-2 rounded-xl">+ Cesárea / Parto</button>
+                            <button type="button" onclick="agregarConsentimientoProcedimiento()" class="bg-cyan-700 text-white hover:bg-cyan-800 text-xs font-extrabold px-3.5 py-2 rounded-xl"><i class="fas fa-plus mr-1"></i> Procedimiento Libre</button>
+                        </div>
+                    </div>
 
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 space-y-2">
                         <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide"><i class="fas fa-file-contract text-cyan-500 mr-2"></i>Formatos oficiales que se imprimen con este expediente</h3>
@@ -677,6 +784,13 @@
                         </div>
                     </div>
 
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-extrabold text-emerald-950 uppercase"><i class="fas fa-wand-magic-sparkles mr-1"></i> Expansión Automática de Abreviaturas Médicas (NOM-004)</p>
+                            <p class="text-[11px] text-emerald-800">Convierte abreviaturas (ej. <b>IV</b> → <i>vía intravenosa</i>, <b>VO</b> → <i>vía oral</i>, <b>gr</b> → <i>gramos</i>, <b>c/8h</b> → <i>cada 8 horas</i>, <b>PRN</b> → <i>por razón necesaria</i>, <b>SVPT</b> → <i>signos vitales por turno</i>) al imprimir o al pulsar el botón.</p>
+                        </div>
+                        <button type="button" onclick="expandirAbreviaturasIndicacionesUI()" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl shadow-sm shrink-0">✨ Expandir abreviaturas ahora</button>
+                    </div>
                     <div class="bg-cyan-50 p-5 rounded-2xl shadow-sm border border-cyan-300">
                         <h3 class="text-sm font-extrabold text-cyan-950 uppercase tracking-wide">📋 Machote General Completo (Dieta + Soluciones + Medicamentos + Medidas)</h3>
                         <p class="text-xs text-cyan-800 mt-1 mb-3">Un solo machote rellena las cuatro secciones de un golpe.</p>
@@ -821,8 +935,11 @@
                     <button type="button" id="btn-cambiar-area" onclick="abrirCambiarAreaVisor()" class="hidden bg-white border border-indigo-300 text-indigo-800 hover:bg-indigo-50 text-xs font-bold px-3.5 py-2 rounded-lg transition items-center gap-1.5">🔄 Cambiar Área de Estancia</button>
                     <button type="button" id="btn-dar-alta-egreso" onclick="abrirNotaEgreso()" class="hidden bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-door-open"></i> Dar de Alta (Egreso)</button>
                     <button type="button" onclick="abrirHojaEnfermeria()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg"><i class="fas fa-notes-medical mr-1"></i> Hoja de Enfermería</button>
+                    <button type="button" onclick="abrirValoracionPreoperatoriaVisor()" class="bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 font-bold rounded-lg"><i class="fas fa-heart-pulse mr-1"></i> Val. Preoperatoria</button>
+                    <button type="button" onclick="abrirHojaRecienNacidoVisor()" class="bg-white border border-pink-300 text-pink-700 hover:bg-pink-50 font-bold rounded-lg"><i class="fas fa-baby mr-1"></i> Hoja Recién Nacido</button>
                     <button type="button" onclick="abrirHojaAnestesia('pre')" class="bg-white border border-violet-300 text-violet-700 font-bold rounded-lg">Preanestésica</button>
                     <button type="button" onclick="abrirHojaAnestesia('trans')" class="bg-white border border-violet-300 text-violet-700 font-bold rounded-lg">Transanestésica</button>
+                    <button type="button" onclick="imprimirTransanestesicaBlancoVisor()" class="bg-violet-50 border border-violet-300 text-violet-800 hover:bg-violet-100 font-bold rounded-lg" title="Imprimir formato transanestésico en blanco para llenado manual en quirófano"><i class="fas fa-print mr-1"></i> Transanestésico Blanco</button>
                     <button type="button" onclick="abrirHojaAnestesia('post')" class="bg-white border border-violet-300 text-violet-700 font-bold rounded-lg">Postanestésica</button>
                     <button type="button" id="btn-imprimir-documento" onclick="imprimirDocumentoVisor()" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-print"></i> Imprimir este documento</button>
                 </div>
@@ -963,8 +1080,8 @@
             <li>Acepto ser hospitalizado de manera ambulatoria o indefinida bajo la indicación de mi médico tratante.</li>
         </ol>
         <p style="text-align:justify;margin:0 0 8px;">Estoy consciente y de acuerdo que se me ha explicado que durante el curso de mi tratamiento pueden presentarse nuevos hallazgos clínicos que cambien el diagnóstico inicial y haya necesidad de modificar o complementar los procedimientos médicos y el tratamiento a seguir, así como el pronóstico de este. Yo, por consiguiente, autorizo que el médico tratante junto con realicen los cambios que se consideren necesarios y beneficiosos para mi persona, en el ejercicio de su juicio profesional.</p>
-        <div style="display:flex;justify-content:space-between;gap:24px;margin-top:36px;">
-            <div style="width:46%;text-align:center;font-size:11px;font-weight:bold;"><div style="border-top:1px solid #000;padding-top:4px;">FIRMA DEL PACIENTE</div></div>
+        <div style="display:flex;justify-content:space-between;gap:24px;margin-top:24px;">
+            <div style="width:46%;text-align:center;font-size:11px;font-weight:bold;"><div class="out-firmante-principal" style="min-height:14px;"></div><div style="border-top:1px solid #000;padding-top:4px;" class="out-etiqueta-firmante">FIRMA DEL PACIENTE</div></div>
             <div style="width:46%;text-align:center;font-size:11px;font-weight:bold;"><div class="out-medico" style="min-height:14px;"></div><div style="border-top:1px solid #000;padding-top:4px;">FIRMA DEL MÉDICO</div></div>
         </div>
         <div style="display:flex;justify-content:space-between;gap:24px;align-items:flex-end;margin-top:36px;">
@@ -1053,10 +1170,10 @@
         <p style="text-align:justify;margin:0 0 2px;"><strong>DÉCIMA SEXTA. Competencia y Jurisdicción.</strong></p>
         <p style="text-align:justify;margin:0 0 4px;">La Procuraduría Federal del Consumidor es competente en la vía administrativa para resolver cualquier controversia que se suscite sobre la interpretación o cumplimiento del presente contrato. Sin perjuicio de lo anterior, las partes se obligan a someterse a la jurisdicción de los tribunales competentes de en el domicilio donde se presten los Servicios.</p>
         <p style="text-align:justify;margin:8px 0;">Leído que fue y una vez hecha la explicación de su alcance legal y contenido, este contrato fue suscrito por duplicado en la ____________________________, en la fecha que se indica en el Formato de Información General de este contrato, entregándosele una copia del mismo al Usuario y/o Demandante del Servicio.</p>
-        <div style="display:flex;justify-content:space-between;gap:8px;margin-top:28px;font-weight:bold;text-align:center;font-size:9px;">
-            <div style="width:30%;"><div style="border-top:1px solid #000;padding-top:4px;">EL HOSPITAL<br>(Nombre y Firma)</div></div>
-            <div style="width:30%;"><div class="out-paciente" style="min-height:12px;"></div><div style="border-top:1px solid #000;padding-top:4px;">EL USUARIO</div></div>
-            <div style="width:30%;"><div class="out-resp" style="min-height:12px;"></div><div style="border-top:1px solid #000;padding-top:4px;">DEMANDANTE DEL SERVICIO<br>(Nombre y firma)</div></div>
+        <div style="display:flex;justify-content:space-between;gap:8px;margin-top:22px;font-weight:bold;text-align:center;font-size:9px;page-break-inside:avoid;">
+            <div style="width:30%;"><div style="min-height:12px;">SANATORIO BELÉN S.A. DE C.V.</div><div style="border-top:1px solid #000;padding-top:4px;">EL HOSPITAL<br>(Nombre y Firma)</div></div>
+            <div style="width:33%;"><div class="out-firmante-principal" style="min-height:12px;"></div><div style="border-top:1px solid #000;padding-top:4px;" class="out-etiqueta-usuario-contrato">EL USUARIO / REPRESENTANTE LEGAL</div></div>
+            <div style="width:33%;"><div class="out-resp" style="min-height:12px;"></div><div style="border-top:1px solid #000;padding-top:4px;">DEMANDANTE DEL SERVICIO / TUTOR<br>(Nombre y firma)</div></div>
         </div>
         <p style="margin-top:16px;font-size:9px;text-align:justify;">Este contrato fue aprobado y registrado por la Procuraduría Federal del Consumidor, Registro Público de contratos de adhesión, bajo el número 6648-2023 de fecha 17 de julio de 2023, expediente PFC.B.E.7/006661-2023. Cualquier variación del presente contrato en perjuicio del Usuario y/o Demandante del Servicio, frente al contrato de adhesión registrado, se tendrá por no puesta.</p>
     </div>
@@ -1067,16 +1184,16 @@
         <p style="margin:0 0 4px;"><strong>NOMBRE:</strong> <span class="out-paciente" style="border-bottom:1px solid #000;display:inline-block;min-width:48%;"></span>. <strong>EDAD:</strong> <span class="out-edad" style="border-bottom:1px solid #000;display:inline-block;min-width:70px;"></span>. <strong>SEXO:</strong> <span class="out-sexo" style="border-bottom:1px solid #000;display:inline-block;min-width:80px;"></span>.</p>
         <p style="margin:0 0 4px;"><strong>DIAGNÓSTICO:</strong> <span class="out-dx-prin" style="border-bottom:1px solid #000;display:inline-block;min-width:75%;"></span>.</p>
         <p style="margin:0 0 8px;"><strong>CIRUGÍA PROGRAMADA:</strong> <span class="out-cirugia" style="border-bottom:1px solid #000;display:inline-block;min-width:68%;"></span>.</p>
-        <p style="text-align:justify;margin:0 0 8px;">Yo <span class="out-paciente" style="border-bottom:1px solid #000;font-weight:bold;"></span> en pleno uso de mis facultades mentales y en mi calidad de paciente o representante legal de este <strong>“Declaro en forma libre y voluntaria”</strong> lo siguiente:</p>
+        <p style="text-align:justify;margin:0 0 8px;">Yo <span class="out-firmante-principal" style="border-bottom:1px solid #000;font-weight:bold;"></span> en pleno uso de mis facultades mentales y en mi calidad de <span class="out-calidad-firmante">paciente o representante legal</span> <strong>“Declaro en forma libre y voluntaria”</strong> lo siguiente:</p>
         <p style="text-align:justify;margin:0 0 6px;"><strong>1.- Con base en mi derecho inalienable de elegir mi médico, acepto al Dr. (a) ________________________________________ como mi médico anestesiólogo, quien está debidamente autorizado por las autoridades correspondientes para el ejercicio de su especialidad.</strong></p>
         <p style="text-align:justify;margin:0 0 6px;"><strong>2.- Entiendo que las complicaciones, aun siendo mínimas las probabilidades, existe la posibilidad de que se presente una, tales como: perdida o daño de una pieza dental, lesión de labios o lengua, dolor de espalda o en la zona donde se realizó la punción, dolor de cabeza, alteraciones asociadas con la posición quirúrgica, dificultad momentánea para orinar, molestias oculares o de garganta, heridas en boca y posible tos; así como complicaciones severas, tales como: aspiración del contenido gástrico, descompensación de enfermedades crónicas, alteraciones cardiacas, renales, presión arterial, complicaciones pulmonares, reacciones a medicamentos, transfusionales, lesiones nerviosas o de medula espinal. Todas ellas pueden causar secuelas permanentes o en el peor de los casos el fallecimiento. El beneficio que obtendré con la aplicación de la anestesia es que se puede llevar a cabo el procedimiento quirúrgico llamado <span class="out-cirugia"></span> para intentar mejorar mi estado de salud actual.</strong></p>
         <p style="text-align:justify;margin:0 0 6px;"><strong>3.- Entiendo también que todo acto médico implica una serie de riesgos que pueden deberse a mi estado de salud, alteraciones congénitas o anatómicas que padezca, mis antecedentes de enfermedades, tratamientos actuales y previos, a la técnica anestésica o quirúrgica, al equipo médico utilizado y/o a la enfermedad que condiciona el procedimiento médico o quirúrgico al que he decidido someterme.</strong></p>
         <p style="text-align:justify;margin:0 0 6px;"><strong>4.-Estoy consciente de que puedo requerir de tratamientos complementarios que aumenten mi estancia hospitalaria con la participación de otros servicios o traslado a otras unidades médicas.</strong></p>
         <p style="text-align:justify;margin:0 0 6px;"><strong>5.- El médico anestesiólogo ha respondido a mis dudas y me ha explicado claro y sencillo las alternativas anestésicas posibles y Acepto anestesia tipo _________________________ que es de tipo Electivo_____ Urgente _____ y he entendido los posibles riesgos y complicaciones de esta técnica anestésica.</strong></p>
         <p style="text-align:justify;margin:0 0 8px;"><strong>6.- En virtud de estar aclaradas todas mis dudas, DOY MI CONSENTIMIENTO para que mi persona o representado, pueda ser anestesiado con los riesgos inherentes al procedimiento y autorizo al anestesiólogo para que, de acuerdo con su criterio, cambie la técnica anestésica intentando con ello resolver cualquier situación que se presente durante el acto anestésico - quirúrgico o de acuerdo con mis condiciones físicas y/o emocionales.</strong></p>
-        <div style="display:flex;justify-content:space-between;gap:16px;margin-top:28px;text-align:center;font-size:10px;font-weight:bold;">
-            <div style="width:48%;border-top:1px solid #000;padding-top:4px;">NOMBRE Y FIRMA DEL MÉDICO</div>
-            <div style="width:48%;border-top:1px solid #000;padding-top:4px;">NOMBRE Y FIRMA DEL PACIENTE<br>Y/O REPRESENTANTE LEGAL</div>
+        <div style="display:flex;justify-content:space-between;gap:16px;margin-top:22px;text-align:center;font-size:10px;font-weight:bold;">
+            <div style="width:48%;"><div class="out-medico" style="min-height:14px;"></div><div style="border-top:1px solid #000;padding-top:4px;">NOMBRE Y FIRMA DEL MÉDICO</div></div>
+            <div style="width:48%;"><div class="out-firmante-principal" style="min-height:14px;"></div><div style="border-top:1px solid #000;padding-top:4px;" class="out-etiqueta-firmante">NOMBRE Y FIRMA DEL PACIENTE Y/O REPRESENTANTE LEGAL</div></div>
         </div>
         <div style="display:flex;justify-content:space-between;gap:16px;margin-top:28px;text-align:center;font-size:10px;font-weight:bold;">
             <div style="width:48%;border-top:1px solid #000;padding-top:4px;">NOMBRE Y FIRMA DEL PERSONAL<br>DE LA INSTITUCIÓN</div>
@@ -1087,14 +1204,15 @@
     <div id="print-cons-riesgo-qx" class="zona-impresion hidden" data-titulo="Consentimiento de riesgo quirúrgico">
         <p style="text-align:right;margin:0 0 6px;"><strong>No. de Expediente:</strong> <span class="out-expediente"></span> &nbsp; <strong>No. de Cama/Habitación:</strong> <span class="out-cama">Por asignar por Enfermería</span></p>
         <div style="text-align:center;font-size:14px;font-weight:bold;margin-bottom:10px;">CONSENTIMIENTO DE RIESGO Y COMPLICACIONES QUIRÚRGICAS</div>
-        <p style="text-align:justify;margin:0 0 8px;">Yo <span class="out-paciente" style="border-bottom:1px solid #000;font-weight:bold;"></span> en perfecto uso de mi facultad mental y consciente del procedimiento quirúrgico a realizar, autorizo que los médicos de <strong><em>SANATORIO BELÉN</em></strong> efectúen el procedimiento quirúrgico necesario para el beneficio de mí persona y posteriormente se me dé la atención médica y los tratamientos que sean necesarios bajo la supervisión del médico tratante <strong>el/la Dr/Dra.: <span class="out-medico"></span></strong>.</p>
+        <p style="text-align:justify;margin:0 0 8px;">Yo <span class="out-firmante-principal" style="border-bottom:1px solid #000;font-weight:bold;"></span> en perfecto uso de mi facultad mental y en calidad de <span class="out-calidad-firmante">paciente</span>, consciente del procedimiento quirúrgico a realizar, autorizo que los médicos de <strong><em>SANATORIO BELÉN</em></strong> efectúen el procedimiento quirúrgico necesario para el beneficio del paciente <strong><span class="out-paciente"></span></strong> y posteriormente se le dé la atención médica y los tratamientos que sean necesarios bajo la supervisión del médico tratante <strong>el/la Dr/Dra.: <span class="out-medico"></span></strong>.</p>
         <p style="text-align:justify;margin:0 0 8px;">Por lo que hago constar y acepto los siguientes puntos:</p>
         <p style="text-align:justify;margin:0 0 8px;"><strong>1.- Consiento que se me administren los medicamentos que sean necesarios, ya sean antibióticos, analgésicos y/o derivados, también acepto la administración de paquetes de sangre, plaquetas, plasma o derivados. Acepto el tratamiento y la terapia que se considere necesaria, a juicio del médico de tratante para mi pronta recuperación. También, acepto que he sido informado/a que existen riesgos, tales como pérdida de sangre, infección, paro cardio-respiratorio, entre otros, asociados a la práctica de cualquier procedimiento quirúrgico. Comprendo que la práctica de la medicina y la cirugía no es una ciencia exacta y reconozco que no se me ha garantizado ni asegurado nada en relación con los resultados de la (s) operación (es), tratamiento (s), y procedimiento (s).</strong></p>
         <p style="text-align:justify;margin:0 0 8px;"><strong>2.- Se me ha explicado que durante el curso de una operación puede presentarse diversas situaciones que pudiesen generar complicaciones, por lo cual pudiese prolongarse el procedimiento quirúrgico, solicitar el apoyo de más personal médico o iniciar otro procedimiento quirúrgico no planeado con antelación. Por consiguiente, autorizo que el personal médico (doctores, enfermeras, ayudantes y/o asociados) puedan realizar los procedimientos quirúrgicos que consideren necesarios y aconsejables en el ejercicio de su juicio profesional. La autoridad otorgada bajo este párrafo es extensiva al tratamiento de cualquier condición que requiera atención médica y sea desconocida al médico tratante al momento de que dé inicio la operación.</strong></p>
         <p style="text-align:justify;margin:0 0 8px;"><strong>3.- Consiento la administración de anestesia general, regional, o local, según sea la necesidad del procedimiento bajo la dirección del/la anestesiólogo/a, así mismo acepto la administración de anestesia local bajo la dirección del cirujano.</strong></p>
         <p style="text-align:justify;margin:0 0 8px;"><strong>4.- Consiento el uso de drogas anestésicas según se considere aconsejable.</strong></p>
-        <div style="text-align:center;margin-top:36px;font-size:11px;">
-            <div style="display:inline-block;min-width:240px;border-top:1px solid #000;padding-top:4px;">FIRMA DEL PACIENTE</div>
+        <div style="text-align:center;margin-top:24px;font-size:11px;font-weight:bold;">
+            <div class="out-firmante-principal" style="min-height:14px;"></div>
+            <div style="display:inline-block;min-width:260px;border-top:1px solid #000;padding-top:4px;" class="out-etiqueta-firmante">FIRMA DEL PACIENTE</div>
         </div>
         <div style="display:flex;justify-content:space-between;gap:16px;margin-top:36px;font-size:11px;">
             <div style="width:42%;text-align:center;"><div class="out-resp" style="min-height:14px;font-weight:bold;"></div><div style="border-top:1px solid #000;padding-top:4px;">FAMILIAR DEL PACIENTE</div></div>
@@ -1305,16 +1423,19 @@
 
         function aplicarContextoPaciente() {
             const $ = id => document.getElementById(id);
-            const pac = BelenStore.buscarPacientePorId(TURNO.paciente_id) || { nombre_completo: TURNO.paciente_nombre, fecha_nacimiento: TURNO.fecha_nacimiento, sexo: TURNO.sexo };
+            const pac = BelenStore.buscarPacientePorId(TURNO.paciente_id) || { nombre_completo: TURNO.paciente_nombre, fecha_nacimiento: TURNO.fecha_nacimiento, sexo: TURNO.sexo, nacionalidad: TURNO.nacionalidad || 'Mexicana' };
             const edad = BelenStore.calcularEdad(pac.fecha_nacimiento);
             const sexoTxt = pac.sexo === 'F' ? 'Femenino' : 'Masculino';
+            const edadTxt = BelenStore.formatearEdad ? BelenStore.formatearEdad(pac.fecha_nacimiento, edad) : `${edad !== null ? edad : '--'} ${edad === 1 ? 'Año' : 'Años'}`;
             $('paciente-nombre').innerText = pac.nombre_completo;
-            $('paciente-genero').innerText = `${sexoTxt} • ${edad !== null ? edad : '--'} ${edad === 1 ? 'Año' : 'Años'}`;
+            $('paciente-genero').innerText = `${sexoTxt} • ${edadTxt || '--'}`;
             $('paciente-iniciales').innerText = BelenStore.iniciales(pac.nombre_completo);
             document.title = 'Expediente Clínico | ' + pac.nombre_completo;
             // La fecha de nacimiento es dato de identidad capturado en Recepción: no se edita en la consulta
             const fn = $('comp-fn');
             fn.value = pac.fecha_nacimiento || '';
+            if ($('comp-fn-edad-badge')) $('comp-fn-edad-badge').innerText = edadTxt || '—';
+            if ($('comp-nac')) $('comp-nac').value = pac.nacionalidad || 'Mexicana';
             fn.readOnly = true;
             fn.title = 'Dato de identidad capturado en Recepción';
             fn.classList.add('bg-slate-100', 'text-slate-500', 'cursor-not-allowed');
@@ -1344,8 +1465,26 @@
             const alerta = $('alerta-signos');
             const mostrar = !completos && MODO_ACCESO === 'medico';
             alerta.classList.toggle('hidden', !mostrar); alerta.classList.toggle('flex', mostrar);
-            $('btn-capturar-signos').classList.toggle('animate-pulse', mostrar);
-            $('btn-capturar-signos').classList.toggle('hidden', MODO_ACCESO === 'lectura');
+            const contCrit = $('sv-alertas-criticas');
+            if (contCrit) {
+                const alertas = (completos && BelenStore.alertasSignosVitales) ? BelenStore.alertasSignosVitales(sv) : [];
+                if (alertas.length) {
+                    contCrit.classList.remove('hidden');
+                    contCrit.innerHTML = alertas.map(a => `<span class="inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1 rounded-lg border ${a.nivel === 'critico' ? 'bg-red-50 text-red-800 border-red-300' : 'bg-amber-50 text-amber-800 border-amber-300'}"><i class="fas fa-triangle-exclamation"></i> ${escaparHTML(a.texto)}</span>`).join('');
+                } else {
+                    contCrit.classList.add('hidden');
+                    contCrit.innerHTML = '';
+                }
+            }
+            const btn = $('btn-capturar-signos');
+            btn.classList.toggle('hidden', MODO_ACCESO === 'lectura');
+            if (completos) {
+                btn.className = 'text-xs font-extrabold uppercase tracking-wide px-3.5 py-2 rounded-xl border transition flex items-center gap-1.5 bg-white text-cyan-700 border-cyan-300 hover:bg-cyan-50 shadow-sm';
+                btn.innerHTML = '<i class="fas fa-pen-to-square"></i> Editar Signos Vitales';
+            } else {
+                btn.className = 'text-xs font-extrabold uppercase tracking-wide px-4 py-2 rounded-xl border-2 transition flex items-center gap-1.5 bg-amber-500 text-white border-amber-600 hover:bg-amber-600 shadow-md animate-pulse';
+                btn.innerHTML = '<i class="fas fa-heart-pulse"></i> ⚠️ Capturar Signos Vitales (Pendientes)';
+            }
             if (typeof actualizarIndicadorPendientes === 'function') actualizarIndicadorPendientes();
             programarGuardadoBorrador();
         }
@@ -1566,10 +1705,11 @@
             return c.outerHTML;
         }
         function datosPacienteVigentes() {
-            const pac = BelenStore.buscarPacientePorId(TURNO.paciente_id) || { nombre_completo: TURNO.paciente_nombre, fecha_nacimiento: TURNO.fecha_nacimiento, sexo: TURNO.sexo };
+            const pac = BelenStore.buscarPacientePorId(TURNO.paciente_id) || { nombre_completo: TURNO.paciente_nombre, fecha_nacimiento: TURNO.fecha_nacimiento, sexo: TURNO.sexo, nacionalidad: TURNO.nacionalidad || 'Mexicana' };
             const edad = BelenStore.calcularEdad(pac.fecha_nacimiento);
+            const edadTxt = BelenStore.formatearEdad ? BelenStore.formatearEdad(pac.fecha_nacimiento, edad) : (edad === null ? 'No registrada' : edad + ' ' + (edad === 1 ? 'año' : 'años'));
             return { pac: pac, nombre: pac.nombre_completo, edad: edad,
-                     edadTxt: edad === null ? 'No registrada' : edad + ' ' + (edad === 1 ? 'año' : 'años'), sexoTxt: pac.sexo === 'F' ? 'Femenino' : (pac.sexo === 'M' ? 'Masculino' : 'No registrado') };
+                     edadTxt: edadTxt || 'No registrada', sexoTxt: pac.sexo === 'F' ? 'Femenino' : (pac.sexo === 'M' ? 'Masculino' : 'No registrado') };
         }
         function valorInput(id) {
             const n = document.getElementById(id);
@@ -1580,8 +1720,48 @@
         }
         function textoExpedienteImpreso() { return (TURNO && TURNO.paciente_id) || ''; }
         function pistaCamaActual() {
+            const selCama = document.getElementById('val-cama-ingreso');
+            const vSel = selCama && selCama.value ? selCama.value.trim() : '';
+            if (vSel) return vSel;
             const i = (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO) ? INTERNAMIENTO : (TURNO && BelenStore.internamientoDeTurno(TURNO.turno_id));
             return (i && (i.cama || i.cama_codigo)) || (TURNO && (TURNO.cama || TURNO.cama_codigo)) || '';
+        }
+        function poblarSelectCamasIngreso() {
+            const sel = document.getElementById('val-cama-ingreso');
+            if (!sel || !window.BelenStore) return;
+            const monitor = BelenStore.monitorCamas ? BelenStore.monitorCamas() : [];
+            const actual = (INTERNAMIENTO && (INTERNAMIENTO.cama_codigo || INTERNAMIENTO.cama)) || (TURNO && (TURNO.cama_codigo || TURNO.cama)) || sel.value || '';
+            const codActual = BelenStore.resolverCama ? (BelenStore.resolverCama(actual) || {}).codigo : actual;
+            let opts = '<option value="">Por asignar por Enfermería (Sin cama fija aún)</option>';
+            monitor.forEach(m => {
+                const ocupadaOtro = m.ocupada && (!TURNO || !m.internamiento || m.internamiento.turno_id !== TURNO.turno_id);
+                const estadoTxt = ocupadaOtro ? (' · OCUPADA (' + (m.internamiento.paciente_nombre || 'Paciente') + ')') : ' · DISPONIBLE';
+                const selAttr = (codActual && m.cama.codigo === codActual) ? ' selected' : '';
+                opts += `<option value="${BelenUI.esc(m.cama.codigo)}"${selAttr}>${BelenUI.esc(m.cama.nombre)} (${BelenUI.esc(m.cama.codigo)})${BelenUI.esc(estadoTxt)}</option>`;
+            });
+            sel.innerHTML = opts;
+        }
+        function actualizarCamaIngresoSeleccionada() {
+            const sel = document.getElementById('val-cama-ingreso');
+            if (!sel) return;
+            const codigo = sel.value;
+            if (TURNO && codigo && BelenStore.asignarCamaInternamiento) {
+                const inter = BelenStore.internamientoDeTurno(TURNO.turno_id);
+                if (inter) {
+                    BelenStore.asignarCamaInternamiento(inter.internamiento_id, codigo);
+                } else {
+                    const s = BelenStore.cargar();
+                    const t = s.fila_espera.find(x => x.turno_id === TURNO.turno_id);
+                    const cObj = BelenStore.resolverCama(codigo);
+                    if (t && cObj) {
+                        t.cama_codigo = cObj.codigo;
+                        t.cama = cObj.nombre;
+                        BelenStore.guardar(s);
+                        TURNO = t;
+                    }
+                }
+            }
+            ponerTexto('.out-cama', textoCamaImpresa());
         }
         function textoCamaImpresa() {
             const pista = pistaCamaActual();
@@ -1648,7 +1828,8 @@
             const peso = conUnidad(valorInput('val-peso') || (sv.peso_kg != null ? sv.peso_kg : ''), 'kg');
             const talla = conUnidad(valorInput('val-talla') || (sv.talla_m != null ? sv.talla_m : ''), 'm');
             const chkAlg = document.getElementById('chk-alergias');
-            const alergias = (chkAlg && chkAlg.checked && valorInput('val-alergias')) || (INTERNAMIENTO && INTERNAMIENTO.alergias) || (chkAlg ? 'Ninguna referida' : (pre.dx_pre ? '' : 'Ninguna referida'));
+            const alergiasRaw = (chkAlg && chkAlg.checked && valorInput('val-alergias')) || (INTERNAMIENTO && INTERNAMIENTO.alergias) || 'NEGADAS';
+            const alergias = (!alergiasRaw || /^ninguna/i.test(alergiasRaw)) ? 'NEGADAS' : alergiasRaw;
             const dir = valorInput('comp-dir') || pac.direccion || '';
             const dom = partesDomicilio(dir);
             const ingreso = fechaHoraIngresoImpresa();
@@ -1664,7 +1845,17 @@
             ponerTexto('.out-peso', peso);
             ponerTexto('.out-talla', talla);
             ponerTexto('.out-alergias', alergias || 'Ninguna referida');
-            ponerTexto('.out-resp', valorInput('val-responsable') || '');
+            const respNombre = valorInput('val-responsable') || (INTERNAMIENTO && INTERNAMIENTO.responsable_nombre) || (pac && pac.contacto_emergencia) || '';
+            const menor = (typeof esMenorDeEdad === 'function') ? esMenorDeEdad() : (p.edad !== null && p.edad < 18);
+            const firmantePrincipal = menor ? (respNombre || 'PADRE / MADRE / TUTOR LEGAL') : nombre;
+            const calidadFirmante = menor ? ('Padre / Madre o Tutor Legal del menor ' + nombre) : 'Paciente (Mayor de edad)';
+            const etiquetaFirmante = menor ? 'Nombre y firma del Padre, Madre o Tutor Legal (Paciente menor de edad)' : 'Nombre y firma del Paciente o Representante Legal';
+            const etiquetaUsuarioContrato = menor ? ('Padre / Madre / Tutor del menor (' + (respNombre || 'Tutor Legal') + ')') : 'El Usuario (Paciente)';
+            ponerTexto('.out-resp', respNombre);
+            ponerTexto('.out-firmante-principal', firmantePrincipal);
+            ponerTexto('.out-calidad-firmante', calidadFirmante);
+            ponerTexto('.out-etiqueta-firmante', etiquetaFirmante);
+            ponerTexto('.out-etiqueta-usuario-contrato', etiquetaUsuarioContrato);
             ponerTexto('.out-ocupacion', valorInput('comp-ocu') || pac.ocupacion || '');
             ponerTexto('.out-domicilio', dom.domicilio);
             ponerTexto('.out-col', dom.colonia);
@@ -1701,7 +1892,8 @@
         // Compila con el código de impresión existente los documentos que viven en la captura guardada
         function compilarDocumentosCapturados() {
             const $ = id => document.getElementById(id);
-            aplicarContextoPaciente();      // identidad vigente del catálogo (la captura guardada puede traer la anterior)
+            aplicarContextoPaciente();
+            if (typeof poblarSelectCamasIngreso === 'function') poblarSelectCamasIngreso();      // identidad vigente del catálogo (la captura guardada puede traer la anterior)
             actualizarEdadDesdeFN();
             compilarDatosNota();
             document.querySelectorAll('.out-cama').forEach(el => { el.innerText = textoCamaImpresa(); });
@@ -1959,13 +2151,16 @@
             const sv = (TURNO && TURNO.signos_vitales) || {};
             const u = medico || {};
             const esp = BelenStore.especialidadPorCodigo(u.especialidad_codigo);
+            const alergiasNota = (document.getElementById('chk-alergias') && document.getElementById('chk-alergias').checked && valorInput('val-alergias'))
+                ? valorInput('val-alergias')
+                : ((typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO && INTERNAMIENTO.alergias) || 'NEGADAS');
             return {
                 expediente: textoExpedienteImpreso(), paciente_id: TURNO && TURNO.paciente_id,
                 fecha_nacimiento: BelenStore.fechaLegibleISO(p.pac.fecha_nacimiento) || '',
                 peso: valorInput('val-peso') || (sv.peso_kg != null ? sv.peso_kg : ''),
                 talla: valorInput('val-talla') || (sv.talla_m != null ? sv.talla_m : ''),
-                alergias: (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO && INTERNAMIENTO.alergias) || '',
-                especialidad: (esp && esp.nombre) || u.cargo || (TURNO && TURNO.especialidad) || '',
+                alergias: (!alergiasNota || /^ninguna/i.test(alergiasNota)) ? 'NEGADAS' : alergiasNota,
+                especialidad: (BelenStore.especialidadImpresaMedico && BelenStore.especialidadImpresaMedico(u)) || (esp && esp.nombre) || u.cargo || (TURNO && TURNO.especialidad) || '',
                 cama: textoCamaImpresa()
             };
         }
@@ -2038,6 +2233,17 @@
         function guardarCasaSiAplica() {
             if (TURNO) BelenStore.guardarBorradorRecetaCasa(TURNO.turno_id, borradorCasa);
         }
+        function expandirAbreviaturasRecetaCasa() {
+            if (!window.BelenStore || !BelenStore.expandirAbreviaturasMedicas) return;
+            leerLineasReceta('casa');
+            borradorCasa.forEach(item => {
+                if (item.dosis_indicacion) item.dosis_indicacion = BelenStore.expandirAbreviaturasMedicas(item.dosis_indicacion);
+                if (item.presentacion) item.presentacion = BelenStore.expandirAbreviaturasMedicas(item.presentacion);
+            });
+            guardarCasaSiAplica();
+            pintarLineasReceta('casa');
+            BelenUI.toast('Abreviaturas médicas expandidas en la receta.', 'exito');
+        }
         function pintarLineasReceta(destino) {
             const caja = document.getElementById(destino === 'casa' ? 'lineas-casa' : 'lineas-aplica');
             if (!caja) return;
@@ -2045,23 +2251,46 @@
             const base = arregloReceta(destino);
             caja.innerHTML = base.map((item, i) => {
                 if (destino !== 'casa') {
-                    return `<div data-idx="${i}" class="bg-white border border-slate-200 rounded-xl p-2">
+                    return `<div data-idx="${i}" class="bg-white border border-slate-200 rounded-xl p-2.5">
                         <div class="flex items-center justify-between gap-2"><p class="text-sm font-bold text-slate-800">${e(item.nombre)}</p>
-                            <button type="button" data-quitar="${i}" class="text-xs font-bold text-red-600">Quitar</button></div>
-                        <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 mt-2">
-                            <input data-dosis value="${e(item.dosis_indicacion || '')}" placeholder="Instrucción / Vía. Ej. 1 ámpula IM ahora" class="sm:col-span-3 border border-slate-200 rounded-lg p-2 text-xs">
-                            <input data-cant type="number" min="1" max="99" value="${e(String(item.cantidad || 1))}" class="border border-slate-200 rounded-lg p-2 text-xs" aria-label="Cantidad">
+                            <button type="button" data-quitar="${i}" class="text-xs font-bold text-red-600 hover:underline">Quitar</button></div>
+                        <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 mt-2 items-end">
+                            <div class="sm:col-span-8">
+                                <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Instrucción de aplicación inmediata en clínica</label>
+                                <input data-dosis value="${e(item.dosis_indicacion || '')}" placeholder="Ej. 1 ámpula vía intramuscular ahora" class="w-full border border-slate-200 rounded-lg p-2 text-xs">
+                            </div>
+                            <div class="sm:col-span-4">
+                                <label class="block text-[10px] font-bold text-amber-800 uppercase mb-0.5" title="Descuenta inventario de farmacia y genera cargo a cuenta">Piezas a surtir de Farmacia</label>
+                                <input data-cant type="number" min="1" max="99" value="${e(String(item.cantidad || 1))}" class="w-full border border-amber-300 bg-amber-50/40 rounded-lg p-2 text-xs font-bold" aria-label="Piezas a surtir de Farmacia">
+                            </div>
                         </div></div>`;
                 }
-                return `<div data-idx="${i}" class="bg-white border border-cyan-100 rounded-xl p-2 space-y-2">
-                    <div class="flex justify-end"><button type="button" data-quitar="${i}" class="text-xs font-bold text-red-600">Quitar</button></div>
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
-                        <input data-nombre value="${e(item.nombre || '')}" placeholder="Medicamento" class="sm:col-span-5 border border-slate-200 rounded-lg p-2 text-xs">
-                        <input data-concentracion value="${e(item.concentracion || '')}" placeholder="Concentración" class="sm:col-span-3 border border-slate-200 rounded-lg p-2 text-xs">
-                        <input data-presentacion value="${e(item.presentacion || item.forma_farmaceutica || '')}" placeholder="Presentación" class="sm:col-span-2 border border-slate-200 rounded-lg p-2 text-xs">
-                        <input data-cant type="number" min="1" max="99" value="${e(String(item.cantidad || 1))}" aria-label="Cantidad" class="sm:col-span-2 border border-slate-200 rounded-lg p-2 text-xs">
+                const frac = (window.BelenStore && BelenStore.detectarFraccionItemReceta) ? BelenStore.detectarFraccionItemReceta(item) : null;
+                const badgeFrac = frac ? `<span class="inline-flex items-center gap-1 bg-rose-100 text-rose-800 border border-rose-300 px-2 py-0.5 rounded-full text-[10px] font-extrabold"><i class="fas fa-file-shield"></i> Controlado Fracción ${e(frac)} · Imprime en hoja independiente</span>` : `<span class="text-[10px] font-bold text-cyan-800 uppercase">Medicamento #${i + 1} (Receta Externa)</span>`;
+                return `<div data-idx="${i}" class="bg-white border ${frac ? 'border-rose-300 bg-rose-50/20' : 'border-cyan-100'} rounded-xl p-2.5 space-y-2">
+                    <div class="flex items-center justify-between gap-2">${badgeFrac}<button type="button" data-quitar="${i}" class="text-xs font-bold text-red-600 hover:underline">Quitar</button></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
+                        <div class="sm:col-span-5">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Denominación genérica / comercial</label>
+                            <input data-nombre value="${e(item.nombre || '')}" placeholder="Medicamento" class="w-full border border-slate-200 rounded-lg p-2 text-xs font-semibold">
+                        </div>
+                        <div class="sm:col-span-3">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Concentración / Dosis</label>
+                            <input data-concentracion value="${e(item.concentracion || '')}" placeholder="Ej. 500 mg" class="w-full border border-slate-200 rounded-lg p-2 text-xs">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Presentación</label>
+                            <input data-presentacion value="${e(item.presentacion || item.forma_farmaceutica || '')}" placeholder="Ej. Tabletas / Caja" class="w-full border border-slate-200 rounded-lg p-2 text-xs">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-[10px] font-bold text-cyan-800 uppercase mb-0.5" title="Requisito COFEPRIS en receta externa (no descuenta stock de clínica)">Envases / Cajas</label>
+                            <input data-cant type="number" min="1" max="99" value="${e(String(item.cantidad || 1))}" aria-label="Envases o Cajas" class="w-full border border-cyan-200 bg-cyan-50/30 rounded-lg p-2 text-xs font-bold">
+                        </div>
                     </div>
-                    <textarea data-dosis rows="3" placeholder="Instrucciones de toma o aplicación" class="w-full border border-slate-200 rounded-lg p-2 text-xs h-24 resize-y">${e(item.dosis_indicacion || '')}</textarea>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Posología completa (Vía, frecuencia y duración — sin abreviaturas en versión impresa)</label>
+                        <textarea data-dosis rows="2" placeholder="Ej. Tomar 1 tableta vía oral cada 8 horas por 7 días" class="w-full border border-slate-200 rounded-lg p-2 text-xs resize-y">${e(item.dosis_indicacion || '')}</textarea>
+                    </div>
                 </div>`;
             }).join('');
             caja.querySelectorAll('[data-quitar]').forEach(b => b.addEventListener('click', () => {
@@ -2539,6 +2768,10 @@
                     <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Hora de fin</label><input id="cx-hora_fin" readonly class="${cls} bg-slate-50" placeholder="Se calcula sola"></div>
                     <div class="sm:col-span-3">${lab('cx-medico', 'Médico cirujano')}<select id="cx-medico_cirujano_id" class="${cls}" ${propio ? 'disabled' : ''}><option value="">Seleccione…</option>${cirujanos}</select>${err('medico_cirujano_id')}</div>
                     <div class="sm:col-span-3"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Anestesiólogo</label><select id="cx-anestesiologo_id" class="${cls}"><option value="">Pendiente (Asignará Administración)</option>${anests}</select>${err('anestesiologo_id')}</div>
+                    <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">1er Ayudante</label><input id="cx-ayudante" class="${cls}" placeholder="Nombre o Pendiente Admin."></div>
+                    <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Instrumentista</label><input id="cx-instrumentista" class="${cls}" placeholder="Enfermería Qx / Pendiente"></div>
+                    <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Circulante</label><input id="cx-circulante" class="${cls}" placeholder="Enfermería Qx / Pendiente"></div>
+                    <div class="sm:col-span-6"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Pediatra neonatólogo (Si es Cesárea / Parto)</label><input id="cx-pediatra" class="${cls}" placeholder="Opcional · Ej. Dr. Ricardo Morales Vega"></div>
                     <div class="sm:col-span-6"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Indicaciones preoperatorias</label><textarea id="cx-indicaciones" rows="2" maxlength="600" class="${cls}" placeholder="Ayuno, tricotomía, laboratorios previos"></textarea>${err('indicaciones_preoperatorias')}</div>
                     <div class="sm:col-span-6"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Notas privadas</label><textarea id="cx-notas" rows="2" maxlength="600" class="${cls}"></textarea>${err('notas')}</div>
                 </div>`,
@@ -2563,6 +2796,11 @@
                             tipo_estancia: q('#cx-tipo_estancia').value, procedimiento: q('#cx-procedimiento').value, sala: q('#cx-sala').value,
                             fecha: q('#cx-fecha').value, hora_inicio: q('#cx-hora_inicio').value, duracion_minutos: q('#cx-duracion').value,
                             medico_cirujano_id: q('#cx-medico_cirujano_id').value, anestesiologo_id: q('#cx-anestesiologo_id').value,
+                            ayudante_nombre: q('#cx-ayudante') ? q('#cx-ayudante').value : '',
+                            instrumentista_nombre: q('#cx-instrumentista') ? q('#cx-instrumentista').value : '',
+                            circulante_nombre: q('#cx-circulante') ? q('#cx-circulante').value : '',
+                            pediatra_nombre: q('#cx-pediatra') ? q('#cx-pediatra').value : '',
+                            requiere_pediatra: !!(q('#cx-pediatra') && q('#cx-pediatra').value.trim()),
                             indicaciones_preoperatorias: q('#cx-indicaciones').value, notas: q('#cx-notas').value
                         }, SESION);
                         if (!r.ok) {
@@ -2627,13 +2865,58 @@
                     cama: pistaCamaActual() ? textoCamaImpresa() : ''
                 });
             };
-            nodo('quirurgicas', 'Hojas Quirúrgicas', 'fa-kit-medical', postop.map(n => ({
+            const valPreop = (INTERNAMIENTO && INTERNAMIENTO.valoracion_preoperatoria) || (TURNO && TURNO.valoracion_preoperatoria) || null;
+            const itemsQuirurgicos = postop.map(n => ({
                 id: 'po-' + n.nota_id,
                 titulo: 'Hoja Quirúrgica ' + (n.folio || ''),
                 sub: S.fechaHoraLegible(n.fecha_hora) + ' · ' + (n.autor_nombre || ''),
                 meta: (n.folio || 'Hoja quirúrgica') + ' · ' + S.fechaHoraLegible(n.fecha_hora),
                 htmls: () => [S.htmlHojaQuirurgica(n, fichaQx())]
-            })), { vacio: 'Sin hoja quirúrgica' });
+            }));
+            if (valPreop && S.htmlImpresionValoracionPreoperatoria) {
+                itemsQuirurgicos.unshift({
+                    id: 'val-preop',
+                    titulo: 'Valoración Preoperatoria',
+                    etiqueta: 'Vigente',
+                    sub: S.fechaHoraLegible(valPreop.fecha_hora) + ' · ' + (valPreop.medico_nombre || ''),
+                    meta: 'Valoración Preoperatoria y Riesgo ASA/Goldman · ' + S.fechaHoraLegible(valPreop.fecha_hora),
+                    htmls: () => [S.htmlImpresionValoracionPreoperatoria(valPreop, TURNO.turno_id)]
+                });
+            }
+            if (S.htmlHojaTransanestesicaBlanco) {
+                itemsQuirurgicos.push({
+                    id: 'hoja-transanestesica-blanco',
+                    titulo: 'Registro Transanestésico (Formato en Blanco)',
+                    sub: 'Para llenado manual por Anestesiología en Quirófano',
+                    meta: 'Hoja de Registro Transanestésico pre-llenada con ficha del paciente',
+                    htmls: () => [S.htmlHojaTransanestesicaBlanco(TURNO.turno_id)]
+                });
+            }
+            nodo('quirurgicas', 'Hojas Quirúrgicas y Anestesia', 'fa-kit-medical', itemsQuirurgicos, { vacio: 'Sin hojas quirúrgicas' });
+
+            const hojaRN = (INTERNAMIENTO && INTERNAMIENTO.hoja_recien_nacido) || (TURNO && TURNO.hoja_recien_nacido) || null;
+            if (hojaRN && S.htmlImpresionHojaRecienNacido) {
+                nodo('recien_nacido', 'Hoja de Recién Nacido', 'fa-baby', [{
+                    id: 'hoja-rn',
+                    titulo: 'Historia Clínica Neonatal (RN)',
+                    etiqueta: 'Vigente',
+                    sub: S.fechaHoraLegible(hojaRN.fecha_hora) + ' · ' + (hojaRN.pediatra_nombre || ''),
+                    meta: 'Hoja de Recién Nacido (APGAR / Silverman / Somatometría, sin Tamiz)',
+                    htmls: () => [S.htmlImpresionHojaRecienNacido(hojaRN, TURNO.turno_id)]
+                }], { directo: true });
+            }
+
+            const icsRespondidas = (INTERNAMIENTO.interconsultas || []).filter(ic => ic.estatus === 'RESPONDIDA' || ic.nota_respuesta);
+            if (icsRespondidas.length && S.htmlImpresionNotaInterconsulta) {
+                nodo('interconsultas_notas', 'Notas de Interconsulta', 'fa-user-doctor', icsRespondidas.map((ic, idx) => ({
+                    id: 'ic-resp-' + (ic.interconsulta_id || idx),
+                    titulo: 'Interconsulta ' + (ic.especialidad || ''),
+                    etiqueta: 'Respondida',
+                    sub: S.fechaHoraLegible(ic.fecha_respuesta || ic.fecha_hora) + ' · ' + (ic.medico_nombre || ''),
+                    meta: 'Nota de Interconsulta · ' + (ic.especialidad || '') + ' · ' + (ic.medico_nombre || ''),
+                    htmls: () => [S.htmlImpresionNotaInterconsulta(ic, TURNO.turno_id)]
+                })));
+            }
 
             const notas = (INTERNAMIENTO.notas_evolucion || []).slice().reverse();
             nodo('evolucion', 'Evolución', 'fa-notes-medical', notas.map(n => ({
@@ -2727,7 +3010,14 @@
                 `<div class="${INTERNAMIENTO.alergias ? 'bg-red-50 border border-red-300 text-red-700' : 'bg-slate-50 border border-slate-200 text-slate-500'} rounded-lg px-2.5 py-2">
                     <p class="text-[10px] font-bold uppercase leading-none"><i class="fas ${INTERNAMIENTO.alergias ? 'fa-triangle-exclamation' : 'fa-shield-heart'} mr-1"></i>Alergias</p>
                     <p class="mt-0.5 font-bold">${e(textoAlergiasVisor())}</p></div>` +
-                (ics.length ? fila('Interconsultas', ics.map(x => `<span class="inline-block bg-indigo-50 text-indigo-700 border border-indigo-200 rounded px-1.5 py-0.5 text-[10px] font-bold mr-1 mb-1">${e(x.especialidad)} · ${e(x.medico_nombre)}</span>`).join('')) : '');
+                (ics.length ? fila('Interconsultas', ics.map((x, idx) => {
+                    const icId = x.interconsulta_id || String(idx);
+                    const resp = x.estatus === 'RESPONDIDA' || !!x.nota_respuesta;
+                    const badge = resp
+                        ? `<span class="text-emerald-700 font-extrabold">· Respondida</span>`
+                        : (ACCESO_VISOR && ACCESO_VISOR.puede_escribir ? `<button type="button" onclick="abrirResponderInterconsultaVisor('${e(icId)}')" class="ml-1 underline text-indigo-900 hover:text-indigo-600 font-extrabold">Responder nota</button>` : `<span class="text-amber-700">· Pendiente</span>`);
+                    return `<span class="inline-block bg-indigo-50 text-indigo-700 border border-indigo-200 rounded px-1.5 py-0.5 text-[10px] font-bold mr-1 mb-1">${e(x.especialidad)} · ${e(x.medico_nombre)} ${badge}</span>`;
+                }).join('')) : '');
             if (INTERNAMIENTO.modalidad === 'AMBULATORIO_QUIROFANO') {
                 document.getElementById('visor-banner-texto').textContent = 'Ingreso directo ambulatorio a quirófano. No pasó por la fila de consulta y no exige nota de consulta médica. Hoja Frontal, Consentimientos y Cuenta de Consumos están habilitados.';
                 $('visor-resumen').insertAdjacentHTML('afterbegin', '<p class="inline-flex text-[10px] font-extrabold uppercase tracking-wide px-2 py-1 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300">CIRUGÍA AMBULATORIA</p>');
@@ -2872,7 +3162,8 @@
             if (sinPermisoEscritura()) return;
             const e = BelenUI.esc, S = BelenStore;
             const svHoy = (TURNO && TURNO.signos_vitales) || {};
-            const val = c => (svHoy[c] === null || svHoy[c] === undefined) ? '' : svHoy[c];
+            // No precargamos signos vitales viejos del triage inicial para obligar captura fresca de la ronda actual (con botón opcional para traer la última toma de Enfermería)
+            const val = () => '';
             const campoSv = (id, etiqueta, unidad, step, min, max) => {
                 const r = S.RANGOS_SIGNOS[id];
                 const obl = r && !r.opcional;
@@ -2882,20 +3173,28 @@
                     <p data-err="sv_${id}" class="text-[11px] text-red-600 mt-1 hidden"></p></div>`;
             };
             const html = `<div class="space-y-4 text-left">
-                <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 flex items-start gap-2"><i class="fas fa-lock mt-0.5"></i><span>Formato SOAP. Al guardar se genera un documento inmutable en el Portafolio. Las notas no se pueden editar ni eliminar.</span></div>
-                ${campoModal('evm', 'subjetivo', 'S — Subjetivo', `<textarea id="evm-subjetivo" rows="3" placeholder="Lo que refiere el paciente el día de hoy" class="${CLASE_CAMPO} resize-none" data-autofoco></textarea>`)}
+                <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                    <span class="flex items-start gap-2"><i class="fas fa-lock mt-0.5"></i><span>Formato SOAP. Al guardar se genera un documento inmutable en el Portafolio.</span></span>
+                    <button type="button" id="evm-btn-expandir" class="shrink-0 text-[11px] font-bold text-indigo-700 bg-white border border-indigo-200 px-2.5 py-1 rounded-lg hover:bg-indigo-50"><i class="fas fa-wand-magic-sparkles mr-1"></i>Expandir abreviaturas</button>
+                </div>
+                ${campoModal('evm', 'subjetivo', 'S — Subjetivo', `<textarea id="evm-subjetivo" rows="3" placeholder="Lo que refiere el paciente en el pase de visita actual" class="${CLASE_CAMPO} resize-none" data-autofoco></textarea>`)}
                 <div class="border border-slate-200 rounded-xl p-3 bg-slate-50/70">
-                    <p class="text-[11px] font-bold text-slate-500 uppercase mb-3">O — Objetivo</p>
-                    <p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Signos vitales de hoy</p>
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <div>
+                            <p class="text-[11px] font-bold text-slate-500 uppercase">O — Objetivo · Signos vitales actuales</p>
+                            <p class="text-[10px] text-slate-400">Campos en blanco para captura del pase de visita actual (sin arrastrar signos viejos de urgencias)</p>
+                        </div>
+                        <button type="button" id="evm-btn-copiar-sv" class="text-[11px] font-bold text-cyan-800 bg-white border border-cyan-300 px-2.5 py-1 rounded-lg hover:bg-cyan-50"><i class="fas fa-heart-pulse mr-1"></i>Traer última toma de Enfermería</button>
+                    </div>
                     <div class="grid grid-cols-2 gap-3 mb-3">
-                        ${campoSv('ta_sistolica', 'TA sistólica', 'mmHg', '1', '50', '260')}
-                        ${campoSv('ta_diastolica', 'TA diastólica', 'mmHg', '1', '30', '160')}
-                        ${campoSv('frecuencia_cardiaca', 'Frecuencia cardíaca', 'lpm', '1', '20', '250')}
-                        ${campoSv('frecuencia_respiratoria', 'Frecuencia respiratoria', 'rpm', '1', '4', '80')}
-                        ${campoSv('temperatura_c', 'Temperatura', '°C', '0.1', '30', '45')}
-                        ${campoSv('spo2_porcentaje', 'Saturación de oxígeno', '%', '1', '50', '100')}
+                        ${campoSv('ta_sistolica', 'TA sistólica', 'mmHg', '1', '30', '300')}
+                        ${campoSv('ta_diastolica', 'TA diastólica', 'mmHg', '1', '15', '200')}
+                        ${campoSv('frecuencia_cardiaca', 'Frecuencia cardíaca', 'lpm', '1', '15', '280')}
+                        ${campoSv('frecuencia_respiratoria', 'Frecuencia respiratoria', 'rpm', '1', '2', '90')}
+                        ${campoSv('temperatura_c', 'Temperatura', '°C', '0.1', '25', '45')}
+                        ${campoSv('spo2_porcentaje', 'Saturación de oxígeno', '%', '1', '20', '100')}
                         ${campoSv('peso_kg', 'Peso', 'kg', '0.1', '0.3', '400')}
-                        ${campoSv('talla_m', 'Talla', 'm', '0.01', '0.3', '2.6')}
+                        ${campoSv('talla_m', 'Talla', 'm', '0.01', '0.2', '2.6')}
                     </div>
                     ${campoModal('evm', 'exploracion_fisica', 'Exploración física', `<textarea id="evm-exploracion_fisica" rows="3" placeholder="Hallazgos de la exploración física de hoy" class="${CLASE_CAMPO} resize-none"></textarea>`)}
                 </div>
@@ -2904,6 +3203,24 @@
                 ${campoModal('evm', 'diagnostico_actualizado', 'Actualizar diagnóstico', `<textarea id="evm-diagnostico_actualizado" rows="2" class="${CLASE_CAMPO} resize-none">${e(INTERNAMIENTO.diagnostico_actual || '')}</textarea>`, 'Se precarga el diagnóstico actual. Déjelo igual si no cambió.')}</div>`;
             BelenUI.modal({
                 titulo: 'Nueva Nota de Evolución', subtitulo: 'Formato SOAP · ' + datosPacienteVigentes().nombre, icono: 'fa-notes-medical', ancho: 'xl', html: html,
+                alMostrar: c => {
+                    const btnSv = c.el.querySelector('#evm-btn-copiar-sv');
+                    if (btnSv) btnSv.addEventListener('click', () => {
+                        Object.keys(S.RANGOS_SIGNOS).forEach(k => {
+                            const inp = c.el.querySelector('#evm-sv-' + k);
+                            if (inp && svHoy[k] !== null && svHoy[k] !== undefined) inp.value = svHoy[k];
+                        });
+                        BelenUI.toast('Se cargó la última toma de signos de Enfermería.', 'info');
+                    });
+                    const btnExp = c.el.querySelector('#evm-btn-expandir');
+                    if (btnExp && S.expandirAbreviaturasMedicas) btnExp.addEventListener('click', () => {
+                        ['#evm-subjetivo', '#evm-exploracion_fisica', '#evm-analisis', '#evm-plan', '#evm-diagnostico_actualizado'].forEach(sel => {
+                            const t = c.el.querySelector(sel);
+                            if (t && t.value) t.value = S.expandirAbreviaturasMedicas(t.value);
+                        });
+                        BelenUI.toast('Abreviaturas médicas expandidas.', 'exito');
+                    });
+                },
                 botones: [
                     { texto: 'Cancelar', estilo: 'secundario' },
                     { texto: 'Guardar Nota SOAP', estilo: 'primario', id: 'evm-guardar', alPulsar: c => {
@@ -3197,6 +3514,7 @@
 
             aplicarTipoIngreso(sessionStorage.getItem('belen_destino'));
             prepararRecetasConsulta();
+            poblarDatalistCIE10();
             poblarEspecialidadesInterconsulta();
             renderizarMachotes();
 
@@ -3351,16 +3669,36 @@
             actualizarEmbarazo();
         }
 
+        function formatearFechaCorta(d) {
+            if (!d || isNaN(d.getTime())) return '—';
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yyyy = d.getFullYear();
+            return `${dd}/${mm}/${yyyy}`;
+        }
+        function calcularFPPNaegele(fechaFum) {
+            if (!fechaFum || isNaN(fechaFum.getTime())) return null;
+            return new Date(fechaFum.getTime() + 280 * 86400000);
+        }
+        function sincronizarFCFObstetrica(val) {
+            const expFcf = document.getElementById('exp-fcf');
+            if (expFcf && val !== undefined) expFcf.value = val;
+        }
         function actualizarEmbarazo() {
+            const metodo = document.getElementById('emb-metodo') ? document.getElementById('emb-metodo').value : 'FUM';
+            const porFUM = metodo === 'FUM';
+            if (document.getElementById('btn-calc-fum')) document.getElementById('btn-calc-fum').classList.toggle('hidden', !porFUM);
+            if (document.getElementById('div-emb-usg')) document.getElementById('div-emb-usg').classList.toggle('hidden', porFUM);
             const sdg = obtenerSDG();
             const tri = trimestreDeSDG(sdg);
-            document.getElementById('emb-trimestre').innerText = tri ? `${['1er', '2do', '3er'][tri - 1]} trimestre` : '—';
-            document.getElementById('btn-calc-fum').classList.toggle('hidden', document.getElementById('emb-metodo').value !== 'FUM');
+            if (document.getElementById('emb-trimestre')) document.getElementById('emb-trimestre').innerText = tri ? `${['1er', '2do', '3er'][tri - 1]} trimestre` : '—';
 
-            // FCF: aparece (y es obligatoria) solo con embarazo y SDG >= 20
             const mostrarFCF = fcfObligatorio();
-            document.getElementById('bloque-fcf').classList.toggle('hidden', !mostrarFCF);
-            if (!mostrarFCF) document.getElementById('exp-fcf').value = '';
+            if (document.getElementById('bloque-fcf')) document.getElementById('bloque-fcf').classList.toggle('hidden', !mostrarFCF);
+            if (!mostrarFCF && document.getElementById('exp-fcf')) document.getElementById('exp-fcf').value = '';
+            else if (mostrarFCF && valorCampo('emb-fcf') && !valorCampo('exp-fcf') && document.getElementById('exp-fcf')) {
+                document.getElementById('exp-fcf').value = valorCampo('emb-fcf');
+            }
 
             actualizarIndicadorPendientes();
         }
@@ -3377,15 +3715,71 @@
             return (f.getFullYear() === y && f.getMonth() === m - 1 && f.getDate() === d) ? f : null;
         }
 
-        function calcularSDGporFUM() {
+        function calcularSDGporFUM(silencioso) {
             const fum = parsearFechaFlexible(document.getElementById('ago-fum').value);
-            if (!fum) { avisar('Fecha de última menstruación', 'Capture la fecha como DD/MM/AAAA en el campo de fecha de última menstruación para calcular las semanas de gestación.'); return; }
+            if (!fum) {
+                if (!silencioso) avisar('Fecha de última menstruación', 'Capture la fecha como DD/MM/AAAA en el campo de fecha de última menstruación para calcular las semanas de gestación.');
+                return;
+            }
             const refInput = new Date(document.getElementById('input-fecha').value);
             const ref = isNaN(refInput.getTime()) ? new Date() : refInput;
             const dias = Math.floor((ref - fum) / 86400000);
-            if (dias < 7 || dias > 301) { avisar('Fecha fuera de rango', 'La fecha capturada da un resultado fuera de rango (1 a 42 semanas). Verifique la fecha.'); return; }
-            document.getElementById('emb-sdg').value = Math.floor(dias / 7);
+            if (dias < 0 || dias > 315) {
+                if (!silencioso) avisar('Fecha fuera de rango', 'La fecha capturada da un resultado fuera de rango (0 a 44 semanas). Verifique la fecha.');
+                return;
+            }
+            const sem = Math.floor(dias / 7);
+            const dRest = dias % 7;
+            const fpp = calcularFPPNaegele(fum);
+            document.getElementById('emb-sdg').value = sem;
+            if (document.getElementById('emb-sdg-dias')) document.getElementById('emb-sdg-dias').value = dRest;
+            if (document.getElementById('emb-fpp') && fpp) document.getElementById('emb-fpp').value = formatearFechaCorta(fpp) + ' (Naegele FUM)';
             actualizarEmbarazo();
+        }
+
+        function calcularSDGporUSG() {
+            const fechaUsg = parsearFechaFlexible(valorCampo('emb-usg-fecha'));
+            const semUsg = parseInt(valorCampo('emb-usg-sem'), 10);
+            const diasUsg = parseInt(valorCampo('emb-usg-dias'), 10) || 0;
+            const selTrim = document.getElementById('emb-usg-trimestre');
+            const outUsg = document.getElementById('emb-usg-resultado');
+            if (Number.isFinite(semUsg) && semUsg >= 0 && selTrim) {
+                selTrim.value = semUsg < 14 ? '1' : (semUsg < 28 ? '2' : '3');
+            }
+            if (!fechaUsg || !Number.isFinite(semUsg) || semUsg < 0 || semUsg > 44) {
+                if (outUsg) outUsg.innerText = 'Capture la fecha en que se realizó el ultrasonido y las semanas/días reportadas para extrapolar las SDG al día de hoy.';
+                return;
+            }
+            const refInput = new Date(document.getElementById('input-fecha').value);
+            const ref = isNaN(refInput.getTime()) ? new Date() : refInput;
+            const diasDesdeUsg = Math.max(0, Math.floor((ref - fechaUsg) / 86400000));
+            const diasTotalesHoy = (semUsg * 7) + Math.min(6, Math.max(0, diasUsg)) + diasDesdeUsg;
+            const semHoy = Math.floor(diasTotalesHoy / 7);
+            const dHoy = diasTotalesHoy % 7;
+            const fppUsg = new Date(ref.getTime() + (280 - diasTotalesHoy) * 86400000);
+            const trimRealizado = selTrim ? selTrim.value : (semUsg < 14 ? '1' : (semUsg < 28 ? '2' : '3'));
+            const margenTxt = trimRealizado === '1' ? '1.er Trimestre (±5–7 días · máxima precisión)' : (trimRealizado === '2' ? '2.º Trimestre (±10–14 días)' : '3.er Trimestre (±21 días)');
+
+            let notaComparacion = '';
+            const fFum = parsearFechaFlexible(valorCampo('ago-fum'));
+            if (fFum) {
+                const diasFum = Math.floor((ref - fFum) / 86400000);
+                const difDias = Math.abs(diasTotalesHoy - diasFum);
+                const umbral = trimRealizado === '1' ? 7 : (trimRealizado === '2' ? 14 : 21);
+                notaComparacion = difDias > umbral
+                    ? ` · <span class="text-amber-700 font-extrabold">⚠️ Discrepancia de ${difDias} días vs FUM (mayor a ±${umbral}d del ${trimRealizado}.º trim → se recomienda fechar por USG)</span>`
+                    : ` · <span class="text-emerald-700 font-bold">✓ Concordante con FUM (diferencia ${difDias} días, dentro del margen de ±${umbral}d)</span>`;
+            }
+
+            if (outUsg) {
+                outUsg.innerHTML = `<strong>USG del ${formatearFechaCorta(fechaUsg)} (${semUsg}.${diasUsg} SDG en ${margenTxt}):</strong> Hoy equivale a <strong>${semHoy} semanas con ${dHoy} días (${semHoy}.${dHoy} SDG)</strong> · <strong>FPP por USG: ${formatearFechaCorta(fppUsg)}</strong>${notaComparacion}.`;
+            }
+            if (document.getElementById('emb-metodo') && document.getElementById('emb-metodo').value === 'USG') {
+                document.getElementById('emb-sdg').value = semHoy;
+                if (document.getElementById('emb-sdg-dias')) document.getElementById('emb-sdg-dias').value = dHoy;
+                if (document.getElementById('emb-fpp')) document.getElementById('emb-fpp').value = formatearFechaCorta(fppUsg) + ' (USG ' + trimRealizado + 'ºT)';
+                actualizarEmbarazo();
+            }
         }
 
         // Catálogo de sistemas de la exploración física, con su texto "Normal".
@@ -3431,11 +3825,26 @@
             }
             if (embarazoActivo()) {
                 const sdg = obtenerSDG();
+                const sdgDias = valorCampo('emb-sdg-dias');
+                const sdgTxt = sdg !== null ? (sdg + (sdgDias !== '' ? '.' + sdgDias : '') + ' SDG') : 'SDG sin capturar';
+                const fppTxt = valorCampo('emb-fpp');
                 const tri = trimestreDeSDG(sdg);
                 const vacunas = obtenerVacunasEmbarazo();
-                t += `<strong>Embarazo actual:</strong> ${sdg ? sdg + ' SDG' : 'SDG sin capturar'} por ${document.getElementById('emb-metodo').value}${tri ? ' (' + ['1er', '2do', '3er'][tri - 1] + ' trimestre)' : ''}. `;
+                const metodoTxt = document.getElementById('emb-metodo').value === 'USG'
+                    ? ('USG ' + (valorCampo('emb-usg-trimestre') || '1') + 'º trimestre')
+                    : 'FUM (Regla de Naegele)';
+                t += `<strong>Embarazo actual:</strong> ${escaparHTML(sdgTxt)} por ${escaparHTML(metodoTxt)}${tri ? ' (' + ['1er', '2do', '3er'][tri - 1] + ' trimestre)' : ''}${fppTxt ? ' · FPP: ' + escaparHTML(fppTxt) : ''}. `;
+                if (valorCampo('emb-riesgo')) t += `Riesgo obstétrico: ${escaparHTML(valorCampo('emb-riesgo'))}. `;
                 if (valorCampo('emb-consultas') !== '') t += `Consultas prenatales: ${escaparHTML(valorCampo('emb-consultas'))}. `;
                 if (valorCampo('emb-usg') !== '') t += `Ultrasonidos: ${escaparHTML(valorCampo('emb-usg'))}. `;
+                if (valorCampo('emb-micronutrientes')) t += `Suplementación: ${escaparHTML(valorCampo('emb-micronutrientes'))}. `;
+                if (valorCampo('emb-afu')) t += `AFU: ${escaparHTML(valorCampo('emb-afu'))} cm. `;
+                if (valorCampo('emb-fcf') || valorCampo('exp-fcf')) t += `FCF: ${escaparHTML(valorCampo('emb-fcf') || valorCampo('exp-fcf'))} lpm. `;
+                if (valorCampo('emb-movimientos')) t += `Movimientos fetales: ${escaparHTML(valorCampo('emb-movimientos'))}. `;
+                if (valorCampo('emb-dinamica')) t += `Dinámica uterina: ${escaparHTML(valorCampo('emb-dinamica'))}. `;
+                if (valorCampo('emb-leopold')) t += `Leopold: ${escaparHTML(valorCampo('emb-leopold'))}. `;
+                if (valorCampo('emb-cervix')) t += `Cérvix/membranas: ${escaparHTML(valorCampo('emb-cervix'))}. `;
+                if (valorCampo('emb-alarma')) t += `Alarma obstétrica: ${escaparHTML(valorCampo('emb-alarma'))}. `;
                 t += `Vacunas: ${vacunas.length ? escaparHTML(vacunas.join(', ')) : 'ninguna referida'}. `;
             }
             return t;
@@ -3555,14 +3964,51 @@
             if (!ta.value.trim()) { poner(); return; }
             confirmarModal('Insertar plantilla', 'El cuadro ya tiene texto. La plantilla se agregará al final.', poner, 'Insertar');
         }
+        function poblarDatalistCIE10() {
+            const dl = document.getElementById('cie10-list');
+            if (!dl || !BelenStore.CATALOGO_CIE10) return;
+            dl.innerHTML = BelenStore.CATALOGO_CIE10.map(x => `<option value="${escaparHTML(x.codigo + ' ' + x.descripcion)}"></option>`).join('');
+        }
+        function mostrarSugerenciasCIE10(q) {
+            const box = document.getElementById('sugerencias-cie10');
+            if (!box || !BelenStore.buscarCIE10) return;
+            const texto = String(q || '').trim();
+            if (texto.length < 2) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            const res = BelenStore.buscarCIE10(texto, 10);
+            if (!res.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            box.innerHTML = res.map(item => {
+                const completo = item.codigo + ' ' + item.descripcion;
+                return `<button type="button" onclick="seleccionarCIE10('${completo.replace(/'/g, "\\'")}')" class="w-full text-left px-3 py-2 text-xs hover:bg-cyan-50 flex items-center justify-between gap-2 border-b border-slate-100 last:border-0">
+                    <span><strong class="text-cyan-800 font-extrabold">${escaparHTML(item.codigo)}</strong> — <span class="text-slate-700 font-semibold">${escaparHTML(item.descripcion)}</span></span>
+                    <span class="text-[10px] font-bold text-cyan-700 bg-cyan-100 px-2 py-0.5 rounded-full shrink-0">+ Agregar</span>
+                </button>`;
+            }).join('');
+            box.classList.remove('hidden');
+        }
+        function seleccionarCIE10(textoCompleto) {
+            const input = document.getElementById('input-dx');
+            if (input) input.value = textoCompleto;
+            const box = document.getElementById('sugerencias-cie10');
+            if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+            agregarDx();
+        }
         function agregarDx() {
             const input = document.getElementById('input-dx');
-            if(input.value.trim()) { diagnósticosAgregados.push(input.value.trim()); input.value = ''; renderizarListaDx(); }
+            const val = input ? input.value.trim() : '';
+            if (val) {
+                if (!diagnósticosAgregados.includes(val)) diagnósticosAgregados.push(val);
+                input.value = '';
+                const box = document.getElementById('sugerencias-cie10');
+                if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+                renderizarListaDx();
+                actualizarIndicadorPendientes();
+                programarGuardadoBorrador();
+            }
         }
-        function borrarDx(idx) { diagnósticosAgregados.splice(idx, 1); renderizarListaDx(); }
+        function borrarDx(idx) { diagnósticosAgregados.splice(idx, 1); renderizarListaDx(); actualizarIndicadorPendientes(); programarGuardadoBorrador(); }
         function renderizarListaDx() {
             document.getElementById('lista-dx').innerHTML = diagnósticosAgregados.map((dx, idx) => 
-                `<li class="flex justify-between bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-100"><span class="text-sm font-medium text-cyan-800">${idx+1}. ${dx}</span><button type="button" onclick="borrarDx(${idx})" class="text-red-400 p-1"><i class="fas fa-times"></i></button></li>`
+                `<li class="flex justify-between items-center bg-cyan-50 px-3 py-2 rounded-lg border border-cyan-200"><span class="text-sm font-bold text-cyan-900"><span class="text-xs font-extrabold bg-cyan-700 text-white rounded px-1.5 py-0.5 mr-1.5">${idx === 0 ? 'PRINCIPAL' : '#' + (idx + 1)}</span>${escaparHTML(dx)}</span><button type="button" onclick="borrarDx(${idx})" class="text-red-500 hover:text-red-700 p-1"><i class="fas fa-times"></i></button></li>`
             ).join('');
             if (diagnósticosAgregados[0]) document.getElementById('ui-dx-ingreso').innerText = diagnósticosAgregados[0];
         }
@@ -3710,11 +4156,16 @@
 
         // Si hay F. Nacimiento válida, el encabezado muestra la edad calculada
         function actualizarEdadDesdeFN() {
-            const fn = parsearFechaFlexible(document.getElementById('comp-fn').value);
+            const fnStr = document.getElementById('comp-fn').value;
+            const fn = parsearFechaFlexible(fnStr);
             const edad = fn ? calcularEdadAnios() : null;
-            if (fn && edad !== null) {
+            const edadTxt = (fn && BelenStore.formatearEdad) ? BelenStore.formatearEdad(fnStr, edad) : (edad !== null ? `${edad} ${edad === 1 ? 'Año' : 'Años'}` : '');
+            const badge = document.getElementById('comp-fn-edad-badge');
+            if (badge) badge.innerText = edadTxt || '—';
+            if (fn && edadTxt) {
                 const gen = document.getElementById('paciente-genero');
-                gen.innerText = gen.innerText.replace(/\d+\s*a[ñn]os/i, `${edad} ${edad === 1 ? 'Año' : 'Años'}`);
+                const partes = gen.innerText.split('•');
+                if (partes.length >= 1) gen.innerText = partes[0].trim() + ' • ' + edadTxt;
             }
             actualizarEstadoMenor();
         }
@@ -3876,9 +4327,9 @@
             document.getElementById('print-doctor-firma').innerText = document.getElementById('val-medico').value;
             pintarCedulasFirma();
 
-            const dxPrin = diagnósticosAgregados[0] || 'Impactación Fecal (K56.4)';
+            const dxPrin = diagnósticosAgregados[0] || 'Diagnóstico en estudio';
             const grupoRh = (!document.getElementById('chk-sangre-omitir').checked && document.getElementById('val-sangre').value) ? document.getElementById('val-sangre').value : 'Desconoce';
-            const alergiasTxt = document.getElementById('chk-alergias').checked && document.getElementById('val-alergias').value ? document.getElementById('val-alergias').value : 'Ninguna referida';
+            const alergiasTxt = document.getElementById('chk-alergias').checked && document.getElementById('val-alergias').value ? document.getElementById('val-alergias').value : 'NEGADAS';
             document.getElementById('print-grupo-rh').innerText = grupoRh;
             document.getElementById('print-alergias-ingreso').innerText = alergiasTxt;
             document.getElementById('print-tipo').innerText = document.getElementById('val-tipo-ingreso').value;
@@ -3896,8 +4347,10 @@
             // Datos del paciente (antes fijos en el HTML de impresión)
             const generoTxtPrint = document.getElementById('paciente-genero').innerText;
             const edadPrint = calcularEdadAnios();
+            const fnPrint = document.getElementById('comp-fn').value;
+            const edadFmtPrint = (BelenStore.formatearEdad && (fnPrint || edadPrint !== null)) ? BelenStore.formatearEdad(fnPrint, edadPrint) : (edadPrint !== null ? `${edadPrint} ${edadPrint === 1 ? 'año' : 'años'}` : 'No registrada');
             document.querySelectorAll('.out-paciente').forEach(el => el.innerText = document.getElementById('paciente-nombre').innerText.trim());
-            document.querySelectorAll('.out-edad').forEach(el => el.innerText = edadPrint !== null ? `${edadPrint} ${edadPrint === 1 ? 'año' : 'años'}` : 'No registrada');
+            document.querySelectorAll('.out-edad').forEach(el => el.innerText = edadFmtPrint || 'No registrada');
             document.querySelectorAll('.out-sexo').forEach(el => el.innerText = /femenino/i.test(generoTxtPrint) ? 'Femenino' : (/masculino/i.test(generoTxtPrint) ? 'Masculino' : 'No especificado'));
 
             // Signos vitales en la nota impresa (triage + antropometría capturada)
@@ -4146,6 +4599,8 @@
                 edad_anios: calcularEdadAnios() !== null ? calcularEdadAnios() : (edadMatch ? parseInt(edadMatch[1], 10) : null),
                 es_menor_edad: esMenorDeEdad(),
                 fecha_nacimiento: textoONull('comp-fn'),
+                nacionalidad: textoONull('comp-nac') || 'Mexicana',
+                edad_formateada: BelenStore.formatearEdad ? BelenStore.formatearEdad(textoONull('comp-fn'), calcularEdadAnios()) : null,
                 estado_civil: textoONull('comp-civil'),
                 telefono: textoONull('comp-tel'),
                 ocupacion: textoONull('comp-ocu'),
@@ -4266,7 +4721,22 @@
                         presente: true,
                         metodo_calculo_sdg: texto('emb-metodo'), // FUM | USG
                         sdg: obtenerSDG(),
+                        sdg_dias: enteroONull(texto('emb-sdg-dias')),
+                        fpp: textoONull('emb-fpp'),
                         trimestre: trimestreDeSDG(obtenerSDG()), // 1 | 2 | 3
+                        usg_trimestre: textoONull('emb-usg-trimestre'),
+                        usg_fecha: textoONull('emb-usg-fecha'),
+                        usg_semanas: enteroONull(texto('emb-usg-sem')),
+                        usg_dias: enteroONull(texto('emb-usg-dias')),
+                        riesgo_obstetrico: textoONull('emb-riesgo'),
+                        micronutrientes: textoONull('emb-micronutrientes'),
+                        afu_cm: numeroONull('emb-afu'),
+                        fcf_lpm: enteroONull(texto('emb-fcf')) || enteroONull(texto('exp-fcf')),
+                        movimientos_fetales: textoONull('emb-movimientos'),
+                        dinamica_uterina: textoONull('emb-dinamica'),
+                        maniobras_leopold: textoONull('emb-leopold'),
+                        cervix_membranas: textoONull('emb-cervix'),
+                        datos_alarma_obstetrica: textoONull('emb-alarma'),
                         consultas_prenatales: enteroONull(texto('emb-consultas')),
                         ultrasonidos: enteroONull(texto('emb-usg')),
                         vacunas: obtenerVacunasEmbarazo()
@@ -5126,6 +5596,86 @@
             actualizarIndicadorPendientes();
             mostrarToast('Datos de prueba cargados en la Nota Médica.', 'info');
         }
+        function cargarCasoRealMichelle() {
+            const m = BelenStore.CASO_REAL_MICHELLE;
+            if (!m) { mostrarToast('No se encontró el caso real de Michelle.', 'error'); return; }
+            const poner = (id, v) => {
+                const n = document.getElementById(id);
+                if (!n || v === undefined || v === null) return;
+                n.value = v;
+                n.dispatchEvent(new Event('input', { bubbles: true }));
+                n.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+            const poner_check = (id, v) => {
+                const n = document.getElementById(id);
+                if (!n) return;
+                n.checked = !!v;
+                n.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+            poner('comp-fn', m.fecha_nacimiento);
+            poner('comp-nac', m.nacionalidad || 'Mexicana');
+            poner('comp-civil', m.estado_civil);
+            poner('comp-tel', m.telefono);
+            poner('comp-ocu', m.ocupacion);
+            poner('comp-dir', m.direccion);
+            actualizarEdadDesdeFN();
+
+            if (TURNO && m.signos_vitales) {
+                BelenStore.guardarSignos(TURNO.turno_id, m.signos_vitales, SESION);
+                sincronizarSignosDesdeTurno(true);
+            }
+            poner('val-peso', m.signos_vitales.peso_kg);
+            poner('val-talla', m.signos_vitales.talla_m);
+
+            poner_check('chk-ahf-neg', false); poner('val-ahf', m.ahf);
+            poner_check('chk-apnp-neg', false); poner('val-apnp', m.apnp);
+            poner_check('chk-sangre-omitir', false); poner('val-sangre', m.grupo_sanguineo);
+            poner_check('chk-app-neg', false);
+            poner_check('chk-alergias', false);
+            poner_check('chk-hta', false);
+            poner_check('chk-dm2', false);
+            poner_check('chk-qx', true);
+            if (!cirugiasAgregadas.length) agregarCirugiaDOM();
+            const idQx = cirugiasAgregadas[0];
+            poner('qx-nombre-' + idQx, '2 Cesáreas previas');
+            poner('qx-fecha-' + idQx, 'Previas');
+            poner('qx-comp-' + idQx, 'Ninguna');
+            poner('val-otras-app', m.app && m.app.otras ? m.app.otras : '');
+
+            if (document.getElementById('paciente-genero').innerText.includes('Femenino') && m.ago) {
+                poner_check('chk-ago-omitir', false);
+                poner('ago-g', m.ago.gestas);
+                poner('ago-p', m.ago.partos);
+                poner('ago-c', m.ago.cesareas);
+                poner('ago-a', m.ago.abortos);
+                poner('ago-fum', m.ago.fum);
+                poner('ago-ritmo', m.ago.ritmo_menstrual);
+                poner('ago-mpf', m.ago.metodo_planificacion);
+                poner_check('chk-ago-ivus-nr', true);
+                poner_check('chk-ago-ets-nr', true);
+                poner_check('chk-ago-parejas-nr', false); poner('ago-parejas', 1);
+                poner_check('chk-ago-higiene-nr', false); poner('ago-higiene-tipo', 'TOALLAS'); poner('ago-higiene-cant', 'Moderada');
+                poner_check('chk-embarazo', false);
+                toggleEmbarazo();
+            }
+
+            poner('val-motivo', m.motivo_consulta);
+            poner('val-padecimiento', m.padecimiento_actual);
+            poner('val-exploracion-libre', m.exploracion_libre);
+            poner_check('chk-omitir-estudios', false);
+            poner('val-estudios', m.estudios_auxiliares);
+            poner('val-analisis', m.analisis_clinico);
+            poner('val-plan', m.plan_tratamiento);
+            poner_check('chk-omitir-alarma', false);
+            poner('val-alarma', m.signos_alarma);
+            poner('val-pronostico', m.pronostico);
+
+            diagnósticosAgregados.splice(0, diagnósticosAgregados.length);
+            (m.diagnosticos || []).forEach(d => diagnósticosAgregados.push(d.codigo + ' ' + d.descripcion));
+            renderizarListaDx();
+            actualizarIndicadorPendientes();
+            mostrarToast('Caso clínico real cargado: Michelle Alejandra Guerrero Peña (Oct 2026).', 'exito');
+        }
         // ===== FIN FUNCION TEMPORAL DE PRUEBAS =====
 
         function escaparHTML(t) {
@@ -5352,9 +5902,10 @@
 
             // I. FICHA DE IDENTIFICACIÓN
             const sexoTxt = p.sexo === 'F' ? 'Femenino' : (p.sexo === 'M' ? 'Masculino' : null);
+            const edadHcTxt = p.edad_formateada || (BelenStore.formatearEdad ? BelenStore.formatearEdad(p.fecha_nacimiento, p.edad_anios) : (p.edad_anios !== null ? `${p.edad_anios} años` : null));
             const celdasFicha = [
                 celda('Nombre', p.nombre_completo),
-                celdaHTML(`${par('Edad', p.edad_anios !== null ? `${p.edad_anios} años` : null)} &nbsp;|&nbsp; ${par('Sexo', sexoTxt)}`),
+                celdaHTML(`${par('Edad', edadHcTxt)} &nbsp;|&nbsp; ${par('Sexo', sexoTxt)} &nbsp;|&nbsp; ${par('Nacionalidad', p.nacionalidad || 'Mexicana')}`),
                 celda('Fecha de nacimiento', fechaLegible(p.fecha_nacimiento)),
                 celda('Estado civil', p.estado_civil),
                 celda('Ocupación', p.ocupacion),
@@ -5385,7 +5936,7 @@
                 };
                 cronica('Hipertensión arterial', app.hipertension);
                 cronica('Diabetes mellitus tipo 2', app.diabetes_mellitus_2);
-                items.push(app.alergias.presente ? `<strong>Alergias:</strong> ${val(app.alergias.descripcion)}.` : '<strong>Alergias:</strong> negadas.');
+                items.push(app.alergias.presente ? `<strong>Alergias:</strong> ${val(app.alergias.descripcion)}.` : '<strong>Alergias:</strong> NEGADAS.');
                 if (app.transfusiones.presente) items.push(`<strong>Transfusiones:</strong> ${val(app.transfusiones.detalle)}; complicaciones: ${val(app.transfusiones.complicaciones)}.`);
                 app.cirugias_previas.forEach(q => items.push(`<strong>Cirugía:</strong> ${val(q.procedimiento)} (${val(q.fecha_texto)}); complicaciones: ${val(q.complicaciones)}.`));
                 if (!vacio(app.otras_enfermedades)) items.push(`<strong>Otras enfermedades:</strong> ${e(app.otras_enfermedades)}.`);
@@ -5487,6 +6038,229 @@
             const cedulasFirma = e(BelenStore.textoCedulasFirma(BelenStore.USUARIOS[d.meta && d.meta.medico_id]) || 'Cédula no registrada').replace(/\n/g, '<br>');
             html += `<div class="hc-firma"><div><strong>${e(medicoFirma)}</strong><br>${cedulasFirma}<br>Médico que Elabora / Valora</div></div>`;
             return html + '</div>';
+        }
+
+
+        // ---------- Nuevos Formatos Clínicos (Valoración Preoperatoria, Hoja de Recién Nacido, Transanestésica en Blanco, Respuesta a Interconsulta, Plantillas NOM-004 y Expansor de Abreviaturas) ----------
+        function expandirAbreviaturasIndicacionesUI() {
+            if (!window.BelenStore || !BelenStore.expandirAbreviaturasMedicas) return;
+            ['ind-dieta', 'ind-sol', 'ind-meds', 'ind-gen', 'val-plan'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.value) {
+                    el.value = BelenStore.expandirAbreviaturasMedicas(el.value);
+                    el.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            });
+            BelenUI.toast('Abreviaturas médicas expandidas (NOM-004).', 'exito');
+        }
+
+        function agregarConsentimientoPlantilla(clave) {
+            const plantillas = {
+                PARTO_CESAREA: {
+                    proc: 'Atención de Parto Eutócico y/o Operación Cesárea',
+                    riesgos: 'Hemorragia obstétrica, atonía uterina, lesión incidental de vejiga, uréter o intestino, infección de herida quirúrgica o endometritis, tromboembolismo pulmonar, sufrimiento fetal agudo, necesidad de hemotransfusión o histerectomía obstétrica de urgencia en caso de hemorragia incoercible.',
+                    beneficios: 'Nacimiento seguro del recién nacido y preservación del bienestar materno-fetal.'
+                },
+                LEGRADO_AMEU: {
+                    proc: 'Legrado Uterino Instrumentado (LUI) / Aspiración Manual Endouterina (AMEU)',
+                    riesgos: 'Sangrado transvaginal moderado a severo, perforación uterina, laceración cervical, infección pélvica, retención parcial de restos ovulares o síndrome de Asherman.',
+                    beneficios: 'Evacuación hemostática de la cavidad uterina, control de hemorragia y obtención de muestra para estudio histopatológico.'
+                },
+                LAPAROSCOPIA_VESICULA: {
+                    proc: 'Colecistectomía Laparoscópica y/o Abierta (Conversión en caso necesario)',
+                    riesgos: 'Sangrado, lesión de vía biliar principal, fuga biliar, lesión visceral incidental, infección de sitio quirúrgico, conversión a cirugía abierta por hallazgos anatómicos o inflamatorios severos.',
+                    beneficios: 'Resolución definitiva de patología vesicular biliar y prevención de colecistitis complicada o pancreatitis biliar.'
+                },
+                APENDICECTOMIA: {
+                    proc: 'Apendicectomía Abierta y/o Laparoscópica',
+                    riesgos: 'Infección de herida quirúrgica, absceso residual intraabdominal, íleo postoperatorio, sangrado, fístula cecal o lesión de asas intestinales adyacentes.',
+                    beneficios: 'Extracción del foco séptico apendicular y prevención de peritonitis generalizada.'
+                },
+                TRANSFUSION: {
+                    proc: 'Transfusión de Sangre y/o Hemocomponentes (Paquete Globular / Plasma / Plaquetas)',
+                    riesgos: 'Reacción febril no hemolítica, reacción alérgica o urticariforme, sobrecarga circulatoria asociada a transfusión (TACO), lesión pulmonar aguda (TRALI), reacción hemolítica o transmisión de agentes infecciosos en periodo de ventana.',
+                    beneficios: 'Restitución de capacidad transportadora de oxígeno, volumen intravascular y/o factores de coagulación.'
+                },
+                ALTA_VOLUNTARIA: {
+                    proc: 'Egreso / Alta Voluntaria con Exoneración de Responsabilidad Médica',
+                    riesgos: 'Complicación o agravamiento del cuadro clínico actual, sepsis, secuelas funcionales permanentes o defunción por interrupción del tratamiento médico-quirúrgico hospitalario sugerido.',
+                    beneficios: 'Ejercicio de la autonomía del paciente o representante legal bajo pleno conocimiento de los riesgos explicados.'
+                }
+            };
+            const p = plantillas[clave];
+            if (!p) return;
+            agregarConsentimientoEspecial();
+            const ult = consentimientosEspeciales[consentimientosEspeciales.length - 1];
+            if (!ult) return;
+            const nProc = document.getElementById(`ce-proc-${ult}`);
+            const nRies = document.getElementById(`ce-riesgos-${ult}`);
+            const nBen = document.getElementById(`ce-beneficios-${ult}`);
+            if (nProc) { nProc.value = p.proc; nProc.dispatchEvent(new Event('input', { bubbles: true })); }
+            if (nRies) { nRies.value = p.riesgos; nRies.dispatchEvent(new Event('input', { bubbles: true })); }
+            if (nBen) { nBen.value = p.beneficios; nBen.dispatchEvent(new Event('input', { bubbles: true })); }
+            BelenUI.toast('Consentimiento de ' + p.proc + ' agregado.', 'exito');
+        }
+
+        function abrirValoracionPreoperatoriaVisor() {
+            if (!TURNO || !window.BelenStore) return;
+            const e = BelenUI.esc, S = BelenStore;
+            const prev = (INTERNAMIENTO && INTERNAMIENTO.valoracion_preoperatoria) || (TURNO && TURNO.valoracion_preoperatoria) || {};
+            const preQx = S.prefillHojaQuirurgica(TURNO.turno_id);
+            const html = `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Diagnóstico preoperatorio</label>
+                    <input id="vpre-dx" value="${e(prev.diagnostico_preoperatorio || preQx.dx_pre || (INTERNAMIENTO && INTERNAMIENTO.diagnostico_actual) || '')}" class="${CLASE_CAMPO}"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Cirugía proyectada</label>
+                    <input id="vpre-cx" value="${e(prev.cirugia_proyectada || preQx.operacion || '')}" class="${CLASE_CAMPO}"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Clasificación ASA</label>
+                    <select id="vpre-asa" class="${CLASE_CAMPO}">
+                        ${['ASA I — Paciente sano', 'ASA II — Enfermedad sistémica leve controlada', 'ASA III — Enfermedad sistémica severa', 'ASA IV — Amenaza constante para la vida', 'ASA I-E / II-E — Urgencia quirúrgica'].map(x => `<option value="${e(x)}" ${prev.asa === x ? 'selected' : ''}>${e(x)}</option>`).join('')}
+                    </select></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Riesgo Cardiovascular (Goldman / Lee)</label>
+                    <select id="vpre-goldman" class="${CLASE_CAMPO}">
+                        ${['Clase I — Riesgo Bajo (<1%)', 'Clase II — Riesgo Intermedio (1-5%)', 'Clase III — Riesgo Moderado-Alto', 'Clase IV — Riesgo Alto'].map(x => `<option value="${e(x)}" ${prev.goldman === x ? 'selected' : ''}>${e(x)}</option>`).join('')}
+                    </select></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Riesgo Tromboembólico (Caprini)</label>
+                    <input id="vpre-caprini" value="${e(prev.riesgo_tromboembolico || 'Moderado (Medias elásticas + deambulación temprana)')}" class="${CLASE_CAMPO}"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Vía aérea (Mallampati) / Ayuno</label>
+                    <input id="vpre-ayuno" value="${e(prev.horas_ayuno || 'Mallampati I · Ayuno >= 8 horas cumplido')}" class="${CLASE_CAMPO}"></div>
+                <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Laboratorios, ECG y Gabinete preoperatorios</label>
+                    <textarea id="vpre-labs" rows="2" class="${CLASE_CAMPO}">${e(prev.laboratorios_previos || 'BH, Tiempos de coagulación (TP/TTPa) y Química sanguínea dentro de parámetros seguros para cirugía.')}</textarea></div>
+                <div class="sm:col-span-2"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Conducta y recomendaciones perioperatorias</label>
+                    <textarea id="vpre-rec" rows="2" class="${CLASE_CAMPO}">${e(prev.recomendaciones || 'Paciente en condiciones clínicas para procedimiento quirúrgico programado. Profilaxis antibiótica 30 min previos a incisión, control térmico y vigilancia hemodinámica.')}</textarea></div>
+            </div>`;
+            BelenUI.modal({
+                titulo: 'Valoración Preoperatoria', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-heart-circle-check', ancho: 'xl', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Guardar e Integrar al Portafolio', estilo: 'primario', alPulsar: c => {
+                        const q = s => c.el.querySelector(s).value;
+                        const r = S.guardarValoracionPreoperatoria(TURNO.turno_id, {
+                            diagnostico_preoperatorio: q('#vpre-dx'),
+                            cirugia_proyectada: q('#vpre-cx'),
+                            asa: q('#vpre-asa'),
+                            goldman: q('#vpre-goldman'),
+                            riesgo_tromboembolico: q('#vpre-caprini'),
+                            horas_ayuno: q('#vpre-ayuno'),
+                            laboratorios_previos: q('#vpre-labs'),
+                            recomendaciones: q('#vpre-rec')
+                        }, S.sesion());
+                        if (!r.ok) { BelenUI.toast(r.motivo || 'Error al guardar', 'peligro'); return false; }
+                        BelenUI.toast('Valoración Preoperatoria guardada en el Portafolio.', 'exito');
+                        if (typeof refrescarVisor === 'function') refrescarVisor('val-preop');
+                    } }
+                ]
+            });
+        }
+
+        function abrirHojaRecienNacidoVisor() {
+            if (!TURNO || !window.BelenStore) return;
+            const e = BelenUI.esc, S = BelenStore;
+            const prev = (INTERNAMIENTO && INTERNAMIENTO.hoja_recien_nacido) || (TURNO && TURNO.hoja_recien_nacido) || {};
+            const html = `<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left">
+                <div class="sm:col-span-3 bg-pink-50 border border-pink-200 text-pink-900 rounded-lg px-3 py-2 text-xs font-semibold">
+                    <i class="fas fa-baby mr-1"></i> Historia Clínica de Recién Nacido (Formato Sanatorio Belén · Sin Tamiz Neonatal).
+                </div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Sexo del RN</label>
+                    <select id="rn-sexo" class="${CLASE_CAMPO}">
+                        <option value="Femenino" ${prev.sexo_rn === 'Femenino' ? 'selected' : ''}>Femenino</option>
+                        <option value="Masculino" ${prev.sexo_rn === 'Masculino' ? 'selected' : ''}>Masculino</option>
+                    </select></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Fecha y hora de nacimiento</label>
+                    <input id="rn-fh" value="${e(prev.fecha_hora_nacimiento || new Date().toLocaleString('es-MX'))}" class="${CLASE_CAMPO}"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Vía de nacimiento</label>
+                    <select id="rn-via" class="${CLASE_CAMPO}">
+                        <option value="Cesárea" ${prev.via_nacimiento === 'Cesárea' ? 'selected' : ''}>Cesárea</option>
+                        <option value="Parto Eutócico" ${prev.via_nacimiento === 'Parto Eutócico' ? 'selected' : ''}>Parto Eutócico</option>
+                    </select></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Peso al nacer (g)</label>
+                    <input id="rn-peso" value="${e(prev.peso_g || '3150 g')}" class="${CLASE_CAMPO}"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Talla (cm)</label>
+                    <input id="rn-talla" value="${e(prev.talla_cm || '50 cm')}" class="${CLASE_CAMPO}"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">PC / PT / PA / Pie (cm)</label>
+                    <input id="rn-perimetros" value="${e(prev.perimetros || 'PC 34 cm · PT 33 cm · PA 31 cm · Pie 8 cm')}" class="${CLASE_CAMPO}"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">APGAR (1 min / 5 min)</label>
+                    <input id="rn-apgar" value="${e(prev.apgar || '8 / 9')}" class="${CLASE_CAMPO}"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Silverman-Andersen</label>
+                    <input id="rn-silverman" value="${e(prev.silverman || '0 puntos (Sin dificultad respiratoria)')}" class="${CLASE_CAMPO}"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Capurro (SDG)</label>
+                    <input id="rn-capurro" value="${e(prev.capurro_sdg || '39.0 SDG (A término)')}" class="${CLASE_CAMPO}"></div>
+                <div class="sm:col-span-3"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Profilaxis y Reanimación Neonatal</label>
+                    <input id="rn-profilaxis" value="${e(prev.profilaxis || 'Vitamina K 1 mg IM dosis única · Profilaxis oftálmica con Cloranfenicol · Permeabilidad esofágica y coanal verificada')}" class="${CLASE_CAMPO}"></div>
+                <div class="sm:col-span-3"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Exploración física neonatal e indicaciones de Cunero / Alojamiento conjunto</label>
+                    <textarea id="rn-exploracion" rows="3" class="${CLASE_CAMPO}">${e(prev.exploracion_neonatal || 'Recién nacido vigoroso, llanto fuerte al nacer, adecuado tono muscular y coloración rosada. Fontanelas normotensas, paladar íntegro, campos pulmonares bien ventilados, ruidos cardíacos rítmicos sin soplos, abdomen blando con muñón umbilical ligado sin sangrado (2 arterias y 1 vena), caderas estables (Ortolani/Barlow negativos). Pasa a alojamiento conjunto / cunero.')}</textarea></div>
+            </div>`;
+            BelenUI.modal({
+                titulo: 'Hoja de Recién Nacido', subtitulo: 'Madre: ' + datosPacienteVigentes().nombre, icono: 'fa-baby', ancho: 'xl', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Guardar Hoja de Recién Nacido', estilo: 'primario', alPulsar: c => {
+                        const q = s => c.el.querySelector(s).value;
+                        const r = S.guardarHojaRecienNacido(TURNO.turno_id, {
+                            sexo_rn: q('#rn-sexo'),
+                            fecha_hora_nacimiento: q('#rn-fh'),
+                            via_nacimiento: q('#rn-via'),
+                            peso_g: q('#rn-peso'),
+                            talla_cm: q('#rn-talla'),
+                            perimetros: q('#rn-perimetros'),
+                            apgar: q('#rn-apgar'),
+                            silverman: q('#rn-silverman'),
+                            capurro_sdg: q('#rn-capurro'),
+                            profilaxis: q('#rn-profilaxis'),
+                            exploracion_neonatal: q('#rn-exploracion')
+                        }, S.sesion());
+                        if (!r.ok) { BelenUI.toast(r.motivo || 'Error al guardar', 'peligro'); return false; }
+                        BelenUI.toast('Hoja de Recién Nacido guardada en el Portafolio.', 'exito');
+                        if (typeof refrescarVisor === 'function') refrescarVisor('hoja-rn');
+                    } }
+                ]
+            });
+        }
+
+        function imprimirTransanestesicaBlancoVisor() {
+            if (!TURNO || !window.BelenStore || !BelenStore.htmlHojaTransanestesicaBlanco) return;
+            if (typeof refrescarVisor === 'function') {
+                refrescarVisor('hoja-transanestesica-blanco');
+                setTimeout(() => imprimirDocumentoActivo(), 150);
+            } else {
+                imprimirHtmlEnVisor(BelenStore.htmlHojaTransanestesicaBlanco(TURNO.turno_id));
+            }
+        }
+
+        function abrirResponderInterconsultaVisor(icId) {
+            if (!INTERNAMIENTO || !window.BelenStore) return;
+            const e = BelenUI.esc, S = BelenStore;
+            const ics = INTERNAMIENTO.interconsultas || [];
+            const ic = ics.find((x, idx) => (x.interconsulta_id || String(idx)) === String(icId)) || ics[0];
+            if (!ic) return;
+            const html = `<div class="space-y-3 text-left">
+                <div class="bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-lg px-3 py-2 text-xs">
+                    <p class="font-extrabold uppercase">${e(ic.especialidad || 'Interconsulta')} · Solicitada a: ${e(ic.medico_nombre || '')}</p>
+                    <p class="mt-0.5"><strong>Motivo de solicitud:</strong> ${e(ic.motivo || 'Valoración especializada')}</p>
+                </div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Hallazgos clínicos y resumen de valoración</label>
+                    <textarea id="icr-hallazgos" rows="3" class="${CLASE_CAMPO}" placeholder="Resumen del interrogatorio y exploración por la especialidad interconsultada"></textarea></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Criterio diagnóstico / Impresión diagnóstica</label>
+                    <input id="icr-dx" class="${CLASE_CAMPO}" value="${e(INTERNAMIENTO.diagnostico_actual || '')}"></div>
+                <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Plan y sugerencias terapéuticas (NOM-004)</label>
+                    <textarea id="icr-plan" rows="3" class="${CLASE_CAMPO}" placeholder="Sugerencias diagnósticas y de tratamiento médico o quirúrgico"></textarea></div>
+            </div>`;
+            BelenUI.modal({
+                titulo: 'Responder Nota de Interconsulta', subtitulo: (ic.especialidad || '') + ' · ' + datosPacienteVigentes().nombre, icono: 'fa-user-doctor', ancho: 'xl', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Guardar Nota de Interconsulta', estilo: 'primario', alPulsar: c => {
+                        const q = s => c.el.querySelector(s).value;
+                        const r = S.responderInterconsulta(INTERNAMIENTO.internamiento_id, ic.interconsulta_id || icId, {
+                            hallazgos: q('#icr-hallazgos'),
+                            diagnostico_interconsulta: q('#icr-dx'),
+                            plan_sugerencias: q('#icr-plan')
+                        }, S.sesion());
+                        if (!r.ok) { BelenUI.toast(r.motivo || 'Complete los campos de la interconsulta', 'peligro'); return false; }
+                        BelenUI.toast('Nota de Interconsulta guardada en el Portafolio.', 'exito');
+                        refrescarVisor();
+                    } }
+                ]
+            });
         }
 
         function compilarHistoriaClinica() {

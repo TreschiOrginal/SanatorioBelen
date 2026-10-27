@@ -232,23 +232,38 @@
                 ${editando && turno.signos_vitales.capturado_por ? `<br><span class="text-slate-400">Última captura: ${esc(turno.signos_vitales.capturado_por)}</span>` : ''}
             </div>
             <div class="grid grid-cols-2 gap-3">
-                ${campo('ta_sistolica', 'TA sistólica', 'mmHg', true, 'step="1" min="50" max="260"')}
-                ${campo('ta_diastolica', 'TA diastólica', 'mmHg', true, 'step="1" min="30" max="160"')}
-                ${campo('frecuencia_cardiaca', 'Frecuencia cardíaca', 'lpm', true, 'step="1" min="20" max="250"')}
-                ${campo('frecuencia_respiratoria', 'Frecuencia respiratoria', 'rpm', true, 'step="1" min="4" max="80"')}
-                ${campo('temperatura_c', 'Temperatura', '°C', true, 'step="0.1" min="30" max="45"')}
-                ${campo('spo2_porcentaje', 'Saturación de oxígeno', '%', true, 'step="1" min="50" max="100"')}
+                ${campo('ta_sistolica', 'TA sistólica', 'mmHg', true, 'step="1" min="30" max="300" placeholder="Ej. 120 o 180"')}
+                ${campo('ta_diastolica', 'TA diastólica', 'mmHg', true, 'step="1" min="15" max="200" placeholder="Ej. 80 o 120"')}
+                ${campo('frecuencia_cardiaca', 'Frecuencia cardíaca', 'lpm', true, 'step="1" min="15" max="280"')}
+                ${campo('frecuencia_respiratoria', 'Frecuencia respiratoria', 'rpm', true, 'step="1" min="2" max="90"')}
+                ${campo('temperatura_c', 'Temperatura', '°C', true, 'step="0.1" min="25" max="45"')}
+                ${campo('spo2_porcentaje', 'Saturación de oxígeno', '%', true, 'step="1" min="20" max="100"')}
                 ${campo('peso_kg', 'Peso', 'kg', false, 'step="0.1" min="0.3" max="400"')}
-                ${campo('talla_m', 'Talla', 'm', false, 'step="0.01" min="0.3" max="2.6"')}
-                <div class="col-span-2">${campo('glucemia', 'Glucosa capilar / Dxtx', 'mg/dL', false, 'step="1" min="20" max="600"')}</div>
+                ${campo('talla_m', 'Talla', 'm', false, 'step="0.01" min="0.2" max="2.6"')}
+                <div class="col-span-2">${campo('glucemia', 'Glucosa capilar / Dxtx', 'mg/dL', false, 'step="1" min="10" max="600"')}</div>
             </div>
-            <p id="svm-error-general" class="hidden mt-3 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>`;
+            <div id="svm-alerta-critica" class="hidden mt-3 text-xs font-bold rounded-lg px-3 py-2 border"></div>
+            <p class="mt-2 text-[11px] text-slate-500"><i class="fas fa-circle-info text-cyan-600 mr-1"></i>Se permiten valores de urgencia o crisis (ej. TA <b>180/120</b> mmHg); el sistema mostrará alerta clínica para el médico sin bloquear el registro.</p>
+            <p id="svm-error-general" class="hidden mt-2 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2"></p>`;
 
         return modal({
             titulo: editando ? 'Editar Signos Vitales' : 'Capturar Signos Vitales', subtitulo: 'Los campos con * son obligatorios', tipo: 'info', icono: 'fa-heart-pulse', ancho: 'md', html: html,
             alMostrar: ctrl => {
                 const primero = ctrl.el.querySelector('#svm-ta_sistolica');
                 if (primero) primero.setAttribute('data-autofoco', '');
+                const actualizarAlertaViva = () => {
+                    if (!S.alertasSignosVitales) return;
+                    const actual = {};
+                    Object.keys(S.RANGOS_SIGNOS).forEach(c => { const i = ctrl.el.querySelector('#svm-' + c); actual[c] = i ? i.value : ''; });
+                    const al = S.alertasSignosVitales(actual);
+                    const box = ctrl.el.querySelector('#svm-alerta-critica');
+                    if (!box) return;
+                    if (!al.alertas.length) { box.classList.add('hidden'); return; }
+                    box.className = 'mt-3 text-xs font-bold rounded-lg px-3 py-2 border ' + (al.critico ? 'bg-red-50 border-red-300 text-red-800' : 'bg-amber-50 border-amber-300 text-amber-900');
+                    box.innerHTML = '<i class="fas fa-triangle-exclamation mr-1"></i>' + (al.critico ? 'Signos en rango crítico (se guardarán con alerta para el médico): ' : 'Signos fuera de rango habitual: ') + al.alertas.map(x => esc(x.texto)).join(' · ');
+                };
+                ctrl.el.querySelectorAll('input').forEach(inp => inp.addEventListener('input', actualizarAlertaViva));
+                actualizarAlertaViva();
                 ctrl.el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ctrl.el.querySelector('#svm-guardar').click(); } });
             },
             botones: [
@@ -347,41 +362,117 @@
         return bloque(pieza.titulo, '');
     }
 
-    function abrirMisCedulas() {
+    function abrirMisCedulas(alActualizar) {
         const S = global.BelenStore;
         const s = S && S.sesion();
         const u = s && S.USUARIOS[s.usuario_id];
-        if (!u || u.rol !== 'medico') { toast('Solo el médico puede configurar sus cédulas de firma.', 'alerta'); return null; }
-        if (S.esMedicoGeneral(u)) {
-            const valor = u.cedula_general || u.cedula_profesional || 'No registrada';
-            return modal({
-                titulo: 'Mis Cédulas de Firma', subtitulo: u.nombre, icono: 'fa-id-card', ancho: 'md',
-                html: `<p class="text-sm text-slate-600 text-left">Como médico general, sus notas, indicaciones y recetas imprimen siempre la cédula de licenciatura.</p>
-                    <p class="mt-3 text-left text-sm font-bold text-slate-900">${esc(S.CEDULAS_FIRMA[0].etiqueta)}</p>
-                    <p class="text-left text-base font-extrabold text-cyan-800">${esc(valor)}</p>`,
-                botones: [{ texto: 'Cerrar', estilo: 'primario' }]
-            });
-        }
-        const checks = S.CEDULAS_FIRMA.map(c => {
-            const tiene = !!u[c.campo];
-            const on = tiene && (u.cedulas_visibles || []).indexOf(c.codigo) >= 0;
-            return `<label class="flex items-start gap-3 rounded-xl border border-slate-200 px-3 py-2 ${tiene ? 'bg-white' : 'bg-slate-50'}">
-                <input type="checkbox" data-vis="${esc(c.codigo)}" class="mt-1" ${on ? 'checked' : ''} ${tiene ? '' : 'disabled'}>
-                <span><span class="block text-sm font-bold text-slate-800">${esc(c.etiqueta)}</span>
-                <span class="block text-xs ${tiene ? 'text-cyan-800 font-bold' : 'text-slate-400'}">${tiene ? esc(u[c.campo]) : 'No registrada. Dirección la captura en Gestión de Personal.'}</span></span>
-            </label>`;
+        if (!u || u.rol !== 'medico') { toast('Solo el médico puede configurar sus cédulas y título impreso.', 'alerta'); return null; }
+        const tituloActual = (S.especialidadImpresaMedico && S.especialidadImpresaMedico(u)) || u.titulo_impreso || u.cargo || 'Medicina General';
+        const univActual = u.universidad_titulo || '';
+        const sugerenciasTitulo = [
+            'Medicina General',
+            'Médico Cirujano y Partero',
+            'Cirugía General y Laparoscópica',
+            'Ginecología y Obstetricia',
+            'Traumatología y Ortopedia',
+            'Angiología y Cirugía Vascular',
+            'Medicina Interna',
+            'Pediatría Médica',
+            'Anestesiología',
+            'Urología'
+        ];
+        const filasCedulas = S.CEDULAS_FIRMA.map(c => {
+            const valActual = u[c.campo] || '';
+            const on = valActual ? (u.cedulas_visibles || []).indexOf(c.codigo) >= 0 : (c.codigo === 'general');
+            const etForm = c.etiquetaFormulario || c.etiqueta;
+            return `<div class="rounded-xl border border-slate-200 bg-white p-3 space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" data-vis="${esc(c.codigo)}" class="rounded text-cyan-600" ${on ? 'checked' : ''}>
+                        <span class="text-xs font-extrabold text-slate-800 uppercase">${esc(etForm)}</span>
+                    </label>
+                    <span class="text-[11px] font-semibold text-cyan-700 bg-cyan-50 border border-cyan-200 rounded px-2 py-0.5">Se imprime como: "${esc(c.etiqueta)}: …"</span>
+                </div>
+                <input type="text" data-campo-ced="${esc(c.campo)}" data-cod-ced="${esc(c.codigo)}" value="${esc(valActual)}" placeholder="Número de cédula (opcional si no aplica)" class="w-full border border-slate-300 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-slate-800">
+            </div>`;
         }).join('');
+        const chipsHtml = sugerenciasTitulo.map(t => `<button type="button" data-sug-titulo="${esc(t)}" class="text-[11px] font-semibold px-2 py-1 rounded-full border border-slate-200 bg-slate-50 hover:bg-cyan-50 hover:border-cyan-300 hover:text-cyan-900 transition">${esc(t)}</button>`).join('');
         return modal({
-            titulo: 'Mis Cédulas de Firma', subtitulo: 'Elija cuáles de sus cédulas registradas se imprimen en notas, indicaciones y recetas.', icono: 'fa-id-card', ancho: 'md',
-            html: `<div class="space-y-2 text-left">${checks}</div><p id="ced-error" class="text-xs text-red-600 mt-3 hidden text-left"></p>`,
+            titulo: 'Mis Cédulas y Especialidad Impresa',
+            subtitulo: 'Personalice cómo aparecen su especialidad/título y sus cédulas en todas las recetas, notas e indicaciones.',
+            icono: 'fa-id-card',
+            ancho: 'lg',
+            html: `<div class="space-y-4 text-left">
+                <div class="rounded-xl border border-cyan-200 bg-cyan-50/60 p-3">
+                    <label for="ced-titulo-impreso" class="block text-[11px] font-extrabold text-cyan-950 uppercase mb-1">Título / Especialidad impresa debajo de su nombre <span class="text-red-500">*</span></label>
+                    <input id="ced-titulo-impreso" type="text" value="${esc(tituloActual)}" placeholder="Ej. Cirugía General y Laparoscópica, Traumatología y Ortopedia, Médico Cirujano y Partero..." class="w-full border border-cyan-300 rounded-lg px-3 py-2 text-sm font-bold text-slate-900 bg-white">
+                    <p class="text-[11px] text-slate-500 mt-1.5 mb-1">Opciones rápidas (o escriba libremente la suya):</p>
+                    <div class="flex flex-wrap gap-1.5">${chipsHtml}</div>
+                    <div class="mt-2.5">
+                        <label for="ced-universidad" class="block text-[11px] font-bold text-slate-600 uppercase mb-1">Universidad / Institución que avala (opcional)</label>
+                        <input id="ced-universidad" type="text" value="${esc(univActual)}" placeholder="Ej. Universidad de Guadalajara (UdeG) / UNAM" class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs text-slate-800 bg-white">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <p class="text-xs font-extrabold text-slate-700 uppercase">Cédulas registradas y casillas para imprimir</p>
+                    ${filasCedulas}
+                </div>
+                <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 text-center">
+                    <p class="text-[10px] font-bold uppercase text-slate-400 mb-1">Vista previa en encabezado y firma de Receta / Nota</p>
+                    <p class="text-sm font-extrabold text-slate-900">${esc(u.nombre)}</p>
+                    <p id="ced-preview-titulo" class="text-xs font-bold text-cyan-900">${esc(tituloActual)}</p>
+                    <p id="ced-preview-lineas" class="text-[11px] text-slate-700 whitespace-pre-line mt-0.5"></p>
+                </div>
+                <p id="ced-error" class="text-xs text-red-600 hidden text-left font-semibold"></p>
+            </div>`,
+            alMostrar: c => {
+                const inpTitulo = c.el.querySelector('#ced-titulo-impreso');
+                const inpUniv = c.el.querySelector('#ced-universidad');
+                const prevTit = c.el.querySelector('#ced-preview-titulo');
+                const prevLin = c.el.querySelector('#ced-preview-lineas');
+                const actualizarPreview = () => {
+                    const tit = (inpTitulo.value || '').trim() || 'Medicina General';
+                    const uni = (inpUniv.value || '').trim();
+                    prevTit.textContent = tit + (uni ? ' · ' + uni : '');
+                    const lineas = [];
+                    S.CEDULAS_FIRMA.forEach(cf => {
+                        const chk = c.el.querySelector('[data-vis="' + cf.codigo + '"]');
+                        const inp = c.el.querySelector('[data-campo-ced="' + cf.campo + '"]');
+                        const val = inp ? inp.value.trim() : '';
+                        if (chk && chk.checked && val) lineas.push(cf.etiqueta + ': ' + val);
+                    });
+                    prevLin.textContent = lineas.length ? lineas.join(' · ') : 'Seleccione al menos una cédula con número';
+                };
+                c.el.querySelectorAll('[data-sug-titulo]').forEach(b => b.addEventListener('click', () => {
+                    inpTitulo.value = b.getAttribute('data-sug-titulo');
+                    actualizarPreview();
+                }));
+                c.el.querySelectorAll('[data-campo-ced]').forEach(inp => inp.addEventListener('input', () => {
+                    const cod = inp.getAttribute('data-cod-ced');
+                    const chk = c.el.querySelector('[data-vis="' + cod + '"]');
+                    if (chk && inp.value.trim()) chk.checked = true;
+                    actualizarPreview();
+                }));
+                c.el.querySelectorAll('input').forEach(i => i.addEventListener('input', actualizarPreview));
+                c.el.querySelectorAll('input[type="checkbox"]').forEach(i => i.addEventListener('change', actualizarPreview));
+                actualizarPreview();
+            },
             botones: [
                 { texto: 'Cancelar', estilo: 'secundario' },
-                { texto: 'Guardar impresión', estilo: 'primario', alPulsar: c => {
+                { texto: 'Guardar configuración', estilo: 'primario', alPulsar: c => {
                     const vis = Array.from(c.el.querySelectorAll('[data-vis]:checked')).map(x => x.getAttribute('data-vis'));
-                    const r = S.guardarCedulasVisibles(u.id, vis, S.sesion());
+                    const datosExtra = {
+                        titulo_impreso: c.el.querySelector('#ced-titulo-impreso').value,
+                        universidad_titulo: c.el.querySelector('#ced-universidad').value
+                    };
+                    c.el.querySelectorAll('[data-campo-ced]').forEach(inp => {
+                        datosExtra[inp.getAttribute('data-campo-ced')] = inp.value;
+                    });
+                    const r = S.guardarCedulasVisibles(u.id, vis, S.sesion(), datosExtra);
                     const error = c.el.querySelector('#ced-error');
                     if (!r.ok) { error.textContent = r.motivo; error.classList.remove('hidden'); return false; }
-                    toast('Las notas, indicaciones y recetas usarán las cédulas seleccionadas.', 'exito');
+                    toast('Especialidad impresa y cédulas actualizadas.', 'exito');
+                    if (typeof alActualizar === 'function') alActualizar();
                 } }
             ]
         });
@@ -487,9 +578,14 @@
                 const pintarTubos = () => {
                     const ids = Array.from(c.el.querySelectorAll('[data-est]:checked')).map(x => x.getAttribute('data-est'));
                     const r = S.resumenTubosEstudios(ids);
-                    c.el.querySelector('#tubos-resumen').textContent = r.texto
-                        ? 'Tubos requeridos/tomados para esta orden: ' + r.texto
-                        : (ids.length ? 'Tubos requeridos/tomados para esta orden: ninguno. Los conceptos marcados no piden tubo.' : 'Tubos requeridos/tomados para esta orden: ninguno todavía.');
+                    const nodoTubos = c.el.querySelector('#tubos-resumen');
+                    if (r.tubos && r.tubos.length) {
+                        nodoTubos.innerHTML = '<div class="flex flex-wrap items-center gap-2"><span class="text-xs font-extrabold uppercase text-violet-900">Muestras físicas a recolectar (1 tubo por color):</span>' +
+                            r.tubos.map(tb => `<span class="inline-flex items-center gap-1.5 rounded-lg bg-white border border-violet-300 px-2.5 py-1 text-xs font-extrabold text-violet-950 shadow-sm">${esc(tb.emoji || '🧪')} ${tb.cantidad}x ${esc(tb.tubo)} <span class="font-semibold text-slate-600">→ ${esc((tb.estudios || []).join(', '))}</span></span>`).join('') +
+                            '</div>';
+                    } else {
+                        nodoTubos.textContent = ids.length ? 'Tubos requeridos/tomados para esta orden: ninguno. Los conceptos marcados no piden tubo.' : 'Tubos requeridos/tomados para esta orden: ninguno todavía.';
+                    }
                     const caja = c.el.querySelector('#seleccion-estudios');
                     const marcados = Array.from(c.el.querySelectorAll('[data-est]:checked'));
                     if (!marcados.length) { caja.innerHTML = '<span class="text-xs font-bold text-slate-500">Seleccionados para Cargar: ninguno.</span>'; return; }
@@ -564,15 +660,27 @@
         const err = k => `<p data-err="${k}" class="text-[11px] text-red-600 mt-1 hidden"></p>`;
         const hoy = (global.BelenStore && global.BelenStore.hoyLocal) ? global.BelenStore.hoyLocal() : '';
         const span = op.span || 'sm:col-span-2';
+        const nacActual = v.nacionalidad || 'Mexicana';
+        const edadInicial = (v.fecha_nacimiento && global.BelenStore && global.BelenStore.formatearEdad) ? global.BelenStore.formatearEdad(v.fecha_nacimiento) : '';
         return `
             <div class="${span}">${lab('nombres', 'Nombre(s)')}<input id="${p}-nombres" type="text" autocomplete="off" value="${esc(v.nombres || '')}" ${ro} placeholder="Ej. Juan Carlos" class="${cls} ${bg}" ${op.autofoco && !bloquear ? 'data-autofoco' : ''}>${err('nombres')}</div>
             <div class="${span}">${lab('paterno', 'Apellido paterno')}<input id="${p}-paterno" type="text" autocomplete="off" value="${esc(v.apellido_paterno || '')}" ${ro} placeholder="Ej. Pérez" class="${cls} ${bg}">${err('paterno')}</div>
             <div class="${span}">${lab('materno', 'Apellido materno', false)}<input id="${p}-materno" type="text" autocomplete="off" value="${esc(v.apellido_materno || '')}" ${ro} placeholder="Ej. Gómez" class="${cls} ${bg}">${err('materno')}</div>
             ${op.sugerencias ? `<div class="sm:col-span-6" id="${p}-sugerencias"></div>` : ''}
-            <div class="${span}">${lab('fn', 'Fecha de nacimiento')}<input id="${p}-fn" type="date" min="1900-01-01" max="${esc(hoy)}" value="${esc(v.fecha_nacimiento || '')}" ${ro} class="${cls} ${bg}">${err('fn')}</div>
+            <div class="${span}">
+                <div class="flex items-center justify-between mb-1">
+                    <label for="${p}-fn" class="block text-[11px] font-bold text-slate-500 uppercase">Fecha de nacimiento <span class="text-red-500">*</span></label>
+                    <span id="${p}-edad-badge" class="${edadInicial ? '' : 'hidden '}text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-900">${esc(edadInicial)}</span>
+                </div>
+                <input id="${p}-fn" type="date" min="1900-01-01" max="${esc(hoy)}" value="${esc(v.fecha_nacimiento || '')}" ${ro} class="${cls} ${bg}" onchange="(function(el){var S=window.BelenStore,b=document.getElementById('${p}-edad-badge');if(!b||!S||!S.formatearEdad)return;var txt=el.value?S.formatearEdad(el.value):'';b.textContent=txt;b.classList.toggle('hidden',!txt);})(this)">
+                ${err('fn')}
+            </div>
             <div class="${span}">${lab('sexo', 'Sexo')}<select id="${p}-sexo" class="${cls} ${bg}" ${dis}><option value="">Seleccione…</option><option value="F" ${v.sexo === 'F' ? 'selected' : ''}>Femenino</option><option value="M" ${v.sexo === 'M' ? 'selected' : ''}>Masculino</option></select>${err('sexo')}</div>
             <div class="${span}">${lab('tel', 'Teléfono / Celular')}<input id="${p}-tel" type="tel" inputmode="tel" maxlength="20" autocomplete="off" value="${esc(v.telefono || '')}" placeholder="10 dígitos" class="${cls}">${err('tel')}</div>
-            <div class="sm:col-span-6">${lab('dir', 'Dirección')}<input id="${p}-dir" type="text" maxlength="150" autocomplete="off" value="${esc(v.direccion || '')}" placeholder="Calle, número y colonia" class="${cls}">${err('dir')}</div>`;
+            <div class="sm:col-span-2">${lab('nac', 'Nacionalidad', false)}<input id="${p}-nac" type="text" list="${p}-lista-nac" maxlength="60" autocomplete="off" value="${esc(nacActual)}" placeholder="Mexicana / Extranjera (país)" class="${cls}">
+                <datalist id="${p}-lista-nac"><option value="Mexicana"></option><option value="Estadounidense (EE. UU.)"></option><option value="Canadiense"></option><option value="Colombiana"></option><option value="Argentina"></option><option value="Española"></option><option value="Otra extranjera"></option></datalist>
+            </div>
+            <div class="sm:col-span-4">${lab('dir', 'Dirección / Domicilio')}<input id="${p}-dir" type="text" maxlength="150" autocomplete="off" value="${esc(v.direccion || '')}" placeholder="Calle, número, colonia y ciudad" class="${cls}">${err('dir')}</div>`;
     }
     function leerIdentidadPaciente(raiz, prefijo) {
         const S = global.BelenStore;
@@ -584,10 +692,85 @@
             nombres: nombres, apellido_paterno: paterno, apellido_materno: materno,
             nombre_completo: S.limpiarEspacios([nombres, paterno, materno].filter(Boolean).join(' ')),
             fecha_nacimiento: q('fn'), sexo: q('sexo'),
+            nacionalidad: S.limpiarEspacios(q('nac')) || 'Mexicana',
             telefono: String(q('tel') || '').replace(/\D/g, ''),
             direccion: S.limpiarEspacios(q('dir'))
         };
     }
 
-    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, htmlIdentidadPaciente, leerIdentidadPaciente, TIPOS };
+    // Modal para verificar identidad y revisar expediente existente antes de seleccionarlo en Recepción
+    function modalVerificarExpediente(pacienteId, alConfirmarUso) {
+        const S = global.BelenStore;
+        const p = S && S.buscarPacientePorId(pacienteId);
+        if (!p) { toast('No se encontró el expediente solicitado.', 'alerta'); return null; }
+        const edadTxt = S.formatearEdad ? S.formatearEdad(p.fecha_nacimiento) : (S.calcularEdad(p.fecha_nacimiento) + ' años');
+        const visitas = S.visitasDePaciente ? S.visitasDePaciente(p.paciente_id) : [];
+        const piezas = S.piezasClinicasPaciente ? S.piezasClinicasPaciente(p.paciente_id) : [];
+        const ant = S.antecedentesLongitudinales ? S.antecedentesLongitudinales(p.paciente_id) : null;
+        const alergias = (ant && ant.personales_patologicos && ant.personales_patologicos.alergias && ant.personales_patologicos.alergias.presente)
+            ? ant.personales_patologicos.alergias.descripcion
+            : 'NEGADAS / Sin alergias registradas';
+        const tieneAlergia = alergias.indexOf('NEGADAS') < 0;
+        const htmlVisitas = visitas.length
+            ? visitas.slice(-5).reverse().map(v => {
+                const f = (v.consulta && v.consulta.fecha_hora) ? (S.fechaHoraLegible ? S.fechaHoraLegible(v.consulta.fecha_hora) : String(v.consulta.fecha_hora).slice(0, 10)) : 'Sin fecha';
+                const med = (v.consulta && v.consulta.medico_tratante) || (v.meta && v.meta.medico_nombre) || 'Médico';
+                const mot = (v.consulta && v.consulta.motivo_consulta) || 'Sin motivo registrado';
+                const dx = (v.diagnosticos || []).map(d => (d.cie10_codigo ? d.cie10_codigo + ' ' : '') + d.descripcion).join(', ') || 'Sin diagnóstico';
+                return `<div class="rounded-lg border border-slate-200 bg-white p-2.5 text-xs">
+                    <div class="flex items-center justify-between font-bold text-slate-800"><span>${esc(f)}</span><span class="text-cyan-800">${esc(med)}</span></div>
+                    <p class="text-slate-600 mt-1"><b>Motivo:</b> ${esc(mot)}</p>
+                    <p class="text-slate-700 mt-0.5"><b>Dx:</b> ${esc(dx)}</p>
+                </div>`;
+            }).join('')
+            : '<p class="text-xs text-slate-500 italic">Aún no tiene consultas previas cerradas en el sistema.</p>';
+
+        return modal({
+            titulo: 'Verificación de Identidad y Expediente Existente',
+            subtitulo: 'Confirme fecha de nacimiento, teléfono y dirección con el paciente antes de usar este expediente.',
+            icono: 'fa-id-card-clip',
+            ancho: 'lg',
+            html: `<div class="space-y-3 text-left">
+                <div class="rounded-xl border-2 border-cyan-500 bg-cyan-50/70 p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <span class="inline-block text-[11px] font-extrabold uppercase bg-cyan-700 text-white px-2.5 py-0.5 rounded-full">Expediente ${esc(p.paciente_id)}</span>
+                            <h4 class="text-lg font-extrabold text-slate-900 mt-1">${esc(p.nombre_completo)}</h4>
+                        </div>
+                        <span class="text-sm font-extrabold text-cyan-900 bg-white border border-cyan-200 px-3 py-1 rounded-lg">${esc(edadTxt)} · ${p.sexo === 'F' ? 'Femenino' : (p.sexo === 'M' ? 'Masculino' : 'Sexo no reg.')}</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3 text-xs bg-white rounded-lg p-3 border border-cyan-100">
+                        <div><span class="text-slate-400 font-bold uppercase block text-[10px]">Fecha de Nacimiento</span><b class="text-slate-800 text-sm">${esc(S.fechaLegibleISO ? S.fechaLegibleISO(p.fecha_nacimiento) : p.fecha_nacimiento)} (${esc(edadTxt)})</b></div>
+                        <div><span class="text-slate-400 font-bold uppercase block text-[10px]">Teléfono / Celular</span><b class="text-slate-800 text-sm">${esc(p.telefono || 'No registrado')}</b></div>
+                        <div><span class="text-slate-400 font-bold uppercase block text-[10px]">Dirección / Domicilio</span><b class="text-slate-800">${esc(p.direccion || 'No registrada')}</b></div>
+                        <div><span class="text-slate-400 font-bold uppercase block text-[10px]">Nacionalidad / Estado Civil</span><b class="text-slate-800">${esc(p.nacionalidad || 'Mexicana')}${p.estado_civil ? ' · ' + esc(p.estado_civil) : ''}${p.ocupacion ? ' · ' + esc(p.ocupacion) : ''}</b></div>
+                    </div>
+                    <div class="mt-2.5 rounded-lg px-3 py-2 text-xs font-bold ${tieneAlergia ? 'bg-red-100 text-red-900 border border-red-300' : 'bg-emerald-50 text-emerald-900 border border-emerald-200'}">
+                        <i class="fas ${tieneAlergia ? 'fa-triangle-exclamation' : 'fa-shield-heart'} mr-1"></i>Alergias en expediente: ${esc(alergias)}
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <p class="text-xs font-extrabold uppercase text-slate-600">Historial de atenciones previas (${visitas.length} consulta${visitas.length === 1 ? '' : 's'} · ${piezas.length} documento${piezas.length === 1 ? '' : 's'})</p>
+                        ${piezas.length ? `<button type="button" id="btn-ver-notas-modal" class="text-xs font-bold text-cyan-700 hover:underline"><i class="fas fa-book-medical mr-1"></i>Abrir notas clínicas completas</button>` : ''}
+                    </div>
+                    <div class="space-y-2 max-h-48 overflow-y-auto">${htmlVisitas}</div>
+                </div>
+            </div>`,
+            alMostrar: c => {
+                const btnNotas = c.el.querySelector('#btn-ver-notas-modal');
+                if (btnNotas) btnNotas.addEventListener('click', () => modalHistorial({ pacienteId: p.paciente_id }));
+            },
+            botones: [
+                { texto: 'No es la misma persona (Cerrar)', estilo: 'secundario' },
+                ...(typeof alConfirmarUso === 'function' ? [{
+                    texto: '✅ Sí es esta persona · Usar este expediente',
+                    estilo: 'exito',
+                    alPulsar: () => { alConfirmarUso(p); }
+                }] : [])
+            ]
+        });
+    }
+
+    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, modalVerificarExpediente, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, htmlIdentidadPaciente, leerIdentidadPaciente, TIPOS };
 })(window);

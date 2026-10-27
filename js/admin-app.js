@@ -14,6 +14,10 @@ const AdminController = {
     pestanaFarmacia: 'terminal',
     pestanaTarifario: 'catalogo',
     cuentaDestacada: null,
+    pacienteMoverPlanoId: "",
+    mostrarMapa2D: true,
+    filtroRecetasTexto: "",
+    filtroRecetasFraccion: "",
     filtroCategoriaEstudio: '',
     buscaEstudio: '',
     carritoFarmacia: [],
@@ -179,9 +183,13 @@ const AdminController = {
     e: function (t) { return BelenUI.esc(t); },
 
     edadTexto: function (t) {
-        const edad = BelenStore.calcularEdad(t.fecha_nacimiento);
+        const S = BelenStore;
+        const edadTxt = S.formatearEdad ? S.formatearEdad(t.fecha_nacimiento) : (S.calcularEdad(t.fecha_nacimiento) !== null ? S.calcularEdad(t.fecha_nacimiento) + ' años' : '');
         const sexo = t.sexo === 'F' ? 'Femenino' : (t.sexo === 'M' ? 'Masculino' : '');
-        return [edad !== null ? edad + ' años' : '', sexo].filter(Boolean).join(' · ');
+        const pac = t.paciente_id && S.buscarPacientePorId ? S.buscarPacientePorId(t.paciente_id) : null;
+        const nac = t.nacionalidad || (pac && pac.nacionalidad) || '';
+        const nacTxt = nac && nac.toLowerCase() !== 'mexicana' ? '🌍 ' + nac : '';
+        return [edadTxt, sexo, nacTxt].filter(Boolean).join(' · ');
     },
 
     // Reloj activo: cuenta desde la llegada; se congela al pasar con el médico
@@ -205,14 +213,21 @@ const AdminController = {
     },
 
     htmlSignos: function (t) {
-        const r = BelenStore.signosCompletos(t.signos_vitales) ? BelenStore.resumenSignos(t.signos_vitales) : null;
+        const S = BelenStore;
+        const r = S.signosCompletos(t.signos_vitales) ? S.resumenSignos(t.signos_vitales) : null;
         if (!r) {
             const parcial = !!t.signos_vitales;
             return `<div class="inline-flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5">
                         <i class="fas fa-triangle-exclamation"></i> ${parcial ? 'Signos vitales incompletos' : 'Sin signos vitales'}</div>`;
         }
-        const caja = (et, v) => `<div class="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-center"><p class="text-[9px] text-slate-400 uppercase leading-none">${et}</p><p class="text-xs font-bold text-slate-800 mt-0.5">${this.e(v)}</p></div>`;
-        return `<div class="grid grid-cols-5 gap-1.5 max-w-sm">${caja('TA', r.ta)}${caja('FC', r.fc)}${caja('FR', r.fr)}${caja('Temp', r.temp)}${caja('SpO2', r.spo2 + '%')}</div>`;
+        const alertas = S.alertasSignosVitales ? S.alertasSignosVitales(t.signos_vitales) : [];
+        const criticas = alertas.filter(a => a.nivel === 'critico');
+        const badgeAlerta = alertas.length
+            ? `<div class="mt-1.5 flex flex-wrap gap-1">${alertas.map(a => `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded border ${a.nivel === 'critico' ? 'bg-red-50 text-red-700 border-red-300' : 'bg-amber-50 text-amber-800 border-amber-300'}"><i class="fas fa-triangle-exclamation"></i> ${this.e(a.texto)}</span>`).join('')}</div>`
+            : '';
+        const caja = (et, v, crit) => `<div class="${crit ? 'bg-red-50 border-red-300' : 'bg-slate-50 border-slate-200'} border rounded px-2 py-1 text-center"><p class="text-[9px] ${crit ? 'text-red-500 font-bold' : 'text-slate-400'} uppercase leading-none">${et}</p><p class="text-xs font-bold ${crit ? 'text-red-800' : 'text-slate-800'} mt-0.5">${this.e(v)}</p></div>`;
+        const taCrit = criticas.some(a => a.campo === 'ta');
+        return `<div class="grid grid-cols-5 gap-1.5 max-w-sm">${caja('TA', r.ta, taCrit)}${caja('FC', r.fc, criticas.some(a => a.campo === 'fc'))}${caja('FR', r.fr, criticas.some(a => a.campo === 'fr'))}${caja('Temp', r.temp, criticas.some(a => a.campo === 'temp'))}${caja('SpO2', r.spo2 + '%', criticas.some(a => a.campo === 'spo2'))}</div>${badgeAlerta}`;
     },
 
     badgeEstatus: function (t) {
@@ -305,6 +320,7 @@ const AdminController = {
             ${puedeSignos ? `<button type="button" data-accion="signos" onclick="AdminController.abrirSignos('${id}')" class="bg-white border border-slate-300 hover:border-cyan-500 hover:text-cyan-700 text-slate-700 text-xs font-bold py-2 px-3 rounded-lg transition flex items-center gap-1.5">
                 <i class="fas fa-heart-pulse"></i> ${t.signos_vitales ? 'Editar Signos' : 'Capturar Signos'}</button>` : ''}
             ${BelenStore.permisoAccionDe(this.sesion.usuario_id, 'cargar_consumos') ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${id}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Estudios / Tubos / Procedimientos</button>` : ''}
+            ${(this.rolActual === 'admin' || this.rolActual === 'administrador') ? (t.liberado_a_caja ? `<button type="button" onclick="AdminController.abrirDesgloseCuenta('${id}')" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-extrabold py-2 px-3 rounded-lg shadow-sm flex items-center gap-1"><i class="fas fa-cash-register"></i> En Caja · Cobrar</button>` : `<button type="button" onclick="AdminController.liberarPreCobroFila('${id}')" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-extrabold py-2 px-3 rounded-lg transition flex items-center gap-1"><i class="fas fa-cash-register"></i> Pasar a Caja (Pre-cobro)</button>`) : ''}
             ${enConsulta
                 ? `<span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"><i class="fas fa-user-doctor mr-1"></i> Con el médico</span>`
                 : (BelenStore.puede('pasar_a_medico') ? `<button type="button" data-accion="pasar" onclick="AdminController.confirmarPase('${id}')" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold py-2 px-4 rounded-lg shadow-sm transition flex items-center gap-1.5"><i class="fas fa-arrow-right"></i> Enviar a Médico</button>` : '')}`;
@@ -371,7 +387,8 @@ const AdminController = {
         const hosp = S.hospitalizadosDe(s);
         const cirugias = S.cirugiasVisibles(s).slice(0, 4);
         const listos = espera.filter(t => t.estatus === 'listo_para_medico' || t.pase_por_rol || S.signosCompletos(t.signos_vitales));
-        const avisoGrande = (enConsulta.length || espera.length) ? `<div id="aviso-paciente-listo" class="mb-6 rounded-2xl border-4 border-emerald-500 bg-emerald-50 px-6 py-5 shadow-lg flex flex-wrap items-center gap-4"><i class="fas fa-bell text-4xl text-emerald-600 animate-pulse"></i><div><p class="text-2xl font-extrabold text-emerald-900">${enConsulta.length ? 'Paciente listo en consulta: ' + this.e(enConsulta[0].paciente_nombre) : 'Tiene ' + espera.length + ' paciente(s) esperando'}</p><p class="text-base text-emerald-800">${listos.length ? listos.length + ' con signos vitales listos. ' : ''}Puede pasar a consulta aunque aún no tenga signos vitales; los captura dentro de la nota.</p></div></div>` : '';
+        const sinSignosEspera = espera.filter(t => !S.signosCompletos(t.signos_vitales));
+        const avisoGrande = (!enConsulta.length && espera.length) ? `<div id="aviso-paciente-listo" class="mb-6 rounded-2xl border-2 border-cyan-300 bg-cyan-50 px-5 py-4 shadow-sm flex flex-wrap items-center justify-between gap-4"><div class="flex items-center gap-3"><i class="fas fa-user-clock text-2xl text-cyan-700"></i><div><p class="text-base font-extrabold text-cyan-950">Tiene ${espera.length} ${espera.length === 1 ? 'paciente esperando' : 'pacientes en fila de espera'}</p><p class="text-xs text-cyan-800">${listos.length ? '✓ ' + listos.length + ' con signos vitales de Triage listos.' : ''}${sinSignosEspera.length ? (listos.length ? ' · ' : '') + sinSignosEspera.length + ' pendiente(s) de Triage (puede pasarlos directo y capturar signos dentro de la consulta).' : ''}</p></div></div></div>` : '';
 
         const tarjetaConsulta = t => {
             const id = this.e(t.turno_id);
@@ -382,7 +399,12 @@ const AdminController = {
                 <div class="flex flex-wrap items-start gap-4">
                     ${this.htmlTurnoCaja(t)}
                     <div class="flex-1 min-w-[200px]">
-                        <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-800 bg-emerald-200/70 rounded px-2 py-0.5 mb-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span> ${porEnfermeria ? quienEnvio + ' le envió este paciente' : 'Consulta en curso'}</span>
+                        <div class="flex flex-wrap items-center gap-2 mb-1">
+                            <span class="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase text-emerald-800 bg-emerald-200/70 rounded px-2 py-0.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span> ${porEnfermeria ? quienEnvio + ' le envió este paciente' : 'Paciente listo en consulta'}</span>
+                            ${sinSignos
+                                ? '<span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase text-amber-800 bg-amber-100 border border-amber-300 rounded px-2 py-0.5"><i class="fas fa-triangle-exclamation"></i> Sin signos de Triage (capturar en consulta)</span>'
+                                : '<span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase text-emerald-800 bg-white border border-emerald-300 rounded px-2 py-0.5"><i class="fas fa-check-circle text-emerald-600"></i> Signos vitales de Triage listos</span>'}
+                        </div>
                         <h3 class="text-xl font-extrabold text-slate-900">${this.e(t.paciente_nombre)}</h3>
                         <p class="text-xs text-slate-500">${this.e(this.edadTexto(t))}${porEnfermeria && t.pase_por ? ' · Pasó: ' + this.e(t.pase_por) : ''}</p>
                         <p class="text-sm text-slate-700 mt-2"><span class="text-[10px] uppercase text-slate-400 font-bold">Motivo:</span> ${this.e(t.motivo)}</p>
@@ -390,8 +412,8 @@ const AdminController = {
                     <p class="text-[10px] uppercase text-slate-400 font-bold text-right leading-none">Esperó<br><span class="text-lg">${this.htmlReloj(t)}</span></p>
                 </div>
                 <div class="flex flex-wrap items-center justify-between gap-3 border-t border-emerald-200 pt-3 mt-3">
-                    <div>${this.htmlSignos(t)}${sinSignos ? '<p class="text-[11px] text-amber-700 mt-1">Deberá capturar los signos vitales para poder cerrar la Nota Médica.</p>' : ''}</div>
-                    <a href="expediente.html?turno=${encodeURIComponent(t.turno_id)}" data-accion="entrar" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2.5 rounded-lg text-sm font-bold shadow-sm transition flex items-center gap-2"><i class="fas fa-file-medical"></i> Entrar a Consulta</a>
+                    <div>${this.htmlSignos(t)}${sinSignos ? '<p class="text-[11px] font-semibold text-amber-800 mt-1">⚠️ Pase directo sin Triage: capturará los signos vitales dentro de la consulta.</p>' : ''}</div>
+                    <a href="expediente.html?turno=${encodeURIComponent(t.turno_id)}" data-accion="entrar" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl text-sm font-extrabold shadow-md transition flex items-center gap-2"><i class="fas fa-file-medical"></i> Entrar a Consulta</a>
                 </div></div>`;
         };
 
@@ -582,6 +604,17 @@ const AdminController = {
             : '<span class="font-extrabold text-rose-700" data-campo="anestesiologo">Pendiente (Asignará Administración)</span>';
         const asignar = (this.rolActual === 'admin' || this.rolActual === 'administrador') && c.anestesiologo_pendiente
             ? `<button type="button" onclick="AdminController.abrirAsignarAnestesiologo('${e(c.cirugia_id)}')" class="mt-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold py-2 px-3 rounded-lg shadow-sm">Asignar Anestesiólogo</button>` : '';
+        const confirmarBtn = (this.rolActual === 'admin' || this.rolActual === 'administrador' || this.rolActual === 'enf_quirofano')
+            ? `<button type="button" onclick="AdminController.abrirConfirmarCirugiaAdmin('${e(c.cirugia_id)}')" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm"><i class="fas fa-user-check mr-1"></i>${c.confirmada_admin ? 'Editar Equipo / Confirmación' : 'Confirmar Cirugía y Equipo'}</button>` : '';
+        const badgeConfirmada = c.confirmada_admin
+            ? `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300"><i class="fas fa-circle-check"></i> Confirmada por Admin</span>`
+            : `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300"><i class="fas fa-clock"></i> Pendiente confirmar equipo</span>`;
+        const equipoExtra = (c.ayudante_nombre || c.instrumentista_nombre || c.circulante_nombre)
+            ? `<div class="col-span-2 pt-2 border-t border-slate-100 text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
+                ${c.ayudante_nombre ? `<span><b class="text-slate-500 uppercase text-[10px]">1er Ayudante:</b> ${e(c.ayudante_nombre)}</span>` : ''}
+                ${c.instrumentista_nombre ? `<span><b class="text-slate-500 uppercase text-[10px]">Instrumentista:</b> ${e(c.instrumentista_nombre)}</span>` : ''}
+                ${c.circulante_nombre ? `<span><b class="text-slate-500 uppercase text-[10px]">Circulante:</b> ${e(c.circulante_nombre)}</span>` : ''}
+            </div>` : '';
         const ingresar = S.puedeIngresarAmbulatorio(this.sesion) && c.tipo_estancia === 'AMBULATORIA' && !c.ingresada && !c.ya_internado
             ? `<button type="button" onclick="AdminController.confirmarIngresoAmbulatorio('${e(c.cirugia_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">Ingresar Paciente Ambulatorio a Quirófano</button>` : '';
         const turnoQx = S.turnoActivoParaEstudios({ turno_id: c.turno_id, paciente_id: c.paciente_id });
@@ -597,7 +630,7 @@ const AdminController = {
             : (c.ya_internado && c.tipo_estancia === 'AMBULATORIA' ? '<span class="text-[11px] font-semibold text-slate-500">El paciente ya tiene un episodio activo.</span>' : '');
         return `<div data-cirugia="${e(c.cirugia_id)}" class="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-violet-500 shadow-sm p-4">
             <div class="flex flex-wrap items-start justify-between gap-2">
-                <div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-1">${tipo}</div>
+                <div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-1">${tipo}${badgeConfirmada}</div>
                     <h4 class="text-base font-extrabold text-slate-900" data-campo="paciente">${e(c.nombre)}</h4>
                     <p class="text-sm font-semibold text-violet-700 mt-0.5" data-campo="procedimiento"><i class="fas fa-kit-medical mr-1 text-xs"></i>${e(c.procedimiento)}</p>
                     <p class="text-[11px] text-slate-500 mt-1" data-campo="sala">${e(c.sala_nombre || '')}</p></div>
@@ -608,9 +641,10 @@ const AdminController = {
             </div>
             <div class="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
                 ${dato('Fecha de nacimiento', `<span data-campo="nacimiento">${e(S.fechaLegibleISO(c.fecha_nacimiento))}</span>`)}
-                ${dato('Edad', `<span data-campo="edad">${c.edad !== null ? c.edad + ' años' : '—'}</span>`)}
+                ${dato('Edad', `<span data-campo="edad">${S.formatearEdad ? S.formatearEdad(c.fecha_nacimiento, c.edad) : (c.edad !== null ? c.edad + ' años' : '—')}</span>`)}
                 ${dato('Médico cirujano', `<span class="font-semibold" data-campo="cirujano">${e(c.medico_cirujano)}</span>${c.medico_especialidad ? `<span class="block text-[11px] text-slate-400">${e(c.medico_especialidad)}</span>` : ''}`)}
                 ${dato('Anestesiólogo', anestesia + asignar)}
+                ${equipoExtra}
             </div>
             <div class="mt-3 bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2">
                 <p class="text-[10px] font-bold text-cyan-800 uppercase leading-none mb-1"><i class="fas fa-clipboard-list mr-1"></i>Indicaciones preoperatorias</p>
@@ -618,7 +652,7 @@ const AdminController = {
             <div class="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
                 <p class="text-[10px] font-bold text-yellow-700 uppercase leading-none mb-1"><i class="fas fa-note-sticky mr-1"></i>Notas privadas</p>
                 <p class="text-xs text-slate-800" data-campo="notas">${c.notas ? e(c.notas) : '<span class="text-slate-400 italic">Sin notas registradas.</span>'}</p></div>
-            ${(ingresar || ya || cargarQx || postopQx || abrirExp) ? `<div class="mt-3 flex flex-wrap items-center gap-2">${cargarQx}${postopQx}${ingresar}${abrirExp}${ya}</div>` : ''}
+            ${(confirmarBtn || ingresar || ya || cargarQx || postopQx || abrirExp) ? `<div class="mt-3 flex flex-wrap items-center gap-2">${confirmarBtn}${cargarQx}${postopQx}${ingresar}${abrirExp}${ya}</div>` : ''}
         </div>`;
     },
 
@@ -717,7 +751,7 @@ const AdminController = {
             alMostrar: c => {
                 const q = sel => c.el.querySelector(sel);
                 const fn = q('#cx-fn'), ed = q('#cx-edad');
-                const calc = () => { const x = S.calcularEdad(fn.value); ed.value = x !== null ? x + ' años' : ''; };
+                const calc = () => { const txt = S.formatearEdad ? S.formatearEdad(fn.value) : ''; ed.value = txt || ''; };
                 fn.addEventListener('input', calc); fn.addEventListener('change', calc); calc();
                 const refrescar = () => self.pintarDisponibilidadQx(c.el);
                 q('#cx-sala').addEventListener('change', refrescar);
@@ -730,7 +764,7 @@ const AdminController = {
                     if (!caja) return;
                     const idn = BelenUI.leerIdentidadPaciente(c.el, 'cx');
                     const lista = q('#cx-paciente_id').value ? [] : S.buscarPacientesPorNombre(idn.nombre_completo, 6);
-                    caja.innerHTML = lista.map(p => `<button type="button" data-pac="${self.e(p.paciente_id)}" class="text-left text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 hover:border-violet-400"><b>${self.e(p.nombre_completo)}</b><span class="block text-slate-400">${self.e(S.fechaLegibleISO(p.fecha_nacimiento))} · ${S.calcularEdad(p.fecha_nacimiento) === null ? 'Edad no registrada' : S.calcularEdad(p.fecha_nacimiento) + ' años'}</span></button>`).join('');
+                    caja.innerHTML = lista.map(p => `<button type="button" data-pac="${self.e(p.paciente_id)}" class="text-left text-xs bg-white border border-slate-200 rounded-lg px-3 py-2 hover:border-violet-400"><b>${self.e(p.nombre_completo)}</b><span class="block text-slate-400">${self.e(S.fechaLegibleISO(p.fecha_nacimiento))} · ${S.formatearEdad ? (S.formatearEdad(p.fecha_nacimiento) || 'Edad no registrada') : (S.calcularEdad(p.fecha_nacimiento) === null ? 'Edad no registrada' : S.calcularEdad(p.fecha_nacimiento) + ' años')}</span></button>`).join('');
                     caja.querySelectorAll('[data-pac]').forEach(b => b.addEventListener('click', () => {
                         const p = S.buscarPacientePorId(b.getAttribute('data-pac'));
                         if (!p) return;
@@ -1062,8 +1096,22 @@ const AdminController = {
                 ${ics ? `<p class="mt-3 text-[11px] text-slate-500"><span class="font-bold uppercase text-slate-400 text-[10px]">Interconsultas:</span> ${ics}</p>` : ''}
             </div>`;
         };
-        return `<div class="mb-6"><h2 class="text-2xl font-extrabold text-slate-800">Monitor de Camas</h2><p class="text-slate-500">Pacientes en observación u hospitalización.</p></div>
+        return `<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                        <h2 class="text-2xl font-extrabold text-slate-800">Monitor de Camas y Mapa Arquitectónico 2D</h2>
+                        <p class="text-slate-500">5 Habitaciones de Hospitalización (Hab. 1, 2, 3, 4 y Aislado), Cunero, Observación, Quirófano y Consultorios.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" onclick="AdminController.alternarMapa2D()" class="bg-white border border-slate-300 hover:border-cyan-500 text-slate-700 text-xs font-extrabold px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
+                            <i class="fas fa-map-location-dot text-cyan-600"></i> ${this.mostrarMapa2D ? 'Ocultar Plano 2D' : 'Mostrar Plano 2D Interactivo'}
+                        </button>
+                        <button type="button" onclick="AdminController.abrirPlanoArquitectonicoOriginal()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
+                            <i class="fas fa-compass-drafting text-cyan-300"></i> Ver Plano Arquitectónico Original
+                        </button>
+                    </div>
+                </div>
                 ${this.htmlPanelEstupefacientes('HOSPITALIZACION')}
+                ${this.mostrarMapa2D ? this.htmlMapaArquitectonico2D() : ''}
                 <div class="mb-6 bg-cyan-50 border border-cyan-200 text-cyan-800 text-xs rounded-xl px-4 py-3 flex items-center gap-2"><i class="fas fa-circle-info"></i> ${this.e(modo)}</div>
                 <div class="flex flex-col gap-3" id="lista-hospitalizados">${lista.length ? lista.map(tarjeta).join('') : '<div class="text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-bed text-4xl mb-3 text-slate-300"></i><p>No hay pacientes hospitalizados.</p></div>'}</div>`;
     },
@@ -1193,6 +1241,428 @@ const AdminController = {
                 } }
             ]
         });
+    },
+
+    liberarPreCobroFila: function (turnoId) {
+        const S = BelenStore, t = S.obtenerTurno(turnoId);
+        if (!t) return;
+        const r = S.liberarConsultaACaja(turnoId, this.sesion);
+        if (!r || !r.ok) { BelenUI.toast((r && r.motivo) || 'No se pudo enviar a Caja.', 'alerta'); return; }
+        BelenUI.toast(t.paciente_nombre + ' disponible en Caja para pre-cobro de consulta.', 'exito');
+        this.abrirDesgloseCuenta(turnoId);
+    },
+
+    abrirConfirmarCirugiaAdmin: function (cirugiaId) {
+        const S = BelenStore, c = S.cirugiaPara(cirugiaId, this.sesion);
+        if (!c) { BelenUI.toast('No se encontró la cirugía.', 'alerta'); return; }
+        const e = x => this.e(x);
+        const anests = S.anestesiologos();
+        const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white';
+        BelenUI.modal({
+            titulo: 'Confirmar Cirugía y Equipo Quirúrgico',
+            subtitulo: c.nombre + ' · ' + c.procedimiento,
+            icono: 'fa-user-check',
+            ancho: 'lg',
+            html: `<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+                <div class="sm:col-span-2 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-700">
+                    <b>Cirujano titular:</b> ${e(c.cirujano)} · <b>Sala actual:</b> ${e(c.sala_nombre)} · <b>Horario:</b> ${e(c.fecha_texto)} ${e(c.hora_texto)}
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Anestesiólogo del hospital</label>
+                    <select id="conf-qx-anest-id" class="${cls}">
+                        <option value="">— Seleccionar o escribir abajo —</option>
+                        ${anests.map(a => `<option value="${e(a.id)}" ${c.anestesiologo_id === a.id ? 'selected' : ''}>${e(a.nombre)}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Anestesiólogo externo (si aplica)</label>
+                    <input id="conf-qx-anest-txt" type="text" value="${e(!c.anestesiologo_id && !c.anestesiologo_pendiente ? c.anestesiologo : '')}" placeholder="Dr. / Dra. Anestesiólogo" class="${cls}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Primer Ayudante</label>
+                    <input id="conf-qx-ayudante" type="text" value="${e(c.ayudante_nombre || '')}" placeholder="Ej. Dr. Jorge Luis López" class="${cls}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Instrumentista</label>
+                    <input id="conf-qx-inst" type="text" value="${e(c.instrumentista_nombre || '')}" placeholder="Ej. Enf. Quirúrgica / Instrumentista" class="${cls}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Enfermera Circulante</label>
+                    <input id="conf-qx-circ" type="text" value="${e(c.circulante_nombre || '')}" placeholder="Ej. L.E. Valeria Cruz" class="${cls}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Sala Quirúrgica</label>
+                    <select id="conf-qx-sala" class="${cls}">
+                        ${(S.SALAS_QUIROFANO || []).map(s => `<option value="${e(s.codigo)}" ${c.sala_codigo === s.codigo ? 'selected' : ''}>${e(s.nombre)}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Notas de confirmación administrativa / insumos requeridos</label>
+                    <input id="conf-qx-notas" type="text" value="${e(c.notas_confirmacion || '')}" placeholder="Ej. Confirmado con cirujano y anestesiólogo, paquete listo en CEYE" class="${cls}">
+                </div>
+                <p id="conf-qx-err" class="sm:col-span-2 text-xs text-red-600 hidden"></p>
+            </div>`,
+            botones: [
+                { texto: 'Cancelar', estilo: 'secundario' },
+                { texto: '✅ Confirmar Cirugía y Guardar Equipo', estilo: 'exito', alPulsar: m => {
+                    const q = id => m.el.querySelector('#' + id).value;
+                    const r = S.confirmarCirugiaAdmin(cirugiaId, {
+                        anestesiologo_id: q('conf-qx-anest-id'),
+                        anestesiologo_nombre: q('conf-qx-anest-txt'),
+                        ayudante_nombre: q('conf-qx-ayudante'),
+                        instrumentista_nombre: q('conf-qx-inst'),
+                        circulante_nombre: q('conf-qx-circ'),
+                        sala: q('conf-qx-sala'),
+                        notas_confirmacion: q('conf-qx-notas')
+                    }, this.sesion);
+                    if (!r || !r.ok) {
+                        const err = m.el.querySelector('#conf-qx-err');
+                        err.textContent = (r && r.motivo) || 'No se pudo confirmar la cirugía.';
+                        err.classList.remove('hidden');
+                        return false;
+                    }
+                    BelenUI.toast('Cirugía y equipo quirúrgico confirmados por Administración.', 'exito');
+                    this.render();
+                } }
+            ]
+        });
+    },
+
+    alternarMapa2D: function () {
+        this.mostrarMapa2D = !this.mostrarMapa2D;
+        this.render();
+    },
+
+    iniciarMoverEnPlano: function (turnoId) {
+        this.pacienteMoverPlanoId = turnoId || '';
+        if (this.pacienteMoverPlanoId) {
+            const t = BelenStore.obtenerTurno(this.pacienteMoverPlanoId);
+            BelenUI.toast('Seleccione en el Plano 2D la habitación o espacio destino para ' + ((t && t.paciente_nombre) || 'el paciente') + '.', 'info');
+        }
+        this.render();
+    },
+
+    seleccionarEspacioPlano: function (camaCodigo) {
+        const S = BelenStore, e = x => this.e(x);
+        const camaDef = (S.CAMAS_HOSPITAL || []).find(c => c.codigo === camaCodigo);
+        if (!camaDef) return;
+        const ocupantes = this.ocupantesPorCamaMapa()[camaCodigo] || [];
+
+        // Si estamos en modo "Mover paciente seleccionado"
+        if (this.pacienteMoverPlanoId) {
+            const turnoMover = S.obtenerTurno(this.pacienteMoverPlanoId);
+            if (!turnoMover) { this.pacienteMoverPlanoId = ''; this.render(); return; }
+            const r = S.moverPacienteEnPlano(this.pacienteMoverPlanoId, camaCodigo, this.sesion);
+            if (!r || !r.ok) {
+                BelenUI.toast((r && r.motivo) || 'No se pudo ubicar al paciente en ese espacio.', 'alerta');
+                return;
+            }
+            this.pacienteMoverPlanoId = '';
+            BelenUI.toast(turnoMover.paciente_nombre + ' ubicado en ' + camaDef.nombre + '.', 'exito');
+            this.render();
+            return;
+        }
+
+        // Modal de detalle de la habitación/espacio y asignación directa
+        const todosMovibles = this.pacientesMoviblesEnPlano();
+        const htmlOcupantes = ocupantes.length
+            ? ocupantes.map(o => `<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <p class="font-extrabold text-slate-900 text-sm"><i class="fas fa-user-injured text-indigo-600 mr-1"></i>${e(o.nombre)}</p>
+                    <p class="text-xs text-slate-600">${e(o.detalle || '')} · Dr(a). ${e(o.medico || '')}</p>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    <button type="button" data-ir-exp="${e(o.turno_id)}" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg"><i class="fas fa-folder-open mr-1"></i>Expediente</button>
+                    ${S.puede('asignar_cama') ? `<button type="button" data-mover-este="${e(o.turno_id)}" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg"><i class="fas fa-arrows-up-down-left-right mr-1"></i>Mover en plano</button>` : ''}
+                </div>
+            </div>`).join('')
+            : `<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 font-semibold flex items-center gap-2">
+                <i class="fas fa-circle-check text-emerald-600 text-base"></i> Espacio disponible actualmente.
+            </div>`;
+
+        const selectorAsignar = (S.puede('asignar_cama') && todosMovibles.length)
+            ? `<div class="mt-4 pt-3 border-t border-slate-200">
+                <label class="block text-[11px] font-extrabold text-slate-500 uppercase mb-1">Ubicar / Mover paciente a ${e(camaDef.nombre)}</label>
+                <div class="flex gap-2">
+                    <select id="plano-sel-pac" class="flex-1 border border-slate-300 rounded-lg p-2 text-sm bg-white">
+                        <option value="">— Seleccionar paciente activo —</option>
+                        ${todosMovibles.map(p => `<option value="${e(p.turno_id)}">${e(p.nombre)} (${e(p.ubicacion_actual)})</option>`).join('')}
+                    </select>
+                    <button type="button" id="plano-btn-ubicar" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold px-4 py-2 rounded-lg shrink-0">Ubicar aquí</button>
+                </div>
+            </div>` : '';
+
+        BelenUI.modal({
+            titulo: camaDef.nombre,
+            subtitulo: `Código: ${camaDef.codigo} · Zona: ${S.nombreAreaEstancia(camaDef.area) || camaDef.area}${camaDef.nota_plano ? ' · ' + camaDef.nota_plano : ''}`,
+            icono: 'fa-bed',
+            ancho: 'md',
+            html: `<div class="space-y-3 text-left">${htmlOcupantes}${selectorAsignar}</div>`,
+            alMostrar: m => {
+                m.el.querySelectorAll('[data-ir-exp]').forEach(b => b.addEventListener('click', () => {
+                    const tid = b.getAttribute('data-ir-exp');
+                    m.cerrar();
+                    window.location.href = 'expediente.html?turno=' + encodeURIComponent(tid);
+                }));
+                m.el.querySelectorAll('[data-mover-este]').forEach(b => b.addEventListener('click', () => {
+                    const tid = b.getAttribute('data-mover-este');
+                    m.cerrar();
+                    this.iniciarMoverEnPlano(tid);
+                }));
+                const btnUbicar = m.el.querySelector('#plano-btn-ubicar');
+                if (btnUbicar) {
+                    btnUbicar.addEventListener('click', () => {
+                        const tid = m.el.querySelector('#plano-sel-pac').value;
+                        if (!tid) { BelenUI.toast('Seleccione un paciente de la lista.', 'alerta'); return; }
+                        const r = S.moverPacienteEnPlano(tid, camaCodigo, this.sesion);
+                        if (!r || !r.ok) { BelenUI.toast((r && r.motivo) || 'No se pudo mover al paciente.', 'alerta'); return; }
+                        m.cerrar();
+                        BelenUI.toast('Paciente ubicado en ' + camaDef.nombre + '.', 'exito');
+                        this.render();
+                    });
+                }
+            },
+            botones: [{ texto: 'Cerrar', estilo: 'secundario' }]
+        });
+    },
+
+    abrirPlanoArquitectonicoOriginal: function () {
+        BelenUI.modal({
+            titulo: 'Plano Arquitectónico Oficial — Sanatorio Belén',
+            subtitulo: 'Calle Josefa Ortiz de Domínguez #464 · Distribución de 5 Habitaciones (4 Estándar + 1 Aislado), Quirófano, CEYE, Cunero y Consulta Externa',
+            icono: 'fa-compass-drafting',
+            ancho: 'xl',
+            html: `<div class="space-y-4 text-left">
+                <div class="bg-cyan-50 border border-cyan-200 rounded-xl p-3 text-xs text-cyan-950">
+                    <b>Distribución confirmada de Hospitalización (5 habitaciones en total):</b>
+                    <ul class="list-disc pl-5 mt-1 space-y-0.5">
+                        <li><b>Ala Superior (Izquierda a Derecha):</b> <b>Habitación Aislada (HOSP-AISLADO)</b> con Baño y Cuarto Séptico · <b>Habitación 3 (HOSP-3)</b> · <b>Habitación 2 (HOSP-2)</b> · <b>Enfermería</b> · <b>Habitación 1 (HOSP-1)</b>.</li>
+                        <li><b>Ala Media Derecha (donde el dibujo indica "Pediatría"):</b> <b>Habitación 4 (HOSP-4)</b> (4ª habitación estándar de hospitalización + el Aislado = 5 habitaciones).</li>
+                        <li><b>Zona Central y Quirúrgica:</b> Recuperación 1, Transfer, Quirófano, Valoración y Recuperación 2, CEYE + Autoclave, Enfermería Central, Preparación (Rec. Gineco), Cirugía y Cunero.</li>
+                        <li><b>Ala Inferior (Acceso Principal):</b> Farmacia, RPBI, Control de Médicos, Rayos X, Hidratación (Obs. 1), Curaciones (Obs. 2), Consultorio 02, Consultorio 01, Sala de Espera y Recepción/Administración.</li>
+                    </ul>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="border border-slate-200 rounded-xl p-2 bg-slate-50">
+                        <p class="text-xs font-extrabold text-slate-700 mb-2">📐 Plano Arquitectónico General</p>
+                        <a href="assets/plano-arquitectonico.jpg" target="_blank" class="block">
+                            <img src="assets/plano-arquitectonico.jpg" alt="Plano Arquitectónico Sanatorio Belén" class="w-full rounded-lg border border-slate-300 shadow-sm hover:opacity-95 transition">
+                        </a>
+                        <p class="text-[11px] text-slate-500 mt-1">Haga clic en la imagen para abrirla en tamaño completo en una pestaña nueva.</p>
+                    </div>
+                    <div class="border border-slate-200 rounded-xl p-2 bg-slate-50">
+                        <p class="text-xs font-extrabold text-slate-700 mb-2">🔍 Detalle de Áreas y Cotas</p>
+                        <a href="assets/plano-arquitectonico-detalle.jpg" target="_blank" class="block">
+                            <img src="assets/plano-arquitectonico-detalle.jpg" alt="Detalle Plano Arquitectónico Sanatorio Belén" class="w-full rounded-lg border border-slate-300 shadow-sm hover:opacity-95 transition">
+                        </a>
+                        <p class="text-[11px] text-slate-500 mt-1">Haga clic en la imagen para ampliar el detalle arquitectónico.</p>
+                    </div>
+                </div>
+            </div>`,
+            botones: [{ texto: 'Cerrar', estilo: 'secundario' }]
+        });
+    },
+
+    pacientesMoviblesEnPlano: function () {
+        const S = BelenStore, s = this.sesion;
+        const res = [];
+        const vistos = {};
+        (S.hospitalizadosDe(s) || []).forEach(t => {
+            if (t.estatus === 'alta' || t.estatus === 'cerrado_historico') return;
+            const i = S.internamientoDeTurno(t.turno_id);
+            const cama = (i && (i.cama || i.cama_codigo)) || t.cama || 'Sin cama';
+            vistos[t.turno_id] = true;
+            res.push({ turno_id: t.turno_id, nombre: t.paciente_nombre, ubicacion_actual: cama, medico: t.medico_nombre });
+        });
+        (S.leerTurnos() || []).forEach(t => {
+            if (vistos[t.turno_id]) return;
+            if (t.estatus === 'en_consulta' || t.estatus === 'signos_capturados' || t.estatus === 'pendiente_signos') {
+                res.push({
+                    turno_id: t.turno_id,
+                    nombre: t.paciente_nombre,
+                    ubicacion_actual: t.cama || (t.estatus === 'en_consulta' ? 'En Consulta' : 'Fila de Espera'),
+                    medico: t.medico_nombre
+                });
+            }
+        });
+        return res;
+    },
+
+    ocupantesPorCamaMapa: function () {
+        const S = BelenStore, s = this.sesion;
+        const mapa = {};
+        const poner = (cod, obj) => {
+            const norm = S.normalizarCodigoCama(cod);
+            if (!norm) return;
+            if (!mapa[norm]) mapa[norm] = [];
+            if (!mapa[norm].some(x => x.turno_id === obj.turno_id)) mapa[norm].push(obj);
+        };
+        (S.hospitalizadosDe(s) || []).forEach(t => {
+            if (t.estatus === 'alta' || t.estatus === 'cerrado_historico') return;
+            const f = S.fichaHospitalizado(t, s);
+            const i = S.internamientoDeTurno(t.turno_id);
+            const cod = (i && (i.cama_codigo || i.cama)) || t.cama_codigo || t.cama;
+            if (cod) {
+                poner(cod, {
+                    turno_id: t.turno_id,
+                    nombre: f.nombre,
+                    medico: f.medico_tratante,
+                    detalle: (f.edad !== null ? f.edad + 'a' : '') + (f.diagnostico_actual ? ' · ' + f.diagnostico_actual : ''),
+                    pendiente_pago: !!f.pendiente_pago
+                });
+            }
+        });
+        (S.leerTurnos() || []).forEach(t => {
+            if (t.estatus === 'alta' || t.estatus === 'cerrado_historico') return;
+            const cod = t.cama_codigo || t.cama;
+            if (cod) {
+                poner(cod, {
+                    turno_id: t.turno_id,
+                    nombre: t.paciente_nombre,
+                    medico: t.medico_nombre,
+                    detalle: S.ETIQUETA_ESTATUS[t.estatus] || t.estatus,
+                    pendiente_pago: t.estatus === 'alta_medica_pendiente_pago'
+                });
+            }
+        });
+        return mapa;
+    },
+
+    htmlMapaArquitectonico2D: function () {
+        const S = BelenStore, e = x => this.e(x);
+        const ocupantes = this.ocupantesPorCamaMapa();
+        const movibles = this.pacientesMoviblesEnPlano();
+        const enModoMover = !!this.pacienteMoverPlanoId;
+        const turnoMover = enModoMover ? S.obtenerTurno(this.pacienteMoverPlanoId) : null;
+
+        const celdaCama = (codigo, tituloCorto, subtitulo, icono, colorBase) => {
+            const lista = ocupantes[codigo] || [];
+            const ocupado = lista.length > 0;
+            const pac = lista[0];
+            const borde = enModoMover
+                ? 'border-2 border-dashed border-cyan-500 ring-2 ring-cyan-200 cursor-pointer hover:bg-cyan-50'
+                : (ocupado
+                    ? (pac.pendiente_pago ? 'border-2 border-amber-500 bg-amber-50/90' : 'border-2 border-indigo-600 bg-indigo-50/90')
+                    : `border border-${colorBase}-200 bg-white hover:border-${colorBase}-400`);
+            const badge = ocupado
+                ? `<span class="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${pac.pendiente_pago ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white'}">Ocupado</span>`
+                : `<span class="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Libre</span>`;
+            const cuerpo = ocupado
+                ? `<div class="mt-1.5 pt-1.5 border-t border-indigo-200/70">
+                    <p class="text-xs font-extrabold text-slate-900 truncate" title="${e(pac.nombre)}"><i class="fas fa-user-injured text-indigo-600 mr-1"></i>${e(pac.nombre)}</p>
+                    <p class="text-[10px] text-slate-600 truncate">Dr(a). ${e(pac.medico || '')}</p>
+                    ${lista.length > 1 ? `<p class="text-[9px] font-bold text-indigo-700 mt-0.5">+${lista.length - 1} paciente más</p>` : ''}
+                </div>`
+                : `<p class="mt-1.5 text-[10px] text-emerald-700 font-semibold">${enModoMover ? '👉 Clic para ubicar aquí' : 'Clic para asignar / ver'}</p>`;
+            return `<div data-plano-cama="${e(codigo)}" onclick="AdminController.seleccionarEspacioPlano('${e(codigo)}')"
+                class="rounded-xl p-2.5 shadow-sm transition cursor-pointer select-none flex flex-col justify-between min-h-[92px] ${borde}">
+                <div>
+                    <div class="flex items-start justify-between gap-1">
+                        <span class="text-[10px] font-mono font-extrabold text-slate-500">${e(codigo)}</span>
+                        ${badge}
+                    </div>
+                    <p class="text-xs font-extrabold text-slate-900 mt-0.5 leading-snug"><i class="fas ${icono} mr-1 text-${colorBase}-600"></i>${e(tituloCorto)}</p>
+                    ${subtitulo ? `<p class="text-[10px] text-slate-500 leading-tight">${e(subtitulo)}</p>` : ''}
+                </div>
+                ${cuerpo}
+            </div>`;
+        };
+
+        const celdaFija = (titulo, subtitulo, icono, clBg) => `<div class="rounded-xl p-2.5 border border-slate-200 ${clBg || 'bg-slate-50/90'} flex flex-col justify-center items-center text-center min-h-[76px]">
+            <i class="fas ${icono} text-slate-500 text-sm mb-1"></i>
+            <p class="text-[11px] font-extrabold text-slate-700 leading-tight">${e(titulo)}</p>
+            ${subtitulo ? `<p class="text-[9px] text-slate-500 mt-0.5 leading-tight">${e(subtitulo)}</p>` : ''}
+        </div>`;
+
+        const barraMover = S.puede('asignar_cama') ? `<div class="mb-4 bg-slate-900 text-white rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2 text-xs">
+                <i class="fas fa-arrows-up-down-left-right text-cyan-400 text-base"></i>
+                ${enModoMover
+                    ? `<span><b>Modo reubicación activo:</b> haga clic en cualquier habitación o espacio del plano para ubicar a <b class="text-cyan-300">${e((turnoMover && turnoMover.paciente_nombre) || '')}</b>.</span>`
+                    : `<span><b>Control visual en Plano 2D:</b> elija un paciente para moverlo con un clic a otra habitación, cunero, observación o consultorio.</span>`}
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <select onchange="AdminController.iniciarMoverEnPlano(this.value)" class="bg-slate-800 border border-slate-600 text-white text-xs rounded-lg px-2.5 py-1.5">
+                    <option value="">— Seleccionar paciente para mover en el plano —</option>
+                    ${movibles.map(p => `<option value="${e(p.turno_id)}" ${this.pacienteMoverPlanoId === p.turno_id ? 'selected' : ''}>${e(p.nombre)} (${e(p.ubicacion_actual)})</option>`).join('')}
+                </select>
+                ${enModoMover ? `<button type="button" onclick="AdminController.iniciarMoverEnPlano('')" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Cancelar</button>` : ''}
+            </div>
+        </div>` : '';
+
+        return `<section id="mapa-arquitectonico-2d" class="mb-6 bg-white rounded-2xl border-2 border-slate-300 shadow-sm p-4 sm:p-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-slate-200">
+                <div>
+                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded">Plano Arquitectónico Interactivo 2D</span>
+                    <h3 class="text-base font-extrabold text-slate-900 mt-1">Sanatorio Belén · Distribución Oficial de Planta (5 Habitaciones: 4 Estándar + 1 Aislado)</h3>
+                </div>
+                <div class="flex flex-wrap items-center gap-3 text-[11px] font-bold">
+                    <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-100 border border-emerald-500 inline-block"></span> Libre</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-indigo-600 inline-block"></span> Ocupada</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-500 inline-block"></span> Alta pendiente de cobro</span>
+                </div>
+            </div>
+            ${barraMover}
+
+            <!-- ALA SUPERIOR: PASILLO DE HOSPITALIZACIÓN (4 HABITACIONES + ENFERMERÍA) -->
+            <div class="mb-3 bg-slate-100/90 border border-slate-300 rounded-2xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-950"><i class="fas fa-bed mr-1 text-indigo-600"></i> Ala Superior · Hospitalización (Habitación Aislada, Hab. 3, Hab. 2, Enfermería y Hab. 1)</p>
+                    <span class="text-[10px] font-semibold text-slate-500">Norte del Plano · Con baños privados y Cuarto Séptico</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                    ${celdaCama('HOSP-AISLADO', 'Habitación Aislada', 'Aislado + Baño privado', 'fa-shield-virus', 'rose')}
+                    ${celdaFija('Cuarto Séptico', 'Junto a Hab. Aislada', 'fa-biohazard', 'bg-rose-50/70 border-rose-200')}
+                    ${celdaCama('HOSP-3', 'Habitación 3', 'Estándar + Baño', 'fa-bed', 'indigo')}
+                    ${celdaCama('HOSP-2', 'Habitación 2', 'Estándar + Baño', 'fa-bed', 'indigo')}
+                    ${celdaFija('Enfermería de Piso', 'Control de Hospitalización', 'fa-user-nurse', 'bg-cyan-50/70 border-cyan-200')}
+                    ${celdaCama('HOSP-1', 'Habitación 1', 'Estándar + Baño (Esq. Sup. Der.)', 'fa-bed', 'indigo')}
+                </div>
+            </div>
+
+            <!-- ZONA MEDIA: QUIRÓFANO, TRANSFER, RECUPERACIÓN, CEYE, CUNERO, SALA DOBLE ALTURA Y HABITACIÓN 4 (EX-PEDIATRÍA) -->
+            <div class="mb-3 bg-violet-50/60 border border-violet-200 rounded-2xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-[11px] font-extrabold uppercase tracking-wider text-violet-950"><i class="fas fa-kit-medical mr-1 text-violet-700"></i> Zona Central · Quirófano, CEYE, Recuperación, Cunero y Habitación 4 (5ª Habitación)</p>
+                    <span class="text-[10px] font-semibold text-slate-500">Centro-Izquierda: Área Blanca/Gris · Centro-Derecha: Cunero y Habitación 4</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                    ${celdaCama('REC-1', 'Recuperación 1', 'Post-Quirúrgica + Transfer', 'fa-bed-pulse', 'violet')}
+                    ${celdaFija('Quirófano Central', 'Lavabo Qx · Sub-Esterilizador · Séptico', 'fa-syringe', 'bg-violet-100/80 border-violet-300')}
+                    ${celdaCama('REC-2', 'Valoración y Rec. 2', '2 Camillas + Baño', 'fa-bed-pulse', 'violet')}
+                    ${celdaFija('CEYE y Autoclave', 'Enfermería Central', 'fa-temperature-high', 'bg-slate-100 border-slate-300')}
+                    ${celdaCama('CUNERO-1', 'Cunero', '2 Incubadoras / RN', 'fa-baby', 'pink')}
+                    ${celdaCama('HOSP-4', 'Habitación 4', 'Estándar + Baño (Plano: Pediatría)', 'fa-bed', 'indigo')}
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-2.5">
+                    ${celdaFija('Vestidores H / M', 'Filtro de acceso quirúrgico', 'fa-person-booth', 'bg-white')}
+                    ${celdaCama('REC-GINECO', 'Preparación / Rec. Gineco', 'Junto a sala de Cirugía', 'fa-Procedures', 'violet')}
+                    ${celdaFija('Sala de Cirugía / Expulsión', 'Área Quirúrgica Central', 'fa-heart-pulse', 'bg-violet-100/60 border-violet-200')}
+                    ${celdaFija('Sala de Espera Doble Altura', 'Vestíbulo Central y Escaleras', 'fa-couch', 'bg-amber-50/60 border-amber-200')}
+                </div>
+            </div>
+
+            <!-- ALA INFERIOR: FARMACIA, RAYOS X, HIDRATACIÓN/CURACIONES, CONSULTORIOS Y ACCESO PRINCIPAL -->
+            <div class="bg-teal-50/50 border border-teal-200 rounded-2xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-[11px] font-extrabold uppercase tracking-wider text-teal-950"><i class="fas fa-stethoscope mr-1 text-teal-700"></i> Ala Inferior · Consulta Externa, Observación (Hidratación / Curaciones), Farmacia y Acceso Principal</p>
+                    <span class="text-[10px] font-semibold text-slate-500">Sur del Plano · Calle Josefa Ortiz de Domínguez #464</span>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                    ${celdaFija('Farmacia y RPBI', 'Control de Médicos', 'fa-pills', 'bg-teal-100/70 border-teal-300')}
+                    ${celdaFija('Rayos X', 'Imagenología + Vestidor', 'fa-x-ray', 'bg-slate-100 border-slate-300')}
+                    ${celdaCama('OBS-1', 'Hidratación (Obs. 1)', 'Observación / Urgencias', 'fa-droplet', 'cyan')}
+                    ${celdaCama('OBS-2', 'Curaciones (Obs. 2)', 'Procedimientos / Urgencias', 'fa-bandage', 'cyan')}
+                    ${celdaCama('CONS-2', 'Consultorio 02', 'Con Baño Privado', 'fa-user-doctor', 'teal')}
+                    ${celdaCama('CONS-1', 'Consultorio 01', 'Con Baño Privado', 'fa-user-doctor', 'teal')}
+                </div>
+                <div class="mt-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    ${celdaFija('Sanitarios Públicos H / M', 'Junto a Sala de Espera', 'fa-restroom', 'bg-white')}
+                    ${celdaFija('Sala de Espera y Recepción / Caja', 'Administración y Admisión', 'fa-cash-register', 'bg-amber-50 border-amber-200')}
+                    ${celdaFija('Acceso Principal Sanatorio Belén', 'C. Josefa Ortiz de Domínguez #464', 'fa-door-open', 'bg-slate-900 text-white border-slate-800')}
+                </div>
+            </div>
+        </section>`;
     },
 
     // ======================================================================
@@ -2233,16 +2703,11 @@ const AdminController = {
             expediente: (turno && turno.paciente_id) || (pac && pac.paciente_id) || '',
             paciente_id: (turno && turno.paciente_id) || '',
             fecha_nacimiento: pac ? S.fechaLegibleISO(pac.fecha_nacimiento) : '',
-            edad: (function () {
-                const ed = pac && pac.fecha_nacimiento ? S.calcularEdad(pac.fecha_nacimiento) : null;
-                if (ed === null || ed === undefined || ed === '') return (paciente && paciente.edad) || '';
-                const s = String(ed);
-                return s.indexOf('año') >= 0 ? s : (ed + (Number(ed) === 1 ? ' año' : ' años'));
-            })(),
+            edad: (pac && pac.fecha_nacimiento && S.formatearEdad) ? S.formatearEdad(pac.fecha_nacimiento) : ((paciente && paciente.edad) || ''),
             peso: sv.peso_kg != null ? sv.peso_kg : '',
             talla: sv.talla_m != null ? sv.talla_m : '',
-            alergias: (internamiento && internamiento.alergias) || '',
-            especialidad: (esp && esp.nombre) || (medico && medico.cargo) || (turno && turno.especialidad) || ''
+            alergias: (internamiento && internamiento.alergias) || 'NEGADAS',
+            especialidad: (medico && S.especialidadImpresaMedico ? S.especialidadImpresaMedico(medico) : '') || (esp && esp.nombre) || (medico && medico.cargo) || (turno && turno.especialidad) || ''
         }, extra || {}));
     },
 
@@ -2441,25 +2906,71 @@ const AdminController = {
         return `<div class="mt-3"><p class="text-[11px] font-extrabold uppercase tracking-wide text-teal-800">Para aplicar ahora en clínica</p>${bloques}</div>`;
     },
 
+    filtrarArchivoRecetas: function (texto, fraccion) {
+        if (texto !== undefined) this.filtroRecetasTexto = String(texto || '');
+        if (fraccion !== undefined) this.filtroRecetasFraccion = String(fraccion || '');
+        this.render();
+    },
+
     htmlArchivoRecetas: function (pacienteId) {
         const e = t => this.e(t);
         const S = BelenStore;
         let lista = S.listarRecetas().slice().reverse();
         if (pacienteId) lista = lista.filter(r => r.paciente_id === pacienteId);
-        if (!lista.length) return '<div class="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-sm text-slate-500">Todavía no hay recetas foliadas.</div>';
-        const filas = lista.map(r => `<tr class="border-t border-slate-100">
-            <td class="px-3 py-3 font-extrabold text-slate-900">${e(r.folio)}</td>
-            <td class="px-3 py-3">${e(S.fechaHoraLegible(r.fecha_hora))}</td>
-            <td class="px-3 py-3">${e(r.paciente_nombre)}<span class="block text-[11px] text-slate-400">${e(r.medico_nombre)}</span></td>
+        const q = String(this.filtroRecetasTexto || '').trim().toLowerCase();
+        const fracFiltro = String(this.filtroRecetasFraccion || '').trim();
+        if (!pacienteId && q) {
+            lista = lista.filter(r => {
+                const meds = (r.items || []).map(i => i.nombre || '').join(' ');
+                const blob = [r.folio, r.paciente_nombre, r.medico_nombre, meds, r.diagnostico].join(' ').toLowerCase();
+                return blob.indexOf(q) >= 0;
+            });
+        }
+        if (!pacienteId && fracFiltro) {
+            lista = lista.filter(r => (r.items || []).some(i => String(i.fraccion_cofepris || '') === fracFiltro));
+        }
+        const barraFiltro = pacienteId ? '' : `<div class="px-4 py-3 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center gap-2">
+            <input type="search" value="${e(this.filtroRecetasTexto || '')}" placeholder="Buscar por folio SB-REC, paciente, médico o medicamento…"
+                oninput="AdminController.filtrarArchivoRecetas(this.value, undefined)"
+                class="flex-1 min-w-[220px] border border-slate-300 rounded-lg px-3 py-1.5 text-xs bg-white">
+            <select onchange="AdminController.filtrarArchivoRecetas(undefined, this.value)" class="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-white">
+                <option value="" ${!fracFiltro ? 'selected' : ''}>Todas las fracciones COFEPRIS</option>
+                <option value="I" ${fracFiltro === 'I' ? 'selected' : ''}>Fracción I (Estupefacientes)</option>
+                <option value="II" ${fracFiltro === 'II' ? 'selected' : ''}>Fracción II (Psicotrópicos retención)</option>
+                <option value="III" ${fracFiltro === 'III' ? 'selected' : ''}>Fracción III (Psicotrópicos sello)</option>
+                <option value="IV_ANTIBIOTICO" ${fracFiltro === 'IV_ANTIBIOTICO' ? 'selected' : ''}>Fracción IV Antibiótico</option>
+            </select>
+        </div>`;
+        if (!lista.length) return `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">${barraFiltro}<div class="p-8 text-sm text-slate-500 text-center">No hay recetas foliadas que coincidan con el filtro.</div></div>`;
+        const filas = lista.map(r => {
+            const meds = (r.items || []).map(i => {
+                const fr = i.fraccion_cofepris && i.fraccion_cofepris !== 'IV' && i.fraccion_cofepris !== 'NA'
+                    ? ` <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">Fracc. ${e(i.fraccion_cofepris)}</span>` : '';
+                return `<span class="block text-xs text-slate-700">• <b>${e(i.nombre)}</b>${i.dosis_indicacion ? ' — ' + e(i.dosis_indicacion) : ''}${fr}</span>`;
+            }).join('') || `<span class="text-xs text-slate-500">${e((r.receta_texto || '').slice(0, 90))}</span>`;
+            return `<tr class="border-t border-slate-100 hover:bg-slate-50/70">
+            <td class="px-3 py-3 font-extrabold text-slate-900 whitespace-nowrap">${e(r.folio)}<span class="block text-[10px] font-normal text-slate-400">${e(r.tipo_origen === 'RECETA_CASA' ? 'Receta a casa' : 'Aplicación clínica')}</span></td>
+            <td class="px-3 py-3 text-xs whitespace-nowrap">${e(S.fechaHoraLegible(r.fecha_hora))}</td>
+            <td class="px-3 py-3 font-semibold">${e(r.paciente_nombre)}<span class="block text-[11px] font-normal text-slate-500">${e(r.medico_nombre)}</span></td>
+            <td class="px-3 py-3">${meds}</td>
             <td class="px-3 py-3 text-xs">${e(S.etiquetaEstatusReceta(r.estatus_surtido))}</td>
-            <td class="px-3 py-3 text-right"><button type="button" onclick="AdminController.abrirHojaReceta('${e(r.receta_id)}')" class="bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Ver receta</button></td>
-        </tr>`).join('');
+            <td class="px-3 py-3 text-right whitespace-nowrap"><button type="button" onclick="AdminController.abrirHojaReceta('${e(r.receta_id)}')" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Ver / Reimprimir</button></td>
+        </tr>`;
+        }).join('');
         return `<div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="px-4 py-3 border-b border-slate-100"><h3 class="font-extrabold text-slate-800">Archivo digital de recetas</h3>
-            <p class="text-xs text-slate-500">Cada hoja es de solo lectura. El folio SB-REC es del hospital y no se reutiliza.</p></div>
-            <table class="w-full text-sm text-left"><thead class="text-[11px] uppercase text-slate-400"><tr>
-                <th class="px-3 py-2">Folio</th><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Paciente</th><th class="px-3 py-2">Surtido</th><th></th>
-            </tr></thead><tbody>${filas}</tbody></table></div>`;
+            <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                <div>
+                    <h3 class="font-extrabold text-slate-800">Bitácora y Archivo Digital de Recetas Emitidas</h3>
+                    <p class="text-xs text-slate-500">Cada hoja es inmutable. Los medicamentos controlados (Fracción I, II y III) generan su hoja independiente automáticamente al imprimir.</p>
+                </div>
+                <span class="text-xs font-extrabold bg-teal-700 text-white rounded-full px-3 py-1">${lista.length} recetas</span>
+            </div>
+            ${barraFiltro}
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left"><thead class="text-[11px] uppercase text-slate-400 bg-slate-50"><tr>
+                    <th class="px-3 py-2">Folio</th><th class="px-3 py-2">Fecha</th><th class="px-3 py-2">Paciente / Médico</th><th class="px-3 py-2">Prescripción / Fracción</th><th class="px-3 py-2">Surtido</th><th></th>
+                </tr></thead><tbody>${filas}</tbody></table>
+            </div></div>`;
     },
 
     abrirRecetasPaciente: function (pacienteId) {
@@ -2730,11 +3241,11 @@ const AdminController = {
                         numero: r.uso.numero, de: r.uso.de, folio_receta_especial: r.uso.folio_receta_especial, datos_postanestesicos: r.uso.datos_postanestesicos,
                         expediente: (pac && pac.paciente_id) || '',
                         fecha_nacimiento: pacReg ? S.fechaLegibleISO(pacReg.fecha_nacimiento) : '',
-                        edad: (edadN === null || edadN === undefined || edadN === '') ? '' : (String(edadN).indexOf('año') >= 0 ? String(edadN) : (edadN + (Number(edadN) === 1 ? ' año' : ' años'))),
+                        edad: (pacReg && pacReg.fecha_nacimiento && S.formatearEdad) ? S.formatearEdad(pacReg.fecha_nacimiento, edadN) : '',
                         peso: sv.peso_kg != null ? sv.peso_kg : '',
                         talla: sv.talla_m != null ? sv.talla_m : '',
-                        alergias: (internamiento && internamiento.alergias) || '',
-                        especialidad: (esp && esp.nombre) || medico.cargo || (pac && pac.especialidad) || ''
+                        alergias: (internamiento && internamiento.alergias) || 'NEGADAS',
+                        especialidad: (S.especialidadImpresaMedico ? S.especialidadImpresaMedico(medico) : '') || (esp && esp.nombre) || medico.cargo || (pac && pac.especialidad) || ''
                     }));
                 } }
             ]
@@ -3270,16 +3781,25 @@ const AdminController = {
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-cargo">Cargo</label><input id="rh-cargo" class="${cls}" value="${u ? e(u.cargo) : ''}"><p data-err="cargo" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
                 <div id="rh-cedula-wrap"><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-cedula">Cédula profesional</label><input id="rh-cedula" class="${cls}" value="${u && u.rol !== 'medico' ? e(u.cedula_profesional || '') : ''}"><p data-err="cedula_profesional" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
                 <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-esp">Especialidad</label><select id="rh-esp" class="${cls}"><option value="">No aplica</option>${esps}</select><p data-err="especialidad_codigo" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
-                <div id="rh-cedulas-med" class="hidden sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-ced-general">Cédula de Médico General / Licenciatura</label><input id="rh-ced-general" class="${cls}" value="${u ? e(u.cedula_general || '') : ''}"><p data-err="cedula_general" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
-                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-ced-esp">Cédula de Especialidad</label><input id="rh-ced-esp" class="${cls}" value="${u ? e(u.cedula_especialidad || '') : ''}"><p data-err="cedula_especialidad" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
-                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-ced-sub">Cédula de Subespecialidad</label><input id="rh-ced-sub" class="${cls}" value="${u ? e(u.cedula_subespecialidad || '') : ''}"><p data-err="cedula_subespecialidad" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
-                    <p id="rh-aviso-general" class="hidden sm:col-span-3 text-xs text-cyan-800 bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2">Médico general: la nota, las indicaciones y la receta imprimen siempre la cédula de licenciatura.</p>
+                <div id="rh-cedulas-med" class="hidden sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                    <div class="sm:col-span-2">
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1" for="rh-titulo-impreso">Título / Especialidad impresa en Recetas y Notas</label>
+                        <input id="rh-titulo-impreso" class="${cls}" value="${u ? e(u.titulo_impreso || S.especialidadImpresaMedico(u) || '') : ''}" placeholder="Ej. Cirugía General y Laparoscópica · Traumatología y Ortopedia · Angiología">
+                        <p class="text-[10px] text-slate-500 mt-0.5">Personalice cómo aparece la especialidad del médico al imprimir (ej. Cirugía General y Laparoscópica, Médico Cirujano y Partero, etc.).</p>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 uppercase mb-1" for="rh-universidad">Universidad / Institución (opcional)</label>
+                        <input id="rh-universidad" class="${cls}" value="${u ? e(u.universidad_titulo || '') : ''}" placeholder="Ej. UdeG / UNAM">
+                    </div>
+                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-ced-general">Cédula Profesional (Licenciatura)</label><input id="rh-ced-general" class="${cls}" value="${u ? e(u.cedula_general || '') : ''}" placeholder="Ej. 12345678"><p data-err="cedula_general" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
+                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-ced-esp">Cédula de Especialidad</label><input id="rh-ced-esp" class="${cls}" value="${u ? e(u.cedula_especialidad || '') : ''}" placeholder="Opcional"><p data-err="cedula_especialidad" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
+                    <div><label class="block text-[11px] font-bold text-slate-500 uppercase mb-1" for="rh-ced-sub">Cédula de Subespecialidad</label><input id="rh-ced-sub" class="${cls}" value="${u ? e(u.cedula_subespecialidad || '') : ''}" placeholder="Opcional"><p data-err="cedula_subespecialidad" class="text-[11px] text-red-600 mt-1 hidden"></p></div>
+                    <p id="rh-aviso-general" class="hidden sm:col-span-3 text-xs text-cyan-800 bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2">En los formatos impresos saldrá como <b>Céd. Prof.</b> (y <b>Céd. Esp. / Céd. Subesp.</b> cuando aplique).</p>
                     <div id="rh-visibles" class="sm:col-span-3">
                         <p class="text-[11px] font-bold text-slate-500 uppercase mb-2">Cédulas que se imprimen en notas, indicaciones y recetas</p>
                         <p data-err="cedulas_visibles" class="text-[11px] text-red-600 mt-1 hidden"></p>
                         <div class="flex flex-wrap gap-3 text-sm font-bold text-slate-700">
-                            ${['general', 'especialidad', 'subespecialidad'].map(c => `<label class="inline-flex items-center gap-2"><input type="checkbox" data-ced-vis="${c}" ${u && (u.cedulas_visibles || []).indexOf(c) >= 0 ? 'checked' : ''}> ${c === 'general' ? 'General' : (c === 'especialidad' ? 'Especialidad' : 'Subespecialidad')}</label>`).join('')}
+                            ${['general', 'especialidad', 'subespecialidad'].map(c => `<label class="inline-flex items-center gap-2"><input type="checkbox" data-ced-vis="${c}" ${(!u && c === 'general') || (u && (u.cedulas_visibles || ['general']).indexOf(c) >= 0) ? 'checked' : ''}> ${c === 'general' ? 'Céd. Profesional (Licenciatura)' : (c === 'especialidad' ? 'Céd. Especialidad' : 'Céd. Subespecialidad')}</label>`).join('')}
                         </div>
                     </div>
                 </div>
@@ -3296,9 +3816,8 @@ const AdminController = {
                     c.el.querySelector('#rh-cedulas-med').classList.toggle('hidden', !medico);
                     c.el.querySelector('#rh-cedula-wrap').classList.toggle('hidden', medico);
                     const costoWrap = c.el.querySelector('#rh-costo-wrap'); if (costoWrap) costoWrap.classList.toggle('hidden', !medico);
-                    const general = medico && esp.value === 'MEDICINA_GENERAL';
-                    c.el.querySelector('#rh-visibles').classList.toggle('hidden', !medico || general);
-                    c.el.querySelector('#rh-aviso-general').classList.toggle('hidden', !medico || !general);
+                    c.el.querySelector('#rh-visibles').classList.toggle('hidden', !medico);
+                    c.el.querySelector('#rh-aviso-general').classList.toggle('hidden', !medico);
                 };
                 rol.addEventListener('change', sync);
                 esp.addEventListener('change', sync);
@@ -3314,6 +3833,8 @@ const AdminController = {
                         id: q('#rh-id'), nombre: q('#rh-nombre'), password: q('#rh-password'), codigo_rapido: q('#rh-pin'), rol: rol,
                         cargo: q('#rh-cargo'), cedula_profesional: rol === 'medico' ? '' : q('#rh-cedula'),
                         cedula_general: q('#rh-ced-general'), cedula_especialidad: q('#rh-ced-esp'), cedula_subespecialidad: q('#rh-ced-sub'),
+                        titulo_impreso: c.el.querySelector('#rh-titulo-impreso') ? q('#rh-titulo-impreso') : '',
+                        universidad_titulo: c.el.querySelector('#rh-universidad') ? q('#rh-universidad') : '',
                         cedulas_visibles: visibles, especialidad_codigo: q('#rh-esp'), color_distintivo: q('#rh-color'), etiqueta_admin: q('#rh-etiqueta')
                     }, this.sesion, u ? u.id : null);
                     c.el.querySelectorAll('[data-err]').forEach(p => p.classList.add('hidden'));
@@ -3551,7 +4072,7 @@ const AdminController = {
         const pacientes = this.pacientesVisibles();
         const filas = pacientes.map(p => {
             const v = S.visitasDePaciente(p.paciente_id);
-            const edad = S.calcularEdad(p.fecha_nacimiento);
+            const edadTxt = S.formatearEdad ? S.formatearEdad(p.fecha_nacimiento) : (S.calcularEdad(p.fecha_nacimiento) !== null ? S.calcularEdad(p.fecha_nacimiento) + ' años' : '—');
             const ultima = v[0] && v[0].consulta && v[0].consulta.fecha_hora ? S.fechaLegibleISO(v[0].consulta.fecha_hora.slice(0, 10)) : '—';
             const turnos = S.listarTurnos().filter(t => t.paciente_id === p.paciente_id)
                 .sort((a, b) => String(b.actualizado_en || b.timestamp_llegada || '').localeCompare(String(a.actualizado_en || a.timestamp_llegada || '')));
@@ -3568,7 +4089,7 @@ const AdminController = {
             const buscar = S.normalizar([p.nombre_completo, p.paciente_id, ultimo && ultimo.dx_principal, ultimo && ultimo.medico_nombre, ultimo && ultimo.estatus, archivoHosp ? 'cerrado historico portafolio' : ''].filter(Boolean).join(' '));
             return `<tr class="border-t border-slate-100 hover:bg-slate-50" data-paciente="${this.e(p.paciente_id)}" data-buscar="${this.e(buscar)}">
                 <td class="px-4 py-3 font-bold text-slate-800">${this.e(p.nombre_completo)}<span class="block text-[11px] font-normal text-slate-400">${this.e(p.paciente_id)}</span></td>
-                <td class="px-4 py-3 text-slate-600">${edad !== null ? edad + ' años' : '—'} · ${p.sexo === 'F' ? 'Femenino' : 'Masculino'}</td>
+                <td class="px-4 py-3 text-slate-600">${this.e(edadTxt || '—')} · ${p.sexo === 'F' ? 'Femenino' : 'Masculino'}${p.nacionalidad && p.nacionalidad !== 'Mexicana' ? ' · <span class="text-xs font-semibold text-cyan-700">🌍 ' + this.e(p.nacionalidad) + '</span>' : ''}</td>
                 <td class="px-4 py-3 text-slate-600">${badge || '<span class="text-slate-400">—</span>'}</td>
                 <td class="px-4 py-3 text-slate-600 text-center">${v.length}</td>
                 <td class="px-4 py-3 text-slate-600">${ultima}</td>
@@ -3613,6 +4134,12 @@ const AdminController = {
         set('sexo', paciente.sexo || '');
         set('tel', paciente.telefono || '');
         set('dir', paciente.direccion || '');
+        set('nac', paciente.nacionalidad || 'Mexicana');
+        const badge = raiz.querySelector('#' + prefijo + '-edad-badge');
+        if (badge && paciente.fecha_nacimiento && BelenStore.formatearEdad) {
+            const edTxt = BelenStore.formatearEdad(paciente.fecha_nacimiento);
+            if (edTxt) { badge.textContent = edTxt; badge.classList.remove('hidden'); }
+        }
     },
 
     abrirFusionExpedientes: function () {
@@ -3687,6 +4214,19 @@ const AdminController = {
         const cls = 'w-full border border-slate-300 rounded-lg p-2.5 text-sm text-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white';
         const campoErr = k => `<p data-err="${k}" class="text-[11px] text-red-600 mt-1 hidden"></p>`;
         const html = `
+            <div class="mb-4 bg-cyan-50/90 border-2 border-cyan-200 rounded-xl p-3.5">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                    <label for="reg-busqueda-rapida" class="text-xs font-extrabold text-cyan-950 flex items-center gap-1.5">
+                        <i class="fas fa-magnifying-glass text-cyan-700"></i> ¿Ya tiene expediente en Sanatorio Belén? Buscador rápido de pacientes:
+                    </label>
+                    <span class="text-[10px] font-bold text-cyan-700 bg-white border border-cyan-200 rounded-full px-2.5 py-0.5">Busca por nombre, apellidos, folio PAC-… o teléfono</span>
+                </div>
+                <div class="relative">
+                    <input id="reg-busqueda-rapida" type="search" autocomplete="off" placeholder="Escriba nombre, apellidos, teléfono o folio PAC-000001 para encontrar su expediente al instante…"
+                        class="w-full border border-cyan-300 rounded-lg px-3 py-2 text-sm text-slate-800 bg-white focus:border-cyan-600 focus:ring-2 focus:ring-cyan-200 outline-none">
+                </div>
+                <div id="reg-resultados-rapidos" class="mt-2 flex flex-col gap-1.5 empty:hidden max-h-56 overflow-y-auto"></div>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-6 gap-4">
                 ${BelenUI.htmlIdentidadPaciente({ prefijo: 'reg', cls: cls, sugerencias: true, autofoco: true })}
                 <div id="reg-estado" class="sm:col-span-6 hidden"></div>
@@ -3736,10 +4276,19 @@ const AdminController = {
             c.coincidencia = m;
             if (m) {
                 const visitas = S.visitasDePaciente(m.paciente_id).length;
-                mostrarEstado(`<div id="reg-badge-encontrado" class="flex items-center gap-3 bg-emerald-50 border border-emerald-300 rounded-lg px-4 py-3">
-                    <i class="fas fa-folder-open text-emerald-600 text-xl"></i>
-                    <div><p class="text-sm font-bold text-emerald-800">Expediente Encontrado</p>
-                    <p class="text-xs text-emerald-700">Se reutiliza <b>${this.e(m.nombre_completo)}</b> · ${this.e(m.paciente_id)} · ${visitas} ${visitas === 1 ? 'visita previa' : 'visitas previas'}</p></div></div>`);
+                const edTxt = S.formatearEdad ? S.formatearEdad(m.fecha_nacimiento) : '';
+                mostrarEstado(`<div id="reg-badge-encontrado" class="flex flex-wrap items-center justify-between gap-3 bg-emerald-50 border border-emerald-300 rounded-lg px-4 py-3">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-folder-open text-emerald-600 text-xl"></i>
+                        <div><p class="text-sm font-bold text-emerald-800">Expediente Encontrado y Seleccionado</p>
+                        <p class="text-xs text-emerald-700">Se reutiliza <b>${this.e(m.nombre_completo)}</b> · <span class="font-mono font-bold">${this.e(m.paciente_id)}</span>${edTxt ? ' · ' + this.e(edTxt) : ''} · Tel: ${this.e(m.telefono || 'Sin tel.')} · ${visitas} ${visitas === 1 ? 'visita previa' : 'visitas previas'}</p></div>
+                    </div>
+                    <button type="button" id="reg-btn-ver-seleccionado" class="text-xs font-extrabold bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-lg px-3 py-1.5 transition">🔍 Ver datos del expediente</button>
+                </div>`);
+                const btnVer = q('#reg-btn-ver-seleccionado');
+                if (btnVer && BelenUI.modalVerificarExpediente) {
+                    btnVer.addEventListener('click', () => BelenUI.modalVerificarExpediente(m.paciente_id));
+                }
             } else {
                 sexo.disabled = false;
                 if (n.split(' ').filter(Boolean).length >= 2 && fn.value) {
@@ -3751,33 +4300,93 @@ const AdminController = {
             }
         };
 
+        const renderTarjetaCoincidencia = (p) => {
+            const edTxt = S.formatearEdad ? S.formatearEdad(p.fecha_nacimiento) : '';
+            const vis = S.visitasDePaciente(p.paciente_id).length;
+            return `<div class="flex flex-wrap items-center justify-between gap-2 bg-white border border-slate-200 hover:border-cyan-400 rounded-lg px-3 py-2 shadow-2xs">
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="font-mono text-[10px] font-extrabold bg-cyan-100 text-cyan-900 px-1.5 py-0.5 rounded">${this.e(p.paciente_id)}</span>
+                        <b class="text-xs text-slate-900">${this.e(p.nombre_completo)}</b>
+                        <span class="text-[11px] font-bold text-cyan-800">${this.e(edTxt)}</span>
+                        <span class="text-[10px] text-slate-500">· Nac: ${this.e(S.fechaLegibleISO(p.fecha_nacimiento))}</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 truncate mt-0.5">
+                        <i class="fas fa-phone text-[9px] mr-1"></i>${this.e(p.telefono || 'Sin teléfono')}
+                        · <i class="fas fa-location-dot text-[9px] mr-1"></i>${this.e(p.direccion || 'Sin domicilio')}
+                        · ${vis} ${vis === 1 ? 'visita' : 'visitas'}
+                    </p>
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button type="button" tabindex="-1" data-ver-exp="${this.e(p.paciente_id)}" class="text-[11px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-md px-2.5 py-1 transition" title="Ver fecha de nacimiento, teléfono, domicilio y visitas para confirmar identidad">🔍 Revisar expediente</button>
+                    <button type="button" tabindex="-1" data-usar-exp="${this.e(p.paciente_id)}" class="text-[11px] font-extrabold bg-cyan-700 hover:bg-cyan-800 text-white rounded-md px-2.5 py-1 transition">Usar expediente existente</button>
+                </div>
+            </div>`;
+        };
+
+        const enlazarBotonesCoincidencia = (contenedor, alSeleccionar) => {
+            contenedor.querySelectorAll('[data-usar-exp]').forEach(b => b.addEventListener('click', ev => {
+                ev.preventDefault();
+                const p = S.buscarPacientePorId(b.getAttribute('data-usar-exp'));
+                if (!p) return;
+                alSeleccionar(p);
+            }));
+            contenedor.querySelectorAll('[data-ver-exp]').forEach(b => b.addEventListener('click', ev => {
+                ev.preventDefault();
+                const pid = b.getAttribute('data-ver-exp');
+                if (BelenUI.modalVerificarExpediente) {
+                    BelenUI.modalVerificarExpediente(pid, p => alSeleccionar(p));
+                }
+            }));
+        };
+
+        const aplicarPacienteExistente = (p) => {
+            this.llenarIdentidad(c.el, 'reg', p);
+            if (p.sexo) sexo.value = p.sexo;
+            const caja = q('#sugerencias-homonimos-discretas'); if (caja) caja.innerHTML = '';
+            const resRap = q('#reg-resultados-rapidos'); if (resRap) resRap.innerHTML = '';
+            const busqRap = q('#reg-busqueda-rapida'); if (busqRap) busqRap.value = '';
+            evaluar();
+        };
+
         const sugerencias = () => {
-            // Tirita discreta: nunca abre popups, no mueve el foco ni autocompleta. Solo actúa si el usuario hace clic.
             let caja = q('#sugerencias-homonimos-discretas');
             if (!caja) {
                 const ancla = q('#reg-materno') || q('#reg-paterno') || q('#reg-nombres');
                 if (!ancla) return;
                 caja = document.createElement('div');
                 caja.id = 'sugerencias-homonimos-discretas';
-                caja.className = 'mt-1 flex flex-col gap-1 text-xs';
-                (ancla.closest('div') || ancla.parentNode).appendChild(caja);
+                caja.className = 'mt-1.5 flex flex-col gap-1.5 text-xs sm:col-span-6';
+                const grid = ancla.closest('.grid') || ancla.parentNode;
+                const ref = q('#reg-estado');
+                if (grid && ref) grid.insertBefore(caja, ref);
+                else (ancla.closest('div') || ancla.parentNode).appendChild(caja);
                 const vieja = q('#reg-sugerencias'); if (vieja) vieja.innerHTML = '';
             }
             const idn = identidad();
             if (c.coincidencia || idn.nombre_completo.length < 3) { caja.innerHTML = ''; return; }
-            const res = (S.buscarPacientes ? S.buscarPacientes(idn.nombre_completo, 4) : S.buscarPacientesPorNombre(idn.nombre_completo, 4)) || [];
-            caja.innerHTML = res.length ? '<p class="text-[11px] text-slate-500"><i class="fas fa-circle-info mr-1"></i>Posibles expedientes existentes (opcional):</p>' + res.map(p => `<div class="flex items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
-                <span class="truncate text-slate-700"><b>${this.e(p.nombre_completo)}</b> · ${this.e(S.fechaLegibleISO(p.fecha_nacimiento))} · ${this.e(p.paciente_id)}</span>
-                <button type="button" tabindex="-1" data-usar-exp="${this.e(p.paciente_id)}" class="shrink-0 text-[11px] font-bold text-cyan-700 hover:underline">Usar expediente existente</button></div>`).join('') : '';
-            caja.querySelectorAll('[data-usar-exp]').forEach(b => b.addEventListener('click', ev => {
-                ev.preventDefault();
-                const p = S.buscarPacientePorId(b.getAttribute('data-usar-exp'));
-                if (!p) return;
-                this.llenarIdentidad(c.el, 'reg', p);
-                if (p.sexo) sexo.value = p.sexo;
-                caja.innerHTML = ''; evaluar();
-            }));
+            const res = (S.buscarPacientes ? S.buscarPacientes(idn.nombre_completo, 5) : S.buscarPacientesPorNombre(idn.nombre_completo, 5)) || [];
+            caja.innerHTML = res.length ? '<p class="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1"><i class="fas fa-user-check mr-1"></i>Coincidencias en archivo: verifique fecha de nacimiento, teléfono o domicilio antes de usar el expediente:</p>' + res.map(renderTarjetaCoincidencia).join('') : '';
+            enlazarBotonesCoincidencia(caja, aplicarPacienteExistente);
         };
+
+        const busqRapida = q('#reg-busqueda-rapida'), resRapidos = q('#reg-resultados-rapidos');
+        if (busqRapida && resRapidos) {
+            busqRapida.addEventListener('input', () => {
+                const txt = busqRapida.value.trim();
+                if (txt.length < 2) { resRapidos.innerHTML = ''; return; }
+                const n = S.normalizar(txt);
+                const todos = S.listarPacientes();
+                const lista = todos.filter(p => {
+                    const campos = S.normalizar([p.nombre_completo, p.paciente_id, p.telefono, p.direccion, p.fecha_nacimiento].join(' '));
+                    return campos.indexOf(n) >= 0;
+                }).slice(0, 6);
+                resRapidos.innerHTML = lista.length
+                    ? lista.map(renderTarjetaCoincidencia).join('')
+                    : '<p class="text-xs text-slate-500 bg-white border border-slate-200 rounded-lg px-3 py-2">No se encontró ningún expediente con ese dato. Llene los campos de abajo para crear un expediente nuevo.</p>';
+                enlazarBotonesCoincidencia(resRapidos, aplicarPacienteExistente);
+            });
+        }
 
         ['reg-nombres', 'reg-paterno', 'reg-materno'].forEach(id => q('#' + id).addEventListener('input', () => { evaluar(); sugerencias(); }));
         fn.addEventListener('input', evaluar); fn.addEventListener('change', evaluar);
@@ -3796,7 +4405,7 @@ const AdminController = {
         const idn = BelenUI.leerIdentidadPaciente(c.el, 'reg');
         const v = {
             nombres: idn.nombres, paterno: idn.apellido_paterno, materno: idn.apellido_materno, nombre: idn.nombre_completo,
-            fn: idn.fecha_nacimiento, sexo: idn.sexo, tel: idn.telefono, dir: idn.direccion,
+            fn: idn.fecha_nacimiento, sexo: idn.sexo, tel: idn.telefono, dir: idn.direccion, nacionalidad: idn.nacionalidad || 'Mexicana',
             especialidad: q('#reg-especialidad').value, medico: q('#reg-medico').value, motivo: S.limpiarEspacios(q('#reg-motivo').value)
         };
         const letra = t => /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ'.\- ]{2,}$/.test(t);
@@ -3832,15 +4441,16 @@ const AdminController = {
         const existente = c.coincidencia;
         const numero = S.posicionNuevaEnCola(v.medico);   // posición que tendrá en la fila inteligente
         const fila = (et, val) => `<div class="flex justify-between gap-4 py-1.5 border-b border-slate-100 last:border-0"><span class="text-slate-400 text-xs uppercase font-bold">${et}</span><span class="text-slate-800 font-semibold text-right">${val}</span></div>`;
-        const edad = S.calcularEdad(v.fn);
+        const edadTxt = S.formatearEdad ? S.formatearEdad(v.fn) : (S.calcularEdad(v.fn) !== null ? S.calcularEdad(v.fn) + ' años' : '');
         BelenUI.modal({
             titulo: 'Confirme los datos del paciente', subtitulo: 'Revise antes de registrar', tipo: 'info', icono: 'fa-clipboard-check', ancho: 'md',
             html: `<div class="text-sm text-left" id="reg-resumen">
                 ${fila('Paciente', this.e(existente ? existente.nombre_completo : v.nombre))}
+                ${fila('Nacionalidad', this.e(v.nacionalidad || 'Mexicana'))}
                 ${fila('Teléfono', this.e(v.tel))}
                 ${fila('Dirección', this.e(v.dir))}
                 ${fila('Expediente', existente ? `<span class="text-emerald-700">Existente · ${this.e(existente.paciente_id)}</span>` : '<span class="text-slate-600">Nuevo (se creará)</span>')}
-                ${fila('Nacimiento', this.e(S.fechaLegibleISO(v.fn)) + (edad !== null ? ` (${edad} años)` : ''))}
+                ${fila('Nacimiento y Edad', this.e(S.fechaLegibleISO(v.fn)) + (edadTxt ? ` (${this.e(edadTxt)})` : ''))}
                 ${fila('Sexo', v.sexo === 'F' ? 'Femenino' : 'Masculino')}
                 ${fila('Especialidad', this.e(esp.nombre))}
                 ${fila('Médico', this.e(medico.nombre))}
@@ -3851,10 +4461,10 @@ const AdminController = {
                 { texto: 'Confirmar y Registrar', estilo: 'exito', id: 'reg-confirmar', alPulsar: () => {
                     const pac = S.guardarPaciente(existente ? {
                         paciente_id: existente.paciente_id, nombre_completo: existente.nombre_completo, fecha_nacimiento: existente.fecha_nacimiento,
-                        sexo: v.sexo || existente.sexo, telefono: v.tel, direccion: v.dir
+                        sexo: v.sexo || existente.sexo, telefono: v.tel, direccion: v.dir, nacionalidad: v.nacionalidad || existente.nacionalidad || 'Mexicana'
                     } : {
                         nombres: v.nombres, apellido_paterno: v.paterno, apellido_materno: v.materno,
-                        nombre_completo: v.nombre, fecha_nacimiento: v.fn, sexo: v.sexo, telefono: v.tel, direccion: v.dir
+                        nombre_completo: v.nombre, fecha_nacimiento: v.fn, sexo: v.sexo, telefono: v.tel, direccion: v.dir, nacionalidad: v.nacionalidad || 'Mexicana'
                     });
                     if (!pac) { BelenUI.toast('No fue posible guardar al paciente.', 'peligro'); return false; }
                     const dupTurno = S.turnoActivoEnEspecialidad ? S.turnoActivoEnEspecialidad(pac.paciente_id, v.especialidad, v.medico) : null;
