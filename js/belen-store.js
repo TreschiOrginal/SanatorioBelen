@@ -2620,6 +2620,18 @@
         return { ok: true, turno: turno, internamiento: internamiento, cirugia: fichaCirugia(c) };
     }
 
+
+    function monitorCamas() {
+        return CAMAS_HOSPITAL.map(c => {
+            const inter = camaEstaOcupada(c, null);
+            const t = inter ? obtenerTurno(inter.turno_id) : null;
+            return {
+                cama: c,
+                ocupada: !!inter,
+                internamiento: inter ? Object.assign({}, inter, { paciente_nombre: (t && t.paciente_nombre) || inter.paciente_nombre || "" }) : null
+            };
+        });
+    }
     function camaPorCodigo(codigo) { return resolverCama(codigo); }
     function camaPorNombre(nombre) { return resolverCama(nombre); }
     function camasDeArea(area) { return CAMAS_HOSPITAL.filter(c => c.area === area); }
@@ -7164,7 +7176,7 @@
         iniciarSesion, sesion, cerrarSesion, puede, esEnfermeria, moduloAplicaARol, permisoModuloDe, permisoModuloExplicito, establecerPermisoModulo, permisoAccionDe, establecerPermisoAccion, restablecerPermisosPersonal, leerPermisosPersonal, especialidadPorCodigo, medicosDeEspecialidad, identificarOperadorFarmacia,
         guardarUsuario, desactivarUsuario, reactivarUsuario, eliminarUsuario, listarPapeleria, agregarDocumentoPersonal, eliminarDocumentoPersonal,
         listarPacientes, buscarPacientePorIdentidad, buscarPacientesPorNombre, buscarPacientePorId, homonimos, guardarPaciente, partesDeNombre, fusionarExpedientes,
-        listarTurnos, obtenerTurno, actualizarTurno, siguienteNumeroTurno, crearTurno, ordenarPorLlegada, turnoVisiblePara, filaDe, colaEspera, pacientesEnConsulta, posicionEnCola, posicionNuevaEnCola, siguienteEnCola, corteDiario, metricas24h,
+        listarTurnos, leerTurnos: listarTurnos, listarUsuarios, obtenerTurno, actualizarTurno, siguienteNumeroTurno, crearTurno, ordenarPorLlegada, turnoVisiblePara, filaDe, colaEspera, pacientesEnConsulta, posicionEnCola, posicionNuevaEnCola, siguienteEnCola, corteDiario, metricas24h,
         listarCirugias, fichaCirugia, proximasCirugias, cirugiasVisibles, cirugiaVisiblePara, cirugiaPara, cirujanos, anestesiologos, disponibilidadQuirofano, validarCirugia, programarCirugia, asignarAnestesiologo, puedeIngresarAmbulatorio, ingresarPacienteAmbulatorio, hospitalizadosDe, hospitalizadoVisiblePara,
         camasLibres, flujoQuirofanoDe, pasarPacienteAQuirofano, recibirEnQuirofano, regresarAHospitalizacion, datosHojaTransanestesica,
         guardarNotaPostanestesica, guardarNotaPostoperatoria, prefillHojaQuirurgica, htmlModalHojaQuirurgica, leerNotaPostoperatoria, htmlHojaQuirurgica, altaAmbulatoriaQx, convertirAmbulatorioAPiso,
@@ -7178,7 +7190,7 @@
         listarInternamientos, internamientoDeTurno, obtenerInternamiento, resolverInternamiento, asegurarInternamiento, sincronizarInternamiento, descartarInternamiento,
         fichaHospitalizado, accesoVisorHospitalizado, relacionMedico, tieneInterconsulta, medicosParaInterconsulta, solicitarInterconsulta,
         validarNotaEvolucion, agregarNotaEvolucion, indicacionesVigentes, agregarHojaIndicaciones, asignarCama,
-        normalizarCodigoCama, camaPorCodigo, etiquetaCama, codigoAreaEstancia, areasDestinoEstancia, nombreAreaEstancia, puedeCambiarArea, cambiarAreaEstancia, previewCorteEstancia, aplicarCorteEstancia,
+        normalizarCodigoCama, resolverCama, camaPorCodigo, monitorCamas, etiquetaCama, codigoAreaEstancia, areasDestinoEstancia, nombreAreaEstancia, puedeCambiarArea, cambiarAreaEstancia, previewCorteEstancia, aplicarCorteEstancia,
         CONCEPTOS_HOSPITAL, CONCEPTOS_AMBULATORIO, formatoMoneda, validarCargo, puedeCargarConsumos, desgloseFiscal, sugerirIvaConcepto,
         agregarCargoInternamiento, agregarCargoTurno, validarNotaEgreso, registrarEgreso,
         cargosDeEpisodio, cuentasPorCobrar, fichaCuenta, cerrarExpedientePagado,

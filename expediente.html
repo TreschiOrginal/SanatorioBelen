@@ -1382,8 +1382,8 @@
         </div>
     </div>
 
-    <script src="js/belen-store.js?v=f16"></script>
-    <script src="js/belen-ui.js?v=f16"></script>
+    <script src="js/belen-store.js?v=f17"></script>
+    <script src="js/belen-ui.js?v=f17"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
@@ -1745,19 +1745,18 @@
             const sel = document.getElementById('val-cama-ingreso');
             if (!sel) return;
             const codigo = sel.value;
-            if (TURNO && codigo && BelenStore.asignarCamaInternamiento) {
-                const inter = BelenStore.internamientoDeTurno(TURNO.turno_id);
-                if (inter) {
-                    BelenStore.asignarCamaInternamiento(inter.internamiento_id, codigo);
-                } else {
-                    const s = BelenStore.cargar();
-                    const t = s.fila_espera.find(x => x.turno_id === TURNO.turno_id);
-                    const cObj = BelenStore.resolverCama(codigo);
-                    if (t && cObj) {
-                        t.cama_codigo = cObj.codigo;
-                        t.cama = cObj.nombre;
-                        BelenStore.guardar(s);
-                        TURNO = t;
+            if (TURNO && codigo && window.BelenStore) {
+                const cObj = BelenStore.camaPorCodigo ? BelenStore.camaPorCodigo(codigo) : null;
+                if (cObj) {
+                    TURNO.cama_codigo = cObj.codigo;
+                    TURNO.cama = cObj.nombre;
+                    BelenStore.actualizarTurno(TURNO.turno_id, { cama_codigo: cObj.codigo, cama: cObj.nombre });
+                    if (BelenStore.moverPacienteEnPlano) {
+                        BelenStore.moverPacienteEnPlano(TURNO.turno_id, cObj.codigo, SESION);
+                    }
+                    if (typeof INTERNAMIENTO !== 'undefined' && INTERNAMIENTO) {
+                        INTERNAMIENTO.cama_codigo = cObj.codigo;
+                        INTERNAMIENTO.cama = cObj.nombre;
                     }
                 }
             }

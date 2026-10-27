@@ -1474,7 +1474,7 @@ const AdminController = {
             vistos[t.turno_id] = true;
             res.push({ turno_id: t.turno_id, nombre: t.paciente_nombre, ubicacion_actual: cama, medico: t.medico_nombre });
         });
-        (S.leerTurnos() || []).forEach(t => {
+        (S.listarTurnos() || []).forEach(t => {
             if (vistos[t.turno_id]) return;
             if (t.estatus === 'en_consulta' || t.estatus === 'signos_capturados' || t.estatus === 'pendiente_signos') {
                 res.push({
@@ -1512,7 +1512,7 @@ const AdminController = {
                 });
             }
         });
-        (S.leerTurnos() || []).forEach(t => {
+        (S.listarTurnos() || []).forEach(t => {
             if (t.estatus === 'alta' || t.estatus === 'cerrado_historico') return;
             const cod = t.cama_codigo || t.cama;
             if (cod) {
