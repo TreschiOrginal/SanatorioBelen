@@ -19,7 +19,7 @@
         .animate-blob { animation: blob 10s infinite alternate ease-in-out; }
         .animation-delay-2000 { animation-delay: 2s; }
         
-        .glass-panel { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.6); }
+        .glass-panel { background: rgba(255, 255, 255, 0.85);  border: 1px solid rgba(255, 255, 255, 0.6); }
         
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
@@ -30,8 +30,7 @@
 <body class="bg-slate-50 text-slate-800 h-screen overflow-hidden flex relative">
 
     <!-- Fondos en movimiento -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
-        <div class="absolute top-[-10%] left-[-10%] w-[40rem] h-[40rem] bg-cyan-200/40 rounded-full mix-blend-multiply filter blur-[100px] animate-blob"></div>
+    <!-- Fondo limpio y rápido sin filtros blur pesados -->
         <div class="absolute bottom-[-10%] right-[-10%] w-[35rem] h-[35rem] bg-teal-200/40 rounded-full mix-blend-multiply filter blur-[100px] animate-blob animation-delay-2000"></div>
     </div>
 
@@ -122,9 +121,9 @@
 
     <!-- Scripts -->
     <div id="print-dashboard" class="zona-impresion"></div>
-    <script src="js/belen-store.js?v=f17"></script>
-    <script src="js/belen-ui.js?v=f17"></script>
+    <script src="js/belen-store.js?v=f18"></script>
+    <script src="js/belen-ui.js?v=f18"></script>
     <script src="js/admin-api.js"></script>
-    <script src="js/admin-app.js?v=f17"></script>
+    <script src="js/admin-app.js?v=f18"></script>
 </body>
 </html>

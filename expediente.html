@@ -1382,8 +1382,8 @@
         </div>
     </div>
 
-    <script src="js/belen-store.js?v=f17"></script>
-    <script src="js/belen-ui.js?v=f17"></script>
+    <script src="js/belen-store.js?v=f18"></script>
+    <script src="js/belen-ui.js?v=f18"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
@@ -3085,9 +3085,45 @@
             const volver = document.querySelector('header a[href="dashboard.html"]');
             if (volver) volver.href = 'dashboard.html?vista=hospitalizacion';
 
-            const captura = INTERNAMIENTO.snapshot_formulario || BelenStore.leerBorrador(TURNO.turno_id);
+            let captura = INTERNAMIENTO.snapshot_formulario || BelenStore.leerBorrador(TURNO.turno_id);
             const ambulatorioDirecto = INTERNAMIENTO.modalidad === 'AMBULATORIO_QUIROFANO' && INTERNAMIENTO.sin_nota_consulta;
-            if (!captura && !ambulatorioDirecto) { bloquearAcceso('No se encontró la captura del expediente de este internamiento.', 'Expediente no disponible'); return; }
+            if (!captura && !ambulatorioDirecto) {
+                const pacBase = BelenStore.buscarPacientePorId(TURNO.paciente_id) || {};
+                const sv = TURNO.signos_vitales || {};
+                const dxBase = INTERNAMIENTO.diagnostico_actual || INTERNAMIENTO.diagnostico_ingreso || TURNO.dx_principal || TURNO.motivo || 'Paciente en hospitalización';
+                captura = {
+                    destino: INTERNAMIENTO.destino || TURNO.destino || 'Hospitalizacion',
+                    expediente_bloqueado: true,
+                    diagnósticosAgregados: [dxBase],
+                    campos: {
+                        'input-fecha': (INTERNAMIENTO.fecha_ingreso || TURNO.timestamp_llegada || new Date().toISOString()).slice(0, 16),
+                        'comp-civil': pacBase.estado_civil || 'Soltero(a)',
+                        'comp-tel': pacBase.telefono || '',
+                        'comp-ocupacion': pacBase.ocupacion || '',
+                        'comp-dir': pacBase.direccion || '',
+                        'val-ta-sis': String(sv.ta_sistolica || 120),
+                        'val-ta-dia': String(sv.ta_diastolica || 80),
+                        'val-fc': String(sv.fc || 76),
+                        'val-fr': String(sv.fr || 18),
+                        'val-temp': String(sv.temp || 36.6),
+                        'val-spo2': String(sv.spo2 || 98),
+                        'val-peso': String(sv.peso || ''),
+                        'val-talla': String(sv.talla || ''),
+                        'val-motivo': TURNO.motivo || dxBase,
+                        'val-padecimiento': TURNO.motivo || dxBase,
+                        'val-analisis': dxBase,
+                        'val-plan': 'Manejo intrahospitalario y vigilancia por turno.',
+                        'val-pronostico': 'Reservado a evolución',
+                        'val-alergias': INTERNAMIENTO.alergias || '',
+                        'val-tipo-ingreso': 'Ingreso a Hospitalización',
+                        'val-area-destino': INTERNAMIENTO.area_codigo || 'HOSPITALIZACION'
+                    },
+                    checks: {
+                        'chk-alergias': !!(INTERNAMIENTO.alergias && !/negad|ningun/i.test(INTERNAMIENTO.alergias)),
+                        'chk-mismo-pac': true
+                    }
+                };
+            }
             if (captura) {
                 sessionStorage.setItem('belen_destino', captura.destino || INTERNAMIENTO.destino || 'Hospitalizacion');
                 aplicarContextoPaciente();
@@ -3482,9 +3518,15 @@
             if (!SESION) { window.location.replace('login.html'); return; }
             const params = new URLSearchParams(window.location.search);
             if (params.get('modo') === 'hospitalizado') { initVisorHospitalizado(params); enlazarAlertasCofepris(); return; }   // visor longitudinal de hospitalización
-            const turnoId = params.get('turno');
+            const turnoId = params.get('turno') || params.get('id');
             TURNO = turnoId ? BelenStore.obtenerTurno(turnoId) : null;
             if (!turnoId) { bloquearAcceso('Abra el expediente desde el Dashboard, eligiendo a un paciente de su fila.', 'Falta seleccionar un paciente'); return; }
+            const intExistente = BelenStore.resolverInternamiento(turnoId);
+            if (intExistente && (!TURNO || TURNO.estatus === 'internado' || TURNO.estatus === 'alta_medica_pendiente_pago' || TURNO.estatus === 'cerrado_historico' || intExistente.sin_nota_consulta)) {
+                initVisorHospitalizado(params);
+                enlazarAlertasCofepris();
+                return;
+            }
             const acceso = BelenStore.accesoExpediente(SESION, TURNO);
             if (!acceso.ok) { bloquearAcceso(acceso.motivo); return; }
             MODO_ACCESO = acceso.modo;

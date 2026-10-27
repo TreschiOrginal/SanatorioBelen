@@ -513,30 +513,36 @@ const AdminController = {
         }).join('');
 
         const verCirugias = S.puede('ver_quirofano');
-        let mock = '';
-        if (typeof AdminAPI !== 'undefined') {
-            const pacientes = await AdminAPI.obtenerPacientesActivos();
-            const proximas = verCirugias ? S.cirugiasVisibles(this.sesion).slice(0, 3) : [];
-            mock = `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
-                <div class="${verCirugias ? 'lg:col-span-6' : 'lg:col-span-12'} flex flex-col gap-4">
-                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-procedures text-cyan-600"></i> Pacientes Activos <span class="text-[10px] font-semibold text-slate-400 uppercase">(datos de demostración)</span></h3>
-                    ${pacientes.map(p => `
-                        <div class="bg-white/80 p-5 rounded-2xl shadow-sm border-l-4 border-${p.colorArea}-500 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border border-slate-200">
-                            <div>
-                                <div class="flex items-center gap-2 mb-1"><span class="text-[10px] font-bold uppercase tracking-wider bg-${p.colorArea}-100 text-${p.colorArea}-700 px-2 py-0.5 rounded">${this.e(p.area)}</span></div>
-                                <h4 class="text-lg font-extrabold text-slate-900">${this.e(p.nombre)}</h4>
-                                <p class="text-sm text-slate-600 font-medium">${this.e(p.servicio)} • <span class="text-slate-500">${this.e(p.medico)}</span></p>
-                            </div>
-                            <button type="button" onclick="AdminController.verCuentaRapida('${this.e(p.nombre)}', ${Number(p.cuentaActual)})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 px-4 rounded-xl transition"><i class="fas fa-receipt mr-1"></i> Cuenta Rápida</button>
-                        </div>`).join('')}
+        const fichasHosp = hosp.map(t => S.fichaHospitalizado(t, this.sesion));
+        const proximas = verCirugias ? S.cirugiasVisibles(this.sesion).slice(0, 3) : [];
+        const mock = `<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
+            <div class="${verCirugias ? 'lg:col-span-6' : 'lg:col-span-12'} flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-bed-pulse text-indigo-600"></i> Pacientes en Cama (${fichasHosp.length})</h3>
+                    <a href="?vista=hospitalizacion" onclick="AdminController.navegar('hospitalizacion', event)" class="text-xs font-bold text-indigo-700 hover:text-indigo-900">Ir al Monitor de Camas <i class="fas fa-arrow-right ml-1"></i></a>
                 </div>
-                ${verCirugias ? `<div class="lg:col-span-6 flex flex-col gap-3">
-                    <div class="flex items-center justify-between">
-                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-kit-medical text-violet-600"></i> Próximas Cirugías</h3>
-                        <a href="?vista=cirugias" onclick="AdminController.navegar('cirugias', event)" class="text-xs font-bold text-cyan-700 hover:text-cyan-900">Ver todas <i class="fas fa-arrow-right ml-1"></i></a></div>
-                    ${proximas.length ? proximas.map(c => this.htmlTarjetaCirugia(c)).join('') : '<p class="text-sm text-slate-400 bg-white/60 border border-dashed border-slate-300 rounded-xl p-5 text-center">No hay cirugías programadas.</p>'}
-                </div>` : ''}</div>`;
-        }
+                ${fichasHosp.length ? fichasHosp.map(f => `
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border-l-4 border-l-indigo-600 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-slate-200">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-1.5 mb-1">
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider bg-indigo-600 text-white px-2 py-0.5 rounded">${this.e(f.cama || 'Sin cama')}</span>
+                                <span class="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded">${this.e(f.area || 'Hospitalización')}</span>
+                            </div>
+                            <h4 class="text-base font-extrabold text-slate-900">${this.e(f.nombre)}</h4>
+                            <p class="text-xs text-slate-600 font-medium">${this.e(f.especialidad || '')} • <span class="text-slate-500">${this.e(f.medico_tratante || '')}</span></p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <a href="expediente.html?modo=hospitalizado&turno=${encodeURIComponent(f.turno_id)}" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold py-2 px-3.5 rounded-xl transition flex items-center gap-1.5"><i class="fas fa-folder-open"></i> Abrir Expediente</a>
+                            <button type="button" onclick="AdminController.abrirDesgloseCuenta('${this.e(f.turno_id)}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 px-3 rounded-xl transition"><i class="fas fa-receipt mr-1"></i> Cuenta</button>
+                        </div>
+                    </div>`).join('') : '<p class="text-sm text-slate-400 bg-white border border-dashed border-slate-300 rounded-xl p-5 text-center">No hay pacientes hospitalizados en este momento.</p>'}
+            </div>
+            ${verCirugias ? `<div class="lg:col-span-6 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-kit-medical text-violet-600"></i> Próximas Cirugías</h3>
+                    <a href="?vista=cirugias" onclick="AdminController.navegar('cirugias', event)" class="text-xs font-bold text-cyan-700 hover:text-cyan-900">Ver todas <i class="fas fa-arrow-right ml-1"></i></a></div>
+                ${proximas.length ? proximas.map(c => this.htmlTarjetaCirugia(c)).join('') : '<p class="text-sm text-slate-400 bg-white border border-dashed border-slate-300 rounded-xl p-5 text-center">No hay cirugías programadas.</p>'}
+            </div>` : ''}</div>`;
 
         const registro = S.puede('registrar_paciente') ? this.htmlBotonRegistro() : '';
         const metricas = S.puede('ver_metricas') ? this.htmlMetricas() : '';
@@ -1098,22 +1104,25 @@ const AdminController = {
         };
         return `<div class="mb-4 flex flex-wrap items-end justify-between gap-3">
                     <div>
-                        <h2 class="text-2xl font-extrabold text-slate-800">Monitor de Camas y Mapa Arquitectónico 2D</h2>
-                        <p class="text-slate-500">5 Habitaciones de Hospitalización (Hab. 1, 2, 3, 4 y Aislado), Cunero, Observación, Quirófano y Consultorios.</p>
+                        <h2 class="text-2xl font-extrabold text-slate-800">Monitor de Camas y Pacientes Hospitalizados</h2>
+                        <p class="text-slate-500">Acceso directo de 1 clic al expediente clínico desde cada habitación o cama activa.</p>
                     </div>
                     <div class="flex flex-wrap gap-2">
-                        <button type="button" onclick="AdminController.alternarMapa2D()" class="bg-white border border-slate-300 hover:border-cyan-500 text-slate-700 text-xs font-extrabold px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
-                            <i class="fas fa-map-location-dot text-cyan-600"></i> ${this.mostrarMapa2D ? 'Ocultar Plano 2D' : 'Mostrar Plano 2D Interactivo'}
+                        <button type="button" onclick="AdminController.alternarMapa2D()" class="bg-white border border-slate-300 hover:border-cyan-500 text-slate-700 text-xs font-extrabold px-3.5 py-2 rounded-xl shadow-sm transition flex items-center gap-2">
+                            <i class="fas fa-table-cells-large text-indigo-600"></i> ${this.mostrarMapa2D ? 'Ocultar Tablero de Camas' : 'Mostrar Tablero de Camas'}
                         </button>
-                        <button type="button" onclick="AdminController.abrirPlanoArquitectonicoOriginal()" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold px-3.5 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2">
-                            <i class="fas fa-compass-drafting text-cyan-300"></i> Ver Plano Arquitectónico Original
+                        <button type="button" onclick="AdminController.abrirPlanoArquitectonicoOriginal()" class="bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+                            <i class="fas fa-image text-slate-500"></i> Plano de Referencia
                         </button>
                     </div>
                 </div>
                 ${this.htmlPanelEstupefacientes('HOSPITALIZACION')}
                 ${this.mostrarMapa2D ? this.htmlMapaArquitectonico2D() : ''}
-                <div class="mb-6 bg-cyan-50 border border-cyan-200 text-cyan-800 text-xs rounded-xl px-4 py-3 flex items-center gap-2"><i class="fas fa-circle-info"></i> ${this.e(modo)}</div>
-                <div class="flex flex-col gap-3" id="lista-hospitalizados">${lista.length ? lista.map(tarjeta).join('') : '<div class="text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-bed text-4xl mb-3 text-slate-300"></i><p>No hay pacientes hospitalizados.</p></div>'}</div>`;
+                <div class="mb-3 flex items-center justify-between">
+                    <h3 class="text-sm font-extrabold uppercase tracking-wider text-slate-600"><i class="fas fa-list-check mr-1.5 text-indigo-600"></i> Detalle de Pacientes Hospitalizados (${lista.length})</h3>
+                    <span class="text-[11px] text-slate-500">${this.e(modo)}</span>
+                </div>
+                <div class="flex flex-col gap-3" id="lista-hospitalizados">${lista.length ? lista.map(tarjeta).join('') : '<div class="text-center py-12 text-slate-400 font-medium bg-white rounded-2xl border border-dashed border-slate-300"><i class="fas fa-bed text-3xl mb-2 text-slate-300"></i><p>No hay pacientes hospitalizados asignados a su perfil.</p></div>'}</div>`;
     },
 
     abrirTerminalEstudios: function (turnoId) {
@@ -1342,6 +1351,16 @@ const AdminController = {
         this.render();
     },
 
+    urlExpedientePaciente: function (turnoId) {
+        const S = BelenStore;
+        const t = S.obtenerTurno(turnoId);
+        const i = S.resolverInternamiento(turnoId);
+        const enHosp = !!(i && (!t || t.estatus === 'internado' || t.estatus === 'alta_medica_pendiente_pago' || t.estatus === 'cerrado_historico' || i.sin_nota_consulta));
+        return enHosp
+            ? 'expediente.html?modo=hospitalizado&turno=' + encodeURIComponent(turnoId)
+            : 'expediente.html?turno=' + encodeURIComponent(turnoId);
+    },
+
     seleccionarEspacioPlano: function (camaCodigo) {
         const S = BelenStore, e = x => this.e(x);
         const camaDef = (S.CAMAS_HOSPITAL || []).find(c => c.codigo === camaCodigo);
@@ -1354,7 +1373,7 @@ const AdminController = {
             if (!turnoMover) { this.pacienteMoverPlanoId = ''; this.render(); return; }
             const r = S.moverPacienteEnPlano(this.pacienteMoverPlanoId, camaCodigo, this.sesion);
             if (!r || !r.ok) {
-                BelenUI.toast((r && r.motivo) || 'No se pudo ubicar al paciente en ese espacio.', 'alerta');
+                BelenUI.toast((r && r.motivo) || 'No se pudo ubicar al paciente en esa cama.', 'alerta');
                 return;
             }
             this.pacienteMoverPlanoId = '';
@@ -1363,7 +1382,12 @@ const AdminController = {
             return;
         }
 
-        // Modal de detalle de la habitación/espacio y asignación directa
+        // Si la cama tiene 1 paciente con acceso al expediente y el usuario no puede asignar cama, ir directo al expediente
+        if (ocupantes.length === 1 && ocupantes[0].puede_abrir && !S.puede('asignar_cama')) {
+            window.location.href = this.urlExpedientePaciente(ocupantes[0].turno_id);
+            return;
+        }
+
         const todosMovibles = this.pacientesMoviblesEnPlano();
         const htmlOcupantes = ocupantes.length
             ? ocupantes.map(o => `<div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex flex-wrap items-center justify-between gap-2">
@@ -1372,38 +1396,33 @@ const AdminController = {
                     <p class="text-xs text-slate-600">${e(o.detalle || '')} · Dr(a). ${e(o.medico || '')}</p>
                 </div>
                 <div class="flex flex-wrap gap-1.5">
-                    <button type="button" data-ir-exp="${e(o.turno_id)}" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg"><i class="fas fa-folder-open mr-1"></i>Expediente</button>
-                    ${S.puede('asignar_cama') ? `<button type="button" data-mover-este="${e(o.turno_id)}" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg"><i class="fas fa-arrows-up-down-left-right mr-1"></i>Mover en plano</button>` : ''}
+                    ${o.puede_abrir ? `<a href="${this.urlExpedientePaciente(o.turno_id)}" class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold px-3 py-1.5 rounded-lg inline-flex items-center gap-1"><i class="fas fa-folder-open"></i> Abrir Expediente</a>` : ''}
+                    ${S.puede('asignar_cama') ? `<button type="button" data-mover-este="${e(o.turno_id)}" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg"><i class="fas fa-arrows-up-down-left-right mr-1"></i>Cambiar cama</button>` : ''}
                 </div>
             </div>`).join('')
             : `<div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900 font-semibold flex items-center gap-2">
-                <i class="fas fa-circle-check text-emerald-600 text-base"></i> Espacio disponible actualmente.
+                <i class="fas fa-circle-check text-emerald-600 text-base"></i> Cama disponible actualmente.
             </div>`;
 
         const selectorAsignar = (S.puede('asignar_cama') && todosMovibles.length)
             ? `<div class="mt-4 pt-3 border-t border-slate-200">
-                <label class="block text-[11px] font-extrabold text-slate-500 uppercase mb-1">Ubicar / Mover paciente a ${e(camaDef.nombre)}</label>
+                <label class="block text-[11px] font-extrabold text-slate-500 uppercase mb-1">Asignar o mover paciente a ${e(camaDef.nombre)}</label>
                 <div class="flex gap-2">
                     <select id="plano-sel-pac" class="flex-1 border border-slate-300 rounded-lg p-2 text-sm bg-white">
-                        <option value="">— Seleccionar paciente activo —</option>
+                        <option value="">— Seleccionar paciente —</option>
                         ${todosMovibles.map(p => `<option value="${e(p.turno_id)}">${e(p.nombre)} (${e(p.ubicacion_actual)})</option>`).join('')}
                     </select>
-                    <button type="button" id="plano-btn-ubicar" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold px-4 py-2 rounded-lg shrink-0">Ubicar aquí</button>
+                    <button type="button" id="plano-btn-ubicar" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold px-4 py-2 rounded-lg shrink-0">Asignar aquí</button>
                 </div>
             </div>` : '';
 
         BelenUI.modal({
             titulo: camaDef.nombre,
-            subtitulo: `Código: ${camaDef.codigo} · Zona: ${S.nombreAreaEstancia(camaDef.area) || camaDef.area}${camaDef.nota_plano ? ' · ' + camaDef.nota_plano : ''}`,
+            subtitulo: `Código: ${camaDef.codigo} · Zona: ${S.nombreAreaEstancia(camaDef.area) || camaDef.area}`,
             icono: 'fa-bed',
             ancho: 'md',
             html: `<div class="space-y-3 text-left">${htmlOcupantes}${selectorAsignar}</div>`,
             alMostrar: m => {
-                m.el.querySelectorAll('[data-ir-exp]').forEach(b => b.addEventListener('click', () => {
-                    const tid = b.getAttribute('data-ir-exp');
-                    m.cerrar();
-                    window.location.href = 'expediente.html?turno=' + encodeURIComponent(tid);
-                }));
                 m.el.querySelectorAll('[data-mover-este]').forEach(b => b.addEventListener('click', () => {
                     const tid = b.getAttribute('data-mover-este');
                     m.cerrar();
@@ -1428,35 +1447,22 @@ const AdminController = {
 
     abrirPlanoArquitectonicoOriginal: function () {
         BelenUI.modal({
-            titulo: 'Plano Arquitectónico Oficial — Sanatorio Belén',
-            subtitulo: 'Calle Josefa Ortiz de Domínguez #464 · Distribución de 5 Habitaciones (4 Estándar + 1 Aislado), Quirófano, CEYE, Cunero y Consulta Externa',
-            icono: 'fa-compass-drafting',
+            titulo: 'Plano Arquitectónico de Referencia — Sanatorio Belén',
+            subtitulo: 'Imágenes del plano físico de planta baja (5 Habitaciones, Quirófano, Cunero y Consulta Externa)',
+            icono: 'fa-image',
             ancho: 'xl',
-            html: `<div class="space-y-4 text-left">
-                <div class="bg-cyan-50 border border-cyan-200 rounded-xl p-3 text-xs text-cyan-950">
-                    <b>Distribución confirmada de Hospitalización (5 habitaciones en total):</b>
-                    <ul class="list-disc pl-5 mt-1 space-y-0.5">
-                        <li><b>Ala Superior (Izquierda a Derecha):</b> <b>Habitación Aislada (HOSP-AISLADO)</b> con Baño y Cuarto Séptico · <b>Habitación 3 (HOSP-3)</b> · <b>Habitación 2 (HOSP-2)</b> · <b>Enfermería</b> · <b>Habitación 1 (HOSP-1)</b>.</li>
-                        <li><b>Ala Media Derecha (donde el dibujo indica "Pediatría"):</b> <b>Habitación 4 (HOSP-4)</b> (4ª habitación estándar de hospitalización + el Aislado = 5 habitaciones).</li>
-                        <li><b>Zona Central y Quirúrgica:</b> Recuperación 1, Transfer, Quirófano, Valoración y Recuperación 2, CEYE + Autoclave, Enfermería Central, Preparación (Rec. Gineco), Cirugía y Cunero.</li>
-                        <li><b>Ala Inferior (Acceso Principal):</b> Farmacia, RPBI, Control de Médicos, Rayos X, Hidratación (Obs. 1), Curaciones (Obs. 2), Consultorio 02, Consultorio 01, Sala de Espera y Recepción/Administración.</li>
-                    </ul>
+            html: `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                <div class="border border-slate-200 rounded-xl p-2 bg-slate-50">
+                    <p class="text-xs font-extrabold text-slate-700 mb-2">📐 Plano Arquitectónico General</p>
+                    <a href="assets/plano-arquitectonico.jpg" target="_blank" class="block">
+                        <img src="assets/plano-arquitectonico.jpg" alt="Plano Arquitectónico Sanatorio Belén" class="w-full rounded-lg border border-slate-300 shadow-sm">
+                    </a>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="border border-slate-200 rounded-xl p-2 bg-slate-50">
-                        <p class="text-xs font-extrabold text-slate-700 mb-2">📐 Plano Arquitectónico General</p>
-                        <a href="assets/plano-arquitectonico.jpg" target="_blank" class="block">
-                            <img src="assets/plano-arquitectonico.jpg" alt="Plano Arquitectónico Sanatorio Belén" class="w-full rounded-lg border border-slate-300 shadow-sm hover:opacity-95 transition">
-                        </a>
-                        <p class="text-[11px] text-slate-500 mt-1">Haga clic en la imagen para abrirla en tamaño completo en una pestaña nueva.</p>
-                    </div>
-                    <div class="border border-slate-200 rounded-xl p-2 bg-slate-50">
-                        <p class="text-xs font-extrabold text-slate-700 mb-2">🔍 Detalle de Áreas y Cotas</p>
-                        <a href="assets/plano-arquitectonico-detalle.jpg" target="_blank" class="block">
-                            <img src="assets/plano-arquitectonico-detalle.jpg" alt="Detalle Plano Arquitectónico Sanatorio Belén" class="w-full rounded-lg border border-slate-300 shadow-sm hover:opacity-95 transition">
-                        </a>
-                        <p class="text-[11px] text-slate-500 mt-1">Haga clic en la imagen para ampliar el detalle arquitectónico.</p>
-                    </div>
+                <div class="border border-slate-200 rounded-xl p-2 bg-slate-50">
+                    <p class="text-xs font-extrabold text-slate-700 mb-2">🔍 Detalle de Áreas</p>
+                    <a href="assets/plano-arquitectonico-detalle.jpg" target="_blank" class="block">
+                        <img src="assets/plano-arquitectonico-detalle.jpg" alt="Detalle Plano Arquitectónico Sanatorio Belén" class="w-full rounded-lg border border-slate-300 shadow-sm">
+                    </a>
                 </div>
             </div>`,
             botones: [{ texto: 'Cerrar', estilo: 'secundario' }]
@@ -1474,56 +1480,40 @@ const AdminController = {
             vistos[t.turno_id] = true;
             res.push({ turno_id: t.turno_id, nombre: t.paciente_nombre, ubicacion_actual: cama, medico: t.medico_nombre });
         });
-        (S.listarTurnos() || []).forEach(t => {
-            if (vistos[t.turno_id]) return;
-            if (t.estatus === 'en_consulta' || t.estatus === 'signos_capturados' || t.estatus === 'pendiente_signos') {
-                res.push({
-                    turno_id: t.turno_id,
-                    nombre: t.paciente_nombre,
-                    ubicacion_actual: t.cama || (t.estatus === 'en_consulta' ? 'En Consulta' : 'Fila de Espera'),
-                    medico: t.medico_nombre
-                });
-            }
-        });
         return res;
     },
 
     ocupantesPorCamaMapa: function () {
         const S = BelenStore, s = this.sesion;
         const mapa = {};
+        const visiblesSet = {};
+        (S.hospitalizadosDe(s) || []).forEach(t => { visiblesSet[t.turno_id] = true; });
         const poner = (cod, obj) => {
             const norm = S.normalizarCodigoCama(cod);
             if (!norm) return;
             if (!mapa[norm]) mapa[norm] = [];
             if (!mapa[norm].some(x => x.turno_id === obj.turno_id)) mapa[norm].push(obj);
         };
-        (S.hospitalizadosDe(s) || []).forEach(t => {
-            if (t.estatus === 'alta' || t.estatus === 'cerrado_historico') return;
+        // Mostrar la ocupación real de todas las camas hospitalarias para que ningún perfil vea como "Libre" una cama ocupada
+        (S.listarInternamientos() || []).forEach(i => {
+            if (!i || i.estatus === 'egresado') return;
+            const t = S.obtenerTurno(i.turno_id);
+            if (!t || t.estatus === 'alta' || t.estatus === 'cerrado_historico') return;
+            const cod = i.cama_codigo || i.cama || t.cama_codigo || t.cama;
+            if (!cod) return;
+            const puedeVer = !!visiblesSet[t.turno_id] || s.rol === 'admin' || s.rol === 'administrador' || s.rol === 'enf_hospital' || s.rol === 'enf_triage';
             const f = S.fichaHospitalizado(t, s);
-            const i = S.internamientoDeTurno(t.turno_id);
-            const cod = (i && (i.cama_codigo || i.cama)) || t.cama_codigo || t.cama;
-            if (cod) {
-                poner(cod, {
-                    turno_id: t.turno_id,
-                    nombre: f.nombre,
-                    medico: f.medico_tratante,
-                    detalle: (f.edad !== null ? f.edad + 'a' : '') + (f.diagnostico_actual ? ' · ' + f.diagnostico_actual : ''),
-                    pendiente_pago: !!f.pendiente_pago
-                });
-            }
-        });
-        (S.listarTurnos() || []).forEach(t => {
-            if (t.estatus === 'alta' || t.estatus === 'cerrado_historico') return;
-            const cod = t.cama_codigo || t.cama;
-            if (cod) {
-                poner(cod, {
-                    turno_id: t.turno_id,
-                    nombre: t.paciente_nombre,
-                    medico: t.medico_nombre,
-                    detalle: S.ETIQUETA_ESTATUS[t.estatus] || t.estatus,
-                    pendiente_pago: t.estatus === 'alta_medica_pendiente_pago'
-                });
-            }
+            poner(cod, {
+                turno_id: t.turno_id,
+                nombre: puedeVer ? f.nombre : t.paciente_nombre,
+                medico: f.medico_tratante || t.medico_nombre,
+                especialidad: f.especialidad || t.especialidad || '',
+                diagnostico: f.diagnostico_actual || i.diagnostico_actual || t.dx_principal || '',
+                detalle: (f.edad !== null ? f.edad + ' años' : '') + (f.diagnostico_actual ? ' · ' + f.diagnostico_actual : ''),
+                alergias: f.alergias || i.alergias || '',
+                pendiente_pago: !!f.pendiente_pago,
+                puede_abrir: puedeVer
+            });
         });
         return mapa;
     },
@@ -1534,132 +1524,121 @@ const AdminController = {
         const movibles = this.pacientesMoviblesEnPlano();
         const enModoMover = !!this.pacienteMoverPlanoId;
         const turnoMover = enModoMover ? S.obtenerTurno(this.pacienteMoverPlanoId) : null;
+        const puedeAsignar = S.puede('asignar_cama');
 
-        const celdaCama = (codigo, tituloCorto, subtitulo, icono, colorBase) => {
+        const tarjetaCama = (codigo, tituloCorto, subtitulo, icono, esAislado) => {
             const lista = ocupantes[codigo] || [];
             const ocupado = lista.length > 0;
             const pac = lista[0];
-            const borde = enModoMover
-                ? 'border-2 border-dashed border-cyan-500 ring-2 ring-cyan-200 cursor-pointer hover:bg-cyan-50'
-                : (ocupado
-                    ? (pac.pendiente_pago ? 'border-2 border-amber-500 bg-amber-50/90' : 'border-2 border-indigo-600 bg-indigo-50/90')
-                    : `border border-${colorBase}-200 bg-white hover:border-${colorBase}-400`);
-            const badge = ocupado
-                ? `<span class="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded ${pac.pendiente_pago ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white'}">Ocupado</span>`
-                : `<span class="inline-flex items-center gap-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">Libre</span>`;
-            const cuerpo = ocupado
-                ? `<div class="mt-1.5 pt-1.5 border-t border-indigo-200/70">
-                    <p class="text-xs font-extrabold text-slate-900 truncate" title="${e(pac.nombre)}"><i class="fas fa-user-injured text-indigo-600 mr-1"></i>${e(pac.nombre)}</p>
-                    <p class="text-[10px] text-slate-600 truncate">Dr(a). ${e(pac.medico || '')}</p>
-                    ${lista.length > 1 ? `<p class="text-[9px] font-bold text-indigo-700 mt-0.5">+${lista.length - 1} paciente más</p>` : ''}
-                </div>`
-                : `<p class="mt-1.5 text-[10px] text-emerald-700 font-semibold">${enModoMover ? '👉 Clic para ubicar aquí' : 'Clic para asignar / ver'}</p>`;
-            return `<div data-plano-cama="${e(codigo)}" onclick="AdminController.seleccionarEspacioPlano('${e(codigo)}')"
-                class="rounded-xl p-2.5 shadow-sm transition cursor-pointer select-none flex flex-col justify-between min-h-[92px] ${borde}">
-                <div>
-                    <div class="flex items-start justify-between gap-1">
-                        <span class="text-[10px] font-mono font-extrabold text-slate-500">${e(codigo)}</span>
-                        ${badge}
+
+            if (enModoMover) {
+                return `<div data-plano-cama="${e(codigo)}" onclick="AdminController.seleccionarEspacioPlano('${e(codigo)}')"
+                    class="rounded-2xl p-3.5 border-2 border-dashed border-cyan-500 bg-cyan-50/60 hover:bg-cyan-100/70 cursor-pointer transition flex flex-col justify-between min-h-[132px]">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-extrabold text-slate-800"><i class="fas ${icono} mr-1 text-cyan-700"></i>${e(tituloCorto)}</span>
+                        <span class="text-[10px] font-mono font-bold text-slate-500">${e(codigo)}</span>
                     </div>
-                    <p class="text-xs font-extrabold text-slate-900 mt-0.5 leading-snug"><i class="fas ${icono} mr-1 text-${colorBase}-600"></i>${e(tituloCorto)}</p>
-                    ${subtitulo ? `<p class="text-[10px] text-slate-500 leading-tight">${e(subtitulo)}</p>` : ''}
+                    <p class="text-xs font-extrabold text-cyan-900 mt-2">${ocupado ? 'Ocupada por ' + e(pac.nombre) : '👉 Clic aquí para ubicar al paciente'}</p>
+                </div>`;
+            }
+
+            if (ocupado) {
+                const urlExp = this.urlExpedientePaciente(pac.turno_id);
+                const borde = pac.pendiente_pago
+                    ? 'border-2 border-amber-500 bg-amber-50/70'
+                    : (pac.puede_abrir ? 'border-2 border-indigo-600 bg-white' : 'border border-slate-300 bg-slate-50');
+                const badge = pac.pendiente_pago
+                    ? '<span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-600 text-white">Alta · Por cobrar</span>'
+                    : (pac.puede_abrir
+                        ? '<span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-600 text-white">Ocupada</span>'
+                        : '<span class="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">Otro servicio</span>');
+
+                return `<div data-plano-cama="${e(codigo)}" class="rounded-2xl p-3.5 shadow-sm transition flex flex-col justify-between min-h-[148px] ${borde}">
+                    <div>
+                        <div class="flex items-center justify-between gap-1.5">
+                            <span class="text-xs font-extrabold text-slate-800"><i class="fas ${icono} mr-1.5 ${esAislado ? 'text-rose-600' : 'text-indigo-600'}"></i>${e(tituloCorto)}</span>
+                            ${badge}
+                        </div>
+                        <div class="mt-2 pt-2 border-t border-slate-200/80">
+                            <p class="text-sm font-extrabold text-slate-900 leading-snug" title="${e(pac.nombre)}">${e(pac.nombre)}</p>
+                            <p class="text-[11px] font-semibold text-slate-600 mt-0.5">Dr(a). ${e(pac.medico || 'Asignado')}</p>
+                            ${pac.diagnostico ? `<p class="text-[11px] text-slate-500 truncate mt-0.5" title="${e(pac.diagnostico)}">${e(pac.diagnostico)}</p>` : ''}
+                        </div>
+                    </div>
+                    <div class="mt-3 pt-2 border-t border-slate-100 flex items-center gap-1.5">
+                        ${pac.puede_abrir
+                            ? `<a href="${urlExp}" data-accion="abrir-expediente-cama" class="flex-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold py-2 px-3 rounded-xl text-center transition flex items-center justify-center gap-1.5 shadow-sm"><i class="fas fa-folder-open"></i> Abrir Expediente</a>`
+                            : `<span class="flex-1 text-[11px] font-semibold text-slate-500 text-center py-1.5 bg-slate-100 rounded-lg">A cargo de ${e(pac.medico || 'otro médico')}</span>`}
+                        ${puedeAsignar ? `<button type="button" onclick="AdminController.seleccionarEspacioPlano('${e(codigo)}')" title="Cambiar cama o gestionar espacio" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 px-2.5 rounded-xl transition"><i class="fas fa-arrows-up-down-left-right"></i></button>` : ''}
+                    </div>
+                </div>`;
+            }
+
+            // Cama Libre
+            return `<div data-plano-cama="${e(codigo)}" ${puedeAsignar ? `onclick="AdminController.seleccionarEspacioPlano('${e(codigo)}')"` : ''}
+                class="rounded-2xl p-3.5 border border-emerald-200 bg-emerald-50/40 ${puedeAsignar ? 'hover:bg-emerald-50 hover:border-emerald-400 cursor-pointer' : ''} transition flex flex-col justify-between min-h-[120px]">
+                <div>
+                    <div class="flex items-center justify-between gap-1.5">
+                        <span class="text-xs font-extrabold text-slate-800"><i class="fas ${icono} mr-1.5 ${esAislado ? 'text-rose-600' : 'text-emerald-600'}"></i>${e(tituloCorto)}</span>
+                        <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">Disponible</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-1">${e(subtitulo)}</p>
                 </div>
-                ${cuerpo}
+                <div class="mt-2 pt-2 border-t border-emerald-200/50 flex items-center justify-between">
+                    <span class="text-[10px] font-mono font-bold text-slate-400">${e(codigo)}</span>
+                    ${puedeAsignar ? '<span class="text-[11px] font-bold text-emerald-700">+ Asignar paciente</span>' : '<span class="text-[11px] text-emerald-700 font-medium">Sin paciente</span>'}
+                </div>
             </div>`;
         };
 
-        const celdaFija = (titulo, subtitulo, icono, clBg) => `<div class="rounded-xl p-2.5 border border-slate-200 ${clBg || 'bg-slate-50/90'} flex flex-col justify-center items-center text-center min-h-[76px]">
-            <i class="fas ${icono} text-slate-500 text-sm mb-1"></i>
-            <p class="text-[11px] font-extrabold text-slate-700 leading-tight">${e(titulo)}</p>
-            ${subtitulo ? `<p class="text-[9px] text-slate-500 mt-0.5 leading-tight">${e(subtitulo)}</p>` : ''}
-        </div>`;
-
-        const barraMover = S.puede('asignar_cama') ? `<div class="mb-4 bg-slate-900 text-white rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
+        const barraMover = (puedeAsignar && movibles.length) ? `<div class="mb-4 bg-slate-900 text-white rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-2 text-xs">
-                <i class="fas fa-arrows-up-down-left-right text-cyan-400 text-base"></i>
+                <i class="fas fa-bed text-cyan-400 text-sm"></i>
                 ${enModoMover
-                    ? `<span><b>Modo reubicación activo:</b> haga clic en cualquier habitación o espacio del plano para ubicar a <b class="text-cyan-300">${e((turnoMover && turnoMover.paciente_nombre) || '')}</b>.</span>`
-                    : `<span><b>Control visual en Plano 2D:</b> elija un paciente para moverlo con un clic a otra habitación, cunero, observación o consultorio.</span>`}
+                    ? `<span><b>Modo cambio de cama:</b> haga clic en la cama destino para ubicar a <b class="text-cyan-300">${e((turnoMover && turnoMover.paciente_nombre) || '')}</b>.</span>`
+                    : `<span><b>Cambio rápido de cama:</b> puede abrir cualquier expediente en 1 clic o reubicar un paciente de cama.</span>`}
             </div>
             <div class="flex flex-wrap items-center gap-2">
                 <select onchange="AdminController.iniciarMoverEnPlano(this.value)" class="bg-slate-800 border border-slate-600 text-white text-xs rounded-lg px-2.5 py-1.5">
-                    <option value="">— Seleccionar paciente para mover en el plano —</option>
+                    <option value="">— Mover paciente a otra cama —</option>
                     ${movibles.map(p => `<option value="${e(p.turno_id)}" ${this.pacienteMoverPlanoId === p.turno_id ? 'selected' : ''}>${e(p.nombre)} (${e(p.ubicacion_actual)})</option>`).join('')}
                 </select>
                 ${enModoMover ? `<button type="button" onclick="AdminController.iniciarMoverEnPlano('')" class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg">Cancelar</button>` : ''}
             </div>
         </div>` : '';
 
-        return `<section id="mapa-arquitectonico-2d" class="mb-6 bg-white rounded-2xl border-2 border-slate-300 shadow-sm p-4 sm:p-5">
-            <div class="flex flex-wrap items-center justify-between gap-2 mb-3 pb-3 border-b border-slate-200">
-                <div>
-                    <span class="text-[10px] font-extrabold uppercase tracking-widest text-cyan-700 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded">Plano Arquitectónico Interactivo 2D</span>
-                    <h3 class="text-base font-extrabold text-slate-900 mt-1">Sanatorio Belén · Distribución Oficial de Planta (5 Habitaciones: 4 Estándar + 1 Aislado)</h3>
-                </div>
-                <div class="flex flex-wrap items-center gap-3 text-[11px] font-bold">
-                    <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-100 border border-emerald-500 inline-block"></span> Libre</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-indigo-600 inline-block"></span> Ocupada</span>
-                    <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-500 inline-block"></span> Alta pendiente de cobro</span>
-                </div>
-            </div>
+        return `<section id="mapa-arquitectonico-2d" class="mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
             ${barraMover}
-
-            <!-- ALA SUPERIOR: PASILLO DE HOSPITALIZACIÓN (4 HABITACIONES + ENFERMERÍA) -->
-            <div class="mb-3 bg-slate-100/90 border border-slate-300 rounded-2xl p-3">
-                <div class="flex items-center justify-between mb-2">
-                    <p class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-950"><i class="fas fa-bed mr-1 text-indigo-600"></i> Ala Superior · Hospitalización (Habitación Aislada, Hab. 3, Hab. 2, Enfermería y Hab. 1)</p>
-                    <span class="text-[10px] font-semibold text-slate-500">Norte del Plano · Con baños privados y Cuarto Séptico</span>
+            <div class="mb-5">
+                <div class="flex items-center justify-between mb-2.5">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
+                        <i class="fas fa-bed text-indigo-600"></i> Hospitalización en Piso (5 Habitaciones + Cunero)
+                    </h3>
+                    <span class="text-[11px] text-slate-500">1 clic en <b>Abrir Expediente</b> para entrar directo</span>
                 </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-                    ${celdaCama('HOSP-AISLADO', 'Habitación Aislada', 'Aislado + Baño privado', 'fa-shield-virus', 'rose')}
-                    ${celdaFija('Cuarto Séptico', 'Junto a Hab. Aislada', 'fa-biohazard', 'bg-rose-50/70 border-rose-200')}
-                    ${celdaCama('HOSP-3', 'Habitación 3', 'Estándar + Baño', 'fa-bed', 'indigo')}
-                    ${celdaCama('HOSP-2', 'Habitación 2', 'Estándar + Baño', 'fa-bed', 'indigo')}
-                    ${celdaFija('Enfermería de Piso', 'Control de Hospitalización', 'fa-user-nurse', 'bg-cyan-50/70 border-cyan-200')}
-                    ${celdaCama('HOSP-1', 'Habitación 1', 'Estándar + Baño (Esq. Sup. Der.)', 'fa-bed', 'indigo')}
-                </div>
-            </div>
-
-            <!-- ZONA MEDIA: QUIRÓFANO, TRANSFER, RECUPERACIÓN, CEYE, CUNERO, SALA DOBLE ALTURA Y HABITACIÓN 4 (EX-PEDIATRÍA) -->
-            <div class="mb-3 bg-violet-50/60 border border-violet-200 rounded-2xl p-3">
-                <div class="flex items-center justify-between mb-2">
-                    <p class="text-[11px] font-extrabold uppercase tracking-wider text-violet-950"><i class="fas fa-kit-medical mr-1 text-violet-700"></i> Zona Central · Quirófano, CEYE, Recuperación, Cunero y Habitación 4 (5ª Habitación)</p>
-                    <span class="text-[10px] font-semibold text-slate-500">Centro-Izquierda: Área Blanca/Gris · Centro-Derecha: Cunero y Habitación 4</span>
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-                    ${celdaCama('REC-1', 'Recuperación 1', 'Post-Quirúrgica + Transfer', 'fa-bed-pulse', 'violet')}
-                    ${celdaFija('Quirófano Central', 'Lavabo Qx · Sub-Esterilizador · Séptico', 'fa-syringe', 'bg-violet-100/80 border-violet-300')}
-                    ${celdaCama('REC-2', 'Valoración y Rec. 2', '2 Camillas + Baño', 'fa-bed-pulse', 'violet')}
-                    ${celdaFija('CEYE y Autoclave', 'Enfermería Central', 'fa-temperature-high', 'bg-slate-100 border-slate-300')}
-                    ${celdaCama('CUNERO-1', 'Cunero', '2 Incubadoras / RN', 'fa-baby', 'pink')}
-                    ${celdaCama('HOSP-4', 'Habitación 4', 'Estándar + Baño (Plano: Pediatría)', 'fa-bed', 'indigo')}
-                </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-2.5">
-                    ${celdaFija('Vestidores H / M', 'Filtro de acceso quirúrgico', 'fa-person-booth', 'bg-white')}
-                    ${celdaCama('REC-GINECO', 'Preparación / Rec. Gineco', 'Junto a sala de Cirugía', 'fa-Procedures', 'violet')}
-                    ${celdaFija('Sala de Cirugía / Expulsión', 'Área Quirúrgica Central', 'fa-heart-pulse', 'bg-violet-100/60 border-violet-200')}
-                    ${celdaFija('Sala de Espera Doble Altura', 'Vestíbulo Central y Escaleras', 'fa-couch', 'bg-amber-50/60 border-amber-200')}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    ${tarjetaCama('HOSP-1', 'Habitación 1', 'Hospitalización Estándar', 'fa-bed', false)}
+                    ${tarjetaCama('HOSP-2', 'Habitación 2', 'Hospitalización Estándar', 'fa-bed', false)}
+                    ${tarjetaCama('HOSP-3', 'Habitación 3', 'Hospitalización Estándar', 'fa-bed', false)}
+                    ${tarjetaCama('HOSP-4', 'Habitación 4', 'Hospitalización Estándar', 'fa-bed', false)}
+                    ${tarjetaCama('HOSP-AISLADO', 'Habitación Aislada', 'Aislamiento con baño privado', 'fa-shield-virus', true)}
+                    ${tarjetaCama('CUNERO-1', 'Cunero', 'Recién Nacidos / Incubadora', 'fa-baby', false)}
                 </div>
             </div>
 
-            <!-- ALA INFERIOR: FARMACIA, RAYOS X, HIDRATACIÓN/CURACIONES, CONSULTORIOS Y ACCESO PRINCIPAL -->
-            <div class="bg-teal-50/50 border border-teal-200 rounded-2xl p-3">
-                <div class="flex items-center justify-between mb-2">
-                    <p class="text-[11px] font-extrabold uppercase tracking-wider text-teal-950"><i class="fas fa-stethoscope mr-1 text-teal-700"></i> Ala Inferior · Consulta Externa, Observación (Hidratación / Curaciones), Farmacia y Acceso Principal</p>
-                    <span class="text-[10px] font-semibold text-slate-500">Sur del Plano · Calle Josefa Ortiz de Domínguez #464</span>
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-violet-950 flex items-center gap-1.5">
+                        <i class="fas fa-bed-pulse text-violet-600"></i> Recuperación Post-Quirúrgica y Observación
+                    </h3>
+                    <span class="text-[11px] text-slate-500">Camillas de corta estancia y post-operatorio</span>
                 </div>
-                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-                    ${celdaFija('Farmacia y RPBI', 'Control de Médicos', 'fa-pills', 'bg-teal-100/70 border-teal-300')}
-                    ${celdaFija('Rayos X', 'Imagenología + Vestidor', 'fa-x-ray', 'bg-slate-100 border-slate-300')}
-                    ${celdaCama('OBS-1', 'Hidratación (Obs. 1)', 'Observación / Urgencias', 'fa-droplet', 'cyan')}
-                    ${celdaCama('OBS-2', 'Curaciones (Obs. 2)', 'Procedimientos / Urgencias', 'fa-bandage', 'cyan')}
-                    ${celdaCama('CONS-2', 'Consultorio 02', 'Con Baño Privado', 'fa-user-doctor', 'teal')}
-                    ${celdaCama('CONS-1', 'Consultorio 01', 'Con Baño Privado', 'fa-user-doctor', 'teal')}
-                </div>
-                <div class="mt-2.5 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                    ${celdaFija('Sanitarios Públicos H / M', 'Junto a Sala de Espera', 'fa-restroom', 'bg-white')}
-                    ${celdaFija('Sala de Espera y Recepción / Caja', 'Administración y Admisión', 'fa-cash-register', 'bg-amber-50 border-amber-200')}
-                    ${celdaFija('Acceso Principal Sanatorio Belén', 'C. Josefa Ortiz de Domínguez #464', 'fa-door-open', 'bg-slate-900 text-white border-slate-800')}
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    ${tarjetaCama('REC-1', 'Recuperación 1', 'Post-Quirúrgica', 'fa-bed-pulse', false)}
+                    ${tarjetaCama('REC-2', 'Recuperación 2', 'Valoración / Post-Qx', 'fa-bed-pulse', false)}
+                    ${tarjetaCama('REC-GINECO', 'Rec. Gineco', 'Preparación / Expulsión', 'fa-bed-pulse', false)}
+                    ${tarjetaCama('OBS-1', 'Observación 1', 'Hidratación / Corta estancia', 'fa-droplet', false)}
+                    ${tarjetaCama('OBS-2', 'Observación 2', 'Curaciones / Urgencias', 'fa-bandage', false)}
                 </div>
             </div>
         </section>`;

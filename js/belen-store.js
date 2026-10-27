@@ -321,14 +321,27 @@
     ];
 
     // ---------------------------------------------------------------- Utilidades
+    const _cacheLectura = {};
     function leer(clave, porDefecto) {
         try {
-            const v = JSON.parse(localStorage.getItem(clave));
+            const raw = localStorage.getItem(clave);
+            if (raw === null || raw === undefined) { delete _cacheLectura[clave]; return porDefecto; }
+            const hit = _cacheLectura[clave];
+            if (hit && hit.raw === raw) {
+                return JSON.parse(raw);
+            }
+            const v = JSON.parse(raw);
+            _cacheLectura[clave] = { raw: raw };
             return (v === null || v === undefined) ? porDefecto : v;
         } catch (e) { return porDefecto; }
     }
     function escribir(clave, valor) {
-        try { localStorage.setItem(clave, JSON.stringify(valor)); return true; } catch (e) { return false; }
+        try {
+            const raw = JSON.stringify(valor);
+            localStorage.setItem(clave, raw);
+            _cacheLectura[clave] = { raw: raw };
+            return true;
+        } catch (e) { return false; }
     }
     function normalizar(t) {
         return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
@@ -1756,7 +1769,7 @@
         if (!t) return { ok: false, motivo: 'No se encontró el episodio del paciente.' };
         const caja = s.rol === 'administrador' && (PERMISOS.cargar_consumos.includes(s.rol) || PERMISOS.ver_cuentas_cobrar.includes(s.rol));
         const ambQx = i.modalidad === MODALIDAD_AMBULATORIO_QX;
-        const enfQxAmb = s.rol === 'enf_quirofano' && ambQx;
+        const enfQxAmb = (s.rol === 'enf_quirofano' && ambQx) || esEnfermeria(s.rol);
         if (s.rol !== 'admin' && !caja && !enfQxAmb && !permisoModuloDe(s.usuario_id, 'ver_hospitalizados')) return { ok: false, motivo: 'Su perfil no tiene habilitado el módulo de Hospitalizados.' };
         if (!hospitalizadoVisiblePara(t, s)) return { ok: false, motivo: 'Este paciente no está a su cargo ni le fue solicitado en interconsulta. Solo puede ver a sus propios pacientes hospitalizados.' };
         const visorOk = t.estatus === ESTATUS.INTERNADO || t.estatus === ESTATUS.ALTA_PENDIENTE_PAGO || t.estatus === ESTATUS.CERRADO_HISTORICO;
@@ -6550,7 +6563,18 @@
         sembrarUsuariosSiHaceFalta();
         completarAnestesiologoCirugias();
         sembrarFarmaciaSiHaceFalta();
-        if (localStorage.getItem(CLAVES.catalogo) !== null || localStorage.getItem(CLAVES.visitas) !== null) { asegurarCasoRealMichelle(); sembrarCirugiasSiHaceFalta(); migrarCirugiasFase1(); sembrarPacienteQuirofanoDemo(); return false; }
+        if (localStorage.getItem("belen_seed_v18") === "1" && localStorage.getItem(CLAVES.catalogo) !== null) {
+            return false;
+        }
+        if (localStorage.getItem(CLAVES.catalogo) !== null || localStorage.getItem(CLAVES.visitas) !== null) {
+            asegurarCasoRealMichelle();
+            sembrarCirugiasSiHaceFalta();
+            migrarCirugiasFase1();
+            sembrarPacienteQuirofanoDemo();
+            sembrarPacientesHospitalizadosDemo();
+            localStorage.setItem("belen_seed_v18", "1");
+            return false;
+        }
         const carlos = { paciente_id: 'PAC-000001', nombre_completo: 'Carlos Ruiz Herrera', fecha_nacimiento: '1979-03-14', sexo: 'M', estado_civil: 'Casado(a)', telefono: '3221110001', ocupacion: 'Contador', direccion: 'Calle Morelos 120, Col. Centro', creado_en: '2026-03-12T09:00:00.000Z' };
         const laura = { paciente_id: 'PAC-000002', nombre_completo: 'Laura Méndez Olvera', fecha_nacimiento: '1991-07-22', sexo: 'F', estado_civil: 'Unión Libre', telefono: '3221110002', ocupacion: 'Maestra', direccion: 'Av. México 455, Col. Versalles', creado_en: '2026-08-02T09:00:00.000Z' };
         const visitaCarlos = expedienteDemo(carlos, {
@@ -6586,6 +6610,8 @@
         sembrarCirugiasSiHaceFalta();
         migrarCirugiasFase1();
         sembrarPacienteQuirofanoDemo();
+        sembrarPacientesHospitalizadosDemo();
+        localStorage.setItem("belen_seed_v18", "1");
         return true;
     }
     function sembrarPacienteQuirofanoDemo() {
@@ -6660,6 +6686,281 @@
         if (!escribir(CLAVES.cirugias, cirugias)) return false;
         localStorage.setItem(CLAVES.demoQxActivo, '1');
         return true;
+    }
+
+
+    function sembrarPacientesHospitalizadosDemo() {
+        const ahoraIso = new Date().toISOString();
+        const turnos = listarTurnos();
+        const ints = listarInternamientos();
+        let cambioTurnos = false;
+        let cambioInts = false;
+
+        // 1. Carlos Ruiz Herrera en Habitación 1 (HOSP-1) con Dr. Arturo Gómez e interconsulta a Medicina Interna (Dr. Daniel Morales)
+        if (!turnos.some(t => t.turno_id === "T-DEMO-HOSP-1") && !ints.some(i => i.internamiento_id === "INT-DEMO-HOSP-1")) {
+            const medArturo = USUARIOS.dr_arturo || { id: "dr_arturo", medico_id: "dr_arturo", nombre: "Dr. Arturo Gómez", especialidad_codigo: "CIRUGIA_GENERAL" };
+            const medInterna = USUARIOS.dr_internista || { id: "dr_internista", medico_id: "dr_internista", nombre: "Dr. Daniel Morales", especialidad_codigo: "MEDICINA_INTERNA" };
+            const camaH1 = resolverCama("HOSP-1") || { codigo: "HOSP-1", nombre: "Habitación 1" };
+            const snapCarlos = {
+                destino: "Hospitalizacion",
+                expediente_bloqueado: true,
+                diagnósticosAgregados: ["Colelitiasis con colecistitis aguda (K80.0)"],
+                campos: {
+                    "input-fecha": ahoraIso.slice(0, 16),
+                    "comp-civil": "Casado(a)",
+                    "comp-tel": "3221110001",
+                    "comp-ocupacion": "Contador",
+                    "comp-dir": "Calle Morelos 120, Col. Centro",
+                    "val-grupo": "A+",
+                    "val-ta-sis": "132",
+                    "val-ta-dia": "84",
+                    "val-fc": "82",
+                    "val-fr": "18",
+                    "val-temp": "37.2",
+                    "val-spo2": "97",
+                    "val-peso": "84",
+                    "val-talla": "1.74",
+                    "val-motivo": "Dolor en hipocondrio derecho y náusea posprandial",
+                    "val-padecimiento": "Paciente masculino de 47 años con cuadro de 48 horas de evolución caracterizado por dolor cólico en hipocondrio derecho irradiado a escápula ipsilateral, acompañado de náusea.",
+                    "val-analisis": "Colecistitis aguda litiásica en preparación preoperatoria y control metabólico.",
+                    "val-plan": "Hospitalización en piso, ayuno, hidratación parenteral, analgesia y valoración por Medicina Interna.",
+                    "val-alarma": "Fiebre mayor a 38.5 °C, ictericia, dolor abdominal severo o dificultad respiratoria.",
+                    "val-pronostico": "Bueno para la vida y la función tras resolución quirúrgica",
+                    "val-ahf": "Padre con diabetes mellitus tipo 2 e hipertensión arterial.",
+                    "val-apnp": "Originario y residente de Puerto Vallarta, habitación con todos los servicios, tabaquismo negado.",
+                    "val-alergias": "Penicilina",
+                    "hta-tiempo": "8 años",
+                    "hta-meds": "Losartán 50 miligramos cada 24 horas",
+                    "hta-apego": "Buen apego",
+                    "dm2-tiempo": "5 años",
+                    "dm2-meds": "Metformina 850 miligramos cada 12 horas",
+                    "dm2-apego": "Buen apego",
+                    "val-tipo-ingreso": "Ingreso a Hospitalización",
+                    "val-area-destino": "HOSPITALIZACION",
+                    "val-cama-ingreso": camaH1.codigo,
+                    "ind-dieta": "Ayuno hasta nueva orden médica.",
+                    "ind-soluciones": "Solución Hartmann 1000 mililitros vía intravenosa para 8 horas.",
+                    "ind-medicamentos": "Ketorolaco 30 miligramos vía intravenosa cada 8 horas.\nOmeprazol 40 miligramos vía intravenosa cada 24 horas.",
+                    "ind-medidas": "Control de signos vitales por turno y curva térmica. Vigilar datos de irritación peritoneal."
+                },
+                checks: {
+                    "chk-alergias": true,
+                    "chk-hta": true,
+                    "chk-dm2": true,
+                    "chk-mismo-pac": true
+                }
+            };
+            turnos.push({
+                turno_id: "T-DEMO-HOSP-1",
+                paciente_id: "PAC-000001",
+                paciente_nombre: "Carlos Ruiz Herrera",
+                fecha_nacimiento: "1979-03-14",
+                sexo: "M",
+                especialidad_codigo: "CIRUGIA_GENERAL",
+                especialidad: "Cirugía General",
+                medico_id: medArturo.id,
+                medico_nombre: medArturo.nombre,
+                motivo: "Dolor en hipocondrio derecho · Ingreso a piso",
+                fecha_turno: hoyLocal(),
+                numero_turno: 2,
+                timestamp_llegada: ahoraIso,
+                timestamp_inicio_consulta: ahoraIso,
+                timestamp_internamiento: ahoraIso,
+                estatus: ESTATUS.INTERNADO,
+                destino: "Hospitalizacion",
+                area_destino: "Hospitalización",
+                cama: camaH1.nombre,
+                cama_codigo: camaH1.codigo,
+                dx_principal: "Colelitiasis con colecistitis aguda (K80.0)",
+                signos_vitales: { ta_sistolica: 132, ta_diastolica: 84, fc: 82, fr: 18, temp: 37.2, spo2: 97, peso: 84, talla: 1.74 },
+                cargos: [],
+                cuenta_actual: 0,
+                cuenta_actual_total: 0,
+                ordenes_aplicacion: []
+            });
+            cambioTurnos = true;
+            const hojaCarlos = nuevaHojaIndicaciones([], "ingreso", {
+                dieta: "Ayuno hasta nueva orden médica.",
+                soluciones_parenterales: "Solución Hartmann 1000 mililitros vía intravenosa para 8 horas.",
+                medicamentos: "Ketorolaco 30 miligramos vía intravenosa cada 8 horas.\nOmeprazol 40 miligramos vía intravenosa cada 24 horas.",
+                medidas_generales: "Control de signos vitales por turno y curva térmica. Vigilar datos de irritación peritoneal."
+            }, { id: medArturo.id, nombre: medArturo.nombre, relacion: "tratante" }, ahoraIso);
+            anotarCoberturaIndicacion(hojaCarlos);
+            ints.push({
+                internamiento_id: "INT-DEMO-HOSP-1",
+                turno_id: "T-DEMO-HOSP-1",
+                paciente_id: "PAC-000001",
+                medico_tratante_id: medArturo.id,
+                medico_tratante_nombre: medArturo.nombre,
+                especialidad_codigo: "CIRUGIA_GENERAL",
+                especialidad: "Cirugía General",
+                fecha_ingreso: ahoraIso,
+                cama: camaH1.nombre,
+                cama_codigo: camaH1.codigo,
+                estatus: "activo",
+                area_destino: "Hospitalización",
+                area_codigo: "HOSPITALIZACION",
+                destino: "Hospitalizacion",
+                diagnostico_ingreso: "Colelitiasis con colecistitis aguda (K80.0)",
+                diagnostico_actual: "Colelitiasis con colecistitis aguda (K80.0)",
+                alergias: "Penicilina",
+                snapshot_formulario: snapCarlos,
+                interconsultas: [{
+                    interconsulta_id: "IC-DEMO-1",
+                    especialidad_codigo: "MEDICINA_INTERNA",
+                    especialidad: "Medicina Interna",
+                    medico_id: medInterna.id,
+                    medico_nombre: medInterna.nombre,
+                    motivo: "Valoración preoperatoria y control glucémico/hipertensivo",
+                    fecha_hora: ahoraIso,
+                    solicitada_por_id: medArturo.id,
+                    solicitada_por_nombre: medArturo.nombre,
+                    estatus: "PENDIENTE"
+                }],
+                notas_evolucion: [],
+                hojas_indicaciones: [hojaCarlos],
+                cargos: [],
+                cuenta_actual: 0,
+                cuenta_actual_total: 0,
+                nota_egreso: null,
+                ubicacion: UBICACION_QX.PISO,
+                notas_postanestesicas: [],
+                notas_postoperatorias: [],
+                recetas_controlados: []
+            });
+            cambioInts = true;
+        }
+
+        // 2. Laura Méndez Olvera en Habitación 2 (HOSP-2) con Dr. Roberto Silva (Traumatología) e interconsulta a Dr. Juan Pérez (Medicina General)
+        if (!turnos.some(t => t.turno_id === "T-DEMO-HOSP-2") && !ints.some(i => i.internamiento_id === "INT-DEMO-HOSP-2")) {
+            const medRoberto = USUARIOS.dr_roberto || { id: "dr_roberto", medico_id: "dr_roberto", nombre: "Dr. Roberto Silva", especialidad_codigo: "TRAUMATOLOGIA" };
+            const medJuan = USUARIOS.dr_juan || { id: "dr_juan", medico_id: "dr_juan", nombre: "Dr. Juan Pérez", especialidad_codigo: "MEDICINA_GENERAL" };
+            const camaH2 = resolverCama("HOSP-2") || { codigo: "HOSP-2", nombre: "Habitación 2" };
+            const snapLaura = {
+                destino: "Hospitalizacion",
+                expediente_bloqueado: true,
+                diagnósticosAgregados: ["Esguince y torcedura de tobillo grado II-III en observación hospitalaria (S93.4)"],
+                campos: {
+                    "input-fecha": ahoraIso.slice(0, 16),
+                    "comp-civil": "Unión Libre",
+                    "comp-tel": "3221110002",
+                    "comp-ocupacion": "Maestra",
+                    "comp-dir": "Av. México 455, Col. Versalles",
+                    "val-grupo": "O+",
+                    "val-ta-sis": "118",
+                    "val-ta-dia": "76",
+                    "val-fc": "74",
+                    "val-fr": "16",
+                    "val-temp": "36.6",
+                    "val-spo2": "98",
+                    "val-peso": "61",
+                    "val-talla": "1.62",
+                    "val-motivo": "Dolor e inflamación severa en tobillo derecho tras caída",
+                    "val-padecimiento": "Paciente femenina de 35 años que sufre inversión forzada de tobillo derecho con edema importante y limitación funcional para la marcha.",
+                    "val-analisis": "Lesión ligamentaria aguda de tobillo derecho en manejo analgésico intravenoso e inmovilización.",
+                    "val-plan": "Internamiento breve para control de dolor agudo, crioterapia, elevación de extremidad y férula posterior.",
+                    "val-alarma": "Parestesias distales, palidez o cianosis de ortejos, dolor refractario.",
+                    "val-pronostico": "Bueno para la vida y la función",
+                    "val-ahf": "Madre con hipotiroidismo en control.",
+                    "val-apnp": "Habitación urbana con todos los servicios, sin toxicomanías.",
+                    "val-alergias": "Látex",
+                    "val-tipo-ingreso": "Ingreso a Hospitalización",
+                    "val-area-destino": "HOSPITALIZACION",
+                    "val-cama-ingreso": camaH2.codigo,
+                    "ind-dieta": "Dieta normal normosódica.",
+                    "ind-soluciones": "Solución fisiológica 0.9% 500 mililitros vía intravenosa para mantener vena permeable.",
+                    "ind-medicamentos": "Paracetamol 1 gramo vía intravenosa cada 8 horas.\nDiclofenaco 75 miligramos vía intramuscular cada 12 horas.",
+                    "ind-medidas": "Reposo absoluto con extremidad pélvica derecha elevada. Vigilar llenado capilar distal por turno."
+                },
+                checks: {
+                    "chk-alergias": true,
+                    "chk-mismo-pac": true
+                }
+            };
+            turnos.push({
+                turno_id: "T-DEMO-HOSP-2",
+                paciente_id: "PAC-000002",
+                paciente_nombre: "Laura Méndez Olvera",
+                fecha_nacimiento: "1991-07-22",
+                sexo: "F",
+                especialidad_codigo: "TRAUMATOLOGIA",
+                especialidad: "Traumatología y Ortopedia",
+                medico_id: medRoberto.id,
+                medico_nombre: medRoberto.nombre,
+                motivo: "Trauma de tobillo derecho · Control de dolor e inmovilización",
+                fecha_turno: hoyLocal(),
+                numero_turno: 1,
+                timestamp_llegada: ahoraIso,
+                timestamp_inicio_consulta: ahoraIso,
+                timestamp_internamiento: ahoraIso,
+                estatus: ESTATUS.INTERNADO,
+                destino: "Hospitalizacion",
+                area_destino: "Hospitalización",
+                cama: camaH2.nombre,
+                cama_codigo: camaH2.codigo,
+                dx_principal: "Esguince y torcedura de tobillo grado II-III (S93.4)",
+                signos_vitales: { ta_sistolica: 118, ta_diastolica: 76, fc: 74, fr: 16, temp: 36.6, spo2: 98, peso: 61, talla: 1.62 },
+                cargos: [],
+                cuenta_actual: 0,
+                cuenta_actual_total: 0,
+                ordenes_aplicacion: []
+            });
+            cambioTurnos = true;
+            const hojaLaura = nuevaHojaIndicaciones([], "ingreso", {
+                dieta: "Dieta normal normosódica.",
+                soluciones_parenterales: "Solución fisiológica 0.9% 500 mililitros vía intravenosa para mantener vena permeable.",
+                medicamentos: "Paracetamol 1 gramo vía intravenosa cada 8 horas.\nDiclofenaco 75 miligramos vía intramuscular cada 12 horas.",
+                medidas_generales: "Reposo absoluto con extremidad pélvica derecha elevada. Vigilar llenado capilar distal por turno."
+            }, { id: medRoberto.id, nombre: medRoberto.nombre, relacion: "tratante" }, ahoraIso);
+            anotarCoberturaIndicacion(hojaLaura);
+            ints.push({
+                internamiento_id: "INT-DEMO-HOSP-2",
+                turno_id: "T-DEMO-HOSP-2",
+                paciente_id: "PAC-000002",
+                medico_tratante_id: medRoberto.id,
+                medico_tratante_nombre: medRoberto.nombre,
+                especialidad_codigo: "TRAUMATOLOGIA",
+                especialidad: "Traumatología y Ortopedia",
+                fecha_ingreso: ahoraIso,
+                cama: camaH2.nombre,
+                cama_codigo: camaH2.codigo,
+                estatus: "activo",
+                area_destino: "Hospitalización",
+                area_codigo: "HOSPITALIZACION",
+                destino: "Hospitalizacion",
+                diagnostico_ingreso: "Esguince y torcedura de tobillo grado II-III (S93.4)",
+                diagnostico_actual: "Esguince y torcedura de tobillo grado II-III (S93.4)",
+                alergias: "Látex",
+                snapshot_formulario: snapLaura,
+                interconsultas: [{
+                    interconsulta_id: "IC-DEMO-2",
+                    especialidad_codigo: "MEDICINA_GENERAL",
+                    especialidad: "Medicina General",
+                    medico_id: medJuan.id,
+                    medico_nombre: medJuan.nombre,
+                    motivo: "Seguimiento conjunto en piso",
+                    fecha_hora: ahoraIso,
+                    solicitada_por_id: medRoberto.id,
+                    solicitada_por_nombre: medRoberto.nombre,
+                    estatus: "PENDIENTE"
+                }],
+                notas_evolucion: [],
+                hojas_indicaciones: [hojaLaura],
+                cargos: [],
+                cuenta_actual: 0,
+                cuenta_actual_total: 0,
+                nota_egreso: null,
+                ubicacion: UBICACION_QX.PISO,
+                notas_postanestesicas: [],
+                notas_postoperatorias: [],
+                recetas_controlados: []
+            });
+            cambioInts = true;
+        }
+
+        if (cambioTurnos) escribir(CLAVES.turnos, turnos);
+        if (cambioInts) escribir(CLAVES.internamientos, ints);
+        return cambioTurnos || cambioInts;
     }
 
     function prefillHojaQuirurgica(turnoId) {
@@ -7163,7 +7464,7 @@
 
     // Borra TODA la información operativa del demo (no toca los machotes) y vuelve a sembrar
     function restablecerDemo() {
-        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.estudios, CLAVES.estudiosV3, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.recetasFoliadas, CLAVES.recetas, CLAVES.folioRecetaSeq, CLAVES.folioExternoSeq, CLAVES.demoQxActivo, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
+        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.estudios, CLAVES.estudiosV3, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.recetasFoliadas, CLAVES.recetas, CLAVES.folioRecetaSeq, CLAVES.folioExternoSeq, CLAVES.demoQxActivo, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo, 'belen_seed_v18'].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
         return sembrarDemoSiHaceFalta();
     }
 
@@ -7225,5 +7526,5 @@
     migrarCirugiasFase1();
     sembrarFarmaciaSiHaceFalta();
     normalizarIvaDiferido();
-    sembrarPacienteQuirofanoDemo();
+    sembrarDemoSiHaceFalta();
 })(window);
