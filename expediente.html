@@ -122,6 +122,7 @@
             <h2 class="font-bold tracking-wide text-slate-800 text-sm md:text-base">Expediente Clínico</h2>
         </div>
         <div class="flex items-center gap-2 md:gap-3">
+            <button type="button" id="btn-cache-documentos" onclick="BelenUI.abrirCacheAvancesYDocumentos()" class="text-[11px] font-extrabold text-emerald-900 bg-emerald-50 border-2 border-emerald-300 rounded-lg px-2.5 py-1.5 hover:bg-emerald-100 shadow-sm flex items-center gap-1"><i class="fas fa-cloud-arrow-down text-emerald-700"></i> 📋 Caché / Documentos</button>
             <button type="button" id="btn-mis-cedulas" onclick="BelenUI.abrirMisCedulas()" class="hidden text-[11px] font-bold text-cyan-800 bg-cyan-50 border border-cyan-200 rounded-lg px-2.5 py-1.5 hover:bg-cyan-100">Mis Cédulas de Firma</button>
             <span id="nombre-doctor" class="text-xs md:text-sm font-bold text-slate-600 hidden sm:block">Usuario</span>
             <div class="w-8 h-8 rounded-full bg-cyan-700 text-white flex items-center justify-center shadow-md"><i class="fas fa-user-md"></i></div>
@@ -1388,8 +1389,8 @@
         </div>
     </div>
 
-    <script src="js/belen-store.js?v=f18"></script>
-    <script src="js/belen-ui.js?v=f18"></script>
+    <script src="js/belen-store.js?v=f20"></script>
+    <script src="js/belen-ui.js?v=f20"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];

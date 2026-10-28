@@ -772,5 +772,205 @@
         });
     }
 
-    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, modalVerificarExpediente, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, htmlIdentidadPaciente, leerIdentidadPaciente, TIPOS };
+    // ============================================================
+    // MODAL GLOBAL: CACHÉ DE AVANCES, DOCUMENTOS Y 4 ESCENARIOS SINCRONIZADOS
+    // ============================================================
+    function vistaPreviaDocumentoCache(docId) {
+        const S = global.BelenStore;
+        if (!S || !S.obtenerDocumentosCacheRecorrido) return;
+        const docs = S.obtenerDocumentosCacheRecorrido();
+        const doc = docs.find(d => d.id === docId);
+        if (!doc) {
+            toast('No se encontró el documento solicitado.', 'alerta');
+            return;
+        }
+        return modal({
+            titulo: doc.titulo,
+            subtitulo: doc.escenario + ' · ' + (doc.norma || 'NOM-004-SSA3-2012'),
+            icono: 'fa-file-medical',
+            ancho: 'xl',
+            sinBorrador: true,
+            html: '<div class="bg-slate-100 p-4 rounded-xl border border-slate-300 overflow-x-auto"><div id="contenedor-impresion-cache-doc" class="bg-white p-6 rounded shadow-sm mx-auto" style="max-width:20.5cm;">' + (doc.html || '') + '</div></div>',
+            botones: [
+                { texto: 'Cerrar', estilo: 'secundario' },
+                {
+                    texto: '🖨️ Imprimir / Guardar PDF',
+                    estilo: 'primario',
+                    alPulsar: () => {
+                        const w = window.open('', '_blank', 'width=920,height=780');
+                        if (!w) {
+                            window.print();
+                            return false;
+                        }
+                        w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>' + esc(doc.titulo) + '</title><style>@page{size:letter;margin:1.2cm;}body{margin:0;padding:12px;font-family:Arial,sans-serif;color:#0f172a;}</style></head><body>' + (doc.html || '') + '<script>setTimeout(function(){window.print();},350);<\/script></body></html>');
+                        w.document.close();
+                        return false;
+                    }
+                }
+            ]
+        });
+    }
+
+    function abrirCacheAvancesYDocumentos(tabInicial) {
+        const S = global.BelenStore;
+        if (!S) return;
+        if (S.asegurarCasosClinicosRecorrido) S.asegurarCasosClinicosRecorrido(false);
+        const bitacora = S.BITACORA_CACHE_AVANCES || [];
+        const docs = S.obtenerDocumentosCacheRecorrido ? S.obtenerDocumentosCacheRecorrido() : [];
+        const catalogoOficial = S.CATALOGO_FORMATOS_OFICIALES || [];
+        const idsCache = (S.obtenerIdsCacheRecorrido && S.obtenerIdsCacheRecorrido()) || {};
+        const turno1Id = idsCache.t1 || 'T-CACHE-1';
+        const turno2Id = idsCache.t2 || 'T-CACHE-2';
+        const turno3Id = idsCache.t3 || 'T-CACHE-3';
+        const turno4Id = idsCache.t4 || 'T-CACHE-4';
+
+        const htmlTabAvances = bitacora.map((b, i) => (
+            '<div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">' +
+                '<div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 mb-2.5">' +
+                    '<div class="flex items-center gap-2">' +
+                        '<span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-cyan-700 text-white text-xs font-extrabold">' + (i + 1) + '</span>' +
+                        '<h4 class="text-sm font-extrabold text-slate-900">' + esc(b.bloque) + '</h4>' +
+                    '</div>' +
+                    '<span class="text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 rounded-full">Paciente Demo: ' + esc(b.paciente_demo) + '</span>' +
+                '</div>' +
+                '<ul class="space-y-1.5 text-xs text-slate-700 list-disc pl-5">' +
+                    (b.puntos || []).map(p => '<li>' + esc(p) + '</li>').join('') +
+                '</ul>' +
+            '</div>'
+        )).join('');
+
+        const htmlTabDocs =
+            '<div class="space-y-3">' +
+                '<div class="rounded-xl bg-cyan-50 border border-cyan-200 p-3 text-xs text-cyan-950 flex flex-wrap items-center justify-between gap-2">' +
+                    '<div><b>Documentos reales generados en los 4 escenarios clínicos:</b> Haz clic en <b>Vista Previa / Imprimir</b> para ver cada formato lleno con datos reales (listos en cualquier computadora).</div>' +
+                '</div>' +
+                '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">' +
+                    docs.map(d => (
+                        '<div class="rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm flex flex-col justify-between gap-2.5 hover:border-cyan-400 transition">' +
+                            '<div>' +
+                                '<div class="flex items-center justify-between gap-2">' +
+                                    '<span class="text-[10px] font-extrabold uppercase tracking-wider text-cyan-800 bg-cyan-50 border border-cyan-200 px-2 py-0.5 rounded">' + esc(d.norma || 'NOM-004') + '</span>' +
+                                    '<span class="text-[10px] font-bold text-slate-400">Turno ' + esc(d.turno_id) + '</span>' +
+                                '</div>' +
+                                '<h5 class="text-xs font-extrabold text-slate-900 mt-1.5">' + esc(d.titulo) + '</h5>' +
+                                '<p class="text-[11px] text-slate-500 mt-0.5">' + esc(d.escenario) + '</p>' +
+                            '</div>' +
+                            '<div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">' +
+                                '<button type="button" data-ver-doc="' + esc(d.id) + '" class="text-xs font-bold bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1.5">' +
+                                    '<i class="fas fa-eye"></i> Vista Previa / Imprimir' +
+                                '</button>' +
+                            '</div>' +
+                        '</div>'
+                    )).join('') +
+                '</div>' +
+                '<div class="mt-4 pt-3 border-t border-slate-200">' +
+                    '<h5 class="text-xs font-extrabold uppercase text-slate-600 mb-2">Catálogo de los ' + catalogoOficial.length + ' Machotes Oficiales de Google Drive (Sanatorio Belén)</h5>' +
+                    '<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">' +
+                        catalogoOficial.map(f => (
+                            '<div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px]">' +
+                                '<div class="font-extrabold text-slate-800">' + esc(f.numero) + '. ' + esc(f.nombre) + '</div>' +
+                                '<div class="text-slate-500 text-[10px]">' + esc(f.area) + ' · ' + esc(f.norma) + '</div>' +
+                            '</div>'
+                        )).join('') +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        const htmlTabPacientes =
+            '<div class="grid grid-cols-1 md:grid-cols-2 gap-3">' +
+                '<div class="rounded-xl border-2 border-emerald-200 bg-white p-4 shadow-sm">' +
+                    '<span class="text-[10px] font-extrabold uppercase bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-full">Escenario 1 · Consulta + 2 Meds en 1 Jeringa + Pre-cobro</span>' +
+                    '<h4 class="text-sm font-extrabold text-slate-900 mt-1.5">Carlos Alberto Mendoza Ruiz</h4>' +
+                    '<p class="text-xs text-slate-600 mt-1">Turno <b>T-CACHE-1</b> · Dr. Juan Pérez · Orden de aplicación en clínica (Ketorolaco 30 mg + Dexametasona 8 mg en 1 sola jeringa cargada por Enfermería) · Cuenta cobrada anticipadamente y cerrada a histórico sin doble cobro.</p>' +
+                    '<div class="mt-3 flex flex-wrap gap-2">' +
+                        '<a href="expediente.html?turno=" + encodeURIComponent(turno1Id) + "&modo=visor" class="text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5"><i class="fas fa-folder-open"></i> Abrir Expediente</a>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="rounded-xl border-2 border-cyan-300 bg-white p-4 shadow-sm">' +
+                    '<span class="text-[10px] font-extrabold uppercase bg-cyan-100 text-cyan-900 px-2.5 py-0.5 rounded-full">Escenario 2 · Hospitalización 5 Días + TAC + Qx con Alfonso</span>' +
+                    '<h4 class="text-sm font-extrabold text-slate-900 mt-1.5">María Elena Gómez Valdez (Cama HOSP-3)</h4>' +
+                    '<p class="text-xs text-slate-600 mt-1">Turno <b>T-CACHE-2</b> · Observación sin papelería Qx -> Interconsulta Med. Interna -> TAC de Cráneo y Labs confirmados por Enfermería -> Cirugía por Angiología confirmada por Alfonso -> Hoja Quirúrgica con equipo pre-llenado y Pre-Alta.</p>' +
+                    '<div class="mt-3 flex flex-wrap gap-2">' +
+                        '<a href="expediente.html?turno=" + encodeURIComponent(turno2Id) + "&modo=visor" class="text-xs font-bold bg-cyan-700 hover:bg-cyan-600 text-white px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5"><i class="fas fa-bed-pulse"></i> Abrir Portafolio Hospitalario (HOSP-3)</a>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="rounded-xl border-2 border-rose-200 bg-white p-4 shadow-sm">' +
+                    '<span class="text-[10px] font-extrabold uppercase bg-rose-100 text-rose-900 px-2.5 py-0.5 rounded-full">Escenario 3 · Embarazada Directo a Parto (Sin Consulta)</span>' +
+                    '<h4 class="text-sm font-extrabold text-slate-900 mt-1.5">Valeria Sofía Hernández Luna (Cama REC-GINECO)</h4>' +
+                    '<p class="text-xs text-slate-600 mt-1">Turno <b>' + esc(turno3Id) + '</b> · Ingreso directo con Dra. Patricia Solís -> Nota de Ingreso e Historia Clínica Directa -> Nota de Parto y Alumbramiento (NOM-007) -> Hoja de Recién Nacido (Dr. Carlos Méndez).</p>' +
+                    '<div class="mt-3 flex flex-wrap gap-2">' +
+                        '<a href="expediente.html?turno=' + encodeURIComponent(turno3Id) + '&modo=visor" class="text-xs font-bold bg-rose-700 hover:bg-rose-600 text-white px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5"><i class="fas fa-baby"></i> Abrir Portafolio Obstétrico y RN</a>' +
+                    '</div>' +
+                '</div>' +
+                '<div class="rounded-xl border-2 border-amber-300 bg-white p-4 shadow-sm">' +
+                    '<span class="text-[10px] font-extrabold uppercase bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full">Escenario 4 · Alta Voluntaria desde Observación (NOM-004)</span>' +
+                    '<h4 class="text-sm font-extrabold text-slate-900 mt-1.5">Jorge Luis Navarro Pineda (Observación OBS-2)</h4>' +
+                    '<p class="text-xs text-slate-600 mt-1">Turno <b>T-CACHE-4</b> · Egreso voluntario con responsiva médico-legal (NOM-004 numeral 10.2 y Art. 79 RLGSPSAM), 2 testigos, exoneración total al Sanatorio y sin cargo de habitación de hospitalización.</p>' +
+                    '<div class="mt-3 flex flex-wrap gap-2">' +
+                        '<a href="expediente.html?turno=" + encodeURIComponent(turno4Id) + "&modo=visor" class="text-xs font-bold bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5"><i class="fas fa-file-signature"></i> Abrir Expediente / Carta Alta Voluntaria</a>' +
+                    '</div>' +
+                '</div>' +
+            '</div>';
+
+        return modal({
+            titulo: 'Caché Sincronizado de Avances, Documentos y Casos Clínicos',
+            subtitulo: 'Disponible en todas tus computadoras · Incluye la bitácora de mejoras, los formatos oficiales llenos y los 4 pacientes del recorrido.',
+            icono: 'fa-cloud-arrow-down',
+            ancho: 'xxl',
+            sinBorrador: true,
+            html:
+                '<div class="space-y-4 text-left">' +
+                    '<div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">' +
+                        '<div class="flex flex-wrap gap-1.5">' +
+                            '<button type="button" data-tab-cache="avances" class="px-3.5 py-2 rounded-lg text-xs font-extrabold bg-cyan-700 text-white transition"><i class="fas fa-list-check mr-1"></i>1. Caché de lo Realizado y Corregido</button>' +
+                            '<button type="button" data-tab-cache="documentos" class="px-3.5 py-2 rounded-lg text-xs font-extrabold bg-slate-100 text-slate-700 hover:bg-slate-200 transition"><i class="fas fa-file-medical mr-1"></i>2. Documentos y Formatos Llenos (' + docs.length + ')</button>' +
+                            '<button type="button" data-tab-cache="pacientes" class="px-3.5 py-2 rounded-lg text-xs font-extrabold bg-slate-100 text-slate-700 hover:bg-slate-200 transition"><i class="fas fa-user-injured mr-1"></i>3. Abrir los 4 Casos en Vivo</button>' +
+                        '</div>' +
+                        '<button type="button" id="btn-resincronizar-cache" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 transition flex items-center gap-1.5">' +
+                            '<i class="fas fa-rotate"></i> Restaurar / Sincronizar Casos en esta Compu' +
+                        '</button>' +
+                    '</div>' +
+                    '<div id="panel-cache-avances" class="space-y-3">' + htmlTabAvances + '</div>' +
+                    '<div id="panel-cache-documentos" class="hidden">' + htmlTabDocs + '</div>' +
+                    '<div id="panel-cache-pacientes" class="hidden">' + htmlTabPacientes + '</div>' +
+                '</div>',
+            alMostrar: ctrl => {
+                const activarTab = (nombre) => {
+                    ['avances', 'documentos', 'pacientes'].forEach(t => {
+                        const p = ctrl.el.querySelector('#panel-cache-' + t);
+                        const b = ctrl.el.querySelector('[data-tab-cache="' + t + '"]');
+                        if (p) p.classList.toggle('hidden', t !== nombre);
+                        if (b) {
+                            b.className = t === nombre
+                                ? 'px-3.5 py-2 rounded-lg text-xs font-extrabold bg-cyan-700 text-white transition'
+                                : 'px-3.5 py-2 rounded-lg text-xs font-extrabold bg-slate-100 text-slate-700 hover:bg-slate-200 transition';
+                        }
+                    });
+                };
+                ctrl.el.querySelectorAll('[data-tab-cache]').forEach(btn => {
+                    btn.addEventListener('click', () => activarTab(btn.getAttribute('data-tab-cache')));
+                });
+                ctrl.el.querySelectorAll('[data-ver-doc]').forEach(btn => {
+                    btn.addEventListener('click', () => vistaPreviaDocumentoCache(btn.getAttribute('data-ver-doc')));
+                });
+                const btnResync = ctrl.el.querySelector('#btn-resincronizar-cache');
+                if (btnResync) {
+                    btnResync.addEventListener('click', () => {
+                        if (S.asegurarCasosClinicosRecorrido) {
+                            S.asegurarCasosClinicosRecorrido(true);
+                            toast('Los 4 escenarios clínicos y todos sus documentos se han sincronizado en esta computadora.', 'exito');
+                            ctrl.cerrar();
+                            setTimeout(() => window.location.reload(), 350);
+                        }
+                    });
+                }
+                if (tabInicial) activarTab(tabInicial);
+            },
+            botones: [
+                { texto: 'Cerrar ventana', estilo: 'secundario' }
+            ]
+        });
+    }
+
+    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, modalVerificarExpediente, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, htmlIdentidadPaciente, leerIdentidadPaciente, abrirCacheAvancesYDocumentos, vistaPreviaDocumentoCache, TIPOS };
 })(window);

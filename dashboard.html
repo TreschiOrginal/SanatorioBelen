@@ -99,6 +99,7 @@
             <div class="flex items-center gap-4">
                 <div id="kiosco-operador" class="hidden"></div>
                 <button type="button" id="kiosco-cerrar" onclick="AdminController.cerrarSesion()" class="hidden text-xs font-bold text-slate-500 hover:text-red-600 border border-slate-200 rounded-lg px-3 py-2">Cerrar sesión del kiosco</button>
+                <button type="button" id="btn-cache-documentos" onclick="BelenUI.abrirCacheAvancesYDocumentos()" class="text-xs font-extrabold text-emerald-900 bg-emerald-50 border-2 border-emerald-300 rounded-lg px-3 py-2 hover:bg-emerald-100 shadow-sm flex items-center gap-1.5"><i class="fas fa-cloud-arrow-down text-emerald-700"></i> 📋 Caché / Documentos y Avances</button>
                 <button type="button" id="btn-mis-cedulas" onclick="BelenUI.abrirMisCedulas()" class="hidden text-xs font-bold text-cyan-800 bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2 hover:bg-cyan-100">Mis Cédulas de Firma</button>
                 <div class="flex items-center gap-3 pl-4 border-l border-slate-200">
                     <div class="text-right hidden md:block">
@@ -121,9 +122,9 @@
 
     <!-- Scripts -->
     <div id="print-dashboard" class="zona-impresion"></div>
-    <script src="js/belen-store.js?v=f18"></script>
-    <script src="js/belen-ui.js?v=f18"></script>
+    <script src="js/belen-store.js?v=f20"></script>
+    <script src="js/belen-ui.js?v=f20"></script>
     <script src="js/admin-api.js"></script>
-    <script src="js/admin-app.js?v=f18"></script>
+    <script src="js/admin-app.js?v=f20"></script>
 </body>
 </html>

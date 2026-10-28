@@ -6994,6 +6994,7 @@
         completarAnestesiologoCirugias();
         sembrarFarmaciaSiHaceFalta();
         if (localStorage.getItem("belen_seed_v19") === "1" && localStorage.getItem(CLAVES.catalogo) !== null) {
+            asegurarCasosClinicosRecorrido(false);
             return false;
         }
         if (localStorage.getItem(CLAVES.catalogo) !== null || localStorage.getItem(CLAVES.visitas) !== null) {
@@ -7002,6 +7003,7 @@
             migrarCirugiasFase1();
             sembrarPacienteQuirofanoDemo();
             sembrarPacientesHospitalizadosDemo();
+            asegurarCasosClinicosRecorrido(false);
             localStorage.setItem("belen_seed_v19", "1");
             return false;
         }
@@ -8484,6 +8486,527 @@
             + '<footer style="margin-top:20px;text-align:center;"><div style="display:inline-block;min-width:260px;border-top:1px solid #0f172a;padding-top:4px;"><strong>' + e(d.autor_nombre || i.medico_tratante_nombre || '') + '</strong><br>' + e(d.autor_especialidad || '') + '<br>' + e(d.cedulas_impresas || '').replace(/\n/g, '<br>') + '</div></footer></article>';
     }
 
+
+    // ============================================================
+    // CACHÉ DE AVANCES, BITÁCORA Y 4 CASOS CLÍNICOS SINCRONIZADOS ENTRE COMPUTADORAS
+    // ============================================================
+    const BITACORA_CACHE_AVANCES = [
+        {
+            bloque: 'Escenario 1 · Consulta Externa + Aplicación de 2 Medicamentos en 1 Jeringa + Pre-cobro en Caja',
+            fecha: '28 Oct 2026',
+            paciente_demo: 'Carlos Alberto Mendoza Ruiz (Turno T-CACHE-1)',
+            puntos: [
+                'Recepción registra paciente con verificación de identidad y Triage captura signos vitales completos.',
+                'Médico General (Dr. Juan Pérez) emite Receta a Casa y Orden de Aplicación en Clínica con 2 medicamentos (Ketorolaco 30 mg + Dexametasona 8 mg IM) indicando aplicar ambos en una misma jeringa.',
+                'Enfermería aplica los 2 medicamentos y registra en la cuenta del paciente únicamente 1 jeringa con aguja + los 2 ámpulas (PERMISOS.cargar_cuenta_consulta habilitado para Enfermería).',
+                'Si el paciente paga anticipadamente en Caja antes de que el médico cierre la nota, al dar Alta el turno pasa directo a cerrado_historico sin duplicar cobro en Caja.'
+            ]
+        },
+        {
+            bloque: 'Escenario 2 · Hospitalización de 5 Días: Observación sin Papelería Qx -> Interconsulta -> Estudios/TAC -> Cirugía con Alfonso -> Pre-Alta y Alta',
+            fecha: '28 Oct 2026',
+            paciente_demo: 'María Elena Gómez Valdez (Turno T-CACHE-2 · Cama HOSP-3)',
+            puntos: [
+                'Día 1 (Observación Médica): Ingresa a Observación por cefalea refractaria. El sistema genera SOLO Consentimiento General de Ingreso y Contrato de Prestación de Servicios (sin papelería quirúrgica ni anestésica).',
+                'Día 1-2 (Hoja de Enfermería e Interconsulta): Enfermería llena Hoja Clínica de Enfermería (signos por turno, líquidos y medicamentos). Médico General solicita interconsulta a Medicina Interna (Dr. Alejandro Morales) y el internista responde con nota formal firmada.',
+                'Día 2-3 (Pase a Hospitalización + TAC y Laboratorios): Pasa a cama HOSP-3 sin papelería quirúrgica. Medicina Interna solicita Tomografía de Cráneo Simple (TAC), BH y QS; Enfermería confirma la toma/realización desde su panel y el cargo se suma automáticamente a la cuenta.',
+                'Día 3-4 (Programación Quirúrgica + Equipo de Alfonso + Valoración Preoperatoria): Interconsulta a Angiología (Dr. Roberto Navarro), quien programa safenectomía + fleboextracción. Alfonso (Administración) confirma la cirugía asignando 1er Ayudante (Dr. Marco Antonio Vega), Instrumentista (Lic. Enf. Sofía Ríos), Circulante (Enf. Carmen López) y Anestesióloga (Dra. Elena Vázquez).',
+                'Día 4-5 (Hoja Quirúrgica Pre-llenada + Pre-Alta por Servicio + Alta Definitiva): Al abrir la Hoja Quirúrgica desde el expediente del angiólogo, el sistema pre-llena automáticamente todo el equipo confirmado por Alfonso. Posteriormente emite Pre-Alta por servicio y Alta Hospitalaria definitiva.'
+            ]
+        },
+        {
+            bloque: 'Escenario 3 · Embarazada que Ingresa Directo a Parto (Sin pasar por Consulta Externa)',
+            fecha: '28 Oct 2026',
+            paciente_demo: 'Valeria Sofía Hernández Luna (Turno T-CACHE-3 · Cama REC-GINECO)',
+            puntos: [
+                'Ingreso directo a Hospitalización / Gineco-Obstetricia por trabajo de parto activo (39.4 SDG) con la Dra. Patricia Solís (sin pasar por consulta externa).',
+                'Se habilita la Nota de Ingreso e Historia Clínica Directa en Hospitalización para pacientes sin consulta previa.',
+                'Registro e impresión de Nota de Atención de Parto Eutócico y Alumbramiento (NOM-007-SSA2-2016) con sangrado estimado, placenta, episiorrafia y Apgar.',
+                'Registro e impresión de Hoja de Recién Nacido por Pediatría (Dr. Carlos Méndez) con somatometría, Apgar 9/9, Silverman 0, profilaxis oftálmica y vitamina K (sin Tamiz).'
+            ]
+        },
+        {
+            bloque: 'Escenario 4 · Paciente en Observación que Solicita Alta Voluntaria (Exoneración Legal NOM-004)',
+            fecha: '28 Oct 2026',
+            paciente_demo: 'Jorge Luis Navarro Pineda (Turno T-CACHE-4 · Observación OBS-2)',
+            puntos: [
+                'Paciente en Observación por dolor abdominal en estudio que decide retirarse en contra de la recomendación médica.',
+                'Botón de Alta Voluntaria pre-llena automáticamente nombre, edad, cama, diagnóstico de ingreso, médico tratante y fecha/hora.',
+                'Genera e imprime la Hoja de Egreso Voluntario y Responsiva Médico-Legal basada en el documento oficial 18_EGRESO_VOLUNTARIO.docx de Google Drive, blindada con NOM-004-SSA3-2012 (numeral 10.2) y Art. 79 del RLGSPSAM, deslindando a Sanatorio Belén y al personal médico de toda responsabilidad civil, penal o administrativa, con firmas de solicitante y 2 testigos.',
+                'Al egresar desde Observación, elimina cargos de habitación de hospitalización y envía a Caja únicamente lo consumido en Observación.'
+            ]
+        }
+    ];
+
+    function sesionParaCache(userId) {
+        const u = USUARIOS[userId] || {};
+        return {
+            rol: u.rol || 'medico',
+            id: u.id || userId,
+            usuario_id: u.id || userId,
+            nombre: u.nombre || userId,
+            cargo: u.cargo || '',
+            medico_id: u.medico_id || u.id || userId,
+            medico_nombre: u.nombre || userId,
+            especialidad: u.cargo || '',
+            especialidad_codigo: u.especialidad_codigo || ''
+        };
+    }
+
+    function obtenerIdsCacheRecorrido() {
+        try {
+            const raw = localStorage.getItem('belen_cache_recorrido_ids_v20');
+            if (raw) return JSON.parse(raw);
+        } catch (e) {}
+        return null;
+    }
+
+    function asegurarCasosClinicosRecorrido(forzarRecreacion) {
+        try {
+            const guardados = obtenerIdsCacheRecorrido();
+            if (guardados && guardados.t2 && obtenerTurno(guardados.t2) && !forzarRecreacion) {
+                return guardados;
+            }
+
+            // Si estamos recreando, limpiar turnos previos de los 4 pacientes del caché
+            const nombresDemo = [
+                'CARLOS ALBERTO MENDOZA RUIZ',
+                'MARIA ELENA GOMEZ VALDEZ',
+                'VALERIA SOFIA HERNANDEZ LUNA',
+                'JORGE LUIS NAVARRO PINEDA'
+            ];
+            if (forzarRecreacion) {
+                const turnosPrevios = listarTurnos().filter(t => nombresDemo.includes(normalizar(t.nombre || t.paciente_nombre || ''))).map(t => t.turno_id);
+                if (turnosPrevios.length) {
+                    escribir(CLAVES.turnos, listarTurnos().filter(t => !turnosPrevios.includes(t.turno_id)));
+                    escribir(CLAVES.internamientos, listarInternamientos().filter(i => !turnosPrevios.includes(i.turno_id)));
+                    escribir(CLAVES.hospitalizados, listarHospitalizados().filter(h => !turnosPrevios.includes(h.turno_id)));
+                    escribir(CLAVES.cirugias, listarCirugias().filter(c => !turnosPrevios.includes(c.turno_id)));
+                }
+            }
+
+            const crearLlegadaCache = (datos) => {
+                const pac = guardarPaciente({
+                    nombres: datos.nombres,
+                    apellido_paterno: datos.apellido_paterno,
+                    apellido_materno: datos.apellido_materno,
+                    nombre_completo: [datos.nombres, datos.apellido_paterno, datos.apellido_materno].filter(Boolean).join(' '),
+                    fecha_nacimiento: datos.fecha_nacimiento,
+                    sexo: datos.sexo,
+                    telefono: datos.telefono,
+                    direccion: datos.direccion || 'Av. Francisco Medina Ascencio 410, Puerto Vallarta',
+                    nacionalidad: 'Mexicana'
+                });
+                return crearTurno({
+                    paciente_id: pac.paciente_id,
+                    especialidad_codigo: datos.especialidad_codigo,
+                    medico_id: datos.medico_id,
+                    motivo: datos.motivo,
+                    permitir_duplicado: true
+                });
+            };
+
+            const sesTriage = sesionParaCache('enf_triage');
+            const sesHosp = sesionParaCache('enf_hospital');
+            const sesJuan = sesionParaCache('dr_juan');
+            const sesInternista = sesionParaCache('dr_internista');
+            const sesRoberto = sesionParaCache('dr_roberto');
+            const sesPatricia = sesionParaCache('dra_patricia');
+            const sesPediatra = sesionParaCache('dr_carlos_ped');
+            const sesAdmin = sesionParaCache('administrador');
+
+            // 1. ESCENARIO 1: Consulta Externa + 2 medicamentos en 1 jeringa + Pre-cobro en Caja
+            const t1 = crearLlegadaCache({
+                nombres: 'CARLOS ALBERTO', apellido_paterno: 'MENDOZA', apellido_materno: 'RUIZ',
+                fecha_nacimiento: '1985-04-12', sexo: 'M', telefono: '3221234567',
+                especialidad_codigo: 'MEDICINA_GENERAL', medico_id: 'dr_juan',
+                motivo: 'Lumbalgia mecánica aguda post-esfuerzo'
+            });
+            guardarSignos(t1.turno_id, {
+                ta_sistolica: 130, ta_diastolica: 84, frecuencia_cardiaca: 82, frecuencia_respiratoria: 18, temperatura_c: 36.6, spo2_porcentaje: 98, peso_kg: 78, talla_m: 1.74
+            }, sesTriage);
+            pasarAMedico(t1.turno_id, sesTriage);
+            iniciarConsulta(t1.turno_id, sesJuan);
+            const inv = listarInventarioFarmacia();
+            const sku1 = (inv[0] || { sku: 'MED-001' }).sku;
+            const sku2 = (inv[1] || inv[0] || { sku: 'MED-002' }).sku;
+            enviarOrdenAplicacion({
+                turno_id: t1.turno_id,
+                diagnostico: 'Lumbalgia aguda (M54.5)',
+                items: [
+                    { origen: 'INVENTARIO', sku: sku1, nombre_libre: 'Ketorolaco 30 mg/mL sol. iny.', dosis: '30 mg (1 ámpula)', via: 'Intramuscular', frecuencia: 'Dosis única', duracion: 'Aplicación en clínica (en la misma jeringa con Dexametasona)', cantidad: 1 },
+                    { origen: 'INVENTARIO', sku: sku2, nombre_libre: 'Dexametasona 8 mg/2 mL sol. iny.', dosis: '8 mg (1 ámpula)', via: 'Intramuscular', frecuencia: 'Dosis única', duracion: 'Aplicación en clínica (en la misma jeringa con Ketorolaco)', cantidad: 1 }
+                ]
+            }, sesJuan);
+            agregarCargoTurno(t1.turno_id, { concepto: 'Aplicación de inyección IM en clínica', precio_unitario: 80, aplica_iva: false }, sesTriage);
+            agregarCargoTurno(t1.turno_id, { concepto: 'Ketorolaco 30 mg ámpula IM', precio_unitario: 45, aplica_iva: false }, sesTriage);
+            agregarCargoTurno(t1.turno_id, { concepto: 'Dexametasona 8 mg ámpula IM', precio_unitario: 55, aplica_iva: false }, sesTriage);
+            agregarCargoTurno(t1.turno_id, { concepto: 'Jeringa desechable 5 mL con aguja (1 pza para ambos medicamentos)', precio_unitario: 18, aplica_iva: true }, sesTriage);
+            liberarConsultaACaja(t1.turno_id, sesJuan);
+            cerrarExpedientePagado(t1.turno_id, sesAdmin, { pre_cobro: true });
+            actualizarTurno(t1.turno_id, { estatus: 'alta', destino: 'Alta', dx_principal: 'Lumbalgia mecánica aguda resuelta' });
+
+            // 2. ESCENARIO 2: Hospitalización de 5 días (Observación sin hojas Qx -> Interconsulta -> TAC + Labs -> Cirugía con Alfonso -> Hoja Qx -> Pre-Alta)
+            const t2 = crearLlegadaCache({
+                nombres: 'MARIA ELENA', apellido_paterno: 'GOMEZ', apellido_materno: 'VALDEZ',
+                fecha_nacimiento: '1972-08-20', sexo: 'F', telefono: '3229876543',
+                especialidad_codigo: 'MEDICINA_GENERAL', medico_id: 'dr_juan',
+                motivo: 'Cefalea holocraneana intensa EVA 9/10 y mareo'
+            });
+            guardarSignos(t2.turno_id, {
+                ta_sistolica: 158, ta_diastolica: 96, frecuencia_cardiaca: 92, frecuencia_respiratoria: 19, temperatura_c: 36.7, spo2_porcentaje: 97, peso_kg: 68, talla_m: 1.62
+            }, sesTriage);
+            pasarAMedico(t2.turno_id, sesTriage);
+            iniciarConsulta(t2.turno_id, sesJuan);
+            actualizarTurno(t2.turno_id, { estatus: 'internado', destino: 'Internamiento', area_destino: 'Observación', cama_codigo: 'OBS-1', cama: 'Observación · Cama 1', dx_principal: 'Cefalea intensa en estudio' });
+            const int2 = sincronizarInternamiento(t2.turno_id, {
+                consulta: { destino: 'Internamiento', fecha_hora: new Date().toISOString() },
+                ingreso: { area_destino: { codigo: 'OBSERVACION', descripcion: 'Observación' } },
+                diagnosticos: [{ cie10_codigo: 'R51', descripcion: 'Cefalea intensa refractaria a analgesia inicial' }],
+                indicaciones: {
+                    dieta: 'Ayuno temporal por náusea',
+                    soluciones_parenterales: [{ solucion: 'Solución Salina 0.9% 1000 mL p/12h' }],
+                    medicamentos: [{ nombre: 'Paracetamol 1 g IV c/8h' }, { nombre: 'Ondansetrón 8 mg IV c/12h' }],
+                    medidas_generales: 'SVT y vigilancia neurológica estrecha en Observación'
+                }
+            }, { finalizado: true });
+            asignarCama(t2.turno_id, 'OBS-1', sesJuan);
+            guardarHojaEnfermeria(t2.turno_id, {
+                signos: [
+                    { turno: 'Matutino', hora: '08:00', ta: '150/92', fc: '88', fr: '18', temp: '36.6', spo2: '97%', texto: 'TA 150/92, FC 88, FR 18, Temp 36.6, SpO2 97%' },
+                    { turno: 'Vespertino', hora: '14:00', ta: '136/84', fc: '78', fr: '17', temp: '36.5', spo2: '98%', texto: 'TA 136/84, FC 78, FR 17, Temp 36.5, SpO2 98%' }
+                ],
+                kardex: [
+                    { turno: 'Matutino', hora: '08:30', medicamento: 'Paracetamol 1 g IV + Ondansetrón 8 mg IV' }
+                ],
+                balance: { ingresos: [{ turno: 'Matutino', concepto: 'Sol. Salina 0.9%', ml: 500 }], egresos: [{ turno: 'Matutino', concepto: 'Uresis', ml: 420 }] },
+                observaciones: 'Paciente consciente, orientada; persiste cefalea hemicraneana por lo que se solicita valoración por Medicina Interna.'
+            }, sesTriage);
+
+            agregarNotaEvolucion(int2.internamiento_id, {
+                subjetivo: 'Día 2: Paciente persiste con cefalea intensa y acúfenos.',
+                signos_vitales: { ta_sistolica: 155, ta_diastolica: 95, frecuencia_cardiaca: 88, frecuencia_respiratoria: 18, temperatura_c: 36.6, spo2_porcentaje: 97 },
+                exploracion_fisica: 'Consciente, orientada, sin focalización motora pero dolor refractario.',
+                diagnostico_actualizado: 'Cefalea secundaria en estudio',
+                analisis: 'Cefalea secundaria en estudio; amerita valoración por Medicina Interna y pase a piso de Hospitalización.',
+                plan: 'Se solicita interconsulta a Medicina Interna y pase a Hospitalización.'
+            }, sesJuan);
+
+            const icMI = solicitarInterconsulta(int2.internamiento_id, {
+                especialidad_codigo: 'MEDICINA_INTERNA', medico_id: 'dr_internista',
+                motivo: 'Cefalea refractaria y descontrol hipertensivo para abordaje diagnóstico integral'
+            }, sesJuan);
+            const camaLibreHosp = (camasLibres('HOSPITALIZACION')[0] || { codigo: 'HOSP-3' }).codigo;
+            cambiarAreaEstancia(t2.turno_id, 'HOSPITALIZACION', camaLibreHosp, sesTriage);
+
+            if (icMI && icMI.interconsulta) {
+                responderInterconsulta(int2.internamiento_id, icMI.interconsulta.interconsulta_id, {
+                    hallazgos: 'Soplo carotídeo derecho grado II/VI y cefalea hemicraneana ipsilateral.',
+                    diagnostico: 'Sospecha de estenosis carotídea sintomática / patología vascular extracraneal.',
+                    plan_recomendaciones: 'Solicito Tomografía de Cráneo Simple (TAC), Ultrasonido Doppler Carotídeo, perfil bioquímico e interconsulta a Angiología.'
+                }, sesInternista);
+            }
+
+            const solEst = solicitarEstudiosHospital(int2.internamiento_id, {
+                estudios: [
+                    { tipo: 'TOMOGRAFIA', prioridad: 'URGENTE', nombre: 'Tomografía de Cráneo Simple (TAC)', precio_unitario: 3200, motivo_clinico: 'Descartar evento isquémico/hemorrágico intracraneal' },
+                    { tipo: 'LABORATORIO', prioridad: 'URGENTE', nombre: 'Biometría Hemática, Química Sanguínea y Tiempos de Coagulación (TP/TTPa)', precio_unitario: 950, motivo_clinico: 'Protocolo vascular y preoperatorio' }
+                ]
+            }, sesInternista);
+            if (solEst && Array.isArray(solEst.estudios)) {
+                solEst.estudios.forEach(ord => {
+                    confirmarEstudioEnfermeria(int2.internamiento_id, ord.item_id, {
+                        observaciones_realizacion: 'Estudio realizado y reportado a Medicina Interna sin complicaciones.',
+                        cargar_cuenta: true
+                    }, sesHosp);
+                });
+            }
+
+            const progQx = programarCirugia({
+                turno_id: t2.turno_id, paciente_id: int2.paciente_id, nombre: 'MARIA ELENA GOMEZ VALDEZ', fecha_nacimiento: '1972-08-20',
+                tipo_estancia: 'HOSPITALIZACION', procedimiento: 'Exploración y plastía vascular reglada',
+                sala: SALAS_QUIROFANO[0].codigo, fecha: hoyLocal(), hora_inicio: '16:00', duracion_minutos: 90,
+                medico_cirujano_id: 'dr_roberto', anestesiologo_id: 'dra_elena',
+                requiere_valoracion_preoperatoria: true, internista_id: 'dr_internista',
+                indicaciones_preoperatorias: 'Ayuno de 8 horas, vendaje compresivo, reserva de hemoderivados.'
+            }, sesRoberto);
+            if (progQx && progQx.cirugia) {
+                confirmarCirugiaAdmin(progQx.cirugia.cirugia_id, {
+                    anestesiologo_id: 'dra_elena',
+                    ayudante_nombre: 'Dr. Marco Antonio Vega (1er Ayudante)',
+                    instrumentista_nombre: 'Lic. Enf. Sofía Ríos (Instrumentista)',
+                    circulante_nombre: 'Enf. Carmen López (Circulante)'
+                }, sesAdmin);
+            }
+
+            guardarValoracionPreoperatoria(t2.turno_id, {
+                diagnostico_preoperatorio: 'Patología vascular sintomática + Hipertensión arterial controlada',
+                cirugia_programada: 'Exploración y plastía vascular reglada',
+                asa: 'II', goldman: 'I', plan_preoperatorio: 'Riesgo quirúrgico aceptable; se autoriza procedimiento programado con monitoreo invasivo.'
+            }, sesInternista);
+
+            const prefillQx = prefillHojaQuirurgica(t2.turno_id);
+            guardarNotaPostoperatoria(t2.turno_id, {
+                cama: camaLibreHosp,
+                preoperatorio: prefillQx.preoperatorio,
+                postoperatorio: 'Patología vascular corregida quirúrgicamente sin complicaciones',
+                operacion_planeada: prefillQx.operacion_planeada,
+                operacion_realizada: 'Exploración y plastía vascular reglada exitosa',
+                cirujano: prefillQx.cirujano,
+                ayudante: prefillQx.ayudante,
+                instrumentista: prefillQx.instrumentista,
+                anestesiologo: prefillQx.anestesiologo,
+                circulante: prefillQx.circulante,
+                descripcion_tecnica: 'Control vascular proximal y distal, plastía con prolene 6-0, hemostasia verificada.',
+                hallazgos: 'Placa estenótica resuelta con flujo distal trifásico restaurado.',
+                incidentes_accidentes: 'Ninguno',
+                sangrado: '120 mL',
+                gasas_compresas: 'Cuenta completa verificada por Lic. Enf. Sofía Ríos y Enf. Carmen López',
+                biopsia: 'No aplica',
+                piezas: 'Placa enviada a patología',
+                drenajes: 'Sin drenajes',
+                estado_postquirurgico: 'Estable, pulsos distales presentes, pasa a recuperación y cama ' + camaLibreHosp,
+                plan_postoperatorio: 'Vigilancia neurovascular, analgesia IV y alta conjunta al Día 5.'
+            }, sesRoberto);
+
+            registrarAltaPorServicio(int2.internamiento_id, {
+                resumen_servicio: 'Día 5: Herida quirúrgica limpia, pulsos íntegros. Se otorga pre-alta por Angiología.',
+                indicaciones_servicio: 'AAS 100 mg VO c/24h, retiro de puntos en 10 días.',
+                continua_a_cargo_de: 'Medicina Interna (Dr. Alejandro Morales) para alta hospitalaria definitiva'
+            }, sesRoberto);
+
+            // 3. ESCENARIO 3: Embarazada que entra directo a Parto SIN pasar por consulta externa
+            const progParto = programarCirugia({
+                nombres: 'VALERIA SOFIA', apellido_paterno: 'HERNANDEZ', apellido_materno: 'LUNA',
+                nombre: 'VALERIA SOFIA HERNANDEZ LUNA', fecha_nacimiento: '1996-11-05', sexo: 'F',
+                tipo_estancia: 'HOSPITALIZACION', procedimiento: 'Atención de Parto Eutócico Humanizado',
+                sala: SALAS_QUIROFANO[0].codigo, fecha: hoyLocal(), hora_inicio: '18:30', duracion_minutos: 60,
+                medico_cirujano_id: 'dra_patricia', anestesiologo_id: 'dra_elena',
+                requiere_pediatra: true, pediatra_id: 'dr_carlos_ped',
+                indicaciones_preoperatorias: 'Ingreso directo a labor/parto, monitoreo fetal continuo.'
+            }, sesPatricia);
+            const ingParto = ingresarPacienteAmbulatorio(progParto.cirugia.cirugia_id, sesHosp);
+            const t3Id = ingParto.turno.turno_id;
+            const int3Id = ingParto.internamiento.internamiento_id;
+
+            guardarNotaIngresoDirectoHospital(int3Id, {
+                motivo_ingreso: 'Embarazo de 39.4 SDG en trabajo de parto fase activa (dilatación 6 cm).',
+                antecedentes_heredofamiliares: 'Interrogados y negados.',
+                antecedentes_personales: 'G2 P1 C0 A0, control prenatal normoevolutivo (7 consultas), Grupo y Rh O positivo, alergias NEGADAS.',
+                exploracion_fisica: 'TA 115/74, FC 80, Temp 36.6. Abdomen con AFU 33 cm, PUVLC, FCF 144 lpm, tacto vaginal con dilatación 6 cm, borramiento 80%, membranas íntegras.',
+                diagnostico_ingreso: 'Embarazo de 39.4 SDG en trabajo de parto fase activa (O80.0)',
+                pronostico: 'Favorable para el binomio materno-fetal',
+                plan_manejo: 'Conducción y atención de parto eutócico y recepción neonatal por Pediatría.'
+            }, sesPatricia);
+
+            guardarNotaParto(t3Id, {
+                tipo_parto: 'Parto Eutócico Humanizado',
+                fecha_nacimiento_rn: hoyLocal(),
+                hora_nacimiento_rn: '08:42',
+                alumbramiento: 'Dirigido (Schultze), placenta y membranas completas',
+                episiotomia: 'Mediolateral derecha reparada con Catgut crómico 2-0 sin complicaciones',
+                sangrado_ml: 250,
+                sexo_rn: 'Femenino',
+                peso_rn_g: 3320,
+                talla_rn_cm: 50,
+                apgar: '9 / 9',
+                capurro_sdg: '39.4',
+                observaciones: 'Recién nacida vigorosa, apego inmediato y lactancia materna temprana.'
+            }, sesPatricia);
+
+            guardarHojaRecienNacido(t3Id, {
+                sexo_rn: 'Femenino',
+                fecha_nacimiento_rn: hoyLocal(),
+                hora_nacimiento_rn: '08:42',
+                apgar_1: 9,
+                apgar_5: 9,
+                silverman: 0,
+                capurro_sdg: '39.4',
+                peso_gramos: 3320,
+                talla_cm: 50,
+                perimetro_cefalico_cm: 34.5,
+                exploracion_fisica_rn: 'RN femenina de término adecuada para edad gestacional, fontanelas normotensas, paladar íntegro, campos pulmonares bien ventilados, sin soplos, reflejos primitivos presentes (sin Tamiz).'
+            }, sesPediatra);
+
+            // 4. ESCENARIO 4: Paciente en Observación que solicita Alta Voluntaria (Exoneración NOM-004 y Art. 79 RLGSPSAM)
+            const t4 = crearLlegadaCache({
+                nombres: 'JORGE LUIS', apellido_paterno: 'NAVARRO', apellido_materno: 'PINEDA',
+                fecha_nacimiento: '1968-02-14', sexo: 'M', telefono: '3224445566',
+                especialidad_codigo: 'MEDICINA_GENERAL', medico_id: 'dr_juan',
+                motivo: 'Dolor abdominal epigástrico y vómito'
+            });
+            guardarSignos(t4.turno_id, {
+                ta_sistolica: 138, ta_diastolica: 86, frecuencia_cardiaca: 90, frecuencia_respiratoria: 18, temperatura_c: 37.1, spo2_porcentaje: 97, peso_kg: 82, talla_m: 1.72
+            }, sesTriage);
+            pasarAMedico(t4.turno_id, sesTriage);
+            iniciarConsulta(t4.turno_id, sesJuan);
+            actualizarTurno(t4.turno_id, { estatus: 'internado', destino: 'Internamiento', area_destino: 'Observación', cama_codigo: 'OBS-2', cama: 'Observación · Cama 2', dx_principal: 'Dolor abdominal agudo en estudio' });
+            const int4 = sincronizarInternamiento(t4.turno_id, {
+                consulta: { destino: 'Internamiento', fecha_hora: new Date().toISOString() },
+                ingreso: { area_destino: { codigo: 'OBSERVACION', descripcion: 'Observación' } },
+                diagnosticos: [{ cie10_codigo: 'R10.1', descripcion: 'Dolor abdominal agudo en estudio' }]
+            }, { finalizado: true });
+            asignarCama(t4.turno_id, 'OBS-2', sesJuan);
+            const preAV = Object.assign({}, prefillAltaVoluntaria(t4.turno_id, sesJuan), {
+                testigo1_nombre: 'Rosa Elena Pineda Vargas (Hermana)',
+                testigo1_domicilio: 'Av. Las Torres 504, Col. El Pitillal, Puerto Vallarta',
+                testigo2_nombre: 'Enf. Laura Gómez (Enfermería en turno)',
+                testigo2_domicilio: 'Sanatorio Belén · Juárez #452, Centro, Puerto Vallarta'
+            });
+            registrarAltaVoluntaria(int4.internamiento_id, preAV, sesJuan);
+
+            const ids = {
+                t1: t1.turno_id,
+                t2: t2.turno_id,
+                int2: int2.internamiento_id,
+                t3: t3Id,
+                int3: int3Id,
+                t4: t4.turno_id,
+                int4: int4.internamiento_id
+            };
+            localStorage.setItem('belen_cache_recorrido_ids_v20', JSON.stringify(ids));
+            localStorage.setItem('belen_cache_recorrido_v20', '1');
+            return ids;
+        } catch (err) {
+            console.warn('Error al sembrar casos clínicos del recorrido:', err);
+            return null;
+        }
+    }
+
+    function obtenerDocumentosCacheRecorrido() {
+        const ids = asegurarCasosClinicosRecorrido(false) || obtenerIdsCacheRecorrido() || {};
+        const docs = [];
+        const int2 = ids.int2 ? obtenerInternamiento(ids.int2) : (ids.t2 ? internamientoDeTurno(ids.t2) : null);
+        const int3 = ids.int3 ? obtenerInternamiento(ids.int3) : (ids.t3 ? internamientoDeTurno(ids.t3) : null);
+        const int4 = ids.int4 ? obtenerInternamiento(ids.int4) : (ids.t4 ? internamientoDeTurno(ids.t4) : null);
+
+        if (int2) {
+            const hEnf = obtenerHojaEnfermeria(int2.turno_id);
+            docs.push({
+                id: 'doc-enf-c2',
+                escenario: 'Escenario 2 · Hospitalización 5 Días (María Elena Gómez Valdez)',
+                titulo: 'Hoja Clínica de Enfermería (Signos por Turno, Balance Hídrico y Medicamentos)',
+                norma: 'NOM-004-SSA3-2012',
+                turno_id: int2.turno_id,
+                html: htmlImpresionHojaEnfermeria(hEnf, int2.turno_id)
+            });
+            docs.push({
+                id: 'doc-est-c2',
+                escenario: 'Escenario 2 · Hospitalización 5 Días (María Elena Gómez Valdez)',
+                titulo: 'Solicitud y Confirmación de Estudios de Imagenología (TAC de Cráneo) y Laboratorio',
+                norma: 'NOM-004-SSA3-2012',
+                turno_id: int2.turno_id,
+                html: htmlImpresionOrdenesEstudios(int2. estudios_solicitados || [], int2.turno_id)
+            });
+            if (Array.isArray(int2.interconsultas) && int2.interconsultas.length) {
+                int2.interconsultas.forEach((ic, idx) => {
+                    docs.push({
+                        id: 'doc-ic-c2-' + idx,
+                        escenario: 'Escenario 2 · Hospitalización 5 Días (María Elena Gómez Valdez)',
+                        titulo: 'Nota de Interconsulta Médica · ' + (ic.especialidad_nombre || ic.especialidad_codigo || 'Medicina Interna'),
+                        norma: 'NOM-004-SSA3-2012 numeral 6.3',
+                        turno_id: int2.turno_id,
+                        html: htmlImpresionNotaInterconsulta(ic, int2.turno_id)
+                    });
+                });
+            }
+            if (int2.valoracion_preoperatoria) {
+                docs.push({
+                    id: 'doc-vpre-c2',
+                    escenario: 'Escenario 2 · Hospitalización 5 Días (María Elena Gómez Valdez)',
+                    titulo: 'Nota de Valoración Preoperatoria (ASA / Goldman)',
+                    norma: 'NOM-004-SSA3-2012',
+                    turno_id: int2.turno_id,
+                    html: htmlImpresionValoracionPreoperatoria(int2.valoracion_preoperatoria, int2.turno_id)
+                });
+            }
+            const preQx = prefillHojaQuirurgica(int2.turno_id);
+            const cir2 = cirugiaPara(int2.turno_id) || {};
+            const notaQx = (cir2 && cir2.nota_postoperatoria) || int2.nota_postoperatoria || {
+                servicio: "Angiología y Cirugía Vascular",
+                fecha_programacion: hoyLocal(),
+                dx_pre: preQx.preoperatorio || "Insuficiencia vascular sintomática",
+                operacion: preQx.operacion_planeada || "Exploración y plastía vascular reglada",
+                fecha_hora_quirurgica: hoyLocal() + " 16:00 hrs",
+                tecnica: "Control vascular proximal y distal, plastía con prolene 6-0, hemostasia verificada.",
+                hallazgos: "Placa estenótica resuelta con flujo distal trifásico restaurado.",
+                recuento: "Cuenta completa de gasas y compresas verificada por Lic. Enf. Sofía Ríos y Enf. Carmen López",
+                sangrado_ml: 120,
+                uresis: "180 mL clara",
+                tipo_anestesia: "Bloqueo regional / Sedación",
+                dx_post: "Patología vascular corregida quirúrgicamente sin complicaciones",
+                firmantes: {
+                    cirujano: preQx.cirujano,
+                    ayudante: preQx.ayudante,
+                    anestesiologo: preQx.anestesiologo,
+                    instrumentista: preQx.instrumentista,
+                    circulante: preQx.circulante
+                }
+            };
+            docs.push({
+                id: 'doc-hqx-c2',
+                escenario: 'Escenario 2 · Hospitalización 5 Días (María Elena Gómez Valdez)',
+                titulo: 'Hoja Quirúrgica / Nota Postoperatoria (Con Equipo Confirmado por Alfonso)',
+                norma: 'NOM-004-SSA3-2012 numeral 8.8',
+                turno_id: int2.turno_id,
+                html: htmlHojaQuirurgica(notaQx, {
+                    expediente: int2.paciente_id,
+                    cama: int2.cama_codigo || "HOSP-3",
+                    servicio: "Angiología y Cirugía Vascular",
+                    fecha_programacion: hoyLocal(),
+                    nombre: "MARIA ELENA GOMEZ VALDEZ",
+                    edad: "54 años",
+                    sexo: "Femenino",
+                    dx_pre: preQx.preoperatorio,
+                    operacion: preQx.operacion_planeada,
+                    fecha_hora_quirurgica: hoyLocal() + " 16:00 hrs",
+                    cirujano: preQx.cirujano,
+                    ayudante: preQx.ayudante,
+                    anestesiologo: preQx.anestesiologo,
+                    instrumentista: preQx.instrumentista,
+                    circulante: preQx.circulante
+                })
+            });
+        }
+        if (int3) {
+            docs.push({
+                id: 'doc-ingdir-c3',
+                escenario: 'Escenario 3 · Embarazada Directo a Parto (Valeria Sofía Hernández Luna)',
+                titulo: 'Nota de Ingreso Hospitalario Directo e Historia Clínica (Sin Consulta Externa)',
+                norma: 'NOM-004-SSA3-2012',
+                turno_id: int3.turno_id,
+                html: htmlImpresionNotaIngresoDirecto(int3.nota_ingreso_directo, int3.turno_id)
+            });
+            docs.push({
+                id: 'doc-parto-c3',
+                escenario: 'Escenario 3 · Embarazada Directo a Parto (Valeria Sofía Hernández Luna)',
+                titulo: 'Nota de Atención de Parto Eutócico y Alumbramiento',
+                norma: 'NOM-007-SSA2-2016 / NOM-004',
+                turno_id: int3.turno_id,
+                html: htmlImpresionNotaParto(int3.nota_parto, int3.turno_id)
+            });
+            docs.push({
+                id: 'doc-rn-c3',
+                escenario: 'Escenario 3 · Embarazada Directo a Parto (Valeria Sofía Hernández Luna)',
+                titulo: 'Hoja de Recién Nacido (Pediatría / Cunero · Sin Tamiz)',
+                norma: 'NOM-007-SSA2-2016',
+                turno_id: int3.turno_id,
+                html: htmlImpresionHojaRecienNacido(int3.hoja_recien_nacido, int3.turno_id)
+            });
+        }
+        if (int4 && int4.alta_voluntaria) {
+            docs.push({
+                id: 'doc-altavol-c4',
+                escenario: 'Escenario 4 · Alta Voluntaria desde Observación (Jorge Luis Navarro Pineda)',
+                titulo: 'Hoja de Egreso Voluntario y Responsiva Médico-Legal (Exoneración Total)',
+                norma: 'NOM-004-SSA3-2012 numeral 10.2 y Art. 79 RLGSPSAM',
+                turno_id: int4.turno_id,
+                html: htmlImpresionCartaAltaVoluntaria(int4.alta_voluntaria, int4.turno_id)
+            });
+        }
+        return docs;
+    }
+
     // Borra TODA la información operativa del demo (no toca los machotes) y vuelve a sembrar
     function restablecerDemo() {
         [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.estudios, CLAVES.estudiosV3, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.recetasFoliadas, CLAVES.recetas, CLAVES.folioRecetaSeq, CLAVES.folioExternoSeq, CLAVES.demoQxActivo, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo, 'belen_seed_v18', 'belen_seed_v19'].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
@@ -8547,7 +9070,8 @@
         solicitarEstudiosHospital, confirmarEstudioEnfermeria, htmlImpresionOrdenesEstudios,
         htmlImpresionHojaEnfermeria, registrarAltaPorServicio,
         prefillAltaVoluntaria, registrarAltaVoluntaria, htmlImpresionCartaAltaVoluntaria,
-        guardarNotaIngresoDirectoHospital, htmlImpresionNotaIngresoDirecto
+        guardarNotaIngresoDirectoHospital, htmlImpresionNotaIngresoDirecto,
+        BITACORA_CACHE_AVANCES, asegurarCasosClinicosRecorrido, obtenerDocumentosCacheRecorrido, obtenerIdsCacheRecorrido
     };
     sembrarUsuariosSiHaceFalta();
     completarAnestesiologoCirugias();
@@ -8555,4 +9079,5 @@
     sembrarFarmaciaSiHaceFalta();
     normalizarIvaDiferido();
     sembrarDemoSiHaceFalta();
+    asegurarCasosClinicosRecorrido(false);
 })(window);
