@@ -1225,35 +1225,53 @@
     <div id="print-hoja-qx" class="zona-impresion hidden" data-titulo="Hoja Quirúrgica"></div>
 
     <div id="print-indicaciones" class="zona-impresion hidden" data-titulo="Indicaciones médicas">
-      <article style="font-family:Arial,sans-serif;color:#0f172a;font-size:11px;line-height:1.4;">
-        <header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:6px;margin-bottom:10px;"><div style="text-align:center;"><div style="font-size:13px;font-weight:900;color:#0b3a5b;letter-spacing:.04em;">INDICACIONES MÉDICAS</div><div style="font-size:10px;color:#475569;">NOM-004-SSA3-2012 · Exp: <strong><span class="out-expediente"></span></strong> · Cama: <strong><span class="out-cama">Por asignar por Enfermería</span></strong> · Folio: <strong><span id="print-ind-folio"></span></strong></div></div></header>
-        <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px 10px;">
-          <div><strong>Paciente:</strong> <span id="print-ind-nombre"></span></div><div><strong>Sexo:</strong> <span id="print-ind-sexo"></span></div><div><strong>Edad:</strong> <span id="print-ind-edad"></span></div>
-          <div><strong>Fecha de nacimiento:</strong> <span id="print-ind-fn"></span></div><div style="grid-column:span 2;"><strong>Ingreso:</strong> <span id="print-ind-ingreso"></span></div>
-          <div style="grid-column:1/-1;"><strong>Diagnóstico:</strong> <span id="print-ind-dx" class="out-dx-prin"></span></div>
-          <div style="grid-column:1/-1;"><strong>Médico tratante:</strong> <span id="print-ind-tratante"></span></div>
-          <div><strong>Observación:</strong> <span id="print-ind-urg">☐</span> &nbsp; <strong>Hospital:</strong> <span id="print-ind-hosp">☐</span> <span class="out-cama"></span></div><div><strong>Cunero:</strong> <span id="print-ind-cunero">☐</span></div>
-          <div><strong>Alergias:</strong> Sí <span id="print-ind-alg-si">☐</span> No <span id="print-ind-alg-no">☐</span> <span id="print-ind-alergias" style="font-weight:bold;color:#991b1b;"></span></div>
+      <article style="font-family:Arial,sans-serif;color:#0f172a;font-size:11px;line-height:1.45;">
+        <header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:6px;margin-bottom:10px;">
+          <div style="text-align:center;">
+            <div style="font-size:13px;font-weight:900;color:#0b3a5b;letter-spacing:.04em;">HOJA DE INDICACIONES MÉDICAS</div>
+            <div style="font-size:10px;color:#475569;">NOM-004-SSA3-2012 · Exp: <strong><span class="out-expediente"></span></strong> · Cama: <strong><span class="out-cama">Por asignar por Enfermería</span></strong> · Folio: <strong><span id="print-ind-folio"></span></strong></div>
+          </div>
+        </header>
+        <div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:12px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px 12px;">
+          <div><strong>Paciente:</strong> <span id="print-ind-nombre"></span></div>
+          <div><strong>Sexo:</strong> <span id="print-ind-sexo"></span></div>
+          <div><strong>Edad:</strong> <span id="print-ind-edad"></span></div>
+          <div><strong>Fecha de nacimiento:</strong> <span id="print-ind-fn"></span></div>
+          <div><strong>Ingreso:</strong> <span id="print-ind-ingreso"></span></div>
+          <div><strong>Fecha y hora de indicación:</strong> <span id="print-ind-fecha" class="put-fecha" style="font-weight:bold;"></span></div>
+          <div><strong>Diagnóstico:</strong> <span id="print-ind-dx" class="out-dx-prin"></span></div>
+          <div style="grid-column:span 2;"><strong>Médico tratante:</strong> <span id="print-ind-tratante"></span></div>
+          <div style="grid-column:1/-1;"><strong>Alergias a medicamentos:</strong> Sí <span id="print-ind-alg-si">☐</span> &nbsp; No <span id="print-ind-alg-no">☐</span> &nbsp;·&nbsp; <strong>¿A qué es alérgico(a)?:</strong> <span id="print-ind-alergias" style="display:inline-block;min-width:220px;border-bottom:1px solid #cbd5e1;padding:0 4px;font-weight:bold;color:#991b1b;">NEGADAS</span></div>
         </div>
-        <table style="width:100%;border-collapse:collapse;">
-          <tr style="background:#0b3a5b;color:#fff;"><th style="width:22%;padding:5px;text-align:center;font-size:10.5px;">FECHA Y HORA</th><th style="padding:5px;text-align:left;font-size:10.5px;">INDICACIÓN <span style="font-weight:normal;">(medicamento, dosis, vía y periodicidad · nombre, cédula y firma del médico)</span></th></tr>
-          <tr>
-            <td id="print-ind-fecha" class="put-fecha" style="border:1px solid #cbd5e1;padding:4px 6px;vertical-align:top;font-weight:bold;"></td>
-            <td style="border:1px solid #cbd5e1;padding:4px 6px;vertical-align:top;">
-              <div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin:0 0 4px;padding-bottom:2px;">1. Dieta</div><div id="print-ind-dieta" style="white-space:pre-wrap;margin-bottom:6px;"></div>
-              <div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin:0 0 4px;padding-bottom:2px;">2. Soluciones</div><div id="print-ind-soluciones" style="white-space:pre-wrap;margin-bottom:6px;"></div>
-              <div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin:0 0 4px;padding-bottom:2px;">3. Medicamentos</div><div id="print-ind-medicamentos" style="white-space:pre-wrap;margin-bottom:6px;"></div>
-              <div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin:0 0 4px;padding-bottom:2px;">4. Medidas generales</div><div id="print-ind-medidas" style="white-space:pre-wrap;margin-bottom:6px;"></div>
-              <div id="bloque-print-interconsulta" style="display:none;margin-bottom:6px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin:0 0 4px;padding-bottom:2px;">Interconsulta</div><div id="print-ind-interconsulta"></div></div>
-              <div style="margin-top:22px;display:inline-block;min-width:230px;border-top:1px solid #0f172a;padding-top:4px;font-size:10.5px;text-align:center;"><strong id="print-ind-firma"></strong><div class="cedulas-firma" id="print-cedulas-ind" style="font-size:9.5px;white-space:pre-line;"></div></div>
-            </td>
-          </tr>
-          <tr><td style="border:1px solid #cbd5e1;padding:4px 6px;height:26px;"></td><td style="border:1px solid #cbd5e1;padding:4px 6px;"></td></tr>
-          <tr><td style="border:1px solid #cbd5e1;padding:4px 6px;height:26px;"></td><td style="border:1px solid #cbd5e1;padding:4px 6px;"></td></tr>
-          <tr><td style="border:1px solid #cbd5e1;padding:4px 6px;height:26px;"></td><td style="border:1px solid #cbd5e1;padding:4px 6px;"></td></tr>
-          <tr><td style="border:1px solid #cbd5e1;padding:4px 6px;height:26px;"></td><td style="border:1px solid #cbd5e1;padding:4px 6px;"></td></tr>
-          <tr><td style="border:1px solid #cbd5e1;padding:4px 6px;height:26px;"></td><td style="border:1px solid #cbd5e1;padding:4px 6px;"></td></tr>
-        </table>
+        <div style="padding:2px 2px 6px;">
+          <div style="margin-bottom:10px;">
+            <div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;margin:0 0 2px;">1. Dieta</div>
+            <div id="print-ind-dieta" style="white-space:pre-wrap;padding-left:4px;"></div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;margin:0 0 2px;">2. Soluciones parenterales</div>
+            <div id="print-ind-soluciones" style="white-space:pre-wrap;padding-left:4px;"></div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;margin:0 0 2px;">3. Medicamentos <span style="font-weight:normal;text-transform:none;color:#64748b;font-size:10px;">(nombre genérico, dosis, vía y periodicidad)</span></div>
+            <div id="print-ind-medicamentos" style="white-space:pre-wrap;padding-left:4px;"></div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;margin:0 0 2px;">4. Medidas generales y cuidados de enfermería</div>
+            <div id="print-ind-medidas" style="white-space:pre-wrap;padding-left:4px;"></div>
+          </div>
+          <div id="bloque-print-interconsulta" style="display:none;margin-bottom:10px;">
+            <div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;margin:0 0 2px;">5. Interconsulta</div>
+            <div id="print-ind-interconsulta" style="padding-left:4px;"></div>
+          </div>
+        </div>
+        <footer style="margin-top:32px;display:flex;justify-content:center;text-align:center;page-break-inside:avoid;">
+          <div style="min-width:250px;border-top:1px solid #0f172a;padding-top:4px;font-size:10.5px;">
+            <strong id="print-ind-firma"></strong>
+            <div class="cedulas-firma" id="print-cedulas-ind" style="font-size:9.5px;white-space:pre-line;"></div>
+            <div style="font-size:9.5px;color:#475569;">Nombre, cédula y firma del médico que indica</div>
+          </div>
+        </footer>
       </article>
     </div>
 
@@ -1353,8 +1371,8 @@
         </div>
     </div>
 
-    <script src="js/belen-store.js?v=f21"></script>
-    <script src="js/belen-ui.js?v=f21"></script>
+    <script src="js/belen-store.js?v=f22"></script>
+    <script src="js/belen-ui.js?v=f22"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
@@ -1785,7 +1803,10 @@
             const nom = raiz.querySelector('#print-ind-alergias');
             if (si) si.textContent = niega ? '☐' : '☑';
             if (no) no.textContent = niega ? '☑' : '☐';
-            if (nom) nom.textContent = niega ? '' : alg;
+            if (nom) {
+                nom.textContent = niega ? 'NEGADAS' : alg;
+                nom.style.color = niega ? '#0f172a' : '#991b1b';
+            }
         }
         function rellenarFichaImpresion() {
             if (!TURNO) return;
