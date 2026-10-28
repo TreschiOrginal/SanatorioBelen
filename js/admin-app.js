@@ -1501,7 +1501,8 @@ const AdminController = {
             if (!t || t.estatus === 'alta' || t.estatus === 'cerrado_historico') return;
             const cod = i.cama_codigo || i.cama || t.cama_codigo || t.cama;
             if (!cod) return;
-            const puedeVer = !!visiblesSet[t.turno_id] || s.rol === 'admin' || s.rol === 'administrador' || s.rol === 'enf_hospital' || s.rol === 'enf_triage';
+            const puedeVer = !!visiblesSet[t.turno_id] || s.rol === 'admin' || s.rol === 'administrador' || s.rol === 'enf_hospital';
+            if (!puedeVer) { poner(cod, { turno_id: t.turno_id, reservado: true, puede_abrir: false }); return; }
             const f = S.fichaHospitalizado(t, s);
             poner(cod, {
                 turno_id: t.turno_id,
@@ -1538,10 +1539,19 @@ const AdminController = {
                         <span class="text-xs font-extrabold text-slate-800"><i class="fas ${icono} mr-1 text-cyan-700"></i>${e(tituloCorto)}</span>
                         <span class="text-[10px] font-mono font-bold text-slate-500">${e(codigo)}</span>
                     </div>
-                    <p class="text-xs font-extrabold text-cyan-900 mt-2">${ocupado ? 'Ocupada por ' + e(pac.nombre) : '👉 Clic aquí para ubicar al paciente'}</p>
+                    <p class="text-xs font-extrabold text-cyan-900 mt-2">${ocupado ? (pac.reservado ? 'Ocupada' : 'Ocupada por ' + e(pac.nombre)) : '👉 Clic aquí para ubicar al paciente'}</p>
                 </div>`;
             }
 
+            if (ocupado && pac.reservado) {
+                return `<div data-plano-cama="${e(codigo)}" class="rounded-2xl p-3.5 border border-slate-300 bg-slate-100 flex flex-col justify-between min-h-[120px]">
+                    <div class="flex items-center justify-between gap-1.5">
+                        <span class="text-sm font-extrabold text-slate-700"><i class="fas ${icono} mr-1.5 text-slate-400"></i>${e(tituloCorto)}</span>
+                        <span class="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-slate-400 text-white">Ocupada</span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-3"><i class="fas fa-lock mr-1"></i>Cama ocupada · información reservada al personal del área</p>
+                </div>`;
+            }
             if (ocupado) {
                 const urlExp = this.urlExpedientePaciente(pac.turno_id);
                 const borde = pac.pendiente_pago
@@ -1607,8 +1617,26 @@ const AdminController = {
             </div>
         </div>` : '';
 
+        const todasCamas = ['HOSP-1','HOSP-2','HOSP-3','HOSP-4','HOSP-AISLADO','CUNERO-1','REC-1','REC-2','REC-GINECO','OBS-1','OBS-2'];
+        const nOcup = todasCamas.filter(c => (ocupantes[c] || []).length).length;
+        const nMios = todasCamas.filter(c => (ocupantes[c] || []).some(p => p.puede_abrir)).length;
+        const nCobro = todasCamas.filter(c => (ocupantes[c] || []).some(p => p.pendiente_pago)).length;
+        const chip = (n, txt, cls) => `<div class="flex-1 min-w-[120px] rounded-xl px-3 py-2 ${cls}"><div class="text-2xl font-black leading-none">${n}</div><div class="text-[11px] font-bold uppercase tracking-wide mt-1">${txt}</div></div>`;
+        const resumen = `<div class="flex flex-wrap gap-2 mb-3">
+                ${chip(todasCamas.length - nOcup, 'Camas libres', 'bg-emerald-50 text-emerald-800 border border-emerald-200')}
+                ${chip(nMios, (this.sesion.rol === 'admin' || this.sesion.rol === 'administrador' || this.sesion.rol === 'enf_hospital') ? 'Ocupadas' : 'Mis pacientes', 'bg-indigo-50 text-indigo-800 border border-indigo-200')}
+                ${nOcup - nMios > 0 ? chip(nOcup - nMios, 'Ocupadas (otro servicio)', 'bg-slate-100 text-slate-700 border border-slate-200') : ''}
+                ${nCobro ? chip(nCobro, 'Alta por cobrar', 'bg-amber-50 text-amber-800 border border-amber-200') : ''}
+            </div>
+            <div class="flex flex-wrap items-center gap-4 text-[11px] text-slate-600 mb-4 pb-3 border-b border-slate-100">
+                <span><span class="inline-block w-3 h-3 rounded bg-emerald-300 mr-1 align-middle"></span>Libre</span>
+                <span><span class="inline-block w-3 h-3 rounded bg-indigo-600 mr-1 align-middle"></span>Ocupada (puede abrir)</span>
+                <span><span class="inline-block w-3 h-3 rounded bg-slate-400 mr-1 align-middle"></span>Ocupada (reservada)</span>
+                <span><span class="inline-block w-3 h-3 rounded bg-amber-500 mr-1 align-middle"></span>Alta por cobrar</span>
+            </div>`;
         return `<section id="mapa-arquitectonico-2d" class="mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
             ${barraMover}
+            ${resumen}
             <div class="mb-5">
                 <div class="flex items-center justify-between mb-2.5">
                     <h3 class="text-xs font-extrabold uppercase tracking-wider text-indigo-950 flex items-center gap-1.5">
@@ -1633,7 +1661,7 @@ const AdminController = {
                     </h3>
                     <span class="text-[11px] text-slate-500">Camillas de corta estancia y post-operatorio</span>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
                     ${tarjetaCama('REC-1', 'Recuperación 1', 'Post-Quirúrgica', 'fa-bed-pulse', false)}
                     ${tarjetaCama('REC-2', 'Recuperación 2', 'Valoración / Post-Qx', 'fa-bed-pulse', false)}
                     ${tarjetaCama('REC-GINECO', 'Rec. Gineco', 'Preparación / Expulsión', 'fa-bed-pulse', false)}

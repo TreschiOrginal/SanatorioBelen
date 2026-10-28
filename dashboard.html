@@ -24,6 +24,7 @@
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
         @media screen { .zona-impresion { display: none !important; } }
+        @page { size: letter; margin: 3.6cm 1.6cm 1.1cm 1.6cm; }
         @media print { body > *:not(#print-dashboard) { display: none !important; } #print-dashboard { display: block !important; width: 100%; background: white; color: black; } }
     </style>
 </head>
@@ -122,9 +123,9 @@
 
     <!-- Scripts -->
     <div id="print-dashboard" class="zona-impresion"></div>
-    <script src="js/belen-store.js?v=f20"></script>
-    <script src="js/belen-ui.js?v=f20"></script>
+    <script src="js/belen-store.js?v=f21"></script>
+    <script src="js/belen-ui.js?v=f21"></script>
     <script src="js/admin-api.js"></script>
-    <script src="js/admin-app.js?v=f20"></script>
+    <script src="js/admin-app.js?v=f21"></script>
 </body>
 </html>

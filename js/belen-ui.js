@@ -802,7 +802,7 @@
                             window.print();
                             return false;
                         }
-                        w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>' + esc(doc.titulo) + '</title><style>@page{size:letter;margin:1.2cm;}body{margin:0;padding:12px;font-family:Arial,sans-serif;color:#0f172a;}</style></head><body>' + (doc.html || '') + '<script>setTimeout(function(){window.print();},350);<\/script></body></html>');
+                        w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>' + esc(doc.titulo) + '</title><style>@page{size:letter;margin:3.6cm 1.6cm 1.1cm 1.6cm;}body{margin:0;padding:12px;font-family:Arial,sans-serif;color:#0f172a;}</style></head><body>' + (doc.html || '') + '<script>setTimeout(function(){window.print();},350);<\/script></body></html>');
                         w.document.close();
                         return false;
                     }

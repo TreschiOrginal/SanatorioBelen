@@ -6422,9 +6422,8 @@
         const tieneTalla = m.talla && String(m.talla).trim() !== '' && !/^0+(\.0+)?\s*(m|cm)?$/i.test(String(m.talla).trim());
         return '<article style="font-family:Arial,sans-serif;color:#000;width:100%;max-width:19.5cm;margin:0 auto;font-size:12px;line-height:1.35;display:flex;flex-direction:column;min-height:21cm;box-sizing:border-box;">'
             + '<header><div style="display:grid;grid-template-columns:90px 1fr 140px;align-items:center;gap:10px;border-bottom:1.5px solid #0b3a5b;padding-bottom:8px;">'
-            + '<div style="display:flex;align-items:center;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" alt="Sanatorio Belén" style="height:64px;width:auto;object-fit:contain;"></div>'
-            + '<div style="text-align:center;"><div style="font-size:19px;font-weight:bold;letter-spacing:.10em;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div>'
-            + '<div style="margin-top:4px;font-weight:bold;font-size:13px;">' + e(m.medico || '') + '</div>'
+            + '<div></div>'
+            + '<div style="text-align:center;"><div style="font-weight:bold;font-size:13px;">' + e(m.medico || '') + '</div>'
             + '<div style="font-size:11px;font-weight:bold;color:#1e293b;">' + e(m.especialidad || '') + '</div>'
             + '<div style="font-size:10px;white-space:pre-line;margin-top:2px;">' + e(cedulasLimpias) + '</div></div>'
             + '<div style="text-align:right;font-size:11px;"><div><strong>Folio:</strong> ' + e(m.folio || '') + '</div><div><strong>Exp:</strong> ' + e(m.expediente || '') + '</div></div></div>'
@@ -7696,8 +7695,7 @@
         const cedulas = e(textoCedulasFirma(u) || (ic && ic.cedulas_impresas) || '').replace(/\n/g, '<br>');
         const espTxt = especialidadImpresaMedico(u) || (ic && ic.especialidad) || '';
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11.5px;line-height:1.4;page-break-inside:avoid;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:52px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, Puerto Vallarta, Jal. · Tel. (322) 224 0564</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
             + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0b3a5b;text-transform:uppercase;">NOTA DE INTERCONSULTA</div><div style="font-size:10px;color:#475569;">NOM-004-SSA3-2012 (Num. 6.3) · Folio: <strong>' + e((ic && ic.folio_respuesta) || 'NIC-01') + '</strong></div></div></header>'
             + '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;font-size:11px;">'
             + '<div><strong>Paciente:</strong> ' + e(nombrePac) + '</div><div><strong>Edad / Sexo:</strong> ' + e(edadTxt) + ' · ' + e(sexoTxt) + '</div><div><strong>Expediente:</strong> ' + e((t && t.paciente_id) || 'S/N') + '</div>'
@@ -7766,8 +7764,7 @@
         const sexoTxt = (p.sexo || (t && t.sexo)) === 'F' ? 'Femenino' : 'Masculino';
         const cedulas = e((val && val.cedulas_impresas) || '').replace(/\n/g, '<br>');
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;page-break-inside:avoid;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:50px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, Puerto Vallarta, Jal.</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
             + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0b3a5b;text-transform:uppercase;">NOTA DE VALORACIÓN PREOPERATORIA</div><div style="font-size:10px;color:#475569;">NOM-004-SSA3-2012 (Num. 8.5) · Folio: <strong>' + e((val && val.folio) || 'VPRE-01') + '</strong></div></div></header>'
             + '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
             + '<div><strong>Paciente:</strong> ' + e(nombrePac) + '</div><div><strong>Edad / Sexo:</strong> ' + e(edadTxt) + ' · ' + e(sexoTxt) + '</div><div><strong>Expediente:</strong> ' + e((t && t.paciente_id) || 'S/N') + '</div>'
@@ -7844,8 +7841,7 @@
         const madre = p.nombre_completo || (t && t.paciente_nombre) || 'Madre';
         const cedulas = e((rn && rn.cedulas_impresas) || '').replace(/\n/g, '<br>');
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;page-break-inside:avoid;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:50px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, Puerto Vallarta, Jal.</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
             + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0b3a5b;text-transform:uppercase;">HISTORIA CLÍNICA Y ATENCIÓN DEL RECIÉN NACIDO</div><div style="font-size:10px;color:#475569;">NOM-007-SSA2-2016 / NOM-004 · Folio: <strong>' + e((rn && rn.folio) || 'RN-01') + '</strong></div></div></header>'
             + '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
             + '<div><strong>Recién Nacido de:</strong> ' + e(madre) + '</div><div><strong>Sexo del RN:</strong> ' + e(rn && rn.sexo_rn) + '</div><div><strong>Vía de Nacimiento:</strong> ' + e(rn && rn.via_nacimiento) + '</div>'
@@ -7883,8 +7879,7 @@
         const horasCols = ["00'", "15'", "30'", "45'", "60'", "75'", "90'", "105'", "120'", "135'", "150'", "165'", "180'"];
         const filasSignos = ['TA Sistólica / Diastólica', 'Frecuencia Cardíaca (lpm)', 'SpO2 (%) / EtCO2', 'Frecuencia Resp. / Vent.', 'Temperatura (°C)', 'O2 (L/min) / Agente Inhalado'];
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:20cm;margin:0 auto;font-size:10.5px;line-height:1.3;page-break-inside:avoid;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:6px;margin-bottom:8px;">'
-            + '<div style="display:flex;align-items:center;gap:8px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:44px;width:auto;"><div><div style="font-size:14px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9px;color:#475569;">Formato Oficial para Llenado Manual en Quirófano · NOM-006-SSA3-2011</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:6px;margin-bottom:8px;">'
             + '<div style="text-align:right;"><div style="font-size:12.5px;font-weight:900;color:#0b3a5b;">HOJA DE REGISTRO TRANSANESTÉSICO</div><div style="font-size:9.5px;">Fecha: <strong>' + e(d.fecha || hoyLocal()) + '</strong> · Exp: <strong>' + e(d.expediente || '______') + '</strong></div></div></header>'
             + '<div style="border:1px solid #334155;border-radius:4px;padding:6px 8px;margin-bottom:8px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:5px;background:#f8fafc;">'
             + '<div><strong>Paciente:</strong> ' + e(d.paciente || '________________________________') + '</div>'
@@ -7995,8 +7990,7 @@
         const edadTxt = formatearEdad(p.fecha_nacimiento || t.fecha_nacimiento, calcularEdad(p.fecha_nacimiento || t.fecha_nacimiento));
         const cedulas = e((parto && parto.cedulas_impresas) || '').replace(/\n/g, '<br>');
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;page-break-inside:avoid;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:50px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, Puerto Vallarta, Jal.</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
             + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#be185d;text-transform:uppercase;">NOTA DE ATENCIÓN DE PARTO Y ALUMBRAMIENTO</div><div style="font-size:10px;color:#475569;">NOM-007-SSA2-2016 / NOM-004 · Folio: <strong>' + e((parto && parto.folio) || 'PARTO-001') + '</strong></div></div></header>'
             + '<div style="background:#fdf2f8;border:1px solid #f9a8d4;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
             + '<div><strong>Paciente (Madre):</strong> ' + e(nombrePac) + '</div><div><strong>Edad:</strong> ' + e(edadTxt) + '</div><div><strong>Expediente:</strong> ' + e(t.paciente_id || 'S/N') + '</div>'
@@ -8025,8 +8019,7 @@
         const n = nota || {};
         const meds = n.medicamentos_solicitados || [];
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;page-break-inside:avoid;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:50px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, Puerto Vallarta, Jal.</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
             + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#4c1d95;text-transform:uppercase;">NOTA DE VALORACIÓN PREANESTÉSICA</div><div style="font-size:10px;color:#475569;">NOM-006-SSA3-2011 · Folio: <strong>' + e(n.folio || 'PRE-001') + '</strong></div></div></header>'
             + '<div style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
             + '<div><strong>Paciente:</strong> ' + e(d.nombre || d.paciente) + ' (' + e(d.edad_texto || d.edad) + ', ' + e(d.sexo) + ')</div><div><strong>Expediente:</strong> ' + e(d.expediente) + '</div><div><strong>Cama:</strong> ' + e(d.cama) + '</div>'
@@ -8060,8 +8053,7 @@
             { hora: '10:00', ta: '120/75', fc: '74', fr: '16', spo2: '99%', etco2: '36', evento: 'Emersión anestésica / Pase a Recuperación' }
         ];
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:10.5px;line-height:1.35;page-break-inside:avoid;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:6px;margin-bottom:8px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:46px;width:auto;"><div><div style="font-size:14px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9px;color:#475569;">Registro Clínico de Anestesiología · NOM-006-SSA3-2011</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:6px;margin-bottom:8px;">'
             + '<div style="text-align:right;"><div style="font-size:12.5px;font-weight:900;color:#0b3a5b;text-transform:uppercase;">HOJA DE REGISTRO TRANSANESTÉSICO</div><div style="font-size:9.5px;color:#475569;">Folio: <strong>' + e(r.folio || 'TRA-001') + '</strong> · Fecha: <strong>' + e(fechaHoraLegible(r.fecha_hora || d.fecha)) + '</strong></div></div></header>'
             + '<div style="background:#f8fafc;border:1px solid #94a3b8;border-radius:5px;padding:6px 8px;margin-bottom:8px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:4px;">'
             + '<div><strong>Paciente:</strong> ' + e(d.nombre || d.paciente) + '</div><div><strong>Edad/Sexo:</strong> ' + e(d.edad_texto || d.edad) + ' · ' + e(d.sexo) + '</div><div><strong>Exp:</strong> ' + e(d.expediente) + '</div><div><strong>Cama/Sala:</strong> ' + e(d.cama) + ' / ' + e(d.sala) + '</div>'
@@ -8086,8 +8078,7 @@
         const recs = n.recetas_foliadas || [];
         const sig = n.signos_egreso_qx || {};
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;page-break-inside:avoid;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:50px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, Puerto Vallarta, Jal.</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
             + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0b3a5b;text-transform:uppercase;">NOTA POSTANESTÉSICA Y CONCILIACIÓN DE CONTROLADOS</div><div style="font-size:10px;color:#475569;">NOM-006-SSA3-2011 · Folio: <strong>' + e(n.folio || 'PA-001') + '</strong></div></div></header>'
             + '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
             + '<div><strong>Paciente:</strong> ' + e(d.nombre || d.paciente) + ' (' + e(d.edad_texto || d.edad) + ', ' + e(d.sexo) + ')</div><div><strong>Expediente:</strong> ' + e(d.expediente) + '</div><div><strong>Cama:</strong> ' + e(d.cama) + '</div>'
@@ -8219,8 +8210,7 @@
         const lista = (i.ordenes_estudios || []);
         const tubos = resumenTubosEstudios(lista.map(x => x.estudio_id));
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.4;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:48px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Órdenes de Estudios de Laboratorio y Gabinete · Control de Enfermería</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
             + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0b3a5b;">SOLICITUD Y CONTROL DE ESTUDIOS</div><div style="font-size:10px;color:#475569;">Expediente: <strong>' + e(t.paciente_id || 'S/N') + '</strong> · Cama: <strong>' + e(i.cama || 'Piso') + '</strong></div></div></header>'
             + '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
             + '<div><strong>Paciente:</strong> ' + e(nombrePac) + '</div><div><strong>Edad:</strong> ' + e(edadTxt) + '</div><div><strong>Diagnóstico:</strong> ' + e(i.diagnostico_actual || t.dx_principal || '') + '</div></div>'
@@ -8240,8 +8230,7 @@
         const nombrePac = p.nombre_completo || t.paciente_nombre || 'Paciente';
         const edadTxt = formatearEdad(p.fecha_nacimiento || t.fecha_nacimiento, calcularEdad(p.fecha_nacimiento || t.fecha_nacimiento));
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0d9488;padding-bottom:8px;margin-bottom:10px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:48px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Hoja de Registros Clínicos de Enfermería, Kardex y Balance Hídrico (NOM-004-SSA3-2012)</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0d9488;padding-bottom:8px;margin-bottom:10px;">'
             + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0f766e;">HOJA CLÍNICA DE ENFERMERÍA</div><div style="font-size:10px;color:#475569;">Exp: <strong>' + e(t.paciente_id || 'S/N') + '</strong> · Cama: <strong>' + e(i.cama || t.cama || 'Por asignar') + '</strong></div></div></header>'
             + '<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
             + '<div><strong>Paciente:</strong> ' + e(nombrePac) + ' (' + e(edadTxt) + ')</div><div><strong>Alergias:</strong> <span style="color:#b91c1c;font-weight:bold;">' + e(i.alergias || 'NEGADAS') + '</span></div><div><strong>Médico Tratante:</strong> ' + e(i.medico_tratante_nombre || t.medico_nombre || '') + '</div></div>'
@@ -8403,8 +8392,7 @@
         const d = Object.assign({}, prefillAltaVoluntaria(turnoId), datos || {});
         const sv = d.signos_egreso || {};
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:10.5px;line-height:1.36;page-break-inside:avoid;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #991b1b;padding-bottom:6px;margin-bottom:8px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:48px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9px;color:#334155;">Josefa Ortiz de Domínguez #189, Col. Centro Pitillal, C.P. 48290, Puerto Vallarta, Jalisco · Tel. (322) 224 0564</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #991b1b;padding-bottom:6px;margin-bottom:8px;">'
             + '<div style="text-align:right;"><div style="font-size:12.5px;font-weight:900;color:#991b1b;text-transform:uppercase;">HOJA DE EGRESO VOLUNTARIO Y RESPONSIVA MÉDICO-LEGAL</div><div style="font-size:9.5px;color:#475569;">NOM-004-SSA3-2012 (Num. 10.2) · Art. 79 RLGSPSAM · Folio: <strong>' + e(d.folio || 'EGV-001') + '</strong></div></div></header>'
             + '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:7px 9px;margin-bottom:8px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px;">'
             + '<div><strong>Nombre del Paciente:</strong> ' + e(d.paciente_nombre) + '</div><div><strong>Edad / Sexo:</strong> ' + e(d.edad) + ' · ' + e(d.sexo) + '</div><div><strong>No. Expediente:</strong> ' + e(d.expediente) + '</div>'
@@ -8470,8 +8458,7 @@
         const edadTxt = formatearEdad(p.fecha_nacimiento || t.fecha_nacimiento, calcularEdad(p.fecha_nacimiento || t.fecha_nacimiento));
         const sv = i.signos_vitales || t.signos_vitales || {};
         return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;">'
-            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
-            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:48px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Nota de Ingreso Hospitalario e Historia Clínica (NOM-004-SSA3-2012)</div></div></div>'
+            + '<header style="display:flex;justify-content:center;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
             + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0b3a5b;">NOTA DE INGRESO E HISTORIA CLÍNICA</div><div style="font-size:10px;color:#475569;">Exp: <strong>' + e(t.paciente_id || 'S/N') + '</strong> · Cama: <strong>' + e(i.cama || 'Piso') + '</strong></div></div></header>'
             + '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
             + '<div><strong>Paciente:</strong> ' + e(nombrePac) + ' (' + e(edadTxt) + ')</div><div><strong>Alergias:</strong> <span style="color:#b91c1c;font-weight:bold;">' + e(i.alergias || 'NEGADAS') + '</span></div><div><strong>Fecha/Hora:</strong> ' + e(fechaHoraLegible(d.fecha_hora || i.fecha_ingreso)) + '</div>'
@@ -8553,6 +8540,54 @@
         };
     }
 
+
+    function sembrarAgendaQuirurgica20Dias(forzar) {
+        try {
+            if (!forzar && localStorage.getItem('belen_qx_20dias_v21') === '1' && listarCirugias().length >= 35) return;
+            const ses = sesionParaCache('admin');
+            const nombres = ['ALEJANDRO','FERNANDA','EDUARDO','GABRIELA','RODRIGO','DANIELA','MAURICIO','PAOLA','HECTOR','LUCIA','SERGIO','CAMILA','GUSTAVO','MARIANA','OSCAR','VERONICA','ARTURO','NATALIA','RUBEN','KARLA'];
+            const paternos = ['MORALES','ORTEGA','DELGADO','SILVA','MENDOZA','ROJAS','GUERRERO','AGUILAR','CASTRO','CAMPOS','VARGAS','RIOS','REYES','CRUZ','MEJIA','FLORES','VEGA','LUNA','PINEDA','SANTOS'];
+            const maternos = ['SALAZAR','PONCE','IBARRA','TREJO','NAVARRO','MOLINA','CORTES','JUAREZ','ACOSTA','SOLIS'];
+            const procs = [
+                { p: 'Colecistectomía laparoscópica', m: 'dr_arturo', d: 90, e: 'HOSPITALARIA' },
+                { p: 'Cesárea segmentaria tipo Kerr', m: 'dra_patricia', d: 90, e: 'HOSPITALARIA', ped: 'dr_carlos_ped', s: 'F' },
+                { p: 'Safenectomía y flebectomía bilateral', m: 'dr_roberto', d: 90, e: 'AMBULATORIA' },
+                { p: 'Plastía inguinal con malla sin tensión', m: 'dr_arturo', d: 60, e: 'AMBULATORIA' },
+                { p: 'Histerectomía total abdominal', m: 'dra_patricia', d: 120, e: 'HOSPITALARIA', s: 'F' },
+                { p: 'Apendicectomía laparoscópica programada', m: 'dr_arturo', d: 60, e: 'HOSPITALARIA' },
+                { p: 'Fístula arteriovenosa radiocefálica', m: 'dr_roberto', d: 60, e: 'AMBULATORIA' },
+                { p: 'Oclusión tubaria bilateral (OTB)', m: 'dra_patricia', d: 60, e: 'AMBULATORIA', s: 'F' }
+            ];
+            const base = new Date();
+            for (let dia = 1; dia <= 20; dia++) {
+                const dt = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dia);
+                const fecha = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+                for (let turno = 0; turno < 2; turno++) {
+                    const idx = (dia - 1) * 2 + turno;
+                    const pr = procs[idx % procs.length];
+                    const nom = (pr.s === 'F' ? ['FERNANDA','GABRIELA','DANIELA','PAOLA','LUCIA','CAMILA','MARIANA','VERONICA','NATALIA','KARLA'][idx % 10] : nombres[idx % nombres.length]);
+                    const pat = paternos[idx % paternos.length];
+                    const mat = maternos[(idx * 3 + dia) % maternos.length];
+                    programarCirugia({
+                        nombres: nom, apellido_paterno: pat, apellido_materno: mat,
+                        nombre: nom + ' ' + pat + ' ' + mat,
+                        fecha_nacimiento: (1965 + (idx % 34)) + '-0' + ((idx % 9) + 1) + '-' + String(10 + (idx % 18)),
+                        sexo: pr.s || (idx % 2 ? 'M' : 'F'),
+                        telefono: '3221' + String(100000 + idx * 137).slice(0, 6),
+                        direccion: 'Puerto Vallarta, Jalisco',
+                        tipo_estancia: pr.e, procedimiento: pr.p,
+                        sala: SALAS_QUIROFANO[turno % SALAS_QUIROFANO.length].codigo,
+                        fecha: fecha, hora_inicio: turno === 0 ? '09:00' : '13:00', duracion_minutos: pr.d,
+                        medico_cirujano_id: pr.m, anestesiologo_id: 'dra_elena',
+                        pediatra_id: pr.ped || null, requiere_pediatra: !!pr.ped,
+                        indicaciones_preoperatorias: 'Ayuno de 8 horas, laboratorios preoperatorios vigentes y canalización con solución Hartmann.'
+                    }, ses);
+                }
+            }
+            localStorage.setItem('belen_qx_20dias_v21', '1');
+        } catch (e) { console.warn('sembrarAgendaQuirurgica20Dias:', e); }
+    }
+
     function obtenerIdsCacheRecorrido() {
         try {
             const raw = localStorage.getItem('belen_cache_recorrido_ids_v20');
@@ -8563,6 +8598,7 @@
 
     function asegurarCasosClinicosRecorrido(forzarRecreacion) {
         try {
+            sembrarAgendaQuirurgica20Dias(forzarRecreacion);
             const guardados = obtenerIdsCacheRecorrido();
             if (guardados && guardados.t2 && obtenerTurno(guardados.t2) && !forzarRecreacion) {
                 return guardados;
