@@ -595,6 +595,27 @@ const AdminController = {
     // ======================================================================
     // VISTA: PRÓXIMAS CIRUGÍAS (admin, administrador, enf_quirofano; módulo "Quirófano")
     // ======================================================================
+    colorCirujanoCalendario: function (medicoId, confirmadaAdmin) {
+        const paletas = {
+            dr_arturo:     { nombre: 'Dr. Arturo Gómez (Cirugía Gral.)',      dot: 'bg-blue-600',    borde: 'border-l-blue-600',    chip: 'bg-blue-50 hover:bg-blue-100 text-blue-950 border-l-4 border-blue-600',       badge: 'bg-blue-100 text-blue-900 border-blue-300' },
+            dra_patricia:  { nombre: 'Dra. Patricia Gómez (Gineco-Obst.)',    dot: 'bg-pink-600',    borde: 'border-l-pink-600',    chip: 'bg-pink-50 hover:bg-pink-100 text-pink-950 border-l-4 border-pink-600',       badge: 'bg-pink-100 text-pink-900 border-pink-300' },
+            dr_roberto:    { nombre: 'Dr. Roberto Flores (Angiología)',       dot: 'bg-emerald-600', borde: 'border-l-emerald-600', chip: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-950 border-l-4 border-emerald-600', badge: 'bg-emerald-100 text-emerald-900 border-emerald-300' },
+            dr_juan:       { nombre: 'Dr. Juan Pérez (Medicina Gral.)',       dot: 'bg-indigo-600',  borde: 'border-l-indigo-600',  chip: 'bg-indigo-50 hover:bg-indigo-100 text-indigo-950 border-l-4 border-indigo-600',   badge: 'bg-indigo-100 text-indigo-900 border-indigo-300' },
+            dr_internista: { nombre: 'Dr. Daniel Morales (Med. Interna)',     dot: 'bg-cyan-600',    borde: 'border-l-cyan-600',    chip: 'bg-cyan-50 hover:bg-cyan-100 text-cyan-950 border-l-4 border-cyan-600',       badge: 'bg-cyan-100 text-cyan-900 border-cyan-300' }
+        };
+        const base = paletas[medicoId] || { nombre: 'Otro Cirujano', dot: 'bg-violet-600', borde: 'border-l-violet-600', chip: 'bg-violet-50 hover:bg-violet-100 text-violet-950 border-l-4 border-violet-600', badge: 'bg-violet-100 text-violet-900 border-violet-300' };
+        if (!confirmadaAdmin) {
+            return {
+                nombre: base.nombre,
+                dot: 'bg-amber-500',
+                borde: 'border-l-amber-500',
+                chip: 'bg-amber-50 hover:bg-amber-100 text-amber-950 border-l-4 border-amber-500 ring-1 ring-amber-300',
+                badge: 'bg-amber-100 text-amber-900 border-amber-300'
+            };
+        }
+        return base;
+    },
+
     htmlTarjetaCirugia: function (c) {
         const e = t => this.e(t);
         const S = BelenStore;
@@ -602,19 +623,21 @@ const AdminController = {
         const dias = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())) / 86400000);
         const cuando = dias === 0 ? ['Hoy', 'bg-red-100 text-red-700'] : (dias === 1 ? ['Mañana', 'bg-amber-100 text-amber-700'] : (dias > 1 ? ['En ' + dias + ' días', 'bg-slate-100 text-slate-600'] : ['En curso', 'bg-violet-100 text-violet-700']));
         const dato = (et, v) => `<div class="min-w-0"><p class="text-[10px] font-bold text-slate-400 uppercase leading-none">${et}</p><p class="text-sm text-slate-800 mt-1 leading-snug">${v}</p></div>`;
+        const col = this.colorCirujanoCalendario(c.medico_cirujano_id, c.confirmada_admin);
         const tipo = c.tipo_estancia === 'AMBULATORIA'
             ? '<span class="inline-flex text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300">Ambulatoria</span>'
             : '<span class="inline-flex text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">Hospitalaria</span>';
         const anestesia = c.anestesiologo
             ? `<span class="font-semibold" data-campo="anestesiologo">${e(c.anestesiologo)}</span>`
-            : '<span class="font-extrabold text-rose-700" data-campo="anestesiologo">Pendiente (Asignará Administración)</span>';
-        const asignar = (this.rolActual === 'admin' || this.rolActual === 'administrador') && c.anestesiologo_pendiente
-            ? `<button type="button" onclick="AdminController.abrirAsignarAnestesiologo('${e(c.cirugia_id)}')" class="mt-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-extrabold py-2 px-3 rounded-lg shadow-sm">Asignar Anestesiólogo</button>` : '';
-        const confirmarBtn = (this.rolActual === 'admin' || this.rolActual === 'administrador' || this.rolActual === 'enf_quirofano')
-            ? `<button type="button" onclick="AdminController.abrirConfirmarCirugiaAdmin('${e(c.cirugia_id)}')" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm"><i class="fas fa-user-check mr-1"></i>${c.confirmada_admin ? 'Editar Equipo / Confirmación' : 'Confirmar Cirugía y Equipo'}</button>` : '';
+            : '<span class="font-extrabold text-amber-700" data-campo="anestesiologo">Pendiente (Asignará Administración)</span>';
+        const esAdmin = this.rolActual === 'admin' || this.rolActual === 'administrador';
+        const btnDetalle = `<button type="button" onclick="AdminController.abrirDetalleCirugiaCalendario('${e(c.cirugia_id)}')" class="${esAdmin ? (c.confirmada_admin ? 'bg-slate-800 hover:bg-slate-900' : 'bg-amber-600 hover:bg-amber-700') : 'bg-violet-700 hover:bg-violet-800'} text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm"><i class="fas ${esAdmin ? 'fa-user-check' : 'fa-calendar-check'} mr-1"></i>${esAdmin ? (c.confirmada_admin ? 'Ver / Editar Equipo y Autorización' : 'Revisar, Asignar Equipo y Autorizar') : 'Ver Horario, Equipo e Indicaciones'}</button>`;
         const badgeConfirmada = c.confirmada_admin
-            ? `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300"><i class="fas fa-circle-check"></i> Confirmada por Admin</span>`
-            : `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300"><i class="fas fa-clock"></i> Pendiente confirmar equipo</span>`;
+            ? `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300"><i class="fas fa-circle-check"></i> Autorizada por Administración</span>`
+            : `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300"><i class="fas fa-clock"></i> Pendiente de confirmación por Administración</span>`;
+        const avisoMedicoPendiente = (!c.confirmada_admin && this.rolActual === 'medico')
+            ? `<div class="mt-2.5 bg-amber-50 border border-amber-300 text-amber-900 rounded-xl px-3 py-2 text-xs font-bold flex items-center gap-2"><i class="fas fa-hourglass-half text-amber-600"></i><span>Falta la confirmación de esta programación por Administración (Alfonso).</span></div>`
+            : '';
         const equipoExtra = (c.ayudante_nombre || c.instrumentista_nombre || c.circulante_nombre)
             ? `<div class="col-span-2 pt-2 border-t border-slate-100 text-xs text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
                 ${c.ayudante_nombre ? `<span><b class="text-slate-500 uppercase text-[10px]">1er Ayudante:</b> ${e(c.ayudante_nombre)}</span>` : ''}
@@ -622,7 +645,7 @@ const AdminController = {
                 ${c.circulante_nombre ? `<span><b class="text-slate-500 uppercase text-[10px]">Circulante:</b> ${e(c.circulante_nombre)}</span>` : ''}
             </div>` : '';
         const ingresar = S.puedeIngresarAmbulatorio(this.sesion) && c.tipo_estancia === 'AMBULATORIA' && !c.ingresada && !c.ya_internado
-            ? `<button type="button" onclick="AdminController.confirmarIngresoAmbulatorio('${e(c.cirugia_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">Ingresar Paciente Ambulatorio a Quirófano</button>` : '';
+            ? `<button type="button" onclick="AdminController.confirmarIngresoAmbulatorio('${e(c.cirugia_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">1. Ingresar Paciente Ambulatorio a Quirófano</button>` : '';
         const turnoQx = S.turnoActivoParaEstudios({ turno_id: c.turno_id, paciente_id: c.paciente_id });
         const cargarQx = turnoQx && S.permisoAccionDe(this.sesion.usuario_id, 'cargar_consumos')
             ? `<button type="button" onclick="AdminController.abrirTerminalEstudios('${e(turnoQx.turno_id)}')" class="bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold py-2.5 px-3 rounded-lg shadow-sm">🧪 Cargar Estudios / Tubos / Procedimientos</button>` : '';
@@ -634,7 +657,7 @@ const AdminController = {
         const ya = c.ingresada
             ? '<span class="inline-flex text-[10px] font-extrabold uppercase px-2 py-1 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300">CIRUGÍA AMBULATORIA · ingresado</span>'
             : (c.ya_internado && c.tipo_estancia === 'AMBULATORIA' ? '<span class="text-[11px] font-semibold text-slate-500">El paciente ya tiene un episodio activo.</span>' : '');
-        return `<div data-cirugia="${e(c.cirugia_id)}" class="bg-white rounded-2xl border border-slate-200 border-l-4 border-l-violet-500 shadow-sm p-4">
+        return `<div data-cirugia="${e(c.cirugia_id)}" class="bg-white rounded-2xl border border-slate-200 border-l-4 ${col.borde} shadow-sm p-4">
             <div class="flex flex-wrap items-start justify-between gap-2">
                 <div class="min-w-0"><div class="flex flex-wrap items-center gap-2 mb-1">${tipo}${badgeConfirmada}</div>
                     <h4 class="text-base font-extrabold text-slate-900" data-campo="paciente">${e(c.nombre)}</h4>
@@ -645,11 +668,12 @@ const AdminController = {
                     <p class="text-lg font-extrabold text-slate-900 leading-none" data-campo="hora">${e(c.hora_texto)}</p>
                     ${c.duracion_texto ? `<p class="text-[11px] text-slate-400">${e(c.duracion_texto)}</p>` : ''}</div>
             </div>
+            ${avisoMedicoPendiente}
             <div class="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100">
                 ${dato('Fecha de nacimiento', `<span data-campo="nacimiento">${e(S.fechaLegibleISO(c.fecha_nacimiento))}</span>`)}
                 ${dato('Edad', `<span data-campo="edad">${S.formatearEdad ? S.formatearEdad(c.fecha_nacimiento, c.edad) : (c.edad !== null ? c.edad + ' años' : '—')}</span>`)}
-                ${dato('Médico cirujano', `<span class="font-semibold" data-campo="cirujano">${e(c.medico_cirujano)}</span>${c.medico_especialidad ? `<span class="block text-[11px] text-slate-400">${e(c.medico_especialidad)}</span>` : ''}`)}
-                ${dato('Anestesiólogo', anestesia + asignar)}
+                ${dato('Médico cirujano', `<span class="inline-flex items-center gap-1.5 font-semibold" data-campo="cirujano"><span class="w-2.5 h-2.5 rounded-full ${col.dot}"></span>${e(c.medico_cirujano)}</span>${c.medico_especialidad ? `<span class="block text-[11px] text-slate-400">${e(c.medico_especialidad)}</span>` : ''}`)}
+                ${dato('Anestesiólogo', anestesia)}
                 ${equipoExtra}
             </div>
             <div class="mt-3 bg-cyan-50 border border-cyan-200 rounded-lg px-3 py-2">
@@ -658,7 +682,7 @@ const AdminController = {
             <div class="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
                 <p class="text-[10px] font-bold text-yellow-700 uppercase leading-none mb-1"><i class="fas fa-note-sticky mr-1"></i>Notas privadas</p>
                 <p class="text-xs text-slate-800" data-campo="notas">${c.notas ? e(c.notas) : '<span class="text-slate-400 italic">Sin notas registradas.</span>'}</p></div>
-            ${(confirmarBtn || ingresar || ya || cargarQx || postopQx || abrirExp) ? `<div class="mt-3 flex flex-wrap items-center gap-2">${confirmarBtn}${cargarQx}${postopQx}${ingresar}${abrirExp}${ya}</div>` : ''}
+            <div class="mt-3 flex flex-wrap items-center gap-2">${btnDetalle}${cargarQx}${postopQx}${ingresar}${abrirExp}${ya}</div>
         </div>`;
     },
 
@@ -666,6 +690,7 @@ const AdminController = {
         const S = BelenStore;
         if (S.sincronizarPaseAutomaticoQuirofano) S.sincronizarPaseAutomaticoQuirofano();
         const lista = S.cirugiasVisibles(this.sesion);
+        const listaFiltrada = this.diaFiltroQx ? lista.filter(c => (c.fecha || String(c.fecha_hora || '').slice(0, 10)) === this.diaFiltroQx) : lista;
         const boton = S.puede('programar_cirugia')
             ? `<button type="button" id="btn-programar-cirugia" onclick="AdminController.abrirProgramarCirugia()" class="bg-violet-600 hover:bg-violet-700 text-white font-bold py-3 px-6 rounded-xl shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-2"><i class="fas fa-plus-circle"></i> + Programar Cirugía</button>` : '';
         const aviso = this.sesion.especialidad_codigo === 'ANESTESIOLOGIA'
@@ -675,14 +700,32 @@ const AdminController = {
                 : (this.rolActual === 'enf_hospital'
                     ? 'Se muestran las cirugías de los pacientes que ya están a su cargo en hospitalización.'
                     : (this.rolActual === 'enf_quirofano'
-                        ? 'Enfermería de Quirófano: agenda completa de Quirófano Grande y Quirófano Chico.'
-                        : 'Agenda de las dos salas, ordenada por fecha y hora de inicio.')));
+                        ? 'Enfermería de Quirófano: agenda mensual completa de Quirófano Grande y Quirófano Chico. Toque cualquier cirugía para ver horas, equipo e indicaciones.'
+                        : 'Administración (Alfonso): toque cualquier cirugía en el calendario para asignar equipo, autorizar o rechazar.')));
+        const pendientesMedico = this.rolActual === 'medico' ? lista.filter(c => !c.confirmada_admin) : [];
+        const bannerMedico = pendientesMedico.length
+            ? `<div class="mb-4 bg-amber-50 border-2 border-amber-300 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-lg font-bold shrink-0"><i class="fas fa-clock"></i></span>
+                    <div>
+                        <p class="text-sm font-extrabold text-amber-950">Falta confirmación de la programación por Administración (${pendientesMedico.length} ${pendientesMedico.length === 1 ? 'cirugía' : 'cirugías'})</p>
+                        <p class="text-xs text-amber-800">Su solicitud ya está en la agenda de Quirófano. Administración (Alfonso) confirmará la sala y asignará anestesiólogo, ayudante, instrumentista y circulante.</p>
+                    </div>
+                </div>
+            </div>` : '';
+        const barraFiltroDia = this.diaFiltroQx
+            ? `<div class="mb-4 flex items-center justify-between bg-violet-50 border border-violet-200 rounded-xl px-4 py-2.5 text-xs">
+                <span class="font-bold text-violet-900"><i class="fas fa-filter mr-1.5"></i>Mostrando cirugías del día <b>${this.e(S.fechaLegibleISO(this.diaFiltroQx))}</b> (${listaFiltrada.length})</span>
+                <button type="button" onclick="AdminController.seleccionarDiaCalendarioQx('')" class="bg-violet-700 hover:bg-violet-800 text-white font-extrabold px-3 py-1 rounded-lg">Ver todas las fechas (${lista.length})</button>
+            </div>` : '';
         return `<div class="flex flex-wrap justify-between items-end gap-4 mb-6">
-                    <div><h2 class="text-2xl font-extrabold text-slate-800">Próximas Cirugías</h2><p class="text-slate-500">${this.e(aviso)}</p></div>${boton}</div>
+                    <div><h2 class="text-2xl font-extrabold text-slate-800">Agenda y Calendario de Quirófano</h2><p class="text-slate-500">${this.e(aviso)}</p></div>${boton}</div>
+                ${bannerMedico}
                 ${this.htmlPanelEstupefacientes('QUIROFANO')}
                 ${this.htmlCalendarioQuirofano(lista)}
-                ${this.htmlControlesQuirofano()}
-                <div id="lista-cirugias" class="grid grid-cols-1 xl:grid-cols-2 gap-4">${lista.length ? lista.map(c => this.htmlTarjetaCirugia(c)).join('') : '<div class="xl:col-span-2 text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-kit-medical text-4xl mb-3 text-slate-300"></i><p>No hay cirugías programadas.</p></div>'}</div>`;
+                ${this.htmlControlesQuirofano(lista)}
+                ${barraFiltroDia}
+                <div id="lista-cirugias" class="grid grid-cols-1 xl:grid-cols-2 gap-4">${listaFiltrada.length ? listaFiltrada.map(c => this.htmlTarjetaCirugia(c)).join('') : '<div class="xl:col-span-2 text-center py-16 text-slate-400 font-medium bg-white/60 rounded-2xl border border-dashed border-slate-300"><i class="fas fa-kit-medical text-4xl mb-3 text-slate-300"></i><p>No hay cirugías programadas para este filtro.</p></div>'}</div>`;
     },
 
     pintarDisponibilidadQx: function (raiz) {
@@ -811,7 +854,7 @@ const AdminController = {
                         return false;
                     }
                     const finTxt = r.cirugia.hora_inicio && r.cirugia.hora_fin ? ' (' + r.cirugia.hora_inicio + ' a ' + r.cirugia.hora_fin + ')' : '';
-                    BelenUI.toast('Cirugía programada: ' + r.cirugia.procedimiento + finTxt + '.', 'exito');
+                    BelenUI.toast(r.cirugia.confirmada_admin ? ('Cirugía programada y confirmada: ' + r.cirugia.procedimiento + finTxt + '.') : ('Cirugía enviada a programación' + finTxt + '. Falta la confirmación por Administración (Alfonso).'), 'exito');
                     this.render();
                 } }
             ]
@@ -915,42 +958,407 @@ const AdminController = {
             } }]
         });
     },
+    cambiarMesCalendarioQx: function (delta) {
+        const S = BelenStore;
+        const base = (this.mesCalendarioQx || S.hoyLocal().slice(0, 7)).split('-');
+        const dt = new Date(Number(base[0]), Number(base[1]) - 1 + delta, 1);
+        this.mesCalendarioQx = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0');
+        this.render();
+    },
+
+    irMesActualQx: function () {
+        this.mesCalendarioQx = BelenStore.hoyLocal().slice(0, 7);
+        this.diaFiltroQx = '';
+        this.render();
+    },
+
+    seleccionarDiaCalendarioQx: function (fechaIso) {
+        this.diaFiltroQx = (this.diaFiltroQx === fechaIso) ? '' : (fechaIso || '');
+        this.render();
+    },
+
     htmlCalendarioQuirofano: function (lista) {
         const S = BelenStore, e = t => this.e(t);
         const fichas = (lista || []).map(c => (S.fichaCirugia ? S.fichaCirugia(c) : c)).filter(Boolean);
-        if (!fichas.length) return '';
-        const dias = {};
-        fichas.forEach(f => { const k = f.fecha || String(f.fecha_hora || '').slice(0, 10) || 'Sin fecha'; (dias[k] = dias[k] || []).push(f); });
-        const claves = Object.keys(dias).sort().slice(0, 7);
-        return '<div id="calendario-quirofano" class="mb-6 bg-white rounded-2xl border border-violet-200 shadow-sm p-4 overflow-x-auto"><h3 class="text-sm font-extrabold uppercase text-violet-700 mb-3"><i class="fas fa-calendar-days mr-1"></i>Calendario de quirófano</h3><div class="grid gap-3" style="grid-template-columns:repeat(' + claves.length + ',minmax(180px,1fr))">'
-            + claves.map(k => '<div class="border border-slate-200 rounded-xl p-2 bg-slate-50"><p class="text-xs font-extrabold text-slate-700 mb-2">' + e(dias[k][0].fecha_texto || k) + '</p>'
-                + dias[k].sort((a, b) => String(a.hora_inicio).localeCompare(String(b.hora_inicio))).map(f => '<div class="mb-2 rounded-lg px-2 py-1 text-[11px] ' + (String(f.sala || f.sala_codigo || '').indexOf('GRANDE') >= 0 ? 'bg-violet-100 border-l-4 border-violet-500' : 'bg-cyan-100 border-l-4 border-cyan-500') + '"><b>' + e(f.hora_inicio || '') + (f.hora_fin ? '–' + e(f.hora_fin) : '') + '</b> · ' + e(f.sala_nombre || '') + '<br>' + e(f.procedimiento || '') + '<br><span class="text-slate-600">' + e(f.paciente_nombre || '') + ' · ' + e(f.medico_cirujano || '') + '</span></div>').join('') + '</div>').join('')
-            + '</div></div>';
+        const hoyIso = S.hoyLocal();
+        if (!this.mesCalendarioQx) this.mesCalendarioQx = hoyIso.slice(0, 7);
+        const partesMes = this.mesCalendarioQx.split('-');
+        const anio = Number(partesMes[0]), mesIdx = Number(partesMes[1]) - 1;
+        const nombresMes = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const tituloMes = (nombresMes[mesIdx] || '') + ' ' + anio;
+
+        const porFecha = {};
+        fichas.forEach(f => {
+            const k = f.fecha || String(f.fecha_hora || '').slice(0, 10);
+            if (!k) return;
+            (porFecha[k] = porFecha[k] || []).push(f);
+        });
+        Object.keys(porFecha).forEach(k => {
+            porFecha[k].sort((a, b) => String(a.hora_inicio || '').localeCompare(String(b.hora_inicio || '')));
+        });
+
+        // Calcular cuadrícula mensual (Lunes a Domingo)
+        const primerDia = new Date(anio, mesIdx, 1);
+        const ultimoDia = new Date(anio, mesIdx + 1, 0);
+        const totalDiasMes = ultimoDia.getDate();
+        const offsetLunes = (primerDia.getDay() + 6) % 7; // 0 = Lunes, 6 = Domingo
+        const totalCeldas = Math.ceil((offsetLunes + totalDiasMes) / 7) * 7;
+
+        const autorizadasCount = fichas.filter(f => f.confirmada_admin).length;
+        const pendientesCount = fichas.filter(f => !f.confirmada_admin).length;
+        const esAdmin = this.rolActual === 'admin' || this.rolActual === 'administrador';
+
+        const celdasHtml = [];
+        for (let i = 0; i < totalCeldas; i++) {
+            const numDia = i - offsetLunes + 1;
+            if (numDia < 1 || numDia > totalDiasMes) {
+                celdasHtml.push('<div class="min-h-[118px] bg-slate-50/60 border border-slate-100 rounded-xl p-1.5"></div>');
+                continue;
+            }
+            const fechaIso = anio + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(numDia).padStart(2, '0');
+            const esHoy = fechaIso === hoyIso;
+            const esFiltro = this.diaFiltroQx === fechaIso;
+            const eventos = porFecha[fechaIso] || [];
+
+            const eventosHtml = eventos.map(f => {
+                const col = this.colorCirujanoCalendario(f.medico_cirujano_id, f.confirmada_admin);
+                const salaCorta = String(f.sala || '').indexOf('GRANDE') >= 0 ? 'QX Grande' : 'QX Chico';
+                const iconoEstado = f.confirmada_admin
+                    ? '<i class="fas fa-circle-check text-emerald-700" title="Autorizada por Administración"></i>'
+                    : '<i class="fas fa-clock text-amber-700" title="Pendiente de autorizar por Administración"></i>';
+                return `<button type="button" data-cal-cirugia="${e(f.cirugia_id)}" onclick="AdminController.abrirDetalleCirugiaCalendario('${e(f.cirugia_id)}')"
+                    class="w-full text-left rounded-lg px-2 py-1.5 mb-1 text-[11px] leading-tight transition shadow-2xs ${col.chip}">
+                    <div class="flex items-center justify-between gap-1 font-extrabold">
+                        <span>${e(f.hora_inicio || '')}${f.hora_fin ? '–' + e(f.hora_fin) : ''}</span>
+                        <span class="text-[10px] flex items-center gap-1">${salaCorta} ${iconoEstado}</span>
+                    </div>
+                    <div class="font-bold truncate mt-0.5" title="${e(f.procedimiento)}">${e(f.procedimiento)}</div>
+                    <div class="text-[10px] opacity-85 truncate">${e(f.nombre)} · ${e(f.medico_cirujano)}</div>
+                </button>`;
+            }).join('');
+
+            celdasHtml.push(`<div data-cal-fecha="${fechaIso}" class="min-h-[124px] rounded-xl p-2 flex flex-col justify-between transition border ${esHoy ? 'border-2 border-violet-600 bg-violet-50/40 ring-2 ring-violet-200' : (esFiltro ? 'border-2 border-indigo-500 bg-indigo-50/25' : 'border-slate-200 bg-white hover:border-slate-300')}">
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <button type="button" onclick="AdminController.seleccionarDiaCalendarioQx('${fechaIso}')" class="inline-flex items-center gap-1 text-xs font-extrabold ${esHoy ? 'bg-violet-600 text-white px-2 py-0.5 rounded-full shadow-xs' : 'text-slate-700 hover:text-violet-700 px-1'}" title="Filtrar tarjetas de este día">
+                            <span>${numDia}</span>
+                            ${esHoy ? '<span class="text-[9px] uppercase tracking-wider">Hoy</span>' : ''}
+                        </button>
+                        ${eventos.length ? `<span class="text-[10px] font-bold text-slate-400">${eventos.length} ${eventos.length === 1 ? 'qx' : 'qx'}</span>` : ''}
+                    </div>
+                    <div>${eventosHtml}</div>
+                </div>
+            </div>`);
+        }
+
+        const leyendaMedicos = [
+            ['dr_arturo', 'Dr. Arturo Gómez (Cirugía Gral.)'],
+            ['dra_patricia', 'Dra. Patricia Gómez (Gineco-Obst.)'],
+            ['dr_roberto', 'Dr. Roberto Flores (Angiología)']
+        ].map(([id, et]) => {
+            const c = this.colorCirujanoCalendario(id, true);
+            return `<span class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 rounded-full px-2.5 py-1"><span class="w-3 h-3 rounded-full ${c.dot}"></span>${e(et)}</span>`;
+        }).join('');
+
+        const avisoPendientesAdmin = (esAdmin && pendientesCount > 0)
+            ? `<div class="mb-3 bg-amber-50 border border-amber-300 rounded-xl px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-950">
+                <span><i class="fas fa-bell text-amber-600 mr-1.5"></i><b>Para Alfonso (Administración):</b> Hay <b>${pendientesCount} cirugías en color ámbar</b> pendientes de revisar, asignar equipo y autorizar. Tóquelas directamente en el calendario.</span>
+            </div>` : '';
+
+        return `<section id="calendario-quirofano" class="mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-100">
+                <div>
+                    <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                        <i class="fas fa-calendar-days text-violet-600"></i> Calendario Mensual de Quirófano
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Toque cualquier cirugía para ver horarios, indicaciones y quién vendrá${esAdmin ? ', o para asignar equipo y autorizarla' : ''}.</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200"><i class="fas fa-circle-check mr-1"></i>${autorizadasCount} autorizadas</span>
+                    <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300"><i class="fas fa-clock mr-1"></i>${pendientesCount} por autorizar</span>
+                    <div class="flex items-center bg-slate-100 rounded-xl p-1 gap-1">
+                        <button type="button" onclick="AdminController.cambiarMesCalendarioQx(-1)" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-xs font-extrabold shadow-2xs" title="Mes anterior"><i class="fas fa-chevron-left"></i></button>
+                        <span class="px-3 text-sm font-extrabold text-slate-900 min-w-[140px] text-center">${e(tituloMes)}</span>
+                        <button type="button" onclick="AdminController.cambiarMesCalendarioQx(1)" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-xs font-extrabold shadow-2xs" title="Mes siguiente"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <button type="button" onclick="AdminController.irMesActualQx()" class="px-3 py-1.5 rounded-xl border border-violet-300 bg-violet-50 hover:bg-violet-100 text-violet-800 text-xs font-extrabold">Hoy</button>
+                </div>
+            </div>
+            ${avisoPendientesAdmin}
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <span class="text-[11px] font-extrabold uppercase text-slate-400 mr-1">Colores por médico (autorizadas):</span>
+                ${leyendaMedicos}
+                <span class="inline-flex items-center gap-1.5 text-xs font-extrabold text-amber-900 bg-amber-50 border border-amber-300 rounded-full px-2.5 py-1"><span class="w-3 h-3 rounded-full bg-amber-500"></span>⏳ Por autorizar (Revisión de Administración)</span>
+            </div>
+            <div class="grid grid-cols-7 gap-2 mb-1.5 text-center text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+                <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
+                ${celdasHtml.join('')}
+            </div>
+        </section>`;
     },
-    htmlControlesQuirofano: function () {
+
+    abrirDetalleCirugiaCalendario: function (cirugiaId) {
+        const S = BelenStore, c = S.cirugiaPara(cirugiaId, this.sesion);
+        if (!c) { BelenUI.toast('No se encontró la cirugía.', 'alerta'); return; }
+        const e = x => this.e(x);
+        const esAdmin = this.rolActual === 'admin' || this.rolActual === 'administrador';
+        const col = this.colorCirujanoCalendario(c.medico_cirujano_id, c.confirmada_admin);
+        const anests = S.anestesiologos();
+        const pediatras = (S.medicosDeEspecialidad ? S.medicosDeEspecialidad('PEDIATRIA') : []);
+        const cls = 'w-full border border-slate-300 rounded-lg p-2 text-sm bg-white';
+
+        const bannerEstado = c.confirmada_admin
+            ? `<div class="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3 flex items-center justify-between gap-2 text-xs">
+                <div><i class="fas fa-circle-check text-emerald-600 mr-1.5"></i><b>Cirugía Autorizada por Administración</b>${c.confirmada_por_nombre ? ' · Confirmó: ' + e(c.confirmada_por_nombre) : ''}</div>
+                <span class="font-extrabold px-2.5 py-0.5 rounded-full border ${col.badge}">${e(c.medico_cirujano)}</span>
+            </div>`
+            : `<div class="bg-amber-50 border-2 border-amber-300 text-amber-950 rounded-xl p-3 text-xs">
+                <div class="font-extrabold text-sm"><i class="fas fa-clock text-amber-600 mr-1.5"></i>Pendiente de Confirmación por Administración (Alfonso)</div>
+                <p class="mt-0.5 text-amber-800">${esAdmin ? 'Revise el horario, asigne el equipo quirúrgico abajo y pulse "Autorizar Cirugía" para confirmarla en el calendario.' : 'Esta cirugía fue solicitada por el médico y está en espera de que Administración (Alfonso) confirme la sala y el equipo.'}</p>
+            </div>`;
+
+        const fichaLectura = `<div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs">
+            <div><span class="text-[10px] font-bold uppercase text-slate-400 block">Fecha y Horario</span><b class="text-sm text-slate-900">${e(c.fecha_texto)}</b><span class="block font-extrabold text-violet-700 text-sm">${e(c.hora_texto)} (${e(c.duracion_texto || '')})</span></div>
+            <div><span class="text-[10px] font-bold uppercase text-slate-400 block">Sala y Modalidad</span><b class="text-sm text-slate-900">${e(c.sala_nombre)}</b><span class="block font-bold text-slate-600">${c.tipo_estancia === 'AMBULATORIA' ? 'Cirugía Ambulatoria' : 'Cirugía con Hospitalización'}</span></div>
+            <div><span class="text-[10px] font-bold uppercase text-slate-400 block">Paciente</span><b class="text-sm text-slate-900">${e(c.nombre)}</b><span class="block text-slate-600">Nac: ${e(S.fechaLegibleISO(c.fecha_nacimiento))} (${S.formatearEdad ? S.formatearEdad(c.fecha_nacimiento, c.edad) : (c.edad + ' años')})</span></div>
+        </div>
+        <div class="bg-white border border-slate-200 rounded-xl p-3.5 text-xs">
+            <p class="text-[11px] font-extrabold uppercase text-slate-500 mb-2"><i class="fas fa-users-medical text-violet-600 mr-1"></i>¿Quién vendrá? · Equipo Quirúrgico Programado</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div><span class="text-slate-400 font-bold uppercase text-[10px] block">Médico Cirujano Titular</span><b class="text-slate-900">${e(c.medico_cirujano)}</b> <span class="text-slate-500">(${e(c.medico_especialidad || 'Cirugía')})</span></div>
+                <div><span class="text-slate-400 font-bold uppercase text-[10px] block">Anestesiólogo</span><b class="${c.anestesiologo ? 'text-slate-900' : 'text-amber-700'}">${e(c.anestesiologo || 'Pendiente de asignar por Administración')}</b></div>
+                <div><span class="text-slate-400 font-bold uppercase text-[10px] block">Primer Ayudante</span><b class="text-slate-800">${e(c.ayudante_nombre || 'Por asignar')}</b></div>
+                <div><span class="text-slate-400 font-bold uppercase text-[10px] block">Instrumentista</span><b class="text-slate-800">${e(c.instrumentista_nombre || 'Por asignar')}</b></div>
+                <div><span class="text-slate-400 font-bold uppercase text-[10px] block">Enfermera Circulante</span><b class="text-slate-800">${e(c.circulante_nombre || 'Por asignar')}</b></div>
+                ${c.requiere_pediatra || c.pediatra_nombre ? `<div><span class="text-slate-400 font-bold uppercase text-[10px] block">Pediatra (Recepción RN)</span><b class="text-slate-800">${e(c.pediatra_nombre || 'Dr. Carlos Méndez')}</b></div>` : ''}
+            </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="bg-cyan-50 border border-cyan-200 rounded-xl p-3">
+                <p class="text-[10px] font-extrabold uppercase text-cyan-900 mb-1"><i class="fas fa-clipboard-list mr-1"></i>Indicaciones Preoperatorias</p>
+                <p class="text-slate-800 whitespace-pre-wrap">${c.indicaciones_preoperatorias ? e(c.indicaciones_preoperatorias) : 'Sin indicaciones preoperatorias registradas.'}</p>
+            </div>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                <p class="text-[10px] font-extrabold uppercase text-yellow-800 mb-1"><i class="fas fa-note-sticky mr-1"></i>Notas de Programación / Insumos</p>
+                <p class="text-slate-800 whitespace-pre-wrap">${e(c.notas_confirmacion || c.notas || 'Sin notas adicionales.')}</p>
+            </div>
+        </div>`;
+
+        const formAdmin = esAdmin ? `<div class="border-t-2 border-slate-200 pt-3 mt-1">
+            <p class="text-xs font-extrabold uppercase text-emerald-800 mb-2.5"><i class="fas fa-user-tie mr-1"></i>Panel de Alfonso (Administración) · Asignar Equipo y Autorizar</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Anestesiólogo del hospital</label>
+                    <select id="conf-qx-anest-id" class="${cls}">
+                        <option value="">— Seleccionar o escribir externo —</option>
+                        ${anests.map(a => `<option value="${e(a.id)}" ${c.anestesiologo_id === a.id ? 'selected' : ''}>${e(a.nombre)}</option>`).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Anestesiólogo externo (si aplica)</label>
+                    <input id="conf-qx-anest-txt" type="text" value="${e(!c.anestesiologo_id ? (c.anestesiologo || '') : '')}" placeholder="Dr. / Dra. Anestesiólogo externo" class="${cls}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Primer Ayudante / Asistente</label>
+                    <input id="conf-qx-ayudante" type="text" value="${e(c.ayudante_nombre || '')}" placeholder="Ej. Dr. Marco Antonio Vega" class="${cls}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Instrumentista</label>
+                    <input id="conf-qx-inst" type="text" value="${e(c.instrumentista_nombre || '')}" placeholder="Ej. Lic. Enf. Sofía Ríos" class="${cls}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Enfermera Circulante</label>
+                    <input id="conf-qx-circ" type="text" value="${e(c.circulante_nombre || '')}" placeholder="Ej. Enf. Carmen López" class="${cls}">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Sala Quirúrgica asignada</label>
+                    <select id="conf-qx-sala" class="${cls}">
+                        ${(S.SALAS_QUIROFANO || []).map(s => `<option value="${e(s.codigo)}" ${c.sala === s.codigo ? 'selected' : ''}>${e(s.nombre)}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase mb-1">Notas de Administración / Insumos CEYE o Motivo en caso de rechazo</label>
+                    <input id="conf-qx-notas" type="text" value="${e(c.notas_confirmacion || '')}" placeholder="Ej. Equipo confirmado con cirujano; paquete listo en CEYE" class="${cls}">
+                </div>
+                <p id="conf-qx-err" class="sm:col-span-2 text-xs text-red-600 hidden"></p>
+            </div>
+        </div>` : '';
+
+        const botones = [{ texto: 'Cerrar', estilo: 'secundario' }];
+        if (!esAdmin && S.puedeIngresarAmbulatorio(this.sesion) && c.tipo_estancia === 'AMBULATORIA' && !c.ingresada && !c.ya_internado) {
+            botones.push({
+                texto: '1. Ingresar Paciente a Quirófano',
+                estilo: 'primario',
+                alPulsar: () => { this.confirmarIngresoAmbulatorio(c.cirugia_id); }
+            });
+        }
+        if (esAdmin) {
+            botones.push({
+                texto: '❌ Rechazar / Cancelar Cirugía',
+                estilo: 'peligro',
+                alPulsar: m => {
+                    const motivo = (m.el.querySelector('#conf-qx-notas') && m.el.querySelector('#conf-qx-notas').value) || 'Programación no autorizada por Administración';
+                    const r = S.rechazarCirugiaAdmin(cirugiaId, motivo, this.sesion);
+                    if (!r || !r.ok) {
+                        BelenUI.toast((r && r.motivo) || 'No se pudo cancelar.', 'alerta');
+                        return false;
+                    }
+                    BelenUI.toast('Cirugía rechazada y retirada del calendario.', 'alerta');
+                    this.render();
+                }
+            });
+            botones.push({
+                texto: c.confirmada_admin ? '✅ Guardar Cambios de Equipo' : '✅ Autorizar Cirugía y Guardar Equipo',
+                estilo: 'exito',
+                alPulsar: m => {
+                    const q = id => m.el.querySelector('#' + id).value;
+                    const r = S.confirmarCirugiaAdmin(cirugiaId, {
+                        anestesiologo_id: q('conf-qx-anest-id'),
+                        anestesiologo_nombre: q('conf-qx-anest-txt'),
+                        ayudante_nombre: q('conf-qx-ayudante'),
+                        instrumentista_nombre: q('conf-qx-inst'),
+                        circulante_nombre: q('conf-qx-circ'),
+                        sala: q('conf-qx-sala'),
+                        notas_confirmacion: q('conf-qx-notas')
+                    }, this.sesion);
+                    if (!r || !r.ok) {
+                        const err = m.el.querySelector('#conf-qx-err');
+                        if (err) { err.textContent = (r && r.motivo) || 'No se pudo confirmar.'; err.classList.remove('hidden'); }
+                        return false;
+                    }
+                    BelenUI.toast('Cirugía autorizada por Administración. Ya aparece con el color del médico en el calendario.', 'exito');
+                    this.render();
+                }
+            });
+        }
+
+        BelenUI.modal({
+            titulo: c.procedimiento,
+            subtitulo: 'Paciente: ' + c.nombre + ' · ' + c.sala_nombre,
+            icono: 'fa-kit-medical',
+            ancho: 'xl',
+            html: `<div class="space-y-3 text-left">${bannerEstado}${fichaLectura}${formAdmin}</div>`,
+            botones: botones
+        });
+    },
+
+    htmlControlesQuirofano: function (listaVisible) {
         const S = BelenStore, e = t => this.e(t);
         if (!S.listarInternamientos) return '';
+        const hoyIso = S.hoyLocal();
+        const fichas = (listaVisible || S.cirugiasVisibles(this.sesion) || []).map(c => (S.fichaCirugia ? S.fichaCirugia(c) : c)).filter(Boolean);
+
+        // Paso 1: Cirugías de hoy o próximas listas para ingresar a quirófano
+        const listasParaIngresar = fichas.filter(f => !f.ingresada && !f.ya_internado && f.fecha >= hoyIso).slice(0, 4);
+
+        // Pasos 2 y 3: Pacientes que ya están en tránsito a quirófano o dentro de quirófano/recuperación
         const ints = S.listarInternamientos().filter(i => i && i.estatus === 'activo' && (i.ubicacion === 'EN_TRANSITO_QUIROFANO' || i.ubicacion === 'QUIROFANO' || i.modalidad === S.MODALIDAD_AMBULATORIO_QX));
-        if (!ints.length) return '';
-        const filas = ints.map(i => {
+
+        const tarjetasActivos = ints.map(i => {
             const t = S.obtenerTurno(i.turno_id) || {};
             const id = e(i.turno_id);
-            const recibir = ['REC-1', 'REC-2', 'REC-GINECO'].map(cama => '<button type="button" onclick="AdminController.accionQx(\'recibir\',\'' + id + '\',\'' + cama + '\')" class="px-3 py-2 rounded-lg bg-violet-700 text-white text-xs font-bold">Recibir · ' + cama + '</button>').join('');
-            return '<div class="flex flex-wrap items-center gap-2 border-t border-slate-100 py-2"><span class="font-bold text-slate-800 mr-2">' + e(t.paciente_nombre || '') + '</span><span class="text-xs text-slate-500 mr-2">' + e(i.ubicacion || '') + (i.cama ? ' · ' + e(i.cama) : '') + '</span>'
-                + recibir
-                + '<button type="button" onclick="AdminController.accionQx(\'piso\',\'' + id + '\')" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold">Regresar a hospitalización</button>'
-                + '<button type="button" onclick="AdminController.accionQx(\'alta\',\'' + id + '\')" class="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-bold">Alta ambulatoria Qx</button></div>';
+            const enTransito = i.ubicacion === 'EN_TRANSITO_QUIROFANO';
+            const esAmb = i.modalidad === S.MODALIDAD_AMBULATORIO_QX;
+            const tienePostop = !!((i.notas_postoperatorias || []).length);
+            const urlExp = 'expediente.html?modo=hospitalizado&turno=' + encodeURIComponent(i.turno_id);
+
+            const pasoBadge = enTransito
+                ? '<span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-300">Paso 2 de 3 · En puerta de Quirófano (Falta asignar camilla)</span>'
+                : '<span class="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-violet-100 text-violet-900 border border-violet-300">Paso 3 de 3 · En Quirófano / Recuperación (' + e(i.cama || 'Camilla asignada') + ')</span>';
+
+            const botonesPaso = enTransito
+                ? `<div class="flex flex-wrap items-center gap-2 mt-2">
+                    <span class="text-xs font-bold text-slate-600 mr-1">Elegir camilla donde se recibe:</span>
+                    ${['REC-1', 'REC-2', 'REC-GINECO'].map(cama => `<button type="button" onclick="AdminController.accionQx('recibir','${id}','${cama}')" class="px-3 py-2 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-xs font-extrabold shadow-xs"><i class="fas fa-bed-pulse mr-1"></i>Recibir en ${cama}</button>`).join('')}
+                </div>`
+                : `<div class="flex flex-wrap items-center gap-2 mt-2">
+                    <a href="${urlExp}" class="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-extrabold"><i class="fas fa-folder-open mr-1"></i>Abrir Expediente / Notas Qx</a>
+                    ${S.puedeNotaPostoperatoria(this.sesion, i) ? `<button type="button" onclick="AdminController.abrirNotaPostoperatoria('${id}')" class="px-3 py-2 rounded-xl bg-violet-700 hover:bg-violet-800 text-white text-xs font-extrabold"><i class="fas fa-file-signature mr-1"></i>${tienePostop ? 'Ver / Editar Nota Post-Operatoria' : 'Firmar Nota Post-Operatoria'}</button>` : ''}
+                    ${!esAmb ? `<button type="button" onclick="AdminController.accionQx('piso','${id}')" class="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-extrabold"><i class="fas fa-bed mr-1"></i>3. Regresar a Cama de Hospitalización</button>` : ''}
+                    ${esAmb ? `<button type="button" onclick="AdminController.accionQx('alta','${id}')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold"><i class="fas fa-circle-check mr-1"></i>3. Dar Alta Ambulatoria (Enviar a Caja)</button>` : ''}
+                </div>`;
+
+            return `<div class="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 flex flex-col gap-1.5">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                        <span class="font-extrabold text-sm text-slate-900">${e(t.paciente_nombre || '')}</span>
+                        <span class="text-xs text-slate-500 ml-2">${esAmb ? 'Cirugía Ambulatoria' : 'Paciente de Hospitalización'} · Dr(a). ${e(t.medico_nombre || '')}</span>
+                    </div>
+                    ${pasoBadge}
+                </div>
+                ${botonesPaso}
+            </div>`;
         }).join('');
-        return '<div id="controles-quirofano" class="mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-4"><h3 class="text-sm font-extrabold uppercase text-slate-600 mb-2"><i class="fas fa-bed-pulse mr-1"></i>Pacientes en flujo quirúrgico</h3>' + filas + '</div>';
+
+        const tarjetasPaso1 = listasParaIngresar.map(f => `<div class="rounded-xl border border-dashed border-cyan-300 bg-cyan-50/40 p-3 flex flex-wrap items-center justify-between gap-2">
+            <div class="text-xs">
+                <span class="font-extrabold text-slate-900">${e(f.nombre)}</span>
+                <span class="text-slate-600"> · ${e(f.procedimiento)} (${e(f.fecha_texto)} ${e(f.hora_inicio || '')})</span>
+            </div>
+            ${S.puedeIngresarAmbulatorio(this.sesion) ? `<button type="button" onclick="AdminController.confirmarIngresoAmbulatorio('${e(f.cirugia_id)}')" class="px-3 py-1.5 rounded-xl bg-cyan-700 hover:bg-cyan-800 text-white text-xs font-extrabold shadow-xs"><i class="fas fa-right-to-bracket mr-1"></i>1. Ingresar a Quirófano</button>` : ''}
+        </div>`).join('');
+
+        return `<section id="controles-quirofano" class="mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div>
+                    <h3 class="text-sm font-extrabold uppercase text-slate-800 flex items-center gap-2"><i class="fas fa-route text-violet-600"></i> ¿Cómo funciona el paso de un paciente por Quirófano? (3 Pasos)</h3>
+                    <p class="text-xs text-slate-500">Guía rápida para ingresar al paciente programado, recibirlo en camilla y regresarlo a piso o darle alta.</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-2.5 mb-4 text-xs">
+                <div class="rounded-xl bg-cyan-50 border border-cyan-200 p-3">
+                    <p class="font-extrabold text-cyan-950">Paso 1 · Ingresar a Quirófano</p>
+                    <p class="text-cyan-800 mt-0.5">Cuando llega el paciente programado, pulse <b>"1. Ingresar a Quirófano"</b> para abrir su expediente quirúrgico sin pasar por consulta.</p>
+                </div>
+                <div class="rounded-xl bg-violet-50 border border-violet-200 p-3">
+                    <p class="font-extrabold text-violet-950">Paso 2 · Asignar Camilla (REC-1 / REC-2)</p>
+                    <p class="text-violet-800 mt-0.5">Enfermería de Quirófano recibe al paciente eligiendo su camilla (<b>Recuperación 1, 2 o Gineco</b>) y el cirujano llena su Hoja Quirúrgica.</p>
+                </div>
+                <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+                    <p class="font-extrabold text-emerald-950">Paso 3 · Regresar a Piso o Alta</p>
+                    <p class="text-emerald-800 mt-0.5">Con la Nota Post-Operatoria lista, si se queda internado pasa a <b>Cama de Hospitalización</b>; si es ambulatorio se da <b>Alta a Caja</b>.</p>
+                </div>
+            </div>
+            ${tarjetasActivos ? `<div class="space-y-2.5 mb-3"><p class="text-xs font-extrabold uppercase text-slate-500">Pacientes actualmente dentro de Quirófano / Recuperación (${ints.length})</p>${tarjetasActivos}</div>` : '<p class="text-xs text-slate-500 italic mb-3">En este momento no hay pacientes dentro de las camillas de quirófano.</p>'}
+            ${tarjetasPaso1 ? `<div class="space-y-2 pt-3 border-t border-slate-100"><p class="text-xs font-extrabold uppercase text-cyan-800">Próximos pacientes listos para el Paso 1 (Ingresar a Quirófano)</p>${tarjetasPaso1}</div>` : ''}
+        </section>`;
     },
+
     accionQx: function (accion, turnoId, cama) {
         const S = BelenStore;
+        if (accion === 'piso' && !cama) {
+            const libres = S.camasLibres('HOSPITALIZACION');
+            if (!libres.length) { BelenUI.toast('No hay camas libres en Hospitalización.', 'alerta'); return; }
+            BelenUI.modal({
+                titulo: 'Regresar paciente a Cama de Hospitalización',
+                subtitulo: 'Seleccione la habitación de piso a la que pasa el paciente tras su cirugía',
+                icono: 'fa-bed',
+                ancho: 'md',
+                html: `<div class="space-y-2 text-left">
+                    <label class="block text-xs font-bold text-slate-600 uppercase">Habitación destino disponible</label>
+                    <select id="qx-cama-piso-dest" class="w-full border border-slate-300 rounded-xl p-2.5 text-sm bg-white">
+                        ${libres.map(c => `<option value="${this.e(c.codigo)}">${this.e(c.nombre)} (${this.e(c.codigo)})</option>`).join('')}
+                    </select>
+                </div>`,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Trasladar a Habitación', estilo: 'primario', alPulsar: m => {
+                        const dest = m.el.querySelector('#qx-cama-piso-dest').value;
+                        const r = S.regresarAHospitalizacion(turnoId, dest, this.sesion);
+                        if (!r || !r.ok) { BelenUI.toast((r && r.motivo) || 'No se pudo completar el traslado.', 'alerta'); return false; }
+                        BelenUI.toast('Paciente trasladado a cama de hospitalización.', 'exito');
+                        this.render();
+                    } }
+                ]
+            });
+            return;
+        }
         let r;
         if (accion === 'recibir') r = S.recibirEnQuirofano(turnoId, cama, this.sesion);
-        else if (accion === 'piso') {
-            const destino = window.prompt('Cama de piso destino (vacío = cama de origen):', '') || '';
-            r = S.regresarAHospitalizacion(turnoId, destino, this.sesion);
-        } else if (accion === 'alta') r = S.altaAmbulatoriaQx ? S.altaAmbulatoriaQx(turnoId, this.sesion) : { ok: false, motivo: 'Función no disponible.' };
+        else if (accion === 'piso') r = S.regresarAHospitalizacion(turnoId, cama, this.sesion);
+        else if (accion === 'alta') r = S.altaAmbulatoriaQx ? S.altaAmbulatoriaQx(turnoId, this.sesion) : { ok: false, motivo: 'Función no disponible.' };
         if (!r || !r.ok) { BelenUI.toast((r && r.motivo) || 'No se pudo completar la acción.', 'alerta'); return; }
         BelenUI.toast('Listo.', 'exito'); this.render();
     },
@@ -1261,7 +1669,7 @@ const AdminController = {
         this.abrirDesgloseCuenta(turnoId);
     },
 
-    abrirConfirmarCirugiaAdmin: function (cirugiaId) {
+    abrirConfirmarCirugiaAdmin: function (cirugiaId) { return this.abrirDetalleCirugiaCalendario(cirugiaId); }, _legacyConfirmarQx: function (cirugiaId) {
         const S = BelenStore, c = S.cirugiaPara(cirugiaId, this.sesion);
         if (!c) { BelenUI.toast('No se encontró la cirugía.', 'alerta'); return; }
         const e = x => this.e(x);

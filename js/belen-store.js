@@ -2426,6 +2426,10 @@
             estatus_confirmacion: c.estatus_confirmacion || (c.confirmada_admin === false ? 'PENDIENTE_ADMIN' : 'CONFIRMADA'),
             confirmada_por_nombre: c.confirmada_por_nombre || '',
             confirmada_en: c.confirmada_en || null,
+            notas_confirmacion: c.notas_confirmacion || '',
+            motivo_rechazo: c.motivo_rechazo || '',
+            programada_por_id: c.programada_por_id || '',
+            programada_por_nombre: c.programada_por_nombre || '',
             indicaciones_preoperatorias: c.indicaciones_preoperatorias || '', notas: c.notas || '',
             turno_id: c.turno_id || null, ingresado_en: c.ingresado_en || null,
             ingresada: !!(c.turno_id || c.ingresado_en), ya_internado: pacienteInternadoActivo(c),
@@ -7609,12 +7613,29 @@
         } else if (eq.pediatra_nombre !== undefined) {
             c.pediatra_nombre = limpiarEspacios(eq.pediatra_nombre);
         }
+        if (eq.sala && salaPorCodigo(eq.sala)) c.sala = eq.sala;
+        if (eq.notas_confirmacion !== undefined) c.notas_confirmacion = limpiarEspacios(eq.notas_confirmacion);
         c.confirmada_admin = true;
         c.estatus_confirmacion = 'CONFIRMADA';
         c.confirmada_por_id = s.usuario_id;
         c.confirmada_por_nombre = s.nombre;
         c.confirmada_en = new Date().toISOString();
         return escribir(CLAVES.cirugias, lista) ? { ok: true, cirugia: fichaCirugia(c) } : { ok: false, motivo: 'No se pudo guardar la confirmación.' };
+    }
+
+    function rechazarCirugiaAdmin(cirugiaId, motivo, s) {
+        if (!s || (s.rol !== 'admin' && s.rol !== 'administrador')) return { ok: false, motivo: 'Solo Administración (Alfonso) o Dirección pueden rechazar o cancelar una cirugía.' };
+        const lista = listarCirugias();
+        const c = lista.find(x => x.cirugia_id === cirugiaId);
+        if (!c) return { ok: false, motivo: 'No se encontró la cirugía.' };
+        c.estatus = 'cancelada';
+        c.confirmada_admin = false;
+        c.estatus_confirmacion = 'RECHAZADA_ADMIN';
+        c.motivo_rechazo = limpiarEspacios(motivo || 'No autorizada por Administración');
+        c.rechazada_por_id = s.usuario_id;
+        c.rechazada_por_nombre = s.nombre;
+        c.rechazada_en = new Date().toISOString();
+        return escribir(CLAVES.cirugias, lista) ? { ok: true, cirugia: fichaCirugia(c) } : { ok: false, motivo: 'No se pudo guardar el rechazo.' };
     }
 
     // ---------------------------------------------------------------- Mover / Asignar Paciente en Plano Arquitectónico 2D
@@ -8543,11 +8564,17 @@
 
     function sembrarAgendaQuirurgica20Dias(forzar) {
         try {
-            if (!forzar && localStorage.getItem('belen_qx_20dias_v21') === '1' && listarCirugias().length >= 35) return;
-            const ses = sesionParaCache('admin');
+            if (!forzar && localStorage.getItem('belen_qx_20dias_v26') === '1' && listarCirugias().length >= 35) return;
+            // Limpiar semillas previas de 20 días sin turno activo para regenerar limpio con confirmadas y pendientes
+            const previas = listarCirugias().filter(c => c && (c.turno_id || (c.indicaciones_preoperatorias || '').indexOf('canalización con solución Hartmann.') < 0));
+            escribir(CLAVES.cirugias, previas);
+            const sesAdmin = sesionParaCache('admin');
             const nombres = ['ALEJANDRO','FERNANDA','EDUARDO','GABRIELA','RODRIGO','DANIELA','MAURICIO','PAOLA','HECTOR','LUCIA','SERGIO','CAMILA','GUSTAVO','MARIANA','OSCAR','VERONICA','ARTURO','NATALIA','RUBEN','KARLA'];
             const paternos = ['MORALES','ORTEGA','DELGADO','SILVA','MENDOZA','ROJAS','GUERRERO','AGUILAR','CASTRO','CAMPOS','VARGAS','RIOS','REYES','CRUZ','MEJIA','FLORES','VEGA','LUNA','PINEDA','SANTOS'];
             const maternos = ['SALAZAR','PONCE','IBARRA','TREJO','NAVARRO','MOLINA','CORTES','JUAREZ','ACOSTA','SOLIS'];
+            const ayudantes = ['Dr. Marco Antonio Vega (1er Ayudante)', 'Dr. Jorge Luis López (1er Ayudante)', 'Dra. Mónica Salgado (1er Ayudante)'];
+            const instrumentistas = ['Lic. Enf. Sofía Ríos (Instrumentista)', 'Enf. Qx. Claudia Morales (Instrumentista)'];
+            const circulantes = ['Enf. Carmen López (Circulante)', 'L.E. Valeria Cruz (Circulante)'];
             const procs = [
                 { p: 'Colecistectomía laparoscópica', m: 'dr_arturo', d: 90, e: 'HOSPITALARIA' },
                 { p: 'Cesárea segmentaria tipo Kerr', m: 'dra_patricia', d: 90, e: 'HOSPITALARIA', ped: 'dr_carlos_ped', s: 'F' },
@@ -8568,6 +8595,9 @@
                     const nom = (pr.s === 'F' ? ['FERNANDA','GABRIELA','DANIELA','PAOLA','LUCIA','CAMILA','MARIANA','VERONICA','NATALIA','KARLA'][idx % 10] : nombres[idx % nombres.length]);
                     const pat = paternos[idx % paternos.length];
                     const mat = maternos[(idx * 3 + dia) % maternos.length];
+                    // Dejar ~1 de cada 4 cirugías como recién solicitada por el médico (pendiente de confirmar por Alfonso)
+                    const pendienteAdmin = (idx % 4 === 1);
+                    const sesProg = pendienteAdmin ? sesionParaCache(pr.m) : sesAdmin;
                     programarCirugia({
                         nombres: nom, apellido_paterno: pat, apellido_materno: mat,
                         nombre: nom + ' ' + pat + ' ' + mat,
@@ -8578,13 +8608,17 @@
                         tipo_estancia: pr.e, procedimiento: pr.p,
                         sala: SALAS_QUIROFANO[turno % SALAS_QUIROFANO.length].codigo,
                         fecha: fecha, hora_inicio: turno === 0 ? '09:00' : '13:00', duracion_minutos: pr.d,
-                        medico_cirujano_id: pr.m, anestesiologo_id: 'dra_elena',
+                        medico_cirujano_id: pr.m,
+                        anestesiologo_id: pendienteAdmin ? '' : 'dra_elena',
+                        ayudante_nombre: pendienteAdmin ? 'Por asignar por Administración' : ayudantes[idx % ayudantes.length],
+                        instrumentista_nombre: pendienteAdmin ? 'Por asignar por Administración' : instrumentistas[idx % instrumentistas.length],
+                        circulante_nombre: pendienteAdmin ? 'Por asignar por Administración' : circulantes[idx % circulantes.length],
                         pediatra_id: pr.ped || null, requiere_pediatra: !!pr.ped,
                         indicaciones_preoperatorias: 'Ayuno de 8 horas, laboratorios preoperatorios vigentes y canalización con solución Hartmann.'
-                    }, ses);
+                    }, sesProg);
                 }
             }
-            localStorage.setItem('belen_qx_20dias_v21', '1');
+            localStorage.setItem('belen_qx_20dias_v26', '1');
         } catch (e) { console.warn('sembrarAgendaQuirurgica20Dias:', e); }
     }
 
@@ -9096,7 +9130,7 @@
         puedeEditarSeccion, SECCIONES_QX_AMBULATORIO, sincronizarPaseAutomaticoQuirofano, listarCirugiasSincronizadas, listarInternamientosSincronizados,
         obtenerHojaEnfermeria, guardarHojaEnfermeria, TURNOS_ENFERMERIA,
         liberarConsultaACaja, actualizarCostoConsultaMedico, registrarTurno, turnoActivoEnEspecialidad, buscarPacientes, guardarNotaEgreso, asegurarCargoConsulta, sincronizarCuentaEspejo,
-        expandirAbreviaturasMedicas, detectarFraccionItemReceta, confirmarCirugiaAdmin, moverPacienteEnPlano,
+        expandirAbreviaturasMedicas, detectarFraccionItemReceta, confirmarCirugiaAdmin, rechazarCirugiaAdmin, moverPacienteEnPlano,
         responderInterconsulta, htmlImpresionNotaInterconsulta,
         guardarValoracionPreoperatoria, htmlImpresionValoracionPreoperatoria,
         guardarHojaRecienNacido, htmlImpresionHojaRecienNacido,
