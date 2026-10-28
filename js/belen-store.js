@@ -8564,7 +8564,7 @@
 
     function sembrarAgendaQuirurgica20Dias(forzar) {
         try {
-            if (!forzar && localStorage.getItem('belen_qx_20dias_v26') === '1' && listarCirugias().length >= 35) return;
+            if (!forzar && localStorage.getItem('belen_qx_20dias_v27') === '1' && listarCirugias().length >= 35) return;
             // Limpiar semillas previas de 20 días sin turno activo para regenerar limpio con confirmadas y pendientes
             const previas = listarCirugias().filter(c => c && (c.turno_id || (c.indicaciones_preoperatorias || '').indexOf('canalización con solución Hartmann.') < 0));
             escribir(CLAVES.cirugias, previas);
@@ -8586,11 +8586,14 @@
                 { p: 'Oclusión tubaria bilateral (OTB)', m: 'dra_patricia', d: 60, e: 'AMBULATORIA', s: 'F' }
             ];
             const base = new Date();
+            const horarios6 = ['07:30', '09:30', '11:30', '13:30', '16:00', '18:30'];
+            let seq = 0;
             for (let dia = 1; dia <= 20; dia++) {
                 const dt = new Date(base.getFullYear(), base.getMonth(), base.getDate() + dia);
                 const fecha = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
-                for (let turno = 0; turno < 2; turno++) {
-                    const idx = (dia - 1) * 2 + turno;
+                const totalTurnosDia = (dia === 2) ? 6 : 2; // Día +2 con 6 cirugías para probar día de alta demanda
+                for (let turno = 0; turno < totalTurnosDia; turno++) {
+                    const idx = seq++;
                     const pr = procs[idx % procs.length];
                     const nom = (pr.s === 'F' ? ['FERNANDA','GABRIELA','DANIELA','PAOLA','LUCIA','CAMILA','MARIANA','VERONICA','NATALIA','KARLA'][idx % 10] : nombres[idx % nombres.length]);
                     const pat = paternos[idx % paternos.length];
@@ -8598,6 +8601,7 @@
                     // Dejar ~1 de cada 4 cirugías como recién solicitada por el médico (pendiente de confirmar por Alfonso)
                     const pendienteAdmin = (idx % 4 === 1);
                     const sesProg = pendienteAdmin ? sesionParaCache(pr.m) : sesAdmin;
+                    const horaIni = totalTurnosDia === 6 ? horarios6[turno] : (turno === 0 ? '09:00' : '13:00');
                     programarCirugia({
                         nombres: nom, apellido_paterno: pat, apellido_materno: mat,
                         nombre: nom + ' ' + pat + ' ' + mat,
@@ -8607,7 +8611,7 @@
                         direccion: 'Puerto Vallarta, Jalisco',
                         tipo_estancia: pr.e, procedimiento: pr.p,
                         sala: SALAS_QUIROFANO[turno % SALAS_QUIROFANO.length].codigo,
-                        fecha: fecha, hora_inicio: turno === 0 ? '09:00' : '13:00', duracion_minutos: pr.d,
+                        fecha: fecha, hora_inicio: horaIni, duracion_minutos: pr.d,
                         medico_cirujano_id: pr.m,
                         anestesiologo_id: pendienteAdmin ? '' : 'dra_elena',
                         ayudante_nombre: pendienteAdmin ? 'Por asignar por Administración' : ayudantes[idx % ayudantes.length],
@@ -8618,7 +8622,7 @@
                     }, sesProg);
                 }
             }
-            localStorage.setItem('belen_qx_20dias_v26', '1');
+            localStorage.setItem('belen_qx_20dias_v27', '1');
         } catch (e) { console.warn('sembrarAgendaQuirurgica20Dias:', e); }
     }
 

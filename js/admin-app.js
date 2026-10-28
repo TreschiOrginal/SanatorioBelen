@@ -972,9 +972,86 @@ const AdminController = {
         this.render();
     },
 
-    seleccionarDiaCalendarioQx: function (fechaIso) {
-        this.diaFiltroQx = (this.diaFiltroQx === fechaIso) ? '' : (fechaIso || '');
+    seleccionarDiaCalendarioQx: function (fechaIso, mantenerSeleccion) {
+        if (mantenerSeleccion) {
+            this.diaFiltroQx = fechaIso || '';
+        } else {
+            this.diaFiltroQx = (this.diaFiltroQx === fechaIso) ? '' : (fechaIso || '');
+        }
         this.render();
+    },
+
+    formatearFechaLargaQx: function (fechaIso) {
+        if (!fechaIso) return 'Sin fecha';
+        const p = String(fechaIso).split('-');
+        if (p.length !== 3) return fechaIso;
+        const dt = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+        const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+        return (dias[dt.getDay()] || '') + ' ' + Number(p[2]) + ' de ' + (meses[dt.getMonth()] || '') + ' de ' + p[0];
+    },
+
+    abrirAgendaDiaCalendarioQx: function (fechaIso) {
+        const S = BelenStore, e = t => this.e(t);
+        const todas = S.listarCirugias(this.sesion).map(c => (S.fichaCirugia ? S.fichaCirugia(c) : c)).filter(Boolean);
+        const delDia = todas.filter(f => (f.fecha || String(f.fecha_hora || '').slice(0, 10)) === fechaIso)
+            .sort((a, b) => String(a.hora_inicio || '').localeCompare(String(b.hora_inicio || '')));
+        const esAdmin = this.rolActual === 'admin' || this.rolActual === 'administrador';
+        const tituloFecha = this.formatearFechaLargaQx(fechaIso);
+
+        const filasHtml = delDia.length ? delDia.map((f, idx) => {
+            const col = this.colorCirujanoCalendario(f.medico_cirujano_id, f.confirmada_admin);
+            const salaCorta = String(f.sala || '').indexOf('GRANDE') >= 0 ? 'Quirófano Grande' : 'Quirófano Chico';
+            const badgeEst = f.confirmada_admin
+                ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300"><i class="fas fa-circle-check mr-1"></i>Autorizada</span>'
+                : '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300"><i class="fas fa-clock mr-1"></i>⏳ Por autorizar</span>';
+            return `<div class="rounded-xl border border-slate-200 ${col.card} p-3 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div class="space-y-1 min-w-0">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <span class="text-xs font-extrabold text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">#${idx + 1} · ${e(f.hora_inicio || '')}${f.hora_fin ? ' – ' + e(f.hora_fin) : ''}</span>
+                        <span class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-violet-50 text-violet-800 border border-violet-200">${salaCorta}</span>
+                        ${badgeEst}
+                    </div>
+                    <p class="text-sm font-extrabold text-slate-900 truncate">${e(f.procedimiento)}</p>
+                    <p class="text-xs text-slate-600"><b>Paciente:</b> ${e(f.nombre)} · <b>Cirujano:</b> ${e(f.medico_cirujano)} · <b>Anestesia:</b> ${e(f.anestesiologo || 'Por asignar')}</p>
+                </div>
+                <div class="shrink-0 flex items-center gap-2">
+                    <button type="button" data-abrir-cx-modal="${e(f.cirugia_id)}" class="w-full sm:w-auto px-3 py-2 rounded-xl text-xs font-extrabold ${esAdmin && !f.confirmada_admin ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-violet-600 hover:bg-violet-700 text-white'} shadow-2xs">
+                        <i class="fas ${esAdmin ? 'fa-user-check' : 'fa-users-viewfinder'} mr-1"></i>${esAdmin ? (f.confirmada_admin ? 'Editar equipo / Ver' : 'Asignar equipo y Autorizar') : 'Ver quién vendrá y horarios'}
+                    </button>
+                </div>
+            </div>`;
+        }).join('') : '<p class="text-sm text-slate-500 py-6 text-center">No hay cirugías programadas en esta fecha.</p>';
+
+        BelenUI.abrirModal({
+            titulo: 'Agenda Quirúrgica del Día · ' + tituloFecha + ' (' + delDia.length + ' cirugías)',
+            ancho: 'max-w-3xl',
+            cuerpo: `<div class="space-y-3">
+                <div class="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-700">
+                    <span><i class="fas fa-clock text-violet-600 mr-1.5"></i>Ordenadas cronológicamente por horario de inicio. Toque cualquier cirugía para abrir su ficha completa.</span>
+                    <button type="button" id="btn-filtrar-dia-modal" class="font-extrabold text-violet-700 hover:underline">Filtrar tarjetas de abajo por este día</button>
+                </div>
+                <div class="space-y-2.5 max-h-[62vh] overflow-y-auto pr-1">${filasHtml}</div>
+            </div>`,
+            alAbrir: (raiz, cerrar) => {
+                raiz.querySelectorAll('[data-abrir-cx-modal]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const id = btn.getAttribute('data-abrir-cx-modal');
+                        cerrar();
+                        this.abrirDetalleCirugiaCalendario(id);
+                    });
+                });
+                const btnFil = raiz.querySelector('#btn-filtrar-dia-modal');
+                if (btnFil) {
+                    btnFil.addEventListener('click', () => {
+                        this.diaFiltroQx = fechaIso;
+                        cerrar();
+                        this.render();
+                    });
+                }
+            },
+            acciones: [{ texto: 'Cerrar', clase: 'px-4 py-2 rounded-lg border border-slate-300 text-sm font-semibold text-slate-700' }]
+        });
     },
 
     htmlCalendarioQuirofano: function (lista) {
@@ -997,6 +1074,13 @@ const AdminController = {
             porFecha[k].sort((a, b) => String(a.hora_inicio || '').localeCompare(String(b.hora_inicio || '')));
         });
 
+        // Día activo en la vista móvil tipo App de Calendario
+        const prefijoMes = anio + '-' + String(mesIdx + 1).padStart(2, '0') + '-';
+        const fechasConQxMes = Object.keys(porFecha).filter(k => k.indexOf(prefijoMes) === 0).sort();
+        const diaActivoApp = (this.diaFiltroQx && this.diaFiltroQx.indexOf(prefijoMes) === 0)
+            ? this.diaFiltroQx
+            : (hoyIso.indexOf(prefijoMes) === 0 && (porFecha[hoyIso] || []).length ? hoyIso : (fechasConQxMes[0] || (hoyIso.indexOf(prefijoMes) === 0 ? hoyIso : prefijoMes + '01')));
+
         // Calcular cuadrícula mensual (Lunes a Domingo)
         const primerDia = new Date(anio, mesIdx, 1);
         const ultimoDia = new Date(anio, mesIdx + 1, 0);
@@ -1007,49 +1091,107 @@ const AdminController = {
         const autorizadasCount = fichas.filter(f => f.confirmada_admin).length;
         const pendientesCount = fichas.filter(f => !f.confirmada_admin).length;
         const esAdmin = this.rolActual === 'admin' || this.rolActual === 'administrador';
+        const MAX_VISIBLE_DESKTOP = 3;
 
-        const celdasHtml = [];
+        const celdasDesktopHtml = [];
+        const celdasMovilHtml = [];
+
         for (let i = 0; i < totalCeldas; i++) {
             const numDia = i - offsetLunes + 1;
             if (numDia < 1 || numDia > totalDiasMes) {
-                celdasHtml.push('<div class="min-h-[118px] bg-slate-50/60 border border-slate-100 rounded-xl p-1.5"></div>');
+                celdasDesktopHtml.push('<div class="min-h-[128px] bg-slate-50/60 border border-slate-100 rounded-xl p-1.5"></div>');
+                celdasMovilHtml.push('<div class="h-14 rounded-xl bg-slate-50/50 border border-transparent"></div>');
                 continue;
             }
             const fechaIso = anio + '-' + String(mesIdx + 1).padStart(2, '0') + '-' + String(numDia).padStart(2, '0');
             const esHoy = fechaIso === hoyIso;
             const esFiltro = this.diaFiltroQx === fechaIso;
+            const esActivoMovil = diaActivoApp === fechaIso;
             const eventos = porFecha[fechaIso] || [];
+            const visiblesDesktop = eventos.slice(0, MAX_VISIBLE_DESKTOP);
+            const ocultasCount = Math.max(0, eventos.length - MAX_VISIBLE_DESKTOP);
 
-            const eventosHtml = eventos.map(f => {
+            const eventosHtml = visiblesDesktop.map(f => {
                 const col = this.colorCirujanoCalendario(f.medico_cirujano_id, f.confirmada_admin);
-                const salaCorta = String(f.sala || '').indexOf('GRANDE') >= 0 ? 'QX Grande' : 'QX Chico';
+                const salaCorta = String(f.sala || '').indexOf('GRANDE') >= 0 ? 'QX Gde' : 'QX Chi';
                 const iconoEstado = f.confirmada_admin
                     ? '<i class="fas fa-circle-check text-emerald-700" title="Autorizada por Administración"></i>'
                     : '<i class="fas fa-clock text-amber-700" title="Pendiente de autorizar por Administración"></i>';
                 return `<button type="button" data-cal-cirugia="${e(f.cirugia_id)}" onclick="AdminController.abrirDetalleCirugiaCalendario('${e(f.cirugia_id)}')"
-                    class="w-full text-left rounded-lg px-2 py-1.5 mb-1 text-[11px] leading-tight transition shadow-2xs ${col.chip}">
+                    class="w-full text-left rounded-lg px-2 py-1 mb-1 text-[11px] leading-tight transition shadow-2xs ${col.chip}">
                     <div class="flex items-center justify-between gap-1 font-extrabold">
                         <span>${e(f.hora_inicio || '')}${f.hora_fin ? '–' + e(f.hora_fin) : ''}</span>
                         <span class="text-[10px] flex items-center gap-1">${salaCorta} ${iconoEstado}</span>
                     </div>
-                    <div class="font-bold truncate mt-0.5" title="${e(f.procedimiento)}">${e(f.procedimiento)}</div>
+                    <div class="font-bold truncate" title="${e(f.procedimiento)} · ${e(f.nombre)}">${e(f.procedimiento)}</div>
                     <div class="text-[10px] opacity-85 truncate">${e(f.nombre)} · ${e(f.medico_cirujano)}</div>
                 </button>`;
             }).join('');
 
-            celdasHtml.push(`<div data-cal-fecha="${fechaIso}" class="min-h-[124px] rounded-xl p-2 flex flex-col justify-between transition border ${esHoy ? 'border-2 border-violet-600 bg-violet-50/40 ring-2 ring-violet-200' : (esFiltro ? 'border-2 border-indigo-500 bg-indigo-50/25' : 'border-slate-200 bg-white hover:border-slate-300')}">
+            const botonMasHtml = ocultasCount > 0
+                ? `<button type="button" data-cal-mas="${fechaIso}" onclick="AdminController.abrirAgendaDiaCalendarioQx('${fechaIso}')"
+                    class="w-full text-center rounded-lg px-2 py-1 mt-0.5 text-[11px] font-extrabold bg-violet-100 hover:bg-violet-200 text-violet-900 border border-violet-300 transition shadow-2xs">
+                    +${ocultasCount} ${ocultasCount === 1 ? 'cirugía más' : 'cirugías más'} · Ver las ${eventos.length}
+                </button>`
+                : '';
+
+            celdasDesktopHtml.push(`<div data-cal-fecha="${fechaIso}" class="min-h-[128px] rounded-xl p-2 flex flex-col justify-between transition border ${esHoy ? 'border-2 border-violet-600 bg-violet-50/40 ring-2 ring-violet-200' : (esFiltro ? 'border-2 border-indigo-500 bg-indigo-50/25' : 'border-slate-200 bg-white hover:border-slate-300')}">
                 <div>
                     <div class="flex items-center justify-between mb-1.5">
                         <button type="button" onclick="AdminController.seleccionarDiaCalendarioQx('${fechaIso}')" class="inline-flex items-center gap-1 text-xs font-extrabold ${esHoy ? 'bg-violet-600 text-white px-2 py-0.5 rounded-full shadow-xs' : 'text-slate-700 hover:text-violet-700 px-1'}" title="Filtrar tarjetas de este día">
                             <span>${numDia}</span>
                             ${esHoy ? '<span class="text-[9px] uppercase tracking-wider">Hoy</span>' : ''}
                         </button>
-                        ${eventos.length ? `<span class="text-[10px] font-bold text-slate-400">${eventos.length} ${eventos.length === 1 ? 'qx' : 'qx'}</span>` : ''}
+                        ${eventos.length ? `<button type="button" onclick="AdminController.abrirAgendaDiaCalendarioQx('${fechaIso}')" class="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md ${eventos.length >= 4 ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-violet-100 hover:text-violet-800'}" title="Ver agenda completa del día">${eventos.length} qx</button>` : ''}
                     </div>
-                    <div>${eventosHtml}</div>
+                    <div>${eventosHtml}${botonMasHtml}</div>
                 </div>
             </div>`);
+
+            // Celda compacta para Celular tipo App de Calendario (iOS / Google Calendar móvil)
+            const dotsMovil = eventos.slice(0, 4).map(f => {
+                const col = this.colorCirujanoCalendario(f.medico_cirujano_id, f.confirmada_admin);
+                return `<span class="w-1.5 h-1.5 rounded-full ${col.dot}"></span>`;
+            }).join('');
+            const extraDots = eventos.length > 4 ? `<span class="text-[8px] font-black leading-none ${esActivoMovil ? 'text-white' : 'text-violet-700'}">+${eventos.length - 4}</span>` : '';
+
+            celdasMovilHtml.push(`<button type="button" data-cal-movil-fecha="${fechaIso}" onclick="AdminController.seleccionarDiaCalendarioQx('${fechaIso}', true)"
+                class="h-14 rounded-xl p-1 flex flex-col items-center justify-between transition border ${esActivoMovil ? 'bg-violet-600 text-white border-violet-700 shadow-sm ring-2 ring-violet-200' : (esHoy ? 'border-2 border-violet-500 bg-violet-50/70 text-violet-900' : (eventos.length ? 'bg-white border-slate-200 text-slate-800 hover:border-violet-300' : 'bg-slate-50/60 border-slate-100 text-slate-400'))}">
+                <div class="w-full flex items-center justify-between px-0.5">
+                    <span class="text-xs font-extrabold leading-none">${numDia}</span>
+                    ${eventos.length ? `<span class="text-[9px] font-black px-1 rounded-full leading-tight ${esActivoMovil ? 'bg-white/25 text-white' : (eventos.length >= 4 ? 'bg-violet-100 text-violet-800' : 'bg-slate-100 text-slate-600')}">${eventos.length}</span>` : ''}
+                </div>
+                <div class="flex items-center justify-center gap-0.5 min-h-[10px]">
+                    ${dotsMovil}${extraDots}
+                </div>
+            </button>`);
         }
+
+        // Agenda del día seleccionado para la vista móvil tipo App
+        const eventosDiaMovil = porFecha[diaActivoApp] || [];
+        const agendaMovilItems = eventosDiaMovil.length ? eventosDiaMovil.map(f => {
+            const col = this.colorCirujanoCalendario(f.medico_cirujano_id, f.confirmada_admin);
+            const salaCorta = String(f.sala || '').indexOf('GRANDE') >= 0 ? 'QX Grande' : 'QX Chico';
+            const estadoTag = f.confirmada_admin
+                ? '<span class="text-[10px] font-extrabold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded-md"><i class="fas fa-check mr-0.5"></i>Autorizada</span>'
+                : '<span class="text-[10px] font-extrabold text-amber-900 bg-amber-100 px-1.5 py-0.5 rounded-md"><i class="fas fa-clock mr-0.5"></i>Por autorizar</span>';
+            return `<button type="button" onclick="AdminController.abrirDetalleCirugiaCalendario('${e(f.cirugia_id)}')"
+                class="w-full text-left rounded-xl p-2.5 border border-slate-200 bg-white hover:bg-slate-50 transition shadow-2xs flex items-start gap-2.5 ${col.card}">
+                <div class="shrink-0 text-center bg-slate-100 rounded-lg px-2 py-1 min-w-[58px]">
+                    <div class="text-xs font-black text-slate-900">${e(f.hora_inicio || '--:--')}</div>
+                    <div class="text-[10px] font-semibold text-slate-500">${e(f.hora_fin || '')}</div>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center justify-between gap-1 mb-0.5">
+                        <span class="text-[10px] font-extrabold uppercase tracking-wide text-violet-700">${salaCorta}</span>
+                        ${estadoTag}
+                    </div>
+                    <div class="text-xs font-extrabold text-slate-900 truncate">${e(f.procedimiento)}</div>
+                    <div class="text-[11px] text-slate-600 truncate">${e(f.nombre)}</div>
+                    <div class="text-[10px] text-slate-500 truncate mt-0.5"><i class="fas fa-user-doctor mr-1"></i>${e(f.medico_cirujano)} · Anest: ${e(f.anestesiologo || 'Por asignar')}</div>
+                </div>
+            </button>`;
+        }).join('') : `<div class="text-center py-6 text-xs text-slate-400 bg-white rounded-xl border border-dashed border-slate-200">Sin cirugías programadas en este día. Toque otro día con puntitos de color.</div>`;
 
         const leyendaMedicos = [
             ['dr_arturo', 'Dr. Arturo Gómez (Cirugía Gral.)'],
@@ -1065,7 +1207,7 @@ const AdminController = {
                 <span><i class="fas fa-bell text-amber-600 mr-1.5"></i><b>Para Alfonso (Administración):</b> Hay <b>${pendientesCount} cirugías en color ámbar</b> pendientes de revisar, asignar equipo y autorizar. Tóquelas directamente en el calendario.</span>
             </div>` : '';
 
-        return `<section id="calendario-quirofano" class="mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5">
+        return `<section id="calendario-quirofano" class="mb-6 bg-white rounded-2xl border border-slate-200 shadow-sm p-3.5 sm:p-5">
             <div class="flex flex-wrap items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-100">
                 <div>
                     <h3 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
@@ -1078,23 +1220,51 @@ const AdminController = {
                     <span class="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-900 border border-amber-300"><i class="fas fa-clock mr-1"></i>${pendientesCount} por autorizar</span>
                     <div class="flex items-center bg-slate-100 rounded-xl p-1 gap-1">
                         <button type="button" onclick="AdminController.cambiarMesCalendarioQx(-1)" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-xs font-extrabold shadow-2xs" title="Mes anterior"><i class="fas fa-chevron-left"></i></button>
-                        <span class="px-3 text-sm font-extrabold text-slate-900 min-w-[140px] text-center">${e(tituloMes)}</span>
+                        <span class="px-2.5 text-sm font-extrabold text-slate-900 min-w-[125px] text-center">${e(tituloMes)}</span>
                         <button type="button" onclick="AdminController.cambiarMesCalendarioQx(1)" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-xs font-extrabold shadow-2xs" title="Mes siguiente"><i class="fas fa-chevron-right"></i></button>
                     </div>
                     <button type="button" onclick="AdminController.irMesActualQx()" class="px-3 py-1.5 rounded-xl border border-violet-300 bg-violet-50 hover:bg-violet-100 text-violet-800 text-xs font-extrabold">Hoy</button>
                 </div>
             </div>
             ${avisoPendientesAdmin}
-            <div class="flex flex-wrap items-center gap-2 mb-3">
+            <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
                 <span class="text-[11px] font-extrabold uppercase text-slate-400 mr-1">Colores por médico (autorizadas):</span>
                 ${leyendaMedicos}
-                <span class="inline-flex items-center gap-1.5 text-xs font-extrabold text-amber-900 bg-amber-50 border border-amber-300 rounded-full px-2.5 py-1"><span class="w-3 h-3 rounded-full bg-amber-500"></span>⏳ Por autorizar (Revisión de Administración)</span>
+                <span class="inline-flex items-center gap-1.5 text-xs font-extrabold text-amber-900 bg-amber-50 border border-amber-300 rounded-full px-2.5 py-1"><span class="w-3 h-3 rounded-full bg-amber-500"></span>⏳ Por autorizar (Administración)</span>
             </div>
-            <div class="grid grid-cols-7 gap-2 mb-1.5 text-center text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
-                <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+
+            <!-- VISTA MÓVIL / CELULAR TIPO APP DE CALENDARIO (< 1024px) -->
+            <div class="lg:hidden space-y-3">
+                <div>
+                    <div class="grid grid-cols-7 gap-1 mb-1 text-center text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                        <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+                    </div>
+                    <div class="grid grid-cols-7 gap-1">
+                        ${celdasMovilHtml.join('')}
+                    </div>
+                </div>
+                <div class="bg-slate-50 rounded-2xl border border-slate-200 p-3">
+                    <div class="flex items-center justify-between gap-2 mb-2.5">
+                        <div>
+                            <p class="text-[10px] font-extrabold uppercase tracking-wider text-violet-700">Agenda del día seleccionado</p>
+                            <h4 class="text-sm font-extrabold text-slate-900">${e(this.formatearFechaLargaQx(diaActivoApp))}</h4>
+                        </div>
+                        <span class="text-xs font-extrabold px-2.5 py-1 rounded-full bg-violet-100 text-violet-900">${eventosDiaMovil.length} ${eventosDiaMovil.length === 1 ? 'cirugía' : 'cirugías'}</span>
+                    </div>
+                    <div class="space-y-2 max-h-[340px] overflow-y-auto pr-0.5">
+                        ${agendaMovilItems}
+                    </div>
+                </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
-                ${celdasHtml.join('')}
+
+            <!-- VISTA ESCRITORIO TIPO GOOGLE CALENDAR (>= 1024px) -->
+            <div class="hidden lg:block">
+                <div class="grid grid-cols-7 gap-2 mb-1.5 text-center text-[11px] font-extrabold uppercase tracking-wider text-slate-500">
+                    <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+                </div>
+                <div class="grid grid-cols-7 gap-2">
+                    ${celdasDesktopHtml.join('')}
+                </div>
             </div>
         </section>`;
     },
