@@ -51,31 +51,43 @@
         const cerrable = op.cerrable !== false;
         const centrado = !!op.centrado;
 
+        const anchoClase = anchos[op.ancho] || op.ancho || anchos.md;
+        const htmlCuerpo = op.html !== undefined ? op.html : (op.cuerpo || '');
+        const botones = (op.botones && op.botones.length) ? op.botones : ((op.acciones || []).map(a => ({
+            texto: a.texto || 'Cerrar',
+            estilo: a.estilo || (a.primario ? 'primario' : 'secundario'),
+            id: a.id,
+            alPulsar: a.alPulsar || a.accion || a.onClick
+        })));
+
         const overlay = document.createElement('div');
-        overlay.className = 'fixed inset-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-opacity duration-200 opacity-0 print:hidden';
+        overlay.className = 'fixed inset-0 flex items-end sm:items-center justify-center bg-slate-900/60 backdrop-blur-sm p-0 sm:p-4 transition-opacity duration-200 opacity-0 print:hidden';
         overlay.style.zIndex = String(100 + pila.length * 2);
         overlay.setAttribute('role', 'dialog');
         overlay.setAttribute('aria-modal', 'true');
 
         const cabecera = centrado
-            ? `<div class="text-center px-6 pt-6">
-                   <div class="w-14 h-14 rounded-full ${t.fondo} ${t.texto} flex items-center justify-center mx-auto mb-3"><i class="fas ${op.icono || t.icono} text-2xl"></i></div>
-                   <h3 class="text-lg font-bold text-slate-800">${esc(op.titulo || '')}</h3>
+            ? `<div class="text-center px-4 sm:px-6 pt-5 sm:pt-6">
+                   <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-3 sm:hidden"></div>
+                   <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full ${t.fondo} ${t.texto} flex items-center justify-center mx-auto mb-2.5 sm:mb-3"><i class="fas ${op.icono || t.icono} text-xl sm:text-2xl"></i></div>
+                   <h3 class="text-base sm:text-lg font-bold text-slate-800 leading-snug">${esc(op.titulo || '')}</h3>
                    ${op.subtitulo ? `<p class="text-xs text-slate-500 mt-1">${esc(op.subtitulo)}</p>` : ''}
                </div>`
-            : `<div class="flex items-start justify-between gap-3 px-6 pt-5 pb-3 border-b border-slate-100">
-                   <div class="flex items-center gap-3 min-w-0">
-                       <div class="w-10 h-10 rounded-full ${t.fondo} ${t.texto} flex items-center justify-center shrink-0"><i class="fas ${op.icono || t.icono}"></i></div>
-                       <div class="min-w-0"><h3 class="text-base font-bold text-slate-800 leading-tight">${esc(op.titulo || '')}</h3>
-                       ${op.subtitulo ? `<p class="text-xs text-slate-500">${esc(op.subtitulo)}</p>` : ''}</div>
+            : `<div class="px-4 sm:px-6 pt-3 sm:pt-5 pb-3 border-b border-slate-100 shrink-0">
+                   <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-2.5 sm:hidden"></div>
+                   <div class="flex items-start justify-between gap-2.5 sm:gap-3">
+                       <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                           <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full ${t.fondo} ${t.texto} flex items-center justify-center shrink-0"><i class="fas ${op.icono || t.icono}"></i></div>
+                           <div class="min-w-0"><h3 class="text-sm sm:text-base font-bold text-slate-800 leading-tight break-words">${esc(op.titulo || '')}</h3>
+                           ${op.subtitulo ? `<p class="text-[11px] sm:text-xs text-slate-500 mt-0.5 break-words">${esc(op.subtitulo)}</p>` : ''}</div>
+                       </div>
+                       ${cerrable ? '<button type="button" data-cerrar aria-label="Cerrar" class="text-slate-400 hover:text-slate-700 w-9 h-9 rounded-full hover:bg-slate-100 shrink-0 flex items-center justify-center"><i class="fas fa-xmark text-base"></i></button>' : ''}
                    </div>
-                   ${cerrable ? '<button type="button" data-cerrar aria-label="Cerrar" class="text-slate-400 hover:text-slate-700 w-8 h-8 rounded-full hover:bg-slate-100 shrink-0"><i class="fas fa-xmark"></i></button>' : ''}
                </div>`;
 
-        const cuerpo = `<div data-cuerpo class="px-6 py-4 ${centrado ? 'text-center' : ''} text-sm text-slate-600 overflow-y-auto" style="max-height:70vh">
-                            ${op.mensaje ? `<p class="leading-relaxed">${esc(op.mensaje)}</p>` : ''}${op.html || ''}</div>`;
+        const cuerpo = `<div data-cuerpo class="px-4 sm:px-6 py-3.5 sm:py-4 ${centrado ? 'text-center' : ''} text-sm text-slate-600 overflow-y-auto overscroll-contain flex-1" style="max-height:74dvh">
+                            ${op.mensaje ? `<p class="leading-relaxed">${esc(op.mensaje)}</p>` : ''}${htmlCuerpo}</div>`;
 
-        const botones = (op.botones || []);
         const estilos = {
             primario: 'bg-cyan-600 hover:bg-cyan-500 text-white',
             exito: 'bg-emerald-600 hover:bg-emerald-500 text-white',
@@ -84,11 +96,11 @@
             secundario: 'bg-white border border-slate-300 text-slate-600 hover:bg-slate-50'
         };
         const pie = botones.length
-            ? `<div class="px-6 pb-5 pt-2 flex flex-col-reverse sm:flex-row gap-2 ${centrado ? 'sm:justify-center' : 'sm:justify-end'}">
-                   ${botones.map((b, i) => `<button type="button" data-boton="${i}" ${b.id ? `id="${esc(b.id)}"` : ''} class="px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${estilos[b.estilo || (b.primario ? 'primario' : 'secundario')]}">${esc(b.texto)}</button>`).join('')}
+            ? `<div class="px-4 sm:px-6 pb-4 sm:pb-5 pt-2.5 border-t border-slate-100/80 bg-white flex flex-col-reverse sm:flex-row flex-wrap gap-2 shrink-0 ${centrado ? 'sm:justify-center' : 'sm:justify-end'}">
+                   ${botones.map((b, i) => `<button type="button" data-boton="${i}" ${b.id ? `id="${esc(b.id)}"` : ''} class="w-full sm:w-auto min-h-[42px] px-4 sm:px-5 py-2.5 rounded-xl sm:rounded-lg text-sm font-bold transition-colors ${estilos[b.estilo || (b.primario ? 'primario' : 'secundario')]}">${esc(b.texto)}</button>`).join('')}
                </div>` : '';
 
-        overlay.innerHTML = `<div class="bg-white rounded-2xl shadow-2xl w-full ${anchos[op.ancho || 'md']} flex flex-col max-h-[92vh] transition-transform duration-200 scale-95" data-caja>${cabecera}${cuerpo}${pie}</div>`;
+        overlay.innerHTML = `<div class="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full ${anchoClase} flex flex-col max-h-[94dvh] sm:max-h-[92vh] overflow-hidden transition-transform duration-200 scale-95" data-caja>${cabecera}${cuerpo}${pie}</div>`;
         document.body.appendChild(overlay);
 
         const ctrl = {
@@ -137,6 +149,7 @@
         });
         requestAnimationFrame(() => { overlay.classList.remove('opacity-0'); overlay.firstElementChild.classList.remove('scale-95'); });
         if (typeof op.alMostrar === 'function') op.alMostrar(ctrl);
+        if (typeof op.alAbrir === 'function') op.alAbrir(overlay, () => ctrl.cerrar());
         if (draftKey) {
             try {
                 const raw = sessionStorage.getItem(draftKey);
@@ -231,7 +244,7 @@
                 <b class="text-slate-800">${esc(turno.paciente_nombre)}</b> · ${esc(turno.especialidad)} #${turno.numero_turno}
                 ${editando && turno.signos_vitales.capturado_por ? `<br><span class="text-slate-400">Última captura: ${esc(turno.signos_vitales.capturado_por)}</span>` : ''}
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 ${campo('ta_sistolica', 'TA sistólica', 'mmHg', true, 'step="1" min="30" max="300" placeholder="Ej. 120 o 180"')}
                 ${campo('ta_diastolica', 'TA diastólica', 'mmHg', true, 'step="1" min="15" max="200" placeholder="Ej. 80 o 120"')}
                 ${campo('frecuencia_cardiaca', 'Frecuencia cardíaca', 'lpm', true, 'step="1" min="15" max="280"')}
@@ -240,7 +253,7 @@
                 ${campo('spo2_porcentaje', 'Saturación de oxígeno', '%', true, 'step="1" min="20" max="100"')}
                 ${campo('peso_kg', 'Peso', 'kg', false, 'step="0.1" min="0.3" max="400"')}
                 ${campo('talla_m', 'Talla', 'm', false, 'step="0.01" min="0.2" max="2.6"')}
-                <div class="col-span-2">${campo('glucemia', 'Glucosa capilar / Dxtx', 'mg/dL', false, 'step="1" min="10" max="600"')}</div>
+                <div class="sm:col-span-2">${campo('glucemia', 'Glucosa capilar / Dxtx', 'mg/dL', false, 'step="1" min="10" max="600"')}</div>
             </div>
             <div id="svm-alerta-critica" class="hidden mt-3 text-xs font-bold rounded-lg px-3 py-2 border"></div>
             <p class="mt-2 text-[11px] text-slate-500"><i class="fas fa-circle-info text-cyan-600 mr-1"></i>Se permiten valores de urgencia o crisis (ej. TA <b>180/120</b> mmHg); el sistema mostrará alerta clínica para el médico sin bloquear el registro.</p>
@@ -1025,5 +1038,6 @@
         window.addEventListener('afterprint', limpiarAjusteImpresion);
     }
 
-    global.BelenUI = { ajustarAUnaHoja, ajustarImpresionesVisibles, esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, modalVerificarExpediente, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, htmlIdentidadPaciente, leerIdentidadPaciente, abrirCacheAvancesYDocumentos, vistaPreviaDocumentoCache, TIPOS };
+    const abrirModal = modal;
+    global.BelenUI = { ajustarAUnaHoja, ajustarImpresionesVisibles, esc, toast, modal, abrirModal, confirmar, aviso, modalSignosVitales, modalHistorial, modalVerificarExpediente, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, htmlIdentidadPaciente, leerIdentidadPaciente, abrirCacheAvancesYDocumentos, vistaPreviaDocumentoCache, TIPOS };
 })(window);

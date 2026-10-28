@@ -85,6 +85,10 @@ const AdminController = {
         this.rolActual = s.rol;
         document.getElementById('user-name').innerText = s.nombre;
         document.getElementById('user-role').innerText = s.rol === 'medico' ? s.especialidad : s.cargo;
+        const unm = document.getElementById('user-name-movil');
+        const urm = document.getElementById('user-role-movil');
+        if (unm) unm.innerText = s.nombre;
+        if (urm) urm.innerText = s.rol === 'medico' ? s.especialidad : s.cargo;
         const btnCed = document.getElementById('btn-mis-cedulas');
         if (btnCed) btnCed.classList.toggle('hidden', s.rol !== 'medico');
         return true;
@@ -125,8 +129,20 @@ const AdminController = {
         return ['central', 'fila', 'hospitalizacion', 'cirugias', 'expedientes', 'personal', 'tarifario', 'farmacia'].find(v => this.vistaPermitida(v)) || null;
     },
 
+    alternarSidebarMovil: function (forzar) {
+        const aside = document.getElementById('sidebar-principal') || document.querySelector('aside');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (!aside) return;
+        const estaAbierto = !aside.classList.contains('-translate-x-full');
+        const abrir = typeof forzar === 'boolean' ? forzar : !estaAbierto;
+        aside.classList.toggle('-translate-x-full', !abrir);
+        aside.classList.toggle('translate-x-0', abrir);
+        if (backdrop) backdrop.classList.toggle('hidden', !abrir);
+    },
+
     navegar: function (vista, ev) {
         if (ev) ev.preventDefault();
+        this.alternarSidebarMovil(false);
         if (!this.vistaPermitida(vista)) { BelenUI.toast('Su perfil no tiene acceso a esa sección.', 'alerta'); return; }
         this.vista = vista;
         history.replaceState(null, '', '?vista=' + vista);
@@ -1666,7 +1682,7 @@ const AdminController = {
                 <div class="flex flex-wrap items-start gap-4">
                     <div class="min-w-[4rem] max-w-[11rem] min-h-[4rem] py-1 rounded-xl ${f.cama ? (pendientePago ? 'bg-amber-600 text-white' : 'bg-indigo-600 text-white') : 'bg-slate-100 text-slate-400 border border-dashed border-slate-300'} flex flex-col items-center justify-center shrink-0 text-center px-1">
                         <i class="fas fa-bed text-sm"></i><span data-cama="1" class="text-[11px] font-extrabold leading-tight mt-0.5 break-words">${f.cama ? e(f.cama) : 'Sin cama'}</span></div>
-                    <div class="flex-1 min-w-[240px]">
+                    <div class="flex-1 min-w-0 sm:min-w-[240px] w-full sm:w-auto">
                         <div class="flex flex-wrap items-center gap-2"><h4 class="text-lg font-bold text-slate-900">${e(f.nombre)}</h4>${this.badgeEstatus({ estatus: f.estatus })}${f.ambulatorio_qx ? '<span class="inline-flex items-center text-[10px] font-extrabold uppercase tracking-wide px-2.5 py-1 rounded-full bg-violet-600 text-cyan-50 border border-cyan-300 shadow-sm">CIRUGÍA AMBULATORIA</span>' : ''}${relacion}</div>
                         <p class="text-xs text-slate-500">${f.edad !== null ? f.edad + ' años' : ''}${sexoTxt(f) ? ' · ' + sexoTxt(f) : ''}${f.area ? ' · ' + e(f.area) : ''}${pendientePago ? ' · ' + e(S.formatoMoneda(f.cuenta_actual || 0)) : ''}</p>
                     </div>
@@ -2267,11 +2283,15 @@ const AdminController = {
     },
 
     pintarBarraKiosco: function () {
-        const aside = document.querySelector('aside');
+        const aside = document.getElementById('sidebar-principal') || document.querySelector('aside');
+        const btnMenu = document.getElementById('btn-abrir-sidebar');
+        const bottomNav = document.getElementById('mobile-bottom-nav');
         const cerrar = document.getElementById('kiosco-cerrar');
         const barra = document.getElementById('kiosco-operador');
         const kiosco = this.esKioscoFarmacia();
-        if (aside) aside.classList.toggle('hidden', kiosco);
+        if (aside) aside.classList.toggle('!hidden', kiosco);
+        if (btnMenu) btnMenu.classList.toggle('!hidden', kiosco);
+        if (bottomNav) bottomNav.classList.toggle('!hidden', kiosco);
         if (cerrar) cerrar.classList.toggle('hidden', !kiosco);
         if (!barra) return;
         const op = kiosco ? this.operadorFarmacia() : null;
@@ -2402,7 +2422,7 @@ const AdminController = {
         }
         const puede = BelenStore.puede('gestionar_farmacia');
         return `<div class="flex flex-col gap-3" id="cola-surtido">${pendientes.map(f => `<article class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-wrap items-center gap-4">
-            <div class="flex-1 min-w-[240px]">
+            <div class="flex-1 min-w-0 sm:min-w-[240px] w-full sm:w-auto">
                 <p class="text-sm font-bold text-slate-900">Paciente: ${e(f.paciente)} - Cama: ${e(f.cama)} - Solicita: ${e(f.resumen)}</p>
                 <p class="text-[11px] text-slate-400 mt-1 uppercase font-bold">${f.origen === 'consulta' ? 'Consulta ambulatoria' : 'Indicación de piso'}</p>
             </div>
@@ -2874,8 +2894,8 @@ const AdminController = {
         }).join('');
         const vacio = this.carritoFarmacia.length ? '' : '<tr><td colspan="4" class="px-3 py-8 text-center text-slate-400">El carrito está vacío.</td></tr>';
         const totalBase = Math.round(base * 100) / 100;
-        return `<div id="carrito-farmacia"><table class="w-full text-sm"><thead class="text-[11px] uppercase text-slate-400"><tr><th class="px-3 py-2 text-left">Concepto</th><th class="px-3 py-2">Cant.</th><th class="px-3 py-2 text-right">Importe</th><th></th></tr></thead>
-            <tbody>${filas || vacio}${filasAjuste}</tbody></table>
+        return `<div id="carrito-farmacia"><div class="overflow-x-auto -mx-1 px-1"><table class="w-full text-sm min-w-[300px]"><thead class="text-[11px] uppercase text-slate-400"><tr><th class="px-3 py-2 text-left">Concepto</th><th class="px-3 py-2">Cant.</th><th class="px-3 py-2 text-right">Importe</th><th></th></tr></thead>
+            <tbody>${filas || vacio}${filasAjuste}</tbody></table></div>
             <div class="mt-3 border-t border-slate-100 pt-3 text-sm space-y-1">
                 <p class="flex justify-between font-extrabold text-slate-900 text-base"><span>Total sin IVA</span><span>${e(S.formatoMoneda(totalBase))}</span></p>
                 <p class="text-[11px] text-slate-500">El IVA de los conceptos gravables se calcula en Caja, solo si el paciente solicita factura.</p>
@@ -3675,7 +3695,7 @@ const AdminController = {
                 const semanas = mes.semanas.map(sem => {
                     const claveSem = claveMes + '-' + sem.semana;
                     const semAbierta = !!this.bitacoraAbiertas[claveSem];
-                    const tabla = semAbierta ? `<table class="w-full text-xs mt-2"><thead class="text-[10px] uppercase text-slate-400"><tr><th class="px-3 py-1 text-left">Fecha</th><th class="px-3 py-1 text-left">Tipo</th><th class="px-3 py-1 text-left">Personal</th><th class="px-3 py-1 text-left">Producto</th><th class="px-3 py-1 text-left">Piezas</th><th class="px-3 py-1 text-left">Destino</th><th class="px-3 py-1 text-left">Acción</th></tr></thead><tbody>${sem.movimientos.map(fila).join('')}</tbody></table>` : '';
+                    const tabla = semAbierta ? `<div class="overflow-x-auto -mx-1 px-1"><table class="w-full text-xs mt-2 min-w-[560px]"><thead class="text-[10px] uppercase text-slate-400"><tr><th class="px-3 py-1 text-left">Fecha</th><th class="px-3 py-1 text-left">Tipo</th><th class="px-3 py-1 text-left">Personal</th><th class="px-3 py-1 text-left">Producto</th><th class="px-3 py-1 text-left">Piezas</th><th class="px-3 py-1 text-left">Destino</th><th class="px-3 py-1 text-left">Acción</th></tr></thead><tbody>${sem.movimientos.map(fila).join('')}</tbody></table>` : '';
                     return `<div class="ml-4 mt-2"><button type="button" onclick="AdminController.alternarCarpetaBitacora('${claveSem}')" class="text-left text-sm font-bold text-slate-700"><i class="fas fa-folder${semAbierta ? '-open' : ''} text-amber-500 mr-2"></i>${e(sem.etiqueta)} <span class="text-[11px] font-medium text-slate-400">${sem.movimientos.length}</span></button>${tabla}</div>`;
                 }).join('');
                 return `<div class="ml-3 mt-2"><button type="button" onclick="AdminController.alternarCarpetaBitacora('${claveMes}')" class="text-left font-extrabold text-slate-800"><i class="fas fa-folder${mesAbierto ? '-open' : ''} text-teal-600 mr-2"></i>${e(mes.nombre)}</button>${mesAbierto ? semanas : ''}</div>`;
@@ -4690,7 +4710,7 @@ const AdminController = {
                     <input id="busqueda-historica" type="search" autocomplete="off" placeholder="Buscar por nombre, expediente o diagnóstico" oninput="AdminController.filtrarHistorico(this.value)"
                         class="w-full border border-slate-300 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-800 focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none bg-white">
                 </div>
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"><table class="w-full text-sm text-left" id="tabla-historico">
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto"><table class="w-full text-sm text-left min-w-[640px]" id="tabla-historico">
                     <thead class="bg-slate-50 text-[11px] uppercase text-slate-400"><tr><th class="px-4 py-3">Paciente</th><th class="px-4 py-3">Edad y sexo</th><th class="px-4 py-3">Estatus</th><th class="px-4 py-3 text-center">Visitas</th><th class="px-4 py-3">Última visita</th><th class="px-4 py-3"></th></tr></thead>
                     <tbody>${filas || '<tr><td colspan="6" class="px-4 py-10 text-center text-slate-400">No hay expedientes para mostrar.</td></tr>'}</tbody></table>
                     <p id="historico-vacio" class="hidden px-4 py-10 text-center text-slate-400">Ningún expediente coincide con la búsqueda.</p></div>`;
