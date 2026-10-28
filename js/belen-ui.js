@@ -972,5 +972,58 @@
         });
     }
 
-    global.BelenUI = { esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, modalVerificarExpediente, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, htmlIdentidadPaciente, leerIdentidadPaciente, abrirCacheAvancesYDocumentos, vistaPreviaDocumentoCache, TIPOS };
+
+    // ===== Impresión inteligente: 1 hoja cuando se pueda, sin sacrificar legibilidad =====
+    // Área útil carta con membrete: 21.59 x 27.94 cm menos márgenes @page (3.6 sup, 1.1 inf, 1.6 laterales).
+    const AREA_UTIL_CM = { ancho: 18.39, alto: 23.2 };
+    const ESCALA_MIN = 0.82; // ~11px -> 9px: por debajo de esto ya no es legible impreso
+    function cmAPx(cm) { return cm * 96 / 2.54; }
+    function prepararFirmas() {
+        if (document.getElementById('belen-css-firmas')) return;
+        const st = document.createElement('style');
+        st.id = 'belen-css-firmas';
+        st.textContent = '@media print{'
+            + '.zona-impresion footer,#print-dashboard footer,.belen-firmas{margin-top:1.8cm !important;page-break-inside:avoid;break-inside:avoid;}'
+            + '.firma-box{margin-top:1.8cm !important;page-break-inside:avoid;break-inside:avoid;}'
+            + '.zona-impresion footer > div,#print-dashboard footer > div{break-inside:avoid;}'
+            + '.belen-huella{display:inline-block;width:2.6cm;height:3.2cm;border:1px dashed #64748b;margin-bottom:4px;}'
+            + '}';
+        document.head.appendChild(st);
+    }
+    function ajustarAUnaHoja(el) {
+        if (!el) return 1;
+        el.style.zoom = '';
+        const anchoPrevio = el.style.width;
+        el.style.width = AREA_UTIL_CM.ancho + 'cm';
+        const alto = el.scrollHeight;
+        const limite = cmAPx(AREA_UTIL_CM.alto);
+        let escala = 1;
+        if (alto > limite) {
+            const necesaria = limite / alto;
+            // Solo achica si con eso cabe sin bajar del mínimo legible; si no, deja tamaño normal y usa 2 hojas.
+            escala = necesaria >= ESCALA_MIN ? Math.floor(necesaria * 100) / 100 : 1;
+        }
+        el.style.width = anchoPrevio;
+        if (escala < 1) el.style.zoom = String(escala);
+        el.dataset.escalaImpresion = String(escala);
+        return escala;
+    }
+    function ajustarImpresionesVisibles() {
+        prepararFirmas();
+        const zonas = Array.from(document.querySelectorAll('.zona-impresion:not(.hidden), #print-dashboard'));
+        zonas.forEach(z => {
+            // Si la zona contiene varios documentos (paquete), ajusta cada documento por separado.
+            const docs = z.querySelectorAll(':scope > article, :scope > div > article');
+            if (docs.length > 1) docs.forEach(ajustarAUnaHoja); else ajustarAUnaHoja(z);
+        });
+    }
+    function limpiarAjusteImpresion() {
+        document.querySelectorAll('[data-escala-impresion]').forEach(el => { el.style.zoom = ''; delete el.dataset.escalaImpresion; });
+    }
+    if (typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('beforeprint', ajustarImpresionesVisibles);
+        window.addEventListener('afterprint', limpiarAjusteImpresion);
+    }
+
+    global.BelenUI = { ajustarAUnaHoja, ajustarImpresionesVisibles, esc, toast, modal, confirmar, aviso, modalSignosVitales, modalHistorial, modalVerificarExpediente, resumenVisitaHTML, abrirMisCedulas, abrirTerminalEstudios, htmlIdentidadPaciente, leerIdentidadPaciente, abrirCacheAvancesYDocumentos, vistaPreviaDocumentoCache, TIPOS };
 })(window);

@@ -1238,12 +1238,12 @@
           <div><strong>Edad:</strong> <span id="print-ind-edad"></span></div>
           <div><strong>Fecha de nacimiento:</strong> <span id="print-ind-fn"></span></div>
           <div><strong>Ingreso:</strong> <span id="print-ind-ingreso"></span></div>
-          <div><strong>Fecha y hora de indicación:</strong> <span id="print-ind-fecha" class="put-fecha" style="font-weight:bold;"></span></div>
-          <div><strong>Diagnóstico:</strong> <span id="print-ind-dx" class="out-dx-prin"></span></div>
-          <div style="grid-column:span 2;"><strong>Médico tratante:</strong> <span id="print-ind-tratante"></span></div>
-          <div style="grid-column:1/-1;"><strong>Alergias a medicamentos:</strong> Sí <span id="print-ind-alg-si">☐</span> &nbsp; No <span id="print-ind-alg-no">☐</span> &nbsp;·&nbsp; <strong>¿A qué es alérgico(a)?:</strong> <span id="print-ind-alergias" style="display:inline-block;min-width:220px;border-bottom:1px solid #cbd5e1;padding:0 4px;font-weight:bold;color:#991b1b;">NEGADAS</span></div>
+          <div style="grid-column:span 3;"><strong>Diagnóstico:</strong> <span id="print-ind-dx" class="out-dx-prin"></span></div>
+<span id="print-ind-tratante" style="display:none;"></span>
+          <div style="grid-column:1/-1;"><strong>Alergias a medicamentos:</strong> <span id="print-ind-alergias" style="font-weight:bold;">NEGADAS</span><span id="print-ind-alg-si" style="display:none;"></span><span id="print-ind-alg-no" style="display:none;"></span></div>
         </div>
         <div style="padding:2px 2px 6px;">
+          <div style="font-size:10px;color:#475569;margin-bottom:6px;">Fecha y hora de la indicación: <strong id="print-ind-fecha" class="put-fecha" style="color:#0f172a;"></strong></div>
           <div style="margin-bottom:10px;">
             <div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;margin:0 0 2px;">1. Dieta</div>
             <div id="print-ind-dieta" style="white-space:pre-wrap;padding-left:4px;"></div>
@@ -1371,8 +1371,8 @@
         </div>
     </div>
 
-    <script src="js/belen-store.js?v=f22"></script>
-    <script src="js/belen-ui.js?v=f22"></script>
+    <script src="js/belen-store.js?v=f24"></script>
+    <script src="js/belen-ui.js?v=f24"></script>
     <script>
         let diagnósticosAgregados = [];
         let cirugiasAgregadas = [];
@@ -1804,7 +1804,8 @@
             if (si) si.textContent = niega ? '☐' : '☑';
             if (no) no.textContent = niega ? '☑' : '☐';
             if (nom) {
-                nom.textContent = niega ? 'NEGADAS' : alg;
+                nom.innerHTML = '';
+                nom.textContent = niega ? 'NEGADAS' : ('SÍ · Medicamento(s): ' + alg);
                 nom.style.color = niega ? '#0f172a' : '#991b1b';
             }
         }
@@ -4776,7 +4777,7 @@
             const edadMatchInd = document.getElementById('paciente-genero').innerText.match(/(\d+)\s*a[ñn]os/i);
             document.getElementById('print-ind-nombre').innerText = document.getElementById('paciente-nombre').innerText.trim();
             document.getElementById('print-ind-edad').innerText = edadMatchInd ? edadMatchInd[1] + ' años' : 'No registrada';
-            document.getElementById('print-ind-alergias').innerText = alergiasTxt;
+            aplicarAlergiaIndicacion(document, alergiasTxt);
             document.getElementById('print-ind-dieta').textContent = ind.dieta.texto || 'No especificada.';
 
             // Texto libre: se imprime tal cual (saltos de línea respetados por white-space: pre-wrap)
