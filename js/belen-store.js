@@ -7867,7 +7867,7 @@
             + '</div></div>'
             + '<div style="margin-bottom:8px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin-bottom:3px;">3. Exploración Física Neonatal Completa</div><div style="white-space:pre-wrap;">' + e(rn && rn.exploracion_neonatal) + '</div></div>'
             + '<div style="margin-bottom:14px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin-bottom:3px;">4. Destino e Indicaciones del Recién Nacido</div><div style="white-space:pre-wrap;font-weight:bold;">' + e(rn && rn.destino_rn) + '</div></div>'
-            + '<footer style="margin-top:20px;display:flex;justify-content:space-around;text-align:center;page-break-inside:avoid;">'
+            + '<footer style="margin-top:20px;display:flex;justify-content:space-around;align-items:flex-end;text-align:center;page-break-inside:avoid;">'
             + '<div style="min-width:230px;border-top:1px solid #0f172a;padding-top:4px;font-size:10.5px;"><strong>' + e((rn && rn.medico_nombre) || '') + '</strong><br><span>' + e((rn && rn.medico_especialidad) || 'Pediatría') + '</span><br>' + cedulas + '</div>'
             + '<div style="min-width:210px;font-size:10.5px;"><div style="height:3.2cm;"></div><div style="border-top:1px solid #0f172a;padding-top:4px;"><strong>Huella Plantar del RN / Firma Madre</strong><br><span style="font-size:9px;color:#64748b;">Identificación Neonatal NOM-007</span></div></div></footer></article>';
     }
@@ -8407,11 +8407,11 @@
             + '<div style="margin-bottom:7px;"><strong>3. Estado clínico y Signos Vitales verificados al momento de retirarse del hospital:</strong><div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 7px;background:#f8fafc;">TA: <strong>' + e(sv.ta || '130/85 mmHg') + '</strong> · FC: <strong>' + e(sv.fc || '82 lpm') + '</strong> · FR: <strong>' + e(sv.fr || '18 rpm') + '</strong> · Temp: <strong>' + e(sv.temp || '36.8 °C') + '</strong> · SpO2: <strong>' + e(sv.spo2 || '97%') + '</strong> · Estado neurológico: <strong>' + e(sv.glasgow || 'Glasgow 15/15, consciente y orientado') + '</strong></div></div>'
             + '<div style="margin-bottom:7px;"><strong>4. Resumen de Riesgos Médicos Específicos advertidos en caso de egreso voluntario (NOM-004 num. 10.2.4):</strong><div style="border:1px solid #fca5a5;border-radius:4px;padding:4px 7px;background:#fff1f2;color:#881337;">' + e(d.riesgos_explicados) + '</div></div>'
             + '<div style="margin-bottom:10px;"><strong>5. Medidas recomendadas y Signos de Alarma explicados para acudir de inmediato a Urgencias (NOM-004 num. 10.2.5):</strong><div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 7px;background:#f8fafc;">' + e(d.medidas_recomendadas) + '</div></div>'
-            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;text-align:center;font-size:9.5px;">'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:1.6cm;text-align:center;font-size:9.5px;page-break-inside:avoid;break-inside:avoid;">'
             + '<div style="border-top:1px solid #0f172a;padding-top:4px;"><strong>' + e(d.solicitante_nombre) + '</strong><br>Nombre y Firma del Paciente o Familiar que solicita el Egreso Voluntario<br>Parentesco: ' + e(d.solicitante_parentesco) + ' · Tel: ' + e(d.telefono) + '</div>'
             + '<div style="border-top:1px solid #0f172a;padding-top:4px;"><strong>' + e(d.medico_nombre) + '</strong><br>' + e(d.medico_cedulas) + '<br>Médico que informó riesgos y emite la Hoja de Egreso Voluntario</div>'
-            + '<div style="border-top:1px solid #0f172a;padding-top:4px;margin-top:14px;"><strong>' + e(d.testigo_1_nombre) + '</strong><br>Nombre, Domicilio y Firma del Testigo 1 (Art. 79 RLGSPSAM)<br>' + e(d.testigo_1_domicilio) + '</div>'
-            + '<div style="border-top:1px solid #0f172a;padding-top:4px;margin-top:14px;"><strong>' + e(d.testigo_2_nombre) + '</strong><br>Nombre, Domicilio y Firma del Testigo 2 (Personal de la Institución)<br>' + e(d.testigo_2_domicilio) + '</div>'
+            + '<div style="border-top:1px solid #0f172a;padding-top:4px;margin-top:1.6cm;"><strong>' + e(d.testigo_1_nombre) + '</strong><br>Nombre, Domicilio y Firma del Testigo 1 (Art. 79 RLGSPSAM)<br>' + e(d.testigo_1_domicilio) + '</div>'
+            + '<div style="border-top:1px solid #0f172a;padding-top:4px;margin-top:1.6cm;"><strong>' + e(d.testigo_2_nombre) + '</strong><br>Nombre, Domicilio y Firma del Testigo 2 (Personal de la Institución)<br>' + e(d.testigo_2_domicilio) + '</div>'
             + '</div></article>';
     }
 
