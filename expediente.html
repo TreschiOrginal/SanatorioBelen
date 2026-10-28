@@ -934,13 +934,19 @@
                     <button type="button" id="btn-nota-postoperatoria" onclick="abrirNotaPostoperatoriaVisor()" class="hidden bg-violet-700 hover:bg-violet-800 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-notes-medical"></i> Nota Post-Operatoria</button>
                     <button type="button" id="btn-cambiar-area" onclick="abrirCambiarAreaVisor()" class="hidden bg-white border border-indigo-300 text-indigo-800 hover:bg-indigo-50 text-xs font-bold px-3.5 py-2 rounded-lg transition items-center gap-1.5">🔄 Cambiar Área de Estancia</button>
                     <button type="button" id="btn-dar-alta-egreso" onclick="abrirNotaEgreso()" class="hidden bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition items-center gap-1.5"><i class="fas fa-door-open"></i> Dar de Alta (Egreso)</button>
-                    <button type="button" onclick="abrirHojaEnfermeria()" class="bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg"><i class="fas fa-notes-medical mr-1"></i> Hoja de Enfermería</button>
-                    <button type="button" onclick="abrirValoracionPreoperatoriaVisor()" class="bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 font-bold rounded-lg"><i class="fas fa-heart-pulse mr-1"></i> Val. Preoperatoria</button>
-                    <button type="button" onclick="abrirHojaRecienNacidoVisor()" class="bg-white border border-pink-300 text-pink-700 hover:bg-pink-50 font-bold rounded-lg"><i class="fas fa-baby mr-1"></i> Hoja Recién Nacido</button>
-                    <button type="button" onclick="abrirHojaAnestesia('pre')" class="bg-white border border-violet-300 text-violet-700 font-bold rounded-lg">Preanestésica</button>
-                    <button type="button" onclick="abrirHojaAnestesia('trans')" class="bg-white border border-violet-300 text-violet-700 font-bold rounded-lg">Transanestésica</button>
-                    <button type="button" onclick="imprimirTransanestesicaBlancoVisor()" class="bg-violet-50 border border-violet-300 text-violet-800 hover:bg-violet-100 font-bold rounded-lg" title="Imprimir formato transanestésico en blanco para llenado manual en quirófano"><i class="fas fa-print mr-1"></i> Transanestésico Blanco</button>
-                    <button type="button" onclick="abrirHojaAnestesia('post')" class="bg-white border border-violet-300 text-violet-700 font-bold rounded-lg">Postanestésica</button>
+                    <button id="btn-visor-responder-ic" type="button" onclick="abrirResponderMiInterconsulta()" class="hidden px-3.5 py-2 rounded-lg text-xs font-bold bg-amber-500 text-white hover:bg-amber-600 items-center gap-1.5 shadow-sm ring-2 ring-amber-300"><i class="fas fa-comment-medical"></i> Responder Interconsulta Pendiente</button>
+                    <button id="btn-visor-nota-ingreso-directo" type="button" onclick="abrirModalNotaIngresoDirecto()" class="hidden px-3.5 py-2 rounded-lg text-xs font-bold bg-sky-700 text-white hover:bg-sky-800 items-center gap-1.5 shadow-sm"><i class="fas fa-file-medical"></i> Nota de Ingreso e Historia Clínica</button>
+                    <button id="btn-visor-solicitar-estudios" type="button" onclick="abrirModalSolicitarEstudios()" class="hidden px-3.5 py-2 rounded-lg text-xs font-bold bg-cyan-700 text-white hover:bg-cyan-800 items-center gap-1.5 shadow-sm"><i class="fas fa-microscope"></i> Solicitar Estudios / TAC</button>
+                    <button id="btn-visor-confirmar-estudios-enf" type="button" onclick="abrirModalConfirmarEstudiosEnf()" class="hidden px-3.5 py-2 rounded-lg text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 items-center gap-1.5 shadow-sm"><i class="fas fa-vials"></i> Estudios / TAC Pendientes <span id="badge-estudios-pendientes" class="bg-white text-amber-800 rounded-full px-1.5 py-0.5 text-[10px] font-extrabold">0</span></button>
+                    <button id="btn-visor-hoja-enf" type="button" onclick="abrirHojaEnfermeria()" class="hidden px-3.5 py-2 text-xs bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg items-center gap-1.5 shadow-sm"><i class="fas fa-notes-medical"></i> Hoja de Enfermería</button>
+                    <button id="btn-visor-val-preop" type="button" onclick="abrirValoracionPreoperatoriaVisor()" class="hidden px-3.5 py-2 text-xs bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 font-bold rounded-lg items-center gap-1.5"><i class="fas fa-heart-pulse"></i> Val. Preoperatoria</button>
+                    <button id="btn-visor-parto" type="button" onclick="abrirModalNotaPartoVisor()" class="hidden px-3.5 py-2 text-xs bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg items-center gap-1.5 shadow-sm"><i class="fas fa-baby-carriage"></i> Nota de Parto</button>
+                    <button id="btn-visor-rn" type="button" onclick="abrirHojaRecienNacidoVisor()" class="hidden px-3.5 py-2 text-xs bg-white border border-pink-300 text-pink-700 hover:bg-pink-50 font-bold rounded-lg items-center gap-1.5"><i class="fas fa-baby"></i> Hoja Recién Nacido</button>
+                    <button id="btn-visor-preanest" type="button" onclick="abrirHojaAnestesia('pre')" class="hidden px-3 py-2 text-xs bg-white border border-violet-300 text-violet-700 hover:bg-violet-50 font-bold rounded-lg items-center gap-1">Preanestésica</button>
+                    <button id="btn-visor-transanest" type="button" onclick="abrirHojaAnestesia('trans')" class="hidden px-3 py-2 text-xs bg-white border border-violet-300 text-violet-700 hover:bg-violet-50 font-bold rounded-lg items-center gap-1">Transanestésica</button>
+                    <button id="btn-visor-transanest-blanco" type="button" onclick="imprimirTransanestesicaBlancoVisor()" class="hidden px-3 py-2 text-xs bg-violet-50 border border-violet-300 text-violet-800 hover:bg-violet-100 font-bold rounded-lg items-center gap-1" title="Imprimir formato transanestésico en blanco para llenado manual en quirófano"><i class="fas fa-print"></i> Transanestésico Blanco</button>
+                    <button id="btn-visor-postanest" type="button" onclick="abrirHojaAnestesia('post')" class="hidden px-3 py-2 text-xs bg-white border border-violet-300 text-violet-700 hover:bg-violet-50 font-bold rounded-lg items-center gap-1">Postanestésica</button>
+                    <button id="btn-visor-alta-servicio" type="button" onclick="abrirModalAltaPorServicio()" class="hidden px-3.5 py-2 rounded-lg text-xs font-bold bg-emerald-700 text-white hover:bg-emerald-800 items-center gap-1.5 shadow-sm"><i class="fas fa-check-double"></i> Pre-Alta de mi Servicio</button>
                     <button type="button" id="btn-imprimir-documento" onclick="imprimirDocumentoVisor()" class="bg-white border border-slate-300 text-slate-600 hover:bg-slate-50 text-xs font-bold px-3.5 py-2 rounded-lg transition flex items-center gap-1.5"><i class="fas fa-print"></i> Imprimir este documento</button>
                 </div>
             </div>
@@ -2791,7 +2797,7 @@
                     { texto: 'Guardar Cirugía', estilo: 'primario', id: 'cx-guardar', alPulsar: c => {
                         const q = sel => c.el.querySelector(sel);
                         const r = S.programarCirugia({
-                            paciente_id: preset.paciente_id, nombre: preset.nombre, fecha_nacimiento: preset.fecha_nacimiento,
+                            turno_id: TURNO ? TURNO.turno_id : null, paciente_id: preset.paciente_id, nombre: preset.nombre, fecha_nacimiento: preset.fecha_nacimiento,
                             tipo_estancia: q('#cx-tipo_estancia').value, procedimiento: q('#cx-procedimiento').value, sala: q('#cx-sala').value,
                             fecha: q('#cx-fecha').value, hora_inicio: q('#cx-hora_inicio').value, duracion_minutos: q('#cx-duracion').value,
                             medico_cirujano_id: q('#cx-medico_cirujano_id').value, anestesiologo_id: q('#cx-anestesiologo_id').value,
@@ -2812,7 +2818,7 @@
                             if (!r.errores) BelenUI.toast(r.motivo, 'peligro');
                             return false;
                         }
-                        BelenUI.toast('Cirugía programada: ' + r.cirugia.procedimiento + ' (' + r.cirugia.hora_inicio + ' a ' + r.cirugia.hora_fin + ').', 'exito');
+                        refrescarVisor(); BelenUI.toast('Cirugía programada: ' + r.cirugia.procedimiento + ' (' + r.cirugia.hora_inicio + ' a ' + r.cirugia.hora_fin + ').', 'exito');
                     } }
                 ]
             });
@@ -2838,6 +2844,16 @@
                 });
             });
             if (!sinNota) itemsIngreso.push({ id: 'historia-clinica', titulo: 'Historia Clínica', sub: ingreso, meta: 'Historia Clínica · ' + ingreso, htmls: () => [HTML_CAPTURADO.historia] });
+            if (INTERNAMIENTO.nota_ingreso_directo && S.htmlImpresionNotaIngresoDirecto) {
+                itemsIngreso.unshift({
+                    id: 'nota-ingreso-directo',
+                    titulo: 'Nota de Ingreso e Historia Clínica',
+                    etiqueta: 'Vigente',
+                    sub: S.fechaHoraLegible(INTERNAMIENTO.nota_ingreso_directo.fecha_hora) + ' · ' + (INTERNAMIENTO.nota_ingreso_directo.medico_nombre || ''),
+                    meta: 'Nota de Ingreso e Historia Clínica (Ingreso Directo) · ' + S.fechaHoraLegible(INTERNAMIENTO.nota_ingreso_directo.fecha_hora),
+                    htmls: () => [S.htmlImpresionNotaIngresoDirecto(INTERNAMIENTO, TURNO, INTERNAMIENTO.nota_ingreso_directo)]
+                });
+            }
             nodo('ingreso', 'Ingreso', 'fa-folder-open', itemsIngreso);
 
             const hojas = (INTERNAMIENTO.hojas_indicaciones || []).slice().reverse();
@@ -2925,14 +2941,92 @@
                 meta: n.folio + ' · ' + S.fechaHoraLegible(n.fecha_hora) + ' · ' + n.autor_nombre + ' (' + etiquetaRelacion(n) + ')',
                 htmls: () => [htmlNotaEvolucion(n)] })), { vacio: 'Aún no hay notas de evolución' });
 
+            // Hojas de Enfermería (Registros Clínicos de Enfermería)
+            if ((INTERNAMIENTO.hojas_enfermeria || []).length && S.htmlImpresionHojaEnfermeria) {
+                nodo('enfermeria_hojas', 'Hojas de Enfermería', 'fa-user-nurse', [{
+                    id: 'hojas-enfermeria',
+                    titulo: 'Hoja de Enfermería (' + (INTERNAMIENTO.hojas_enfermeria || []).length + ' registros)',
+                    etiqueta: 'Vigente',
+                    sub: 'Signos vitales, medicamentos aplicados, líquidos y cuidados',
+                    meta: 'Registros Clínicos de Enfermería',
+                    htmls: () => [S.htmlImpresionHojaEnfermeria(INTERNAMIENTO, TURNO)]
+                }], { directo: true });
+            }
+            // Solicitudes y Confirmación de Estudios / Gabinete (TAC, Lab, Rx, USG)
+            if ((INTERNAMIENTO.ordenes_estudios || []).length && S.htmlImpresionOrdenesEstudios) {
+                nodo('ordenes_estudios', 'Estudios y Gabinete (TAC / Lab)', 'fa-microscope', [{
+                    id: 'ordenes-estudios',
+                    titulo: 'Estudios y Gabinete (' + (INTERNAMIENTO.ordenes_estudios || []).length + ')',
+                    etiqueta: 'Vigente',
+                    sub: 'Solicitudes médicas y confirmación de Enfermería',
+                    meta: 'Órdenes de Estudios de Laboratorio y Gabinete (TAC, Rx, USG)',
+                    htmls: () => [S.htmlImpresionOrdenesEstudios(INTERNAMIENTO, TURNO)]
+                }], { directo: true });
+            }
+            // Notas de Parto y Alumbramiento (NOM-007)
+            if ((INTERNAMIENTO.notas_parto || []).length && S.htmlImpresionNotaParto) {
+                nodo('notas_parto', 'Nota de Parto y Alumbramiento', 'fa-baby-carriage', (INTERNAMIENTO.notas_parto || []).map((np, idx) => ({
+                    id: 'nota-parto-' + (np.nota_id || idx),
+                    titulo: 'Nota de Parto y Alumbramiento (NOM-007)',
+                    etiqueta: 'Vigente',
+                    sub: S.fechaHoraLegible(np.fecha_hora) + ' · ' + (np.medico_nombre || ''),
+                    meta: 'Nota de Atención de Parto y Alumbramiento · ' + (np.medico_nombre || ''),
+                    htmls: () => [S.htmlImpresionNotaParto(np, TURNO.turno_id)]
+                })), { directo: true });
+            }
+            // Notas de Anestesia (Preanestésica, Transanestésica, Postanestésica)
+            if ((INTERNAMIENTO.notas_preanestesicas || []).length && S.htmlImpresionNotaPreanestesica) {
+                (INTERNAMIENTO.notas_preanestesicas || []).forEach((np, idx) => {
+                    itemsQuirurgicos.push({
+                        id: 'preanest-' + (np.nota_id || idx),
+                        titulo: 'Valoración Preanestésica',
+                        sub: S.fechaHoraLegible(np.fecha_hora) + ' · ' + (np.anestesiologo_nombre || ''),
+                        meta: 'Valoración Preanestésica · ' + (np.anestesiologo_nombre || ''),
+                        htmls: () => [S.htmlImpresionNotaPreanestesica(np, TURNO.turno_id)]
+                    });
+                });
+            }
+            if ((INTERNAMIENTO.registros_transanestesicos || []).length && S.htmlImpresionNotaTransanestesica) {
+                (INTERNAMIENTO.registros_transanestesicos || []).forEach((rt, idx) => {
+                    itemsQuirurgicos.push({
+                        id: 'transanest-' + (rt.registro_id || idx),
+                        titulo: 'Registro Transanestésico',
+                        sub: S.fechaHoraLegible(rt.fecha_hora) + ' · ' + (rt.anestesiologo_nombre || ''),
+                        meta: 'Registro Transanestésico · ' + (rt.anestesiologo_nombre || ''),
+                        htmls: () => [S.htmlImpresionNotaTransanestesica(rt, TURNO.turno_id)]
+                    });
+                });
+            }
+            if ((INTERNAMIENTO.notas_postanestesicas || []).length && S.htmlImpresionNotaPostanestesica) {
+                (INTERNAMIENTO.notas_postanestesicas || []).forEach((npa, idx) => {
+                    itemsQuirurgicos.push({
+                        id: 'postanest-' + (npa.nota_id || idx),
+                        titulo: 'Nota Postanestésica y Conciliación',
+                        sub: S.fechaHoraLegible(npa.fecha_hora) + ' · ' + (npa.anestesiologo_nombre || ''),
+                        meta: 'Nota Postanestésica · ' + (npa.anestesiologo_nombre || ''),
+                        htmls: () => [S.htmlImpresionNotaPostanestesica(npa, TURNO.turno_id)]
+                    });
+                });
+            }
             if (INTERNAMIENTO.nota_egreso) {
                 const eg = INTERNAMIENTO.nota_egreso;
-                nodo('egreso', 'Nota de Egreso', 'fa-file-circle-check', [{
-                    id: 'nota-egreso', titulo: 'Nota de Egreso',
-                    sub: S.fechaHoraLegible(eg.fecha_hora) + ' · ' + eg.autor_nombre,
-                    meta: eg.folio + ' · ' + S.fechaHoraLegible(eg.fecha_hora) + ' · ' + eg.autor_nombre + ' (Médico que Elabora / Valora)',
+                const itemsEgreso = [{
+                    id: 'nota-egreso', titulo: eg.es_alta_voluntaria ? 'Nota de Egreso (Alta Voluntaria)' : 'Nota de Egreso',
+                    sub: S.fechaHoraLegible(eg.fecha_hora) + ' · ' + (eg.autor_nombre || eg.medico_nombre || ''),
+                    meta: (eg.folio || 'EGR') + ' · ' + S.fechaHoraLegible(eg.fecha_hora) + ' · ' + (eg.autor_nombre || eg.medico_nombre || ''),
                     htmls: () => [htmlNotaEgreso(eg)]
-                }], { directo: true });
+                }];
+                if (INTERNAMIENTO.carta_alta_voluntaria && S.htmlImpresionCartaAltaVoluntaria) {
+                    itemsEgreso.unshift({
+                        id: 'carta-alta-voluntaria',
+                        titulo: 'Hoja de Egreso Voluntario (NOM-004 / Art. 79)',
+                        etiqueta: 'Firmar',
+                        sub: S.fechaHoraLegible(INTERNAMIENTO.carta_alta_voluntaria.fecha_hora) + ' · Responsiva Médico-Legal',
+                        meta: 'Hoja de Egreso Voluntario con Responsiva Médico-Legal y Penal',
+                        htmls: () => [S.htmlImpresionCartaAltaVoluntaria(INTERNAMIENTO, TURNO, INTERNAMIENTO.carta_alta_voluntaria)]
+                    });
+                }
+                nodo('egreso', 'Egreso Hospitalario', 'fa-file-circle-check', itemsEgreso, { directo: itemsEgreso.length === 1 });
             }
             if (ACCESO_VISOR && ACCESO_VISOR.puede_ver_cuenta && !(SESION && SESION.rol === 'medico')) {
                 const enfermeraCuenta = SESION && S.esEnfermeria(SESION.rol);
@@ -3051,6 +3145,43 @@
             const puedeProgramar = BelenStore.puede('programar_cirugia') && TURNO && TURNO.estatus === 'internado';
             $('btn-programar-cirugia-visor').classList.toggle('hidden', !puedeProgramar);
             $('btn-programar-cirugia-visor').classList.toggle('flex', puedeProgramar);
+
+            // Visibilidad estricta por rol y etapa clínica para los botones superiores del visor:
+            const toggleVis = (id, show) => {
+                const el = $(id);
+                if (!el) return;
+                el.classList.toggle('hidden', !show);
+                el.classList.toggle('inline-flex', !!show);
+            };
+            const rol = SESION ? SESION.rol : '';
+            const esp = SESION ? (SESION.especialidad_codigo || '') : '';
+            const mid = SESION ? (SESION.medico_id || SESION.usuario_id) : '';
+            const esEnf = rol === 'enf_triage' || rol === 'enf_hospital' || rol === 'enf_quirofano';
+            const esMed = rol === 'medico' || rol === 'admin';
+            const esAnest = esp === 'ANESTESIOLOGIA';
+            const esGineco = esp === 'GINECOLOGIA_OBSTETRICIA' || rol === 'admin';
+            const esPediatra = esp === 'PEDIATRIA' || esGineco || rol === 'admin';
+            const esInternista = esp === 'MEDICINA_INTERNA' || rol === 'admin';
+            const tieneCirugia = esIngresoQuirurgicoActivo();
+            const miICPendiente = (INTERNAMIENTO && INTERNAMIENTO.interconsultas || []).find(ic => !ic.contestada && ic.estatus !== 'RESPONDIDA' && (ic.medico_id === mid || (esp && ic.especialidad_codigo === esp)));
+            const ordenesPendientesEnf = (INTERNAMIENTO && INTERNAMIENTO.ordenes_estudios || []).filter(o => o.estatus !== 'REALIZADO');
+            const badgeEst = $('badge-estudios-pendientes');
+            if (badgeEst) badgeEst.textContent = String(ordenesPendientesEnf.length);
+
+            toggleVis('btn-visor-responder-ic', !!(escribe && miICPendiente));
+            toggleVis('btn-visor-nota-ingreso-directo', !!(escribe && esMed && !esAnest && INTERNAMIENTO && INTERNAMIENTO.sin_nota_consulta && !INTERNAMIENTO.nota_ingreso_directo));
+            toggleVis('btn-visor-solicitar-estudios', !!(escribe && esMed));
+            toggleVis('btn-visor-confirmar-estudios-enf', !!(TURNO && TURNO.estatus === 'internado' && (esEnf || rol === 'admin') && ordenesPendientesEnf.length > 0));
+            toggleVis('btn-visor-hoja-enf', !!(TURNO && TURNO.estatus === 'internado' && (esEnf || rol === 'admin')));
+            toggleVis('btn-visor-val-preop', !!(escribe && esInternista && (tieneCirugia || (INTERNAMIENTO && INTERNAMIENTO.requiere_valoracion_preoperatoria) || (miICPendiente && miICPendiente.tipo_interconsulta === 'VALORACION_PREOPERATORIA'))));
+            toggleVis('btn-visor-parto', !!(escribe && esGineco));
+            toggleVis('btn-visor-rn', !!(escribe && (esPediatra || (INTERNAMIENTO && ((INTERNAMIENTO.notas_parto || []).length > 0 || INTERNAMIENTO.hoja_recien_nacido)))));
+            toggleVis('btn-visor-preanest', !!(escribe && (esAnest || rol === 'admin') && tieneCirugia));
+            toggleVis('btn-visor-transanest', !!(escribe && (esAnest || rol === 'admin') && tieneCirugia));
+            toggleVis('btn-visor-transanest-blanco', !!((esAnest || esEnf || rol === 'admin') && tieneCirugia));
+            toggleVis('btn-visor-postanest', !!(escribe && (esAnest || rol === 'admin') && tieneCirugia));
+            const hayManejoConjunto = INTERNAMIENTO && ((INTERNAMIENTO.interconsultas || []).length > 0 || tieneCirugia);
+            toggleVis('btn-visor-alta-servicio', !!(escribe && esMed && !esAnest && hayManejoConjunto));
         }
 
         function refrescarVisor(seleccionarId) {
@@ -3442,6 +3573,252 @@
             imprimirZonas([zona]);
             zona.innerHTML = '';
         }
+
+        function abrirModalNotaPartoVisor() {
+            if (!INTERNAMIENTO) return;
+            const e = BelenUI.esc;
+            const html = `<div class="space-y-3 text-left text-xs">
+                <div class="bg-rose-50 border border-rose-200 text-rose-900 rounded-lg px-3 py-2">
+                    <strong>Nota de Atención de Parto y Alumbramiento (NOM-007-SSA2-2016):</strong> Registre la evolución del trabajo de parto, expulsión, alumbramiento y datos del recién nacido.
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div><label class="block font-bold mb-1">Tipo de Parto</label><select id="npv-tipo_parto" class="${CLASE_CAMPO}"><option value="Parto Eutócico">Parto Eutócico</option><option value="Parto Distócico / Instrumentado">Parto Distócico / Instrumentado</option></select></div>
+                    <div><label class="block font-bold mb-1">Fecha Nacimiento RN</label><input id="npv-fecha_nacimiento_rn" type="date" class="${CLASE_CAMPO}" value="${BelenStore.hoyLocal()}"></div>
+                    <div><label class="block font-bold mb-1">Hora Nacimiento RN</label><input id="npv-hora_nacimiento_rn" type="time" class="${CLASE_CAMPO}" value="08:30"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div><label class="block font-bold mb-1">Alumbramiento</label><input id="npv-alumbramiento" type="text" class="${CLASE_CAMPO}" value="Dirigido (Schultze), placenta y membranas íntegras"></div>
+                    <div><label class="block font-bold mb-1">Episiotomía / Episiorrafia</label><input id="npv-episiotomia" type="text" class="${CLASE_CAMPO}" value="Mediolateral derecha sin complicaciones"></div>
+                    <div><label class="block font-bold mb-1">Sangrado estimado (mL)</label><input id="npv-sangrado_ml" type="number" class="${CLASE_CAMPO}" value="250"></div>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
+                    <div><label class="block font-bold mb-1">Sexo RN</label><select id="npv-sexo_rn" class="${CLASE_CAMPO}"><option value="Femenino">Femenino</option><option value="Masculino">Masculino</option></select></div>
+                    <div><label class="block font-bold mb-1">Peso RN (g)</label><input id="npv-peso_rn_g" type="number" class="${CLASE_CAMPO}" value="3250"></div>
+                    <div><label class="block font-bold mb-1">Talla RN (cm)</label><input id="npv-talla_rn_cm" type="number" class="${CLASE_CAMPO}" value="50"></div>
+                    <div><label class="block font-bold mb-1">Apgar 1/5 min</label><input id="npv-apgar" type="text" class="${CLASE_CAMPO}" value="8 / 9"></div>
+                    <div><label class="block font-bold mb-1">Capurro (SDG)</label><input id="npv-capurro_sdg" type="text" class="${CLASE_CAMPO}" value="39.2"></div>
+                </div>
+                <div><label class="block font-bold mb-1">Descripción clínica del parto, tono uterino y puerperio inmediato</label><textarea id="npv-observaciones" rows="3" class="${CLASE_CAMPO}">Expulsivo eutócico de producto único vivo, pinzamiento tardío de cordón, apego inmediato y alumbramiento dirigido con oxitocina 10 UI IM. Útero bien involucionado (globo de seguridad de Pinard).</textarea></div>
+            </div>`;
+            BelenUI.modal({
+                titulo: 'Nota de Atención de Parto y Alumbramiento (NOM-007)', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-baby-carriage', ancho: 'lg', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Guardar Nota de Parto', estilo: 'primario', alPulsar: c => {
+                        const claves = ['tipo_parto', 'fecha_nacimiento_rn', 'hora_nacimiento_rn', 'alumbramiento', 'episiotomia', 'sangrado_ml', 'sexo_rn', 'peso_rn_g', 'talla_rn_cm', 'apgar', 'capurro_sdg', 'observaciones'];
+                        const r = BelenStore.guardarNotaParto(TURNO.turno_id, leerCamposModal(c, 'npv', claves), BelenStore.sesion());
+                        if (!r.ok) { BelenUI.toast(r.motivo, 'peligro'); return false; }
+                        refrescarVisor();
+                        BelenUI.toast('Nota de Parto y Alumbramiento guardada en el expediente.', 'exito');
+                    } }
+                ]
+            });
+        }
+        function abrirResponderMiInterconsulta() {
+            if (!INTERNAMIENTO || !SESION) return;
+            const mid = SESION.medico_id || SESION.usuario_id;
+            const esp = SESION.especialidad_codigo || '';
+            const ic = (INTERNAMIENTO.interconsultas || []).find(x => !x.contestada && x.estatus !== 'RESPONDIDA' && (x.medico_id === mid || (esp && x.especialidad_codigo === esp)));
+            if (!ic) { BelenUI.toast('No tiene interconsultas pendientes por responder en este paciente.', 'info'); return; }
+            if (ic.tipo_interconsulta === 'VALORACION_PREOPERATORIA') {
+                abrirValoracionPreoperatoriaVisor();
+                return;
+            }
+            abrirResponderInterconsulta(ic.interconsulta_id);
+        }
+        function abrirModalNotaIngresoDirecto() {
+            if (!INTERNAMIENTO) return;
+            const e = BelenUI.esc;
+            const html = `<div class="space-y-3 text-left text-xs">
+                <div class="bg-sky-50 border border-sky-200 text-sky-900 rounded-lg px-3 py-2">
+                    <strong>Nota de Ingreso e Historia Clínica (Ingreso Directo sin Consulta Externa):</strong> Complete los antecedentes y la valoración de ingreso del paciente para integrar su expediente conforme a la NOM-004-SSA3-2012.
+                </div>
+                ${campoModal('nid', 'motivo_ingreso', 'Motivo de Ingreso y Padecimiento Actual', `<textarea id="nid-motivo_ingreso" rows="3" class="${CLASE_CAMPO}">${e(INTERNAMIENTO.diagnostico_ingreso || TURNO.motivo || '')}</textarea>`)}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    ${campoModal('nid', 'antecedentes_heredofamiliares', 'Antecedentes Heredofamiliares', `<textarea id="nid-antecedentes_heredofamiliares" rows="2" class="${CLASE_CAMPO}">Interrogados y negados de relevancia.</textarea>`)}
+                    ${campoModal('nid', 'antecedentes_personales', 'Antecedentes Personales Patológicos / Gineco-Obstétricos', `<textarea id="nid-antecedentes_personales" rows="2" class="${CLASE_CAMPO}">Alergias: ${e(INTERNAMIENTO.alergias || 'Negadas')}.</textarea>`)}
+                </div>
+                ${campoModal('nid', 'exploracion_fisica', 'Exploración Física de Ingreso', `<textarea id="nid-exploracion_fisica" rows="3" class="${CLASE_CAMPO}">Paciente consciente, orientada, hidratada, cardiopulmonar sin compromiso agudo.</textarea>`)}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    ${campoModal('nid', 'diagnostico_ingreso', 'Diagnóstico de Ingreso', `<input id="nid-diagnostico_ingreso" type="text" class="${CLASE_CAMPO}" value="${e(INTERNAMIENTO.diagnostico_actual || INTERNAMIENTO.diagnostico_ingreso || '')}">`)}
+                    ${campoModal('nid', 'pronostico', 'Pronóstico', `<input id="nid-pronostico" type="text" class="${CLASE_CAMPO}" value="Reservado a evolución">`, false)}
+                </div>
+                ${campoModal('nid', 'plan_manejo', 'Plan de Manejo Inicial', `<textarea id="nid-plan_manejo" rows="2" class="${CLASE_CAMPO}">Vigilancia estrecha de signos vitales, soluciones parenterales y protocolo de atención.</textarea>`)}
+            </div>`;
+            BelenUI.modal({
+                titulo: 'Nota de Ingreso e Historia Clínica', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-file-medical', ancho: 'lg', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Guardar Nota de Ingreso e Historia Clínica', estilo: 'primario', alPulsar: c => {
+                        const claves = ['motivo_ingreso', 'antecedentes_heredofamiliares', 'antecedentes_personales', 'exploracion_fisica', 'diagnostico_ingreso', 'pronostico', 'plan_manejo'];
+                        const r = BelenStore.guardarNotaIngresoDirectoHospital(INTERNAMIENTO.internamiento_id, leerCamposModal(c, 'nid', claves), BelenStore.sesion());
+                        if (!r.ok) { BelenUI.toast(r.motivo || 'Revise los campos obligatorios.', 'peligro'); return false; }
+                        refrescarVisor('nota-ingreso-directo');
+                        BelenUI.toast('Nota de Ingreso e Historia Clínica integrada al expediente.', 'exito');
+                    } }
+                ]
+            });
+        }
+        function abrirModalSolicitarEstudios() {
+            if (!INTERNAMIENTO) return;
+            const html = `<div class="space-y-3 text-left text-xs">
+                <div class="bg-cyan-50 border border-cyan-200 text-cyan-900 rounded-lg px-3 py-2">
+                    Solicite estudios de Laboratorio o Gabinete (ej. <strong>Tomografía de Cráneo Simple</strong>, Biometría Hemática, Química Sanguínea, Rx de Tórax). Enfermería de Hospitalización verá el pendiente para confirmar su toma y cargarlo a la cuenta.
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Tipo de Estudio</label>
+                        <select id="est-tipo" class="${CLASE_CAMPO}">
+                            <option value="TOMOGRAFIA">Tomografía (TAC)</option>
+                            <option value="LABORATORIO">Laboratorio Clínico</option>
+                            <option value="RAYOS_X">Rayos X</option>
+                            <option value="ULTRASONIDO">Ultrasonido (USG)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Prioridad</label>
+                        <select id="est-prioridad" class="${CLASE_CAMPO}">
+                            <option value="URGENTE">Urgente</option>
+                            <option value="ORDINARIO">Ordinario</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Estudio(s) solicitado(s) *</label>
+                    <input id="est-nombre" type="text" class="${CLASE_CAMPO}" placeholder="Ej. Tomografía de Cráneo Simple, Biometría Hemática Completa, Química Sanguínea 6 elem.">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Precio estimado / tabulador ($ MXN)</label>
+                    <input id="est-precio" type="number" step="0.01" class="${CLASE_CAMPO}" value="2800">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Datos clínicos / Motivo del estudio</label>
+                    <textarea id="est-motivo" rows="2" class="${CLASE_CAMPO}" placeholder="Ej. Cefalea intensa refractaria a analgesia IV, descartar evento vascular o lesión estructural."></textarea>
+                </div>
+            </div>`;
+            BelenUI.modal({
+                titulo: 'Solicitar Estudios de Laboratorio / Gabinete (TAC)', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-microscope', ancho: 'md', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Enviar Solicitud a Enfermería', estilo: 'primario', alPulsar: c => {
+                        const q = sel => c.el.querySelector(sel);
+                        const nombre = (q('#est-nombre').value || '').trim();
+                        if (!nombre) { BelenUI.toast('Escriba el nombre del estudio solicitado.', 'alerta'); return false; }
+                        const r = BelenStore.solicitarEstudiosHospital(INTERNAMIENTO.internamiento_id, {
+                            estudios: [{
+                                tipo: q('#est-tipo').value,
+                                prioridad: q('#est-prioridad').value,
+                                nombre: nombre,
+                                precio_unitario: Number(q('#est-precio').value || 0),
+                                motivo_clinico: q('#est-motivo').value
+                            }]
+                        }, BelenStore.sesion());
+                        if (!r.ok) { BelenUI.toast(r.motivo, 'peligro'); return false; }
+                        refrescarVisor('ordenes-estudios');
+                        BelenUI.toast('Solicitud de estudio enviada a Enfermería de Hospitalización.', 'exito');
+                    } }
+                ]
+            });
+        }
+        function abrirModalConfirmarEstudiosEnf() {
+            if (!INTERNAMIENTO) return;
+            const e = BelenUI.esc;
+            const pendientes = (INTERNAMIENTO.ordenes_estudios || []).filter(o => o.estatus !== 'REALIZADO');
+            if (!pendientes.length) { BelenUI.toast('No hay estudios pendientes por confirmar.', 'info'); return; }
+            const filas = pendientes.map(o => `
+                <div class="p-3 rounded-lg border border-amber-200 bg-amber-50/60 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-slate-800">${e(o.tipo || 'ESTUDIO')}: ${e(o.nombre)}</span>
+                        <span class="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded">${e(o.prioridad || 'URGENTE')} · ${BelenStore.formatoMoneda(o.precio_unitario || 0)}</span>
+                    </div>
+                    <div class="text-xs text-slate-600">Solicitó: ${e(o.solicitado_por_nombre || 'Médico')} · Motivo: ${e(o.motivo_clinico || 'Valoración diagnóstica')}</div>
+                    <input data-obs-est="${e(o.orden_id)}" type="text" class="${CLASE_CAMPO} text-xs" value="Muestra tomada / Estudio realizado y reportado al médico tratante.">
+                </div>
+            `).join('');
+            BelenUI.modal({
+                titulo: 'Confirmar Toma de Estudios y Gabinete (Enfermería)', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-vials', ancho: 'md',
+                html: `<div class="space-y-3 text-left text-xs">
+                    <p class="text-slate-600">Al confirmar que ya se tomaron los estudios o se realizó la Tomografía/Gabinete, se registrará como realizado en el expediente y se cargará automáticamente a la cuenta hospitalaria.</p>
+                    ${filas}
+                </div>`,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Confirmar Realización y Cargar a Cuenta', estilo: 'exito', alPulsar: c => {
+                        pendientes.forEach(o => {
+                            const inp = c.el.querySelector(`[data-obs-est="${o.orden_id}"]`);
+                            BelenStore.confirmarEstudioEnfermeria(INTERNAMIENTO.internamiento_id, o.orden_id, {
+                                observaciones_realizacion: inp ? inp.value : 'Realizado',
+                                precio_unitario: o.precio_unitario,
+                                cargar_cuenta: true
+                            }, BelenStore.sesion());
+                        });
+                        refrescarVisor('ordenes-estudios');
+                        BelenUI.toast('Estudios confirmados por Enfermería y cargados a la cuenta.', 'exito');
+                    } }
+                ]
+            });
+        }
+        function abrirModalAltaPorServicio() {
+            if (!INTERNAMIENTO) return;
+            const e = BelenUI.esc;
+            const html = `<div class="space-y-3 text-left text-xs">
+                <div class="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg px-3 py-2">
+                    <strong>Pre-Alta / Alta por Servicio de Especialidad:</strong> Registra que por parte de su especialidad el paciente está en condiciones de alta, dejando el cierre y <strong>Alta Hospitalaria Definitiva</strong> al servicio tratante/Medicina Interna.
+                </div>
+                ${campoModal('aps', 'resumen_servicio', 'Resumen de Evolución por su Servicio', `<textarea id="aps-resumen_servicio" rows="3" class="${CLASE_CAMPO}">Postoperatorio favorable, herida quirúrgica limpia y sin datos de sangrado ni complicación vascular. Se otorga alta por nuestro servicio.</textarea>`)}
+                ${campoModal('aps', 'indicaciones_servicio', 'Indicaciones y Plan Ambulatorio de su Especialidad', `<textarea id="aps-indicaciones_servicio" rows="2" class="${CLASE_CAMPO}">Curación diaria de herida, retiro de puntos en 10 días en consulta externa de especialidad.</textarea>`)}
+                ${campoModal('aps', 'continua_a_cargo_de', 'Continúa hospitalizado a cargo de (para Alta Definitiva)', `<input id="aps-continua_a_cargo_de" type="text" class="${CLASE_CAMPO}" value="Medicina Interna / Médico Tratante">`)}
+            </div>`;
+            BelenUI.modal({
+                titulo: 'Otorgar Pre-Alta / Alta de mi Servicio', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-check-double', ancho: 'md', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Registrar Alta de mi Servicio', estilo: 'exito', alPulsar: c => {
+                        const claves = ['resumen_servicio', 'indicaciones_servicio', 'continua_a_cargo_de'];
+                        const r = BelenStore.registrarAltaPorServicio(INTERNAMIENTO.internamiento_id, leerCamposModal(c, 'aps', claves), BelenStore.sesion());
+                        if (!r.ok) { BelenUI.toast(r.motivo, 'peligro'); return false; }
+                        refrescarVisor('evolucion');
+                        BelenUI.toast('Alta por Servicio registrada en la Evolución y Portafolio.', 'exito');
+                    } }
+                ]
+            });
+        }
+        function abrirModalAltaVoluntaria() {
+            if (!INTERNAMIENTO) return;
+            const e = BelenUI.esc;
+            const pre = BelenStore.prefillAltaVoluntaria(INTERNAMIENTO.internamiento_id, BelenStore.sesion());
+            const html = `<div class="space-y-3 text-left text-xs">
+                <div class="bg-amber-50 border border-amber-300 text-amber-900 rounded-lg px-3 py-2">
+                    <strong>Hoja de Egreso Voluntario (NOM-004-SSA3-2012 y Art. 79 RLGSPSAM):</strong> Los datos del paciente, diagnóstico y médico se pre-llenan automáticamente. Libera de responsabilidad médico-legal y penal a Sanatorio Belén y su personal.
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    ${campoModal('av', 'solicitante_nombre', 'Nombre de quien solicita el Alta Voluntaria', `<input id="av-solicitante_nombre" type="text" class="${CLASE_CAMPO}" value="${e(pre.solicitante_nombre)}">`)}
+                    ${campoModal('av', 'solicitante_parentesco', 'Parentesco', `<input id="av-solicitante_parentesco" type="text" class="${CLASE_CAMPO}" value="${e(pre.solicitante_parentesco)}">`)}
+                </div>
+                ${campoModal('av', 'motivo_egreso_voluntario', 'Motivo por el que solicita retirarse', `<textarea id="av-motivo_egreso_voluntario" rows="2" class="${CLASE_CAMPO}">${e(pre.motivo_egreso_voluntario)}</textarea>`)}
+                ${campoModal('av', 'riesgos_explicados', 'Riesgos médicos explicados al paciente y familiar', `<textarea id="av-riesgos_explicados" rows="2" class="${CLASE_CAMPO}">${e(pre.riesgos_explicados)}</textarea>`)}
+                ${campoModal('av', 'resumen_clinico', 'Resumen Clínico hasta el momento del retiro', `<textarea id="av-resumen_clinico" rows="2" class="${CLASE_CAMPO}">${e(pre.resumen_clinico)}</textarea>`)}
+                ${campoModal('av', 'medidas_recomendadas', 'Medidas y Plan Recomendado (acudir a urgencias ante alarma)', `<textarea id="av-medidas_recomendadas" rows="2" class="${CLASE_CAMPO}">${e(pre.medidas_recomendadas)}</textarea>`)}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    ${campoModal('av', 'testigo_1', 'Testigo 1', `<input id="av-testigo_1" type="text" class="${CLASE_CAMPO}" value="${e(pre.testigo_1)}">`, false)}
+                    ${campoModal('av', 'testigo_2', 'Testigo 2', `<input id="av-testigo_2" type="text" class="${CLASE_CAMPO}" value="${e(pre.testigo_2)}">`, false)}
+                </div>
+            </div>`;
+            BelenUI.modal({
+                titulo: 'Alta Voluntaria con Responsiva Médico-Legal', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-file-signature', tipo: 'alerta', ancho: 'lg', html: html,
+                botones: [
+                    { texto: 'Cancelar', estilo: 'secundario' },
+                    { texto: 'Generar Hoja de Egreso Voluntario y Dar de Alta', estilo: 'peligro', alPulsar: c => {
+                        const claves = ['solicitante_nombre', 'solicitante_parentesco', 'motivo_egreso_voluntario', 'riesgos_explicados', 'resumen_clinico', 'medidas_recomendadas', 'testigo_1', 'testigo_2'];
+                        const r = BelenStore.registrarAltaVoluntaria(INTERNAMIENTO.internamiento_id, leerCamposModal(c, 'av', claves), BelenStore.sesion());
+                        if (!r.ok) { BelenUI.toast(r.motivo, 'peligro'); return false; }
+                        refrescarVisor('carta-alta-voluntaria');
+                        BelenUI.toast('Alta Voluntaria registrada. Hoja de Egreso Voluntario lista para firma e impresión.', 'exito', 5000);
+                    } }
+                ]
+            });
+        }
+
         function abrirNotaEgreso() {
             if (!ACCESO_VISOR || !ACCESO_VISOR.puede_dar_alta) { BelenUI.toast('Solo el médico tratante puede dar de alta hospitalaria.', 'alerta'); return; }
             const e = BelenUI.esc;
@@ -3458,7 +3835,10 @@
                 titulo: 'Dar de Alta (Egreso)', subtitulo: datosPacienteVigentes().nombre, icono: 'fa-door-open', tipo: 'peligro', ancho: 'lg', html: html,
                 botones: [
                     { texto: 'Cancelar', estilo: 'secundario' },
-                    { texto: 'Guardar Nota de Egreso', estilo: 'peligro', id: 'egm-guardar', alPulsar: c => {
+                    { texto: 'Alta Voluntaria (Responsiva NOM-004)', estilo: 'alerta', id: 'egm-alta-voluntaria', alPulsar: () => {
+                        setTimeout(() => abrirModalAltaVoluntaria(), 60);
+                    } },
+                    { texto: 'Guardar Nota de Egreso Definitiva', estilo: 'peligro', id: 'egm-guardar', alPulsar: c => {
                         const claves = ['motivo_egreso', 'resumen_clinico', 'diagnostico_final', 'pronostico', 'plan_alta'];
                         const r = BelenStore.registrarEgreso(INTERNAMIENTO.internamiento_id, leerCamposModal(c, 'egm', claves), BelenStore.sesion());
                         if (!r.ok) {
@@ -5511,8 +5891,25 @@
                 </div>`).join('');
         }
 
+        function esIngresoQuirurgicoActivo() {
+            const d = ((TURNO && TURNO.destino) || (INTERNAMIENTO && INTERNAMIENTO.destino) || (typeof valorCampo === 'function' ? valorCampo('val-area') : '') || sessionStorage.getItem('belen_destino') || '').toLowerCase();
+            if (d.includes('quirofano') || d.includes('quirófano')) return true;
+            if (INTERNAMIENTO && (INTERNAMIENTO.cirugia_id || INTERNAMIENTO.modalidad === 'AMBULATORIO_QUIROFANO' || INTERNAMIENTO.modalidad === 'ambulatorio_quirofano')) return true;
+            if (TURNO && (TURNO.cirugia_id || TURNO.modalidad === 'AMBULATORIO_QUIROFANO' || TURNO.modalidad === 'ambulatorio_quirofano')) return true;
+            const pid = (INTERNAMIENTO && INTERNAMIENTO.paciente_id) || (TURNO && TURNO.paciente_id);
+            const tid = (INTERNAMIENTO && INTERNAMIENTO.turno_id) || (TURNO && TURNO.turno_id);
+            if (BelenStore.listarCirugias && BelenStore.listarCirugias().some(c => c.estatus !== 'cancelada' && ((tid && c.turno_id === tid) || (pid && c.paciente_id === pid)))) return true;
+            return false;
+        }
+        function idsConsentimientosSegunIngreso() {
+            if (esIngresoQuirurgicoActivo()) {
+                return ['print-cons-gral', 'print-contrato', 'print-cons-anestesia', 'print-cons-riesgo-qx', 'print-hoja-qx'];
+            }
+            // Ingreso a Observación o Hospitalización Médica (sin cirugía): SOLO Consentimiento de Ingreso/Hospitalización y Contrato de Prestación de Servicios
+            return ['print-cons-gral', 'print-contrato'];
+        }
         function zonasDeConsentimientos() {
-            return ['print-cons-gral', 'print-contrato', 'print-cons-anestesia', 'print-cons-riesgo-qx', 'print-hoja-qx']
+            return idsConsentimientosSegunIngreso()
                 .map(id => document.getElementById(id)).filter(Boolean)
                 .concat(Array.from(document.querySelectorAll('#print-cons-esp-lista .zona-impresion')));
         }

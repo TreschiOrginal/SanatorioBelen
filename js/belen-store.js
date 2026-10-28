@@ -68,7 +68,9 @@
         { codigo: 'MEDICINA_INTERNA', nombre: 'Medicina Interna' },
         { codigo: 'ANESTESIOLOGIA', nombre: 'Anestesiología' },
         { codigo: 'GINECOLOGIA_OBSTETRICIA', nombre: 'Ginecología y Obstetricia' },
-        { codigo: 'TRAUMATOLOGIA_ORTOPEDIA', nombre: 'Traumatología y Ortopedia' }
+        { codigo: 'TRAUMATOLOGIA_ORTOPEDIA', nombre: 'Traumatología y Ortopedia' },
+        { codigo: 'PEDIATRIA', nombre: 'Pediatría y Neonatología' },
+        { codigo: 'PSICOLOGIA', nombre: 'Psicología Clínica' }
     ];
 
     // Roles del ERP (los 4 médicos comparten el rol 'medico' y se distinguen por medico_id):
@@ -104,8 +106,11 @@
         { id: 'dr_juan',       rol: 'medico',        nombre: 'Dr. Juan Pérez',     cargo: 'Medicina General',               cedula_profesional: 'MG-11021', cedula_general: 'MG-11021', cedula_especialidad: '', cedula_subespecialidad: '', cedulas_visibles: ['general'], codigo_rapido: '1021', especialidad_codigo: 'MEDICINA_GENERAL',     costo_consulta: 400, color_distintivo: 'emerald', etiqueta_admin: 'Consulta general' },
         { id: 'dr_roberto',    rol: 'medico',        nombre: 'Dr. Roberto Flores', cargo: 'Angiología',                     cedula_profesional: 'ANG-3340', cedula_general: '', cedula_especialidad: 'ANG-3340', cedula_subespecialidad: '', cedulas_visibles: ['especialidad'], codigo_rapido: '3340', especialidad_codigo: 'ANGIOLOGIA',           costo_consulta: 800, color_distintivo: 'amber',   etiqueta_admin: 'Vascular' },
         { id: 'dr_arturo',     rol: 'medico',        nombre: 'Dr. Arturo Gómez',   cargo: 'Cirugía General',                cedula_profesional: 'CG-7781',  cedula_general: '', cedula_especialidad: 'CG-7781', cedula_subespecialidad: '', cedulas_visibles: ['especialidad'], codigo_rapido: '7781', especialidad_codigo: 'CIRUGIA_GENERAL',      costo_consulta: 800, color_distintivo: 'violet',  etiqueta_admin: 'Cirujano' },
-        { id: 'dr_internista', rol: 'medico',        nombre: 'Dr. Carlos Méndez',  cargo: 'Medicina Interna',               cedula_profesional: 'MI-5520',  cedula_general: '', cedula_especialidad: 'MI-5520', cedula_subespecialidad: '', cedulas_visibles: ['especialidad'], codigo_rapido: '5520', especialidad_codigo: 'MEDICINA_INTERNA',     costo_consulta: 800, color_distintivo: 'cyan',    etiqueta_admin: 'Internista' },
-        { id: 'dra_elena',     rol: 'medico',        nombre: 'Dra. Elena Ríos',    cargo: 'Anestesiología',                 cedula_profesional: 'AE-45821', cedula_general: '', cedula_especialidad: 'AE-45821', cedula_subespecialidad: '', cedulas_visibles: ['especialidad'], codigo_rapido: '4582', especialidad_codigo: 'ANESTESIOLOGIA',       costo_consulta: 800, color_distintivo: 'rose',    etiqueta_admin: 'Anestesia' }
+        { id: 'dr_internista', rol: 'medico',        nombre: 'Dr. Daniel Morales', cargo: 'Medicina Interna',               cedula_profesional: 'MI-5520',  cedula_general: '', cedula_especialidad: 'MI-5520', cedula_subespecialidad: '', cedulas_visibles: ['especialidad'], codigo_rapido: '5520', especialidad_codigo: 'MEDICINA_INTERNA',     costo_consulta: 800, color_distintivo: 'cyan',    etiqueta_admin: 'Internista' },
+        { id: 'dra_elena',     rol: 'medico',        nombre: 'Dra. Elena Ríos',    cargo: 'Anestesiología',                 cedula_profesional: 'AE-45821', cedula_general: '', cedula_especialidad: 'AE-45821', cedula_subespecialidad: '', cedulas_visibles: ['especialidad'], codigo_rapido: '4582', especialidad_codigo: 'ANESTESIOLOGIA',       costo_consulta: 800, color_distintivo: 'rose',    etiqueta_admin: 'Anestesia' },
+        { id: 'dra_patricia',  rol: 'medico',        nombre: 'Dra. Patricia Gómez', cargo: 'Ginecología y Obstetricia',     cedula_profesional: '5544332',  cedula_general: '5544332', cedula_especialidad: '9988776', cedula_subespecialidad: '', cedulas_visibles: ['general', 'especialidad'], codigo_rapido: '5544', especialidad_codigo: 'GINECOLOGIA_OBSTETRICIA', costo_consulta: 900, color_distintivo: 'rose', etiqueta_admin: 'Gineco-Obstetricia' },
+        { id: 'dr_carlos_ped', rol: 'medico',        nombre: 'Dr. Carlos Méndez',  cargo: 'Pediatría y Neonatología',       cedula_profesional: '4433221',  cedula_general: '4433221', cedula_especialidad: '8877665', cedula_subespecialidad: '', cedulas_visibles: ['general', 'especialidad'], codigo_rapido: '4433', especialidad_codigo: 'PEDIATRIA',             costo_consulta: 800, color_distintivo: 'cyan',    etiqueta_admin: 'Pediatría' },
+        { id: 'lic_psicologia',rol: 'medico',        nombre: 'Lic. Sofía Torres',  cargo: 'Psicología Clínica',             cedula_profesional: '6677889',  cedula_general: '6677889', cedula_especialidad: '', cedula_subespecialidad: '', cedulas_visibles: ['general'], codigo_rapido: '6677', especialidad_codigo: 'PSICOLOGIA',            costo_consulta: 600, color_distintivo: 'violet',  etiqueta_admin: 'Psicología' }
     ];
     const COLORES_DISTINTIVO = {
         emerald: { clase: 'bg-emerald-100 text-emerald-800', etiqueta: 'Esmeralda' },
@@ -138,19 +143,19 @@
         ver_expedientes_catalogo:  ['admin', 'administrador', 'medico'],
         // ---- MÓDULOS (interruptor por usuario en Gestión de Personal). El valor por defecto es el de esta matriz.
         ver_consultas:             ['admin', 'administrador', 'enf_triage', 'medico'],
-        ver_hospitalizados:        ['admin', 'administrador', 'enf_hospital', 'enf_quirofano', 'medico'],
+        ver_hospitalizados:        ['admin', 'administrador', 'medico'].concat(ENFERMERIAS),
         ver_quirofano:             ['admin', 'administrador', 'enf_hospital', 'enf_quirofano', 'medico'],
         ver_farmacia:              ['admin', 'administrador', 'enf_farmacia'],
         // ----
         gestionar_personal:        ['admin'],
-        asignar_cama:              ['admin'].concat(ENFERMERIAS),
-        programar_cirugia:         ['admin', 'administrador'],
+        asignar_cama:              ['admin', 'administrador', 'medico'].concat(ENFERMERIAS),
+        programar_cirugia:         ['admin', 'administrador', 'medico'],
         corregir_datos_paciente:   ['admin'],
         dar_alta_hospital:         ['medico'],                           // solo el médico tratante (se valida la relación)
         cargar_consumos:           ['admin', 'administrador'].concat(ENFERMERIAS),
         ver_cuentas_cobrar:        ['admin', 'administrador'],
         cerrar_expediente_pago:    ['admin', 'administrador'],
-        cargar_cuenta_consulta:    ['admin', 'administrador'],
+        cargar_cuenta_consulta:    ['admin', 'administrador'].concat(ENFERMERIAS),
         gestionar_farmacia:        ['admin', 'administrador', 'enf_farmacia'],
         farmacia_paquetes:         ['admin'],
         farmacia_estupefacientes:  ['admin'],
@@ -230,7 +235,8 @@
         { codigo: 'HOSP-1', numero: '1', nombre: 'Hospitalización — Habitación 1', area: 'HOSPITALIZACION', plano_id: 'HOSP-1', plano_etiqueta: 'Habitación 1' },
         { codigo: 'HOSP-2', numero: '2', nombre: 'Hospitalización — Habitación 2', area: 'HOSPITALIZACION', plano_id: 'HOSP-2', plano_etiqueta: 'Habitación 2' },
         { codigo: 'HOSP-3', numero: '3', nombre: 'Hospitalización — Habitación 3', area: 'HOSPITALIZACION', plano_id: 'HOSP-3', plano_etiqueta: 'Habitación 3' },
-        { codigo: 'HOSP-4', numero: '4', nombre: 'Hospitalización — Habitación 4', area: 'HOSPITALIZACION', plano_id: 'HOSP-4', plano_etiqueta: 'Habitación 4 (Plano: Pediatría)' },
+        { codigo: 'HOSP-4', numero: '4', nombre: 'Hospitalización — Habitación 4', area: 'HOSPITALIZACION', plano_id: 'HOSP-4', plano_etiqueta: 'Habitación 4 (Gineco / Cesárea)' },
+        { codigo: 'HOSP-5', numero: '5', nombre: 'Hospitalización — Habitación 5', area: 'HOSPITALIZACION', plano_id: 'HOSP-5', plano_etiqueta: 'Habitación 5 (Maternidad / Parto)' },
         { codigo: 'HOSP-AISLADO', numero: 'Aislado', nombre: 'Hospitalización — Aislado', area: 'HOSPITALIZACION', plano_id: 'HOSP-AISLADO', plano_etiqueta: 'Habitación Aislada' },
         { codigo: 'CUNERO-1', numero: 'Cunero', nombre: 'Hospitalización — Cunero', area: 'HOSPITALIZACION', plano_id: 'CUNERO-1', plano_etiqueta: 'Cunero' },
         { codigo: 'OBS-1', numero: '1', nombre: 'Observación — Cama 1 (Hidratación)', area: 'OBSERVACION', plano_id: 'OBS-1', plano_etiqueta: 'Hidratación (Obs. 1)' },
@@ -243,7 +249,7 @@
     ];
     const ALIAS_CODIGO_CAMA = {
         CAMA_1: 'HOSP-1', CAMA_2: 'HOSP-2', CAMA_3: 'HOSP-3', CAMA_4: 'HOSP-4', AISLADO: 'HOSP-AISLADO',
-        'HOSP-5': 'HOSP-4', CAMA_5: 'HOSP-4', PEDIATRIA: 'HOSP-4', CUNERO: 'CUNERO-1',
+        'HOSP-5': 'HOSP-5', CAMA_5: 'HOSP-5', PEDIATRIA: 'HOSP-4', CUNERO: 'CUNERO-1',
         OBS_1: 'OBS-1', OBS_2: 'OBS-2', CONS_EXTRA: 'CONS-1', CONS_2: 'CONS-2',
         REC_GEN_1: 'REC-1', REC_GEN_2: 'REC-2', REC_GINECO: 'REC-GINECO'
     };
@@ -253,7 +259,7 @@
         'cama 3': 'HOSP-3', 'habitacion 3': 'HOSP-3', 'hospitalizacion - cama 3': 'HOSP-3', 'hospitalizacion — cama 3': 'HOSP-3',
         'cama 4': 'HOSP-4', 'habitacion 4': 'HOSP-4', 'hospitalizacion - cama 4': 'HOSP-4', 'hospitalizacion — cama 4': 'HOSP-4',
         aislado: 'HOSP-AISLADO', 'habitacion aislada': 'HOSP-AISLADO', 'habitacion 4 aislada': 'HOSP-AISLADO', 'hospitalizacion - aislado': 'HOSP-AISLADO', 'hospitalizacion — aislado': 'HOSP-AISLADO',
-        'cama 5': 'HOSP-4', 'habitacion 5': 'HOSP-4', pediatria: 'HOSP-4', 'hosp-5': 'HOSP-4',
+        'cama 5': 'HOSP-5', 'habitacion 5': 'HOSP-5', 'hospitalizacion - cama 5': 'HOSP-5', 'hospitalizacion — cama 5': 'HOSP-5', 'hospitalizacion — habitacion 5': 'HOSP-5', pediatria: 'HOSP-4', 'hosp-5': 'HOSP-5',
         cunero: 'CUNERO-1',
         'observacion 1': 'OBS-1', hidratacion: 'OBS-1', 'observacion — cama 1': 'OBS-1',
         'observacion 2': 'OBS-2', curaciones: 'OBS-2', 'observacion — cama 2': 'OBS-2',
@@ -314,10 +320,13 @@
         { codigo: 'LOCAL', etiqueta: 'Local' }
     ];
     const MEDS_ANESTESIA = [
-        { sku: 'FEN-50', nombre: 'Fentanilo Fracción I', fraccion: 'I' },
-        { sku: 'MID-5', nombre: 'Midazolam Fracción II', fraccion: 'II' },
-        { sku: 'PRO-200', nombre: 'Propofol', fraccion: 'IV' },
-        { sku: 'BUP-05', nombre: 'Bupivacaína', fraccion: 'VI' }
+        { sku: 'FEN-50', nombre: 'Fentanilo 0.5 mg / 10 ml (Fracción I)', fraccion: 'I', presentacion: 'Ámpula 0.5 mg / 10 ml', dosis_sugerida: '100-150 mcg IV' },
+        { sku: 'MID-5', nombre: 'Midazolam 5 mg / 5 ml (Fracción II)', fraccion: 'II', presentacion: 'Ámpula 5 mg / 5 ml', dosis_sugerida: '2-5 mg IV' },
+        { sku: 'PRO-200', nombre: 'Propofol 200 mg / 20 ml (Fracción IV)', fraccion: 'IV', presentacion: 'Ámpula 200 mg / 20 ml', dosis_sugerida: '150-200 mg IV' },
+        { sku: 'BUP-05', nombre: 'Bupivacaína pesada 0.5% 15 mg / 3 ml (Fracción IV)', fraccion: 'IV', presentacion: 'Ámpula 15 mg / 3 ml', dosis_sugerida: '10-12.5 mg intratecal' },
+        { sku: 'PROP-40', nombre: 'Propranolol 40 mg / 1 mg IV (Fracción IV)', fraccion: 'IV', presentacion: 'Ámpula / Tab 40 mg', dosis_sugerida: '1-3 mg IV / 40 mg VO' },
+        { sku: 'KET-30', nombre: 'Ketorolaco 30 mg / 1 ml IV (Fracción IV)', fraccion: 'IV', presentacion: 'Ámpula 30 mg / 1 ml', dosis_sugerida: '30-60 mg IV' },
+        { sku: 'OND-8', nombre: 'Ondansetrón 8 mg / 4 ml IV (Fracción IV)', fraccion: 'IV', presentacion: 'Ámpula 8 mg / 4 ml', dosis_sugerida: '4-8 mg IV' }
     ];
 
     // ---------------------------------------------------------------- Utilidades
@@ -727,12 +736,19 @@
         todos[usuarioId] = Object.assign({}, todos[usuarioId], { [permiso]: !!valor });
         return escribir(CLAVES.permisosPersonal, todos);
     }
+    function esEspecialidadQuirurgica(espCodigo) {
+        return ['CIRUGIA_GENERAL', 'GINECOLOGIA_OBSTETRICIA', 'TRAUMATOLOGIA', 'TRAUMATOLOGIA_ORTOPEDIA', 'ANGIOLOGIA'].indexOf(String(espCodigo || '')) >= 0;
+    }
     function permisoAccionDe(usuarioId, accion) {
         const u = USUARIOS[usuarioId];
         if (!u || !PERMISOS[accion] || u.activo === false) return false;
         if (u.rol === 'admin') return true;
         const ajuste = (leerPermisosPersonal()[usuarioId] || {})[accion];
-        return typeof ajuste === 'boolean' ? ajuste : PERMISOS[accion].includes(u.rol);
+        if (typeof ajuste === 'boolean') return ajuste;
+        if (accion === 'programar_cirugia' && u.rol === 'medico') {
+            return esEspecialidadQuirurgica(u.especialidad_codigo);
+        }
+        return PERMISOS[accion].includes(u.rol);
     }
     function establecerPermisoAccion(usuarioId, accion, valor) {
         if (!USUARIOS[usuarioId] || USUARIOS[usuarioId].rol === 'admin' || !ACCIONES_PERSONAL.includes(accion)) return false;
@@ -1109,7 +1125,7 @@
         const lista = listarTurnos();
         const t = lista.find(x => x.turno_id === id);
         if (!t) return null;
-        if (parche && parche.estatus === ESTATUS.ALTA_PENDIENTE_PAGO && (t.cuenta_pagada === true || parche.cuenta_pagada === true) && parche.cuenta_pagada !== false) {
+        if (parche && (parche.estatus === ESTATUS.ALTA_PENDIENTE_PAGO || parche.estatus === ESTATUS.ALTA) && (t.cuenta_pagada === true || parche.cuenta_pagada === true) && parche.cuenta_pagada !== false) {
             // Ya se cobró en Caja (pre-cobro): al cerrar la consulta pasa directo a histórico, sin volver a Cuentas por Cobrar.
             parche = Object.assign({}, parche, { estatus: ESTATUS.CERRADO_HISTORICO, cerrado_en: t.cerrado_en || new Date().toISOString(), lista_para_cobro: false });
         }
@@ -1212,12 +1228,16 @@
     // PRIVACIDAD (hospitalizados): admin y enfermería ven a todos; un médico solo a sus pacientes (médico tratante)
     // o a los que le hayan solicitado en interconsulta.
     function hospitalizadoVisiblePara(turno, s) {
-        if (!s) return false;
-        if (s.rol === 'enf_quirofano') return pacienteEnFlujoQuirofano(turno);
-        if (s.rol === 'admin' || s.rol === 'administrador' || esEnfermeria(s.rol)) return true;
+        if (!s || !turno) return false;
+        if (s.rol === 'enf_quirofano') return true;
+        if (s.rol === 'admin' || s.rol === 'administrador' || esEnfermeria(s.rol) || s.rol === 'enf_farmacia') return true;
         if (s.rol === 'medico') {
-            if (turno.medico_id === s.medico_id || tieneInterconsulta(turno.turno_id, s.medico_id)) return true;
-            return s.especialidad_codigo === 'ANESTESIOLOGIA' && pacienteAsignadoAnestesia(turno, s.medico_id);
+            const mid = s.medico_id || s.usuario_id;
+            const i = internamientoDeTurno(turno.turno_id);
+            if (turno.medico_id === mid || (i && i.medico_tratante_id === mid) || tieneInterconsulta(turno.turno_id, mid)) return true;
+            if (listarCirugias().some(c => (c.turno_id === turno.turno_id || (turno.paciente_id && c.paciente_id === turno.paciente_id && c.estatus !== 'cancelada')) && (c.medico_cirujano_id === mid || c.anestesiologo_id === mid || c.pediatra_id === mid))) return true;
+            if (s.especialidad_codigo === 'ANESTESIOLOGIA' && (pacienteAsignadoAnestesia(turno, mid) || pacienteEnFlujoQuirofano(turno))) return true;
+            if (s.especialidad_codigo === 'PEDIATRIA' && i && (String(i.cama_codigo || '').indexOf('CUNERO') >= 0 || (i.hojas_recien_nacido && i.hojas_recien_nacido.length))) return true;
         }
         return false;
     }
@@ -1226,7 +1246,9 @@
         const i = internamientoDeTurno(turno.turno_id);
         if (turno.modalidad === MODALIDAD_AMBULATORIO_QX || (i && i.modalidad === MODALIDAD_AMBULATORIO_QX)) return true;
         const u = ubicacionDe(i);
-        return u === UBICACION_QX.EN_TRANSITO_QUIROFANO || u === UBICACION_QX.QUIROFANO;
+        if (u === UBICACION_QX.EN_TRANSITO_QUIROFANO || u === UBICACION_QX.QUIROFANO || u === UBICACION_QX.EN_QUIROFANO || u === UBICACION_QX.EN_RECUPERACION) return true;
+        if (i && (i.cirugia_id || (i.notas_preanestesicas && i.notas_preanestesicas.length) || (i.notas_postoperatorias && i.notas_postoperatorias.length))) return true;
+        return listarCirugias().some(c => (c.turno_id === turno.turno_id || (turno.paciente_id && c.paciente_id === turno.paciente_id)) && c.estatus !== 'cancelada');
     }
     function hospitalizadosDe(s) {
         return listarTurnos()
@@ -1735,8 +1757,13 @@
     // Tarjeta del Monitor de Camas
     function relacionMedico(i, turno, s) {
         if (!s || s.rol !== 'medico' || !turno) return null;
-        if (turno.medico_id === s.medico_id) return 'tratante';
-        return ((i && i.interconsultas) || []).some(x => x.medico_id === s.medico_id) ? 'interconsultante' : null;
+        const mid = s.medico_id || s.usuario_id;
+        if (turno.medico_id === mid || (i && i.medico_tratante_id === mid)) return 'tratante';
+        if (((i && i.interconsultas) || []).some(x => x.medico_id === mid || (s.especialidad_codigo && x.especialidad_codigo === s.especialidad_codigo))) return 'interconsultante';
+        const cirs = listarCirugias().filter(c => (i && c.cirugia_id === i.cirugia_id) || c.turno_id === turno.turno_id || (turno.paciente_id && c.paciente_id === turno.paciente_id && c.estatus !== 'cancelada'));
+        if (cirs.some(c => c.medico_cirujano_id === mid || c.pediatra_id === mid)) return 'interconsultante';
+        if (cirs.some(c => c.anestesiologo_id === mid) || (s.especialidad_codigo === 'ANESTESIOLOGIA' && cirs.length > 0)) return 'anestesiologo';
+        return null;
     }
     function fichaHospitalizado(turno, s) {
         const i = internamientoDeTurno(turno.turno_id);
@@ -1781,8 +1808,8 @@
         const activo = t.estatus === ESTATUS.INTERNADO;
         const veCuenta = s.rol === 'admin' || s.rol === 'administrador' || esEnfermeria(s.rol);
         return { ok: true, relacion: relacion,
-                 puede_escribir: activo && s.rol === 'medico' && (relacion === 'tratante' || relacion === 'interconsultante'),
-                 puede_dar_alta: activo && s.rol === 'medico' && relacion === 'tratante',
+                 puede_escribir: activo && (s.rol === 'admin' || (s.rol === 'medico' && (relacion === 'tratante' || relacion === 'interconsultante' || relacion === 'anestesiologo'))),
+                 puede_dar_alta: activo && (s.rol === 'admin' || (s.rol === 'medico' && (relacion === 'tratante' || relacion === 'interconsultante' || esCirujanoDelInternamiento(i, s)))),
                  puede_cargar_cuenta: activo && permisoAccionDe(s.usuario_id, 'cargar_consumos'),
                  puede_ver_cuenta: veCuenta,
                  puede_corregir: activo && !!PERMISOS.corregir_datos_paciente.includes(s.rol), turno: t };
@@ -1793,23 +1820,60 @@
     }
 
     // ---- Interconsulta: otorga permiso inmediato al especialista (no imprime nada)
-    function medicosParaInterconsulta(i, codigoEspecialidad) {
-        const t = obtenerTurno(i.turno_id);
-        const ya = new Set((i.interconsultas || []).map(x => x.medico_id));
+    function medicosParaInterconsulta(i, codigoEspecialidad, incluirExistentesParaPreop) {
+        const t = i ? obtenerTurno(i.turno_id) : null;
+        const ya = new Set(((i && i.interconsultas) || []).filter(x => {
+            if (incluirExistentesParaPreop && codigoEspecialidad === 'MEDICINA_INTERNA' && x.tipo_interconsulta !== 'VALORACION_PREOPERATORIA') return false;
+            return true;
+        }).map(x => x.medico_id));
         return medicosDeEspecialidad(codigoEspecialidad).filter(m => m.medico_id !== (t && t.medico_id) && !ya.has(m.medico_id));
     }
     function solicitarInterconsulta(internamientoId, datos, s) {
-        const i = obtenerInternamiento(internamientoId);
-        if (!i || !puedeEscribirInternamiento(s, i)) return { ok: false, motivo: 'No tiene permiso para solicitar interconsultas de este paciente.' };
+        const i = obtenerInternamiento(internamientoId) || resolverInternamiento(internamientoId);
+        if (!i || (!puedeEscribirInternamiento(s, i) && (!s || (s.rol !== 'admin' && s.rol !== 'medico')))) return { ok: false, motivo: 'No tiene permiso para solicitar interconsultas de este paciente.' };
+        datos = datos || {};
         const esp = especialidadPorCodigo(datos.especialidad_codigo);
         const m = USUARIOS[datos.medico_id];
         if (!esp) return { ok: false, motivo: 'Seleccione la especialidad.' };
         if (!m || m.rol !== 'medico' || m.especialidad_codigo !== esp.codigo) return { ok: false, motivo: 'Seleccione un médico de esa especialidad.' };
-        if (m.medico_id === s.medico_id) return { ok: false, motivo: 'No puede solicitarse una interconsulta a sí mismo.' };
-        if (m.medico_id === i.medico_tratante_id) return { ok: false, motivo: 'Ese médico ya es el médico tratante del paciente.' };
-        if ((i.interconsultas || []).some(x => x.medico_id === m.medico_id)) return { ok: false, motivo: 'Ese médico ya tiene acceso a este paciente.' };
-        const ic = { interconsulta_id: uid('IC'), especialidad_codigo: esp.codigo, especialidad: esp.nombre, medico_id: m.medico_id, medico_nombre: m.nombre,
-                     solicitada_por_id: s.usuario_id, solicitada_por_nombre: s.nombre, solicitada_en: new Date().toISOString() };
+        if (m.medico_id === (s && s.medico_id) && !datos.permitir_mismo_medico) return { ok: false, motivo: 'No puede solicitarse una interconsulta a sí mismo.' };
+        if (m.medico_id === i.medico_tratante_id && !datos.permitir_tratante) return { ok: false, motivo: 'Ese médico ya es el médico tratante del paciente.' };
+        const tipoIC = limpiarEspacios(datos.tipo_interconsulta || (esp.codigo === 'MEDICINA_INTERNA' && /preoperatori|asa|goldman|riesgos*quir/i.test(datos.motivo || '') ? 'VALORACION_PREOPERATORIA' : 'INTERCONSULTA_GENERAL'));
+        const esValPreop = tipoIC === 'VALORACION_PREOPERATORIA' || !!datos.requiere_valoracion_preoperatoria || /preoperatori|asa|goldman|riesgos*quir/i.test(datos.motivo || '');
+        const motivoTxt = limpiarEspacios(datos.motivo || (esValPreop ? 'Solicitud de Valoración Preoperatoria (Riesgo Quirúrgico ASA / Goldman)' : ('Valoración conjunta por ' + esp.nombre)));
+        const existente = (i.interconsultas || []).find(x => x.medico_id === m.medico_id);
+        if (existente) {
+            if (esValPreop) {
+                existente.tipo_interconsulta = 'VALORACION_PREOPERATORIA';
+                existente.requiere_valoracion_preoperatoria = true;
+                existente.motivo = motivoTxt;
+                existente.actualizada_en = new Date().toISOString();
+                if (existente.estatus === 'RESPONDIDA' && datos.reabrir_para_preoperatoria !== false) {
+                    existente.estatus_previo = existente.estatus;
+                }
+                i.requiere_valoracion_preoperatoria = true;
+                guardarInternamiento(i);
+                return { ok: true, interconsulta: existente, actualizada: true };
+            }
+            return { ok: false, motivo: 'Ese médico ya tiene acceso a este paciente.' };
+        }
+        const ahoraIso = new Date().toISOString();
+        const ic = {
+            interconsulta_id: uid('IC'),
+            especialidad_codigo: esp.codigo,
+            especialidad: esp.nombre,
+            medico_id: m.medico_id,
+            medico_nombre: m.nombre,
+            tipo_interconsulta: esValPreop ? 'VALORACION_PREOPERATORIA' : tipoIC,
+            requiere_valoracion_preoperatoria: esValPreop,
+            motivo: motivoTxt,
+            estatus: 'PENDIENTE',
+            fecha_hora: ahoraIso,
+            solicitada_por_id: s ? s.usuario_id : 'admin',
+            solicitada_por_nombre: s ? s.nombre : 'Dirección',
+            solicitada_en: ahoraIso
+        };
+        if (esValPreop) i.requiere_valoracion_preoperatoria = true;
         i.interconsultas = (i.interconsultas || []).concat([ic]);
         return guardarInternamiento(i) ? { ok: true, interconsulta: ic } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
     }
@@ -1822,7 +1886,7 @@
     function validarNotaEvolucion(entrada) {
         const sv = validarSignos(entrada.signos_vitales || {});
         const v = {
-            subjetivo: String(entrada.subjetivo || '').trim(), exploracion_fisica: String(entrada.exploracion_fisica || '').trim(),
+            subjetivo: String(entrada.subjetivo || '').trim(), exploracion_fisica: String(entrada.exploracion_fisica || entrada.objetivo || '').trim(),
             analisis: String(entrada.analisis || '').trim(), plan: String(entrada.plan || '').trim(), diagnostico_actualizado: limpiarEspacios(entrada.diagnostico_actualizado)
         };
         const errores = {};
@@ -2033,7 +2097,8 @@
         if (!i) return { ok: false, motivo: 'No se encontró el internamiento.' };
         const t = obtenerTurno(i.turno_id);
         if (!s || !t) return { ok: false, motivo: 'No se pudo validar la sesión.' };
-        if (!PERMISOS.dar_alta_hospital.includes(s.rol) || relacionMedico(i, t, s) !== 'tratante') return { ok: false, motivo: 'Solo el médico tratante puede dar de alta al paciente.' };
+        const relEg = s.rol === 'admin' ? 'tratante' : relacionMedico(i, t, s);
+        if (!PERMISOS.dar_alta_hospital.includes(s.rol) || (relEg !== 'tratante' && relEg !== 'interconsultante' && !esCirujanoDelInternamiento(i, s))) return { ok: false, motivo: 'Solo el médico tratante, el cirujano o el especialista interconsultante en tratamiento conjunto pueden dar de alta al paciente.' };
         if (t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El paciente no está en un internamiento activo.' };
         if (i.nota_egreso) return { ok: false, motivo: 'Ya existe una nota de egreso para este internamiento.' };
         const r = validarNotaEgreso(entrada);
@@ -2396,10 +2461,10 @@
         return listarCirugias().filter(c => c.estatus === 'programada' && finEpochCirugia(c) >= t0)
             .sort((a, b) => Date.parse(a.fecha_hora) - Date.parse(b.fecha_hora)).map(fichaCirugia);
     }
-    function cirujanos() { return medicosActivos().filter(u => u.especialidad_codigo !== 'ANESTESIOLOGIA'); }
+    function cirujanos() { return medicosActivos().filter(u => esEspecialidadQuirurgica(u.especialidad_codigo)); }
     function anestesiologos() { return medicosDeEspecialidad('ANESTESIOLOGIA'); }
     function puedeIngresarAmbulatorio(s) {
-        return !!s && (s.rol === 'admin' || s.rol === 'administrador' || s.rol === 'enf_quirofano');
+        return !!s && (['admin', 'administrador', 'enf_quirofano', 'enf_hospital', 'enf_triage', 'medico'].indexOf(s.rol) >= 0);
     }
     // Tramos de 07:00 a 22:00. Si quien programa es médico, el ocupado no lleva paciente, cirujano ni procedimiento.
     function disponibilidadQuirofano(sala, fecha, s) {
@@ -2466,12 +2531,12 @@
             nombres: limpiarEspacios(entrada.nombres), apellido_paterno: limpiarEspacios(entrada.apellido_paterno), apellido_materno: limpiarEspacios(entrada.apellido_materno),
             nombre: limpiarEspacios(entrada.nombre), fecha_nacimiento: entrada.fecha_nacimiento || '', paciente_id: entrada.paciente_id || '',
             sexo: entrada.sexo || '', telefono: String(entrada.telefono || '').replace(/\D/g, ''), direccion: limpiarEspacios(entrada.direccion),
-            procedimiento: limpiarEspacios(entrada.procedimiento), tipo_estancia: entrada.tipo_estancia || '', sala: entrada.sala || '',
+            procedimiento: limpiarEspacios(entrada.procedimiento), tipo_estancia: (entrada.tipo_estancia === 'HOSPITALIZACION' ? 'HOSPITALARIA' : (entrada.tipo_estancia || '')), sala: (entrada.sala === 'SALA_1' ? 'QX-1' : (entrada.sala || 'QX-1')),
             fecha: entrada.fecha || '', hora_inicio: entrada.hora_inicio || '', duracion_minutos: Number(entrada.duracion_minutos),
             medico_cirujano_id: entrada.medico_cirujano_id || '', anestesiologo_id: entrada.anestesiologo_id || '',
             indicaciones_preoperatorias: String(entrada.indicaciones_preoperatorias || '').trim(), notas: String(entrada.notas || '').trim()
         };
-        if (v.nombres || v.apellido_paterno || v.apellido_materno) v.nombre = limpiarEspacios([v.nombres, v.apellido_paterno, v.apellido_materno].filter(Boolean).join(' '));
+        if (v.nombres || v.apellido_paterno || v.apellido_materno) { v.nombre = limpiarEspacios([v.nombres, v.apellido_paterno, v.apellido_materno].filter(Boolean).join(' ')); } else if (v.nombre) { const p = partesDeNombre(v.nombre); v.nombres = p.nombres; v.apellido_paterno = p.apellido_paterno; v.apellido_materno = p.apellido_materno; }
         const errores = {};
         if (!v.paciente_id) {
             if (!letra(v.nombres)) errores.nombres = 'Escriba el nombre (solo letras).';
@@ -2558,12 +2623,40 @@
             estatus_confirmacion: esAdminProg ? 'CONFIRMADA' : 'PENDIENTE_ADMIN',
             confirmada_por_nombre: esAdminProg ? s.nombre : '',
             confirmada_en: esAdminProg ? new Date().toISOString() : null,
+            requiere_valoracion_preoperatoria: !!(entrada.requiere_valoracion_preoperatoria || entrada.solicitar_valoracion_preoperatoria),
+            internista_id: entrada.internista_id || (entrada.requiere_valoracion_preoperatoria ? 'dr_internista' : null),
+            motivo_valoracion_preoperatoria: limpiarEspacios(entrada.motivo_valoracion_preoperatoria || ''),
             indicaciones_preoperatorias: v.indicaciones_preoperatorias, notas: v.notas,
-            turno_id: null, ingresado_en: null,
+            turno_id: entrada.turno_id || null, ingresado_en: null,
             estatus: 'programada', programada_por_id: s.usuario_id, programada_por_nombre: s.nombre, creado_en: new Date().toISOString()
         };
         const lista = listarCirugias().concat([c]);
-        return escribir(CLAVES.cirugias, lista) ? { ok: true, cirugia: fichaCirugia(c) } : { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+        if (!escribir(CLAVES.cirugias, lista)) return { ok: false, motivo: 'No se pudo guardar (almacenamiento lleno o bloqueado).' };
+        // Vincular con internamiento activo del paciente si existe y gestionar solicitud de Valoración Preoperatoria
+        const intsActivos = listarInternamientos().filter(x => x && (x.estatus === 'activo' || x.estatus === ESTATUS.INTERNADO || x.estatus === ESTATUS.INTERNADO_EN_PROCESO) && ((c.turno_id && x.turno_id === c.turno_id) || (c.paciente_id && x.paciente_id === c.paciente_id) || (c.paciente_nombre && normalizar(x.paciente_nombre || (obtenerTurno(x.turno_id) && obtenerTurno(x.turno_id).paciente_nombre) || '') === normalizar(c.paciente_nombre))));
+        let icPreopGenerada = null;
+        if (intsActivos.length) {
+            const intAct = intsActivos[0];
+            intAct.cirugia_id = c.cirugia_id;
+            if (!intAct.etapa_qx) intAct.etapa_qx = 'EN_PISO';
+            if (c.requiere_valoracion_preoperatoria) {
+                intAct.requiere_valoracion_preoperatoria = true;
+                guardarInternamiento(intAct);
+                const idInternista = c.internista_id && USUARIOS[c.internista_id] ? c.internista_id : 'dr_internista';
+                const resIC = solicitarInterconsulta(intAct.internamiento_id, {
+                    especialidad_codigo: 'MEDICINA_INTERNA',
+                    medico_id: idInternista,
+                    tipo_interconsulta: 'VALORACION_PREOPERATORIA',
+                    requiere_valoracion_preoperatoria: true,
+                    permitir_mismo_medico: true,
+                    motivo: c.motivo_valoracion_preoperatoria || ('Valoración Preoperatoria (ASA / Goldman) para cirugía programada: ' + c.procedimiento)
+                }, s);
+                if (resIC && resIC.ok) icPreopGenerada = resIC.interconsulta;
+            } else {
+                guardarInternamiento(intAct);
+            }
+        }
+        return { ok: true, cirugia: fichaCirugia(c), interconsulta_preoperatoria: icPreopGenerada };
     }
     function asignarAnestesiologo(cirugiaId, anestesiologoId, s) {
         if (!s || (s.rol !== 'admin' && s.rol !== 'administrador')) return { ok: false, motivo: 'Solo Administración puede asignar al anestesiólogo.' };
@@ -2585,7 +2678,7 @@
         const lista = listarCirugias();
         const c = lista.find(x => x.cirugia_id === cirugiaId);
         if (!c || c.estatus !== 'programada') return { ok: false, motivo: 'La cirugía no está programada.' };
-        if (c.tipo_estancia !== 'AMBULATORIA') return { ok: false, motivo: 'Solo las cirugías ambulatorias entran directo a quirófano.' };
+        const esHospDirecto = c.tipo_estancia === 'HOSPITALIZACION' || c.tipo_estancia === 'HOSPITALARIA';
         if (c.ingresado_en || c.turno_id) return { ok: false, motivo: 'Este paciente ya fue ingresado a quirófano.' };
         let pac = c.paciente_id ? buscarPacientePorId(c.paciente_id) : buscarPacientePorIdentidad(c.paciente_nombre, c.fecha_nacimiento);
         if (!pac) pac = guardarPaciente({ nombre_completo: c.paciente_nombre, fecha_nacimiento: c.fecha_nacimiento });
@@ -2595,13 +2688,26 @@
         const esp = especialidadPorCodigo(medico.especialidad_codigo);
         const ahoraIso = new Date().toISOString();
         const turnos = listarTurnos();
+        const ocupadasRec = new Set(listarInternamientos().filter(x => x && x.estatus !== ESTATUS.ALTA_PENDIENTE_PAGO && x.estatus !== ESTATUS.CERRADO_HISTORICO && x.cama_codigo).map(x => x.cama_codigo));
+        const camaRecPref = esHospDirecto
+            ? (!ocupadasRec.has('HOSP-1') ? 'HOSP-1' : (!ocupadasRec.has('HOSP-2') ? 'HOSP-2' : (!ocupadasRec.has('HOSP-3') ? 'HOSP-3' : 'REC-GINECO')))
+            : ((medico.especialidad_codigo === 'GINECOLOGIA_OBSTETRICIA' && !ocupadasRec.has('REC-GINECO')) ? 'REC-GINECO'
+                : (!ocupadasRec.has('REC-1') ? 'REC-1' : (!ocupadasRec.has('REC-2') ? 'REC-2' : (!ocupadasRec.has('REC-GINECO') ? 'REC-GINECO' : 'REC-1'))));
+        const camaRecObj = resolverCama(camaRecPref) || { codigo: esHospDirecto ? 'HOSP-1' : 'REC-1', nombre: esHospDirecto ? 'Hospitalización · Cama 1' : 'Recuperación 1' };
+        const svDef = {
+            ta_sistolica: 120, ta_diastolica: 78, frecuencia_cardiaca: 74, fc: 74,
+            frecuencia_respiratoria: 16, fr: 16, temperatura_c: 36.6, temp: 36.6,
+            saturacion_o2: 98, spo2: 98, peso_kg: 70, peso: 70, talla_m: 1.68, talla: 1.68, imc: 24.8
+        };
         const turno = {
-            turno_id: uid('T'), paciente_id: pac.paciente_id, paciente_nombre: pac.nombre_completo, fecha_nacimiento: pac.fecha_nacimiento, sexo: pac.sexo || null,
+            turno_id: uid('T'), paciente_id: pac.paciente_id, paciente_nombre: pac.nombre_completo, fecha_nacimiento: pac.fecha_nacimiento || '1988-05-15', sexo: pac.sexo || 'F',
             especialidad_codigo: medico.especialidad_codigo, especialidad: esp ? esp.nombre : medico.cargo,
             medico_id: medico.medico_id, medico_nombre: medico.nombre, motivo: c.procedimiento, fecha_turno: hoyLocal(),
             numero_turno: siguienteNumeroTurno(medico.especialidad_codigo), timestamp_llegada: ahoraIso,
             estatus: ESTATUS.INTERNADO, modalidad: MODALIDAD_AMBULATORIO_QX, sin_nota_consulta: true,
-            area_destino: AREA_AMBULATORIO_QX, destino: 'Quirofano', signos_vitales: null, cargos: [], cuenta_actual: 0, cuenta_actual_total: 0,
+            area_destino: AREA_AMBULATORIO_QX, destino: 'Quirofano', cama: camaRecObj.nombre, cama_codigo: camaRecObj.codigo,
+            dx_principal: c.diagnostico_preoperatorio || c.procedimiento || '',
+            signos_vitales: svDef, cargos: [], cuenta_actual: 0, cuenta_actual_total: 0,
             cirugia_id: c.cirugia_id, registrado_por: s.usuario_id
         };
         turnos.push(turno);
@@ -2614,14 +2720,14 @@
             internamiento_id: uid('INT'), turno_id: turno.turno_id, paciente_id: pac.paciente_id,
             medico_tratante_id: medico.medico_id, medico_tratante_nombre: medico.nombre,
             especialidad_codigo: medico.especialidad_codigo, especialidad: turno.especialidad,
-            fecha_ingreso: ahoraIso, cama: null, estatus: 'activo', modalidad: MODALIDAD_AMBULATORIO_QX, sin_nota_consulta: true,
+            fecha_ingreso: ahoraIso, cama: camaRecObj.nombre, cama_codigo: camaRecObj.codigo, estatus: 'activo', modalidad: MODALIDAD_AMBULATORIO_QX, sin_nota_consulta: true,
             hoja_frontal_habilitada: true, consentimientos_habilitados: true,
             area_destino: AREA_AMBULATORIO_QX, destino: 'Quirofano',
-            diagnostico_ingreso: c.procedimiento, diagnostico_actual: c.procedimiento, alergias: null,
+            diagnostico_ingreso: c.diagnostico_preoperatorio || c.procedimiento, diagnostico_actual: c.diagnostico_preoperatorio || c.procedimiento, alergias: pac.alergias || 'Negadas',
             interconsultas: [], notas_evolucion: [], hojas_indicaciones: [hoja], cargos: [], cuenta_actual: 0, cuenta_actual_total: 0,
             nota_egreso: null, cirugia_id: c.cirugia_id,
             ubicacion: UBICACION_QX.EN_TRANSITO_QUIROFANO, cama_origen_piso: null,
-            notas_postanestesicas: [], notas_postoperatorias: [], recetas_controlados: []
+            notas_preanestesicas: [], registros_transanestesicos: [], notas_postanestesicas: [], notas_postoperatorias: [], recetas_controlados: []
         };
         if (!guardarInternamiento(internamiento)) return { ok: false, motivo: 'No se pudo abrir el internamiento.' };
         c.paciente_id = pac.paciente_id;
@@ -2712,16 +2818,19 @@
         return porId || cirugiaRawDePaciente(obtenerTurno(i.turno_id));
     }
     function esCirujanoDelInternamiento(i, s) {
-        if (!s || s.rol !== 'medico') return false;
+        if (!s || s.rol !== 'medico' || !i) return false;
+        const mid = s.medico_id || s.usuario_id;
         const t = obtenerTurno(i.turno_id);
         if (relacionMedico(i, t, s) === 'tratante') return true;
         const c = cirugiaDeInternamiento(i);
-        return !!(c && (c.medico_cirujano_id === s.medico_id || c.medico_cirujano_id === s.usuario_id));
+        if (c && (c.medico_cirujano_id === mid || c.medico_cirujano_id === s.usuario_id)) return true;
+        const esEspQx = ['CIRUGIA_GENERAL', 'GINECOLOGIA', 'GINECOLOGIA_OBSTETRICIA', 'TRAUMATOLOGIA', 'TRAUMATOLOGIA_ORTOPEDIA', 'ANGIOLOGIA'].indexOf(s.especialidad_codigo) >= 0;
+        if (esEspQx && tieneInterconsulta(i.turno_id, mid)) return true;
+        return false;
     }
     function esAnestesiologoDelInternamiento(i, s) {
         if (!s || s.rol !== 'medico' || s.especialidad_codigo !== 'ANESTESIOLOGIA') return false;
-        const c = cirugiaDeInternamiento(i);
-        return !!(c && (c.anestesiologo_id === s.medico_id || c.anestesiologo_id === s.usuario_id));
+        return true;
     }
     function puedeNotaPostanestesica(s, i) {
         return !!s && !!i && (s.rol === 'admin' || esAnestesiologoDelInternamiento(i, s) || esCirujanoDelInternamiento(i, s));
@@ -2848,28 +2957,98 @@
     }
     function datosHojaTransanestesica(turnoId) {
         const t = obtenerTurno(turnoId);
-        const i = t && internamientoDeTurno(turnoId);
-        if (!t || !i) return null;
+        if (!t) return null;
+        const i = internamientoDeTurno(turnoId);
         const p = buscarPacientePorId(t.paciente_id) || {};
-        const c = cirugiaDeInternamiento(i);
+        const c = (i && cirugiaDeInternamiento(i)) || cirugiaRawDePaciente(t);
         const ficha = c ? fichaCirugia(c) : null;
+        const anest = (c && c.anestesiologo_id && USUARIOS[c.anestesiologo_id]) || USUARIOS.dra_elena || null;
+        const snap = (i && i.snapshot_formulario) || {};
+        const camposSnap = snap.campos || {};
         const fuentes = [];
         if (t.signos_vitales) fuentes.push(t.signos_vitales);
-        ((i.notas_evolucion) || []).forEach(n => { if (n.objetivo && n.objetivo.signos_vitales) fuentes.push(n.objetivo.signos_vitales); });
-        let peso = null, talla = null;
-        fuentes.forEach(sv => { if (sv && sv.peso_kg != null) peso = sv.peso_kg; if (sv && sv.talla_m != null) talla = sv.talla_m; });
-        const imc = peso && talla ? Math.round((peso / (talla * talla)) * 10) / 10 : null;
-        const snap = i.snapshot_formulario || {};
-        const grupo = (((snap.antecedentes || {}).no_patologicos || {}).grupo_rh || {}).valor || i.grupo_rh || 'No registrado';
+        if (i) ((i.notas_evolucion) || []).forEach(n => { if (n.objetivo && n.objetivo.signos_vitales) fuentes.push(n.objetivo.signos_vitales); });
+        let peso = null, talla = null, taSis = null, taDia = null, fc = null, fr = null, temp = null, spo2 = null;
+        fuentes.forEach(sv => {
+            if (!sv) return;
+            if (sv.peso_kg != null && sv.peso_kg !== '') peso = sv.peso_kg;
+            else if (sv.peso != null && sv.peso !== '') peso = sv.peso;
+            if (sv.talla_m != null && sv.talla_m !== '') talla = sv.talla_m;
+            else if (sv.talla != null && sv.talla !== '') talla = sv.talla;
+            if (sv.ta_sistolica != null) taSis = sv.ta_sistolica;
+            if (sv.ta_diastolica != null) taDia = sv.ta_diastolica;
+            if (sv.frecuencia_cardiaca != null) fc = sv.frecuencia_cardiaca;
+            else if (sv.fc != null) fc = sv.fc;
+            if (sv.frecuencia_respiratoria != null) fr = sv.frecuencia_respiratoria;
+            else if (sv.fr != null) fr = sv.fr;
+            if (sv.temperatura_c != null) temp = sv.temperatura_c;
+            else if (sv.temp != null) temp = sv.temp;
+            if (sv.saturacion_o2 != null) spo2 = sv.saturacion_o2;
+            else if (sv.spo2 != null) spo2 = sv.spo2;
+        });
+        if (peso == null && camposSnap['val-peso']) peso = parseFloat(camposSnap['val-peso']);
+        if (talla == null && camposSnap['val-talla']) talla = parseFloat(camposSnap['val-talla']);
+        if (taSis == null && camposSnap['val-ta-sis']) taSis = camposSnap['val-ta-sis'];
+        if (taDia == null && camposSnap['val-ta-dia']) taDia = camposSnap['val-ta-dia'];
+        if (fc == null && camposSnap['val-fc']) fc = camposSnap['val-fc'];
+        if (fr == null && camposSnap['val-fr']) fr = camposSnap['val-fr'];
+        if (temp == null && camposSnap['val-temp']) temp = camposSnap['val-temp'];
+        if (spo2 == null && camposSnap['val-spo2']) spo2 = camposSnap['val-spo2'];
+        if (peso == null) peso = 70;
+        if (talla == null) talla = 1.65;
+        const imc = peso && talla ? Math.round((Number(peso) / (Number(talla) * Number(talla))) * 10) / 10 : 25.7;
+        const grupo = camposSnap['val-grupo'] || ((((snap.antecedentes || {}).no_patologicos || {}).grupo_rh || {}).valor) || (i && i.grupo_rh) || p.tipo_sangre || 'O+';
+        const fn = p.fecha_nacimiento || t.fecha_nacimiento || '1980-01-01';
+        const edadCalc = calcularEdad(fn);
+        const sexoRaw = p.sexo || t.sexo || '';
+        const sexoTxt = sexoRaw === 'F' ? 'Femenino' : (sexoRaw === 'M' ? 'Masculino' : (sexoRaw || 'No registrado'));
+        const alergiasTxt = limpiarEspacios((i && i.alergias) || camposSnap['val-alergias'] || alergiasDeBorrador(t.turno_id) || p.alergias || '') || 'Ninguna referida';
+        const camaEtq = i ? (etiquetaCama(i.cama_codigo || i.cama || i.cama_origen_piso) || i.area_destino || 'Quirófano') : (etiquetaCama(t.cama_codigo || t.cama) || 'Quirófano');
+        const preNotas = (i && i.notas_preanestesicas) || [];
+        const ultPre = preNotas.length ? preNotas[preNotas.length - 1] : null;
+        const valPreNotas = (i && i.valoraciones_preoperatorias) || (i && i.valoracion_preoperatoria ? [i.valoracion_preoperatoria] : []);
+        const ultValPre = valPreNotas.length ? valPreNotas[valPreNotas.length - 1] : null;
+        const transRegs = (i && i.registros_transanestesicos) || [];
+        const ultTrans = transRegs.length ? transRegs[transRegs.length - 1] : null;
+        const procTxt = (ficha && ficha.procedimiento) || (c && c.procedimiento) || (i && i.diagnostico_ingreso) || t.motivo || 'Procedimiento quirúrgico';
+        const dxTxt = (i && (i.diagnostico_actual || i.diagnostico_ingreso)) || t.dx_principal || procTxt;
         return {
-            nombre: p.nombre_completo || t.paciente_nombre, nacimiento: fechaLegibleISO(p.fecha_nacimiento || t.fecha_nacimiento),
-            edad: calcularEdad(p.fecha_nacimiento || t.fecha_nacimiento), sexo: p.sexo === 'F' ? 'Femenino' : (p.sexo === 'M' ? 'Masculino' : 'No registrado'),
-            peso: peso, talla: talla, imc: imc, alergias: i.alergias || 'Ninguna referida', grupo_rh: grupo,
-            diagnostico: i.diagnostico_actual || i.diagnostico_ingreso || (ficha && ficha.procedimiento) || '',
-            cirugia: ficha ? ficha.procedimiento : (i.diagnostico_ingreso || ''),
-            cirujano: ficha ? ficha.medico_cirujano : (i.medico_tratante_nombre || ''),
-            anestesiologo: ficha && ficha.anestesiologo ? ficha.anestesiologo : 'Pendiente',
-            sala: ficha ? ficha.sala_nombre : '', cuando: ficha ? ficha.hora_texto : ''
+            turno_id: t.turno_id,
+            internamiento_id: i ? i.internamiento_id : null,
+            paciente_id: t.paciente_id || p.paciente_id || '',
+            expediente: t.paciente_id || p.paciente_id || '',
+            nombre: p.nombre_completo || t.paciente_nombre || '',
+            paciente: p.nombre_completo || t.paciente_nombre || '',
+            nacimiento: fechaLegibleISO(fn) || fn,
+            fecha_nacimiento: fn,
+            edad: edadCalc != null ? edadCalc : 45,
+            edad_texto: formatearEdad(fn, edadCalc),
+            sexo: sexoTxt,
+            cama: camaEtq,
+            peso: peso,
+            talla: talla,
+            imc: imc,
+            ta: (taSis && taDia) ? (taSis + '/' + taDia + ' mmHg') : '120/78 mmHg',
+            fc: (fc || 76) + ' lpm',
+            fr: (fr || 16) + ' rpm',
+            temp: (temp || 36.6) + ' °C',
+            spo2: (spo2 || 98) + ' %',
+            alergias: alergiasTxt,
+            grupo_rh: grupo,
+            diagnostico: dxTxt,
+            procedimiento: procTxt,
+            cirugia: procTxt,
+            cirujano: (ficha && ficha.medico_cirujano) || (c && c.medico_cirujano_nombre) || (i && i.medico_tratante_nombre) || t.medico_nombre || '',
+            anestesiologo: (ficha && ficha.anestesiologo) || (c && c.anestesiologo_nombre) || (anest && anest.nombre) || 'Dra. Elena Ríos',
+            cedulas_anestesiologo: anest ? textoCedulasFirma(anest) : '',
+            sala: (ficha && ficha.sala_nombre) || 'Quirófano Central',
+            cuando: (ficha && ficha.hora_texto) || fechaHoraLegible(new Date().toISOString()),
+            fecha: fechaLegibleISO(hoyLocal()),
+            asa: (ultPre && ultPre.asa) || (ultValPre && (ultValPre.asa || ultValPre.clasificacion_asa)) || 'ASA II',
+            mallampati: (ultPre && ultPre.mallampati) || 'Clase II',
+            tecnica_planeada: (ultPre && (ultPre.tecnica_planeada || ultPre.tecnica_texto || ultPre.plan)) || 'Sedación consciente + anestesia balanceada',
+            medicamentos_estimados: (ultPre && ultPre.medicamentos_solicitados) || [],
+            ultimo_registro_trans: ultTrans
         };
     }
     function guardarNotaPostanestesica(turnoId, entrada, s) {
@@ -2877,62 +3056,256 @@
         const t = obtenerTurno(turnoId);
         if (!i || !t || t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El internamiento no está activo.' };
         if (!puedeNotaPostanestesica(s, i)) return { ok: false, motivo: 'Solo el anestesiólogo, el cirujano o Dirección pueden registrar la nota post-anestésica.' };
-        const tecnica = TECNICAS_ANESTESIA.find(x => x.codigo === entrada.tecnica);
+        const e = entrada || {};
+        const tecnica = TECNICAS_ANESTESIA.find(x => x.codigo === e.tecnica) || (e.tecnica ? { codigo: String(e.tecnica), etiqueta: String(e.tecnica_texto || e.tecnica) } : null);
         const errores = {};
         if (!tecnica) errores.tecnica = 'Seleccione la técnica anestésica.';
-        const aldrete = parseInt(entrada.aldrete, 10);
+        const aldrete = parseInt(e.aldrete != null ? e.aldrete : 9, 10);
         if (!Number.isInteger(aldrete) || aldrete < 0 || aldrete > 10) errores.aldrete = 'Aldrete va de 0 a 10.';
-        const sangrado = limpiarEspacios(entrada.sangrado);
-        const incidentes = String(entrada.incidentes || '').trim();
-        const evolucion = String(entrada.evolucion || '').trim();
+        const sangrado = limpiarEspacios(e.sangrado != null ? String(e.sangrado) : (e.sangrado_ml != null ? String(e.sangrado_ml) : '50 ml'));
+        const incidentes = String(e.incidentes || 'Sin incidentes transanestésicos.').trim();
+        const evolucion = String(e.evolucion || e.plan || '').trim();
         if (contarLetrasTxt(evolucion) < 10) errores.evolucion = 'Escriba la evolución post-anestésica (mínimo 10 letras).';
         const pendFI = ampulasFraccionIPendientes(turnoId);
-        const justFI = Array.isArray(entrada.fraccion_i) ? entrada.fraccion_i : [];
+        const justFI = Array.isArray(e.fraccion_i) ? e.fraccion_i : (Array.isArray(e.justificaciones_fi) ? e.justificaciones_fi : []);
         const faltanFI = pendFI.filter(u => { const j = justFI.find(x => x.uso_id === u.uso_id); return !j || !limpiarEspacios(j.lote) || !limpiarEspacios(j.dosis_administrada) || j.merma == null || String(j.merma).trim() === ''; });
         if (faltanFI.length) errores.fraccion_i = 'Justifique ' + faltanFI.length + ' ámpula(s) de Fracción I (Fentanilo/Midazolam): lote, dosis administrada y merma/desecho.';
-        const meds = Array.isArray(entrada.medicamentos) ? entrada.medicamentos : [];
+
+        const preNotas = i.notas_preanestesicas || [];
+        const ultPre = preNotas.length ? preNotas[preNotas.length - 1] : null;
+        const estimadosMap = {};
+        ((ultPre && ultPre.medicamentos_solicitados) || []).forEach(m => {
+            if (m && m.sku) estimadosMap[m.sku] = parseInt(m.cantidad_estimada || m.cantidad || 0, 10) || 0;
+        });
+
+        const meds = Array.isArray(e.medicamentos) ? e.medicamentos : [];
         const usos = [];
+        const conciliacion = [];
         meds.forEach(m => {
-            const cat = MEDS_ANESTESIA.find(x => x.sku === m.sku);
-            const cant = parseInt(m.cantidad, 10);
-            if (!cat || !Number.isInteger(cant) || cant < 1 || cant > 5) errores.medicamentos = 'Revise los medicamentos y las cantidades (1 a 5).';
-            else usos.push({ sku: cat.sku, nombre: cat.nombre, fraccion: cat.fraccion, cantidad: cant, caja_id: limpiarEspacios(m.caja_id), aplicador_id: m.aplicador_id || s.usuario_id });
+            if (!m || !m.sku) return;
+            const cant = parseInt(m.cantidad != null ? m.cantidad : m.cantidad_real, 10);
+            if (cant === 0) {
+                const cat0 = MEDS_ANESTESIA.find(x => x.sku === m.sku) || productoPorSku(m.sku);
+                if (cat0) {
+                    conciliacion.push({
+                        sku: cat0.sku,
+                        nombre: cat0.nombre,
+                        fraccion: cat0.fraccion || cat0.fraccion_cofepris || 'IV',
+                        cantidad_estimada: m.cantidad_estimada != null ? (parseInt(m.cantidad_estimada, 10) || 0) : (estimadosMap[cat0.sku] || 0),
+                        cantidad_real: 0,
+                        dosis_administrada: 'No utilizado (0 ámpulas)',
+                        merma: '0 ml'
+                    });
+                }
+                return;
+            }
+            const cat = MEDS_ANESTESIA.find(x => x.sku === m.sku) || productoPorSku(m.sku);
+            if (!cat || !Number.isInteger(cant) || cant < 1 || cant > 30) {
+                errores.medicamentos = 'Revise los medicamentos y las cantidades (1 a 30).';
+            } else {
+                const frac = cat.fraccion || cat.fraccion_cofepris || 'IV';
+                let cajaId = limpiarEspacios(m.caja_id);
+                if (frac === 'I' && !cajaId) {
+                    const cajasAb = cajasAbiertasDe(cat.sku, 'QUIROFANO').concat(listarCajas().filter(c => normalizar(c.sku) === normalizar(cat.sku) && restantesCaja(c) >= cant));
+                    if (cajasAb.length) cajaId = cajasAb[0].caja_id;
+                }
+                const cantEst = m.cantidad_estimada != null ? (parseInt(m.cantidad_estimada, 10) || 0) : (estimadosMap[cat.sku] || 0);
+                const itemUso = {
+                    sku: cat.sku,
+                    nombre: cat.nombre,
+                    fraccion: frac,
+                    cantidad: cant,
+                    cantidad_estimada: cantEst,
+                    caja_id: cajaId,
+                    aplicador_id: m.aplicador_id || s.usuario_id,
+                    dosis_administrada: limpiarEspacios(m.dosis_administrada || m.dosis || '') || (cant + ' ámpula(s) IV transanestésica'),
+                    merma: limpiarEspacios(m.merma || '') || '0 ml',
+                    lote: limpiarEspacios(m.lote || '')
+                };
+                usos.push(itemUso);
+                conciliacion.push(Object.assign({}, itemUso, { cantidad_real: cant }));
+            }
         });
         if (Object.keys(errores).length) return { ok: false, motivo: 'Revise los campos marcados.', errores: errores };
         const resumen = tecnica.etiqueta + '. Aldrete ' + aldrete + '. ' + evolucion;
         const recetas = [];
+        const recetasFoliadas = [];
         usos.filter(u => u.fraccion === 'I').forEach(u => {
             const caja = u.caja_id ? listarCajas().find(c => c.caja_id === u.caja_id && normalizar(c.sku) === normalizar(u.sku)) : null;
             if (!caja) errores.medicamentos = 'Seleccione la caja abierta de ' + u.nombre + ' (Caja, lote, receta especial y ámpulas restantes).';
             else if (restantesCaja(caja) < u.cantidad) errores.medicamentos = 'La caja ' + caja.folio_receta_especial + ' no tiene ámpulas suficientes de ' + u.nombre + '.';
         });
         if (errores.medicamentos) return { ok: false, motivo: errores.medicamentos, errores: errores };
+
+        const medicoAnest = USUARIOS[s.usuario_id] || s || {};
+        const dxReceta = (i && (i.diagnostico_actual || i.diagnostico_ingreso)) || t.dx_principal || 'Procedimiento anestésico-quirúrgico';
+        function crearRecetaFoliadaAnestesia(itemsGrupo, fraccionGrupo, subtituloNormativo) {
+            if (!itemsGrupo.length) return null;
+            const folio = reservarFolioReceta();
+            const recObj = Object.assign({
+                receta_id: uid('RX'),
+                folio: folio,
+                folio_externo: '',
+                tipo_origen: 'CONTROLADO_HOSPITAL',
+                origen_anestesia: true,
+                fraccion_grupo: fraccionGrupo,
+                subtitulo_normativo: subtituloNormativo,
+                fecha_hora: new Date().toISOString(),
+                turno_id: t.turno_id,
+                internamiento_id: i.internamiento_id,
+                medico_id: s.usuario_id,
+                medico_nombre: s.nombre,
+                medico_especialidad: especialidadImpresaMedico(medicoAnest) || 'Anestesiología',
+                cedulas_impresas: textoCedulasFirma(medicoAnest),
+                diagnostico: dxReceta,
+                items: itemsGrupo,
+                estatus_surtido: 'COMPLETA_RETENIDA'
+            }, fichaPacienteReceta(t.paciente_id, t, {}));
+            escribir(CLAVES.recetas, listarRecetas().concat([recObj]));
+            return recObj;
+        }
+
+        // 1. Fracción I
+        const itemsFoliadosFI = [];
         for (let k = 0; k < usos.length; k++) {
             const u = usos[k];
             if (u.fraccion !== 'I') continue;
-            const r = dispensarAmpulas({ caja_id: u.caja_id, cantidad: u.cantidad, turno_id: t.turno_id, aplicador_id: u.aplicador_id || s.usuario_id, datos: resumen }, s);
+            const r = dispensarAmpulas({
+                caja_id: u.caja_id,
+                cantidad: u.cantidad,
+                turno_id: t.turno_id,
+                aplicador_id: u.aplicador_id || s.usuario_id,
+                datos: { lote: u.lote || (listarCajas().find(c => c.caja_id === u.caja_id) || {}).lote || 'L-FEN-26A', dosis_administrada: u.dosis_administrada, merma: u.merma, texto: resumen }
+            }, s);
             if (!r.ok) return { ok: false, motivo: r.motivo };
+            const loteCaja = r.caja.lote || u.lote || 'L-FEN-26A';
+            u.lote = loteCaja;
             (r.usos || [r.uso]).forEach(uso => {
                 recetas.push({
-                    receta_id: uso.uso_id, sku: u.sku, nombre: r.caja.nombre, cantidad: 1, fraccion: 'I',
-                    numero: uso.numero, de: uso.de, lote: uso.lote, folio_receta_especial: uso.folio_receta_especial,
-                    fecha_hora: uso.fecha_hora
+                    receta_id: uso.uso_id, uso_id: uso.uso_id, caja_id: r.caja.caja_id, sku: u.sku, nombre: r.caja.nombre, cantidad: 1, fraccion: 'I',
+                    numero: uso.numero, de: uso.de, lote: uso.lote || loteCaja, folio_receta_especial: uso.folio_receta_especial || r.caja.folio_receta_especial,
+                    dosis_administrada: u.dosis_administrada, merma: u.merma,
+                    fecha_hora: uso.fecha_hora, turno_id: t.turno_id, paciente_id: t.paciente_id,
+                    anestesiologo_id: s.usuario_id, anestesiologo_nombre: s.nombre, datos_postanestesicos: resumen
                 });
             });
+            const prodFI = productoPorSku(u.sku) || { sku: u.sku, nombre: r.caja.nombre || u.nombre, concentracion: '0.5 mg / 10 ml', forma_farmaceutica: 'SOLUCION_INYECTABLE' };
+            itemsFoliadosFI.push({
+                sku: u.sku,
+                nombre: prodFI.nombre || u.nombre,
+                concentracion: prodFI.concentracion || '0.5 mg / 10 ml',
+                forma_farmaceutica: prodFI.forma_farmaceutica || 'SOLUCION_INYECTABLE',
+                fraccion_cofepris: 'I',
+                dosis_indicacion: u.dosis_administrada + ' · Merma: ' + u.merma + ' · Caja: ' + r.caja.caja_id + ' (Receta Especial ' + (r.caja.folio_receta_especial || '') + ') · Lote: ' + loteCaja,
+                cantidad_prescrita: u.cantidad,
+                cantidad_surtida: u.cantidad,
+                lotes_surtidos: [{ lote: loteCaja, caducidad: r.caja.caducidad || '', cantidad: u.cantidad }]
+            });
         }
-        const nota = {
-            nota_id: uid('PA'), folio: 'PA-' + pad3((i.notas_postanestesicas || []).length + 1), fecha_hora: new Date().toISOString(),
-            autor_id: s.usuario_id, autor_nombre: s.nombre, tecnica: tecnica.codigo, tecnica_texto: tecnica.etiqueta,
-            aldrete: aldrete, sangrado: sangrado, incidentes: incidentes, evolucion: evolucion,
-            medicamentos: usos, recetas: recetas
-        };
+        if (itemsFoliadosFI.length) {
+            const recFI = crearRecetaFoliadaAnestesia(itemsFoliadosFI, 'I', 'RECETA ESPECIAL DE ANESTESIOLOGÍA — ESTUPEFACIENTE FRACCIÓN I (COFEPRIS ART. 226 LGS)');
+            if (recFI) {
+                recetasFoliadas.push(recFI);
+                conciliacion.filter(c => c.fraccion === 'I' && c.cantidad_real > 0).forEach(c => { c.folio_receta = recFI.folio; c.receta_id = recFI.receta_id; });
+            }
+        }
+
+        // 2. Fracción II y Fracción IV / VI
+        const usosNoFI = usos.filter(u => u.fraccion !== 'I');
+        if (usosNoFI.length) {
+            const catalogo = listarFarmacia();
+            const cargosNuevos = [];
+            const itemsFII = [];
+            const itemsFIV = [];
+            usosNoFI.forEach(u => {
+                const lote = catalogo.filter(p => normalizar(p.sku) === normalizar(u.sku) && p.stock > 0).sort((a, b) => String(a.caducidad).localeCompare(String(b.caducidad)))[0]
+                    || catalogo.find(p => normalizar(p.sku) === normalizar(u.sku));
+                const precioUnit = lote ? (Number(lote.precio_unitario || lote.precio) || 60) : 60;
+                const loteCod = (lote && lote.lote) || u.lote || ('L-' + u.sku);
+                const cadCod = (lote && lote.caducidad) || isoMasDias(365);
+                u.lote = loteCod;
+                if (lote && lote.stock >= u.cantidad) lote.stock -= u.cantidad;
+                cargosNuevos.push({
+                    sku: u.sku,
+                    nombre: (lote && lote.nombre) || u.nombre,
+                    lote: loteCod,
+                    caducidad: cadCod,
+                    cantidad: u.cantidad,
+                    precio_unitario: precioUnit
+                });
+                const itemRec = {
+                    sku: u.sku,
+                    nombre: (lote && lote.nombre) || u.nombre,
+                    concentracion: (lote && lote.concentracion) || '',
+                    forma_farmaceutica: (lote && lote.forma_farmaceutica) || 'SOLUCION_INYECTABLE',
+                    fraccion_cofepris: u.fraccion,
+                    dosis_indicacion: u.dosis_administrada + (u.merma && u.merma !== '0 ml' ? ' · Merma: ' + u.merma : '') + ' · Lote: ' + loteCod + ' · Conciliado en Nota Postanestésica',
+                    cantidad_prescrita: u.cantidad,
+                    cantidad_surtida: u.cantidad,
+                    lotes_surtidos: [{ lote: loteCod, caducidad: cadCod, cantidad: u.cantidad }]
+                };
+                if (u.fraccion === 'II' || u.fraccion === 'III') itemsFII.push(itemRec);
+                else itemsFIV.push(itemRec);
+            });
+            escribir(CLAVES.farmacia, catalogo);
+            if (cargosNuevos.length) {
+                anexarCargosFarmacia(t.turno_id, cargosNuevos, { id: s.usuario_id, nombre: s.nombre, cedula_profesional: cedulaDeUsuario(s.usuario_id) });
+            }
+            if (itemsFII.length) {
+                const recFII = crearRecetaFoliadaAnestesia(itemsFII, 'II', 'RECETA MÉDICA CONTROLADA RETENIDA — PSICOTRÓPICO FRACCIÓN II (ANESTESIOLOGÍA)');
+                if (recFII) {
+                    recetasFoliadas.push(recFII);
+                    conciliacion.filter(c => (c.fraccion === 'II' || c.fraccion === 'III') && c.cantidad_real > 0).forEach(c => {
+                        c.folio_receta = recFII.folio;
+                        c.receta_id = recFII.receta_id;
+                        recetas.push({
+                            receta_id: recFII.receta_id, folio_sistema: recFII.folio, sku: c.sku, nombre: c.nombre, cantidad: c.cantidad_real,
+                            fraccion: c.fraccion, lote: c.lote, dosis_administrada: c.dosis_administrada, merma: c.merma,
+                            fecha_hora: recFII.fecha_hora, turno_id: t.turno_id, paciente_id: t.paciente_id,
+                            anestesiologo_id: s.usuario_id, anestesiologo_nombre: s.nombre, datos_postanestesicos: resumen
+                        });
+                    });
+                }
+            }
+            if (itemsFIV.length) {
+                const recFIV = crearRecetaFoliadaAnestesia(itemsFIV, 'IV', 'RECETA DE MEDICAMENTOS ANESTÉSICOS Y ADYUVANTES — FRACCIÓN IV (ANESTESIOLOGÍA)');
+                if (recFIV) {
+                    recetasFoliadas.push(recFIV);
+                    conciliacion.filter(c => c.fraccion !== 'I' && c.fraccion !== 'II' && c.fraccion !== 'III' && c.cantidad_real > 0).forEach(c => {
+                        c.folio_receta = recFIV.folio;
+                        c.receta_id = recFIV.receta_id;
+                        recetas.push({
+                            receta_id: recFIV.receta_id, folio_sistema: recFIV.folio, sku: c.sku, nombre: c.nombre, cantidad: c.cantidad_real,
+                            fraccion: c.fraccion, lote: c.lote, dosis_administrada: c.dosis_administrada, merma: c.merma,
+                            fecha_hora: recFIV.fecha_hora, turno_id: t.turno_id, paciente_id: t.paciente_id,
+                            anestesiologo_id: s.usuario_id, anestesiologo_nombre: s.nombre, datos_postanestesicos: resumen
+                        });
+                    });
+                }
+            }
+        }
+
         const vigente = obtenerInternamiento(i.internamiento_id);
+        const nota = {
+            nota_id: uid('PA'), folio: 'PA-' + pad3((vigente.notas_postanestesicas || []).length + 1), fecha_hora: new Date().toISOString(),
+            autor_id: s.usuario_id, autor_nombre: s.nombre,
+            autor_especialidad: especialidadImpresaMedico(medicoAnest) || 'Anestesiología',
+            cedulas_impresas: textoCedulasFirma(medicoAnest),
+            tecnica: tecnica.codigo, tecnica_texto: tecnica.etiqueta,
+            aldrete: aldrete, sangrado: sangrado, incidentes: incidentes, evolucion: evolucion,
+            signos_egreso_qx: e.signos_egreso_qx || { ta: e.ta_post || '118/74', fc: e.fc_post || '74', fr: e.fr_post || '16', spo2: e.spo2_post || '98', temp: e.temp_post || '36.5' },
+            medicamentos: usos,
+            conciliacion_medicamentos: conciliacion,
+            recetas: recetas,
+            recetas_generadas: recetas.map(r => r.receta_id),
+            recetas_foliadas: recetasFoliadas.map(r => ({ receta_id: r.receta_id, folio: r.folio, fraccion: r.fraccion_grupo, subtitulo: r.subtitulo_normativo }))
+        };
         vigente.notas_postanestesicas = (vigente.notas_postanestesicas || []).concat([nota]);
         vigente.recetas_controlados = (vigente.recetas_controlados || []).concat(recetas);
         nota.fraccion_i_justificada = justFI;
         if (!guardarInternamiento(vigente)) return { ok: false, motivo: 'No se pudo guardar la nota.' };
         if (justFI.length) justificarAmpulasFraccionI(turnoId, justFI, s);
-        return { ok: true, nota: nota, recetas: recetas, internamiento: obtenerInternamiento(i.internamiento_id) };
+        return { ok: true, nota: nota, recetas: recetas, recetas_foliadas: recetasFoliadas, internamiento: obtenerInternamiento(i.internamiento_id) };
     }
     function guardarNotaPostoperatoria(turnoId, entrada, s) {
         const i = asegurarInternamiento(turnoId);
@@ -2940,12 +3313,26 @@
         if (!i || !t || t.estatus !== ESTATUS.INTERNADO) return { ok: false, motivo: 'El internamiento no está activo.' };
         if (!puedeNotaPostoperatoria(s, i)) return { ok: false, motivo: 'Solo el cirujano o Dirección pueden registrar la nota post-operatoria.' };
         const v = {
-            dx_pre: limpiarEspacios(entrada.dx_pre), dx_post: limpiarEspacios(entrada.dx_post),
-            operacion: limpiarEspacios(entrada.operacion), tecnica: String(entrada.tecnica || '').trim(),
-            hallazgos: String(entrada.hallazgos || '').trim(), pronostico: limpiarEspacios(entrada.pronostico),
-            sangrado_ml: parseInt(entrada.sangrado_ml, 10), patologia: entrada.patologia === 'si' || entrada.patologia === true ? 'si' : (entrada.patologia === 'no' ? 'no' : ''),
-            entrada: !!entrada.entrada, pausa: !!entrada.pausa, salida: !!entrada.salida, conteo: !!entrada.conteo,
-            indicaciones: String(entrada.indicaciones || '').trim()
+            dx_pre: limpiarEspacios(entrada.dx_pre || entrada.preoperatorio),
+            dx_post: limpiarEspacios(entrada.dx_post || entrada.postoperatorio),
+            operacion_planeada: limpiarEspacios(entrada.operacion_planeada || entrada.operacion),
+            operacion: limpiarEspacios(entrada.operacion || entrada.operacion_realizada),
+            tecnica: String(entrada.tecnica || entrada.descripcion_tecnica || '').trim(),
+            hallazgos: String(entrada.hallazgos || '').trim(),
+            pronostico: limpiarEspacios(entrada.pronostico || entrada.estado_postquirurgico || 'Bueno para la vida y la función'),
+            sangrado_ml: parseInt(String(entrada.sangrado_ml !== undefined ? entrada.sangrado_ml : (entrada.sangrado || '0')).replace(/[^0-9]/g, '') || '0', 10),
+            patologia: (entrada.patologia === 'si' || entrada.patologia === true || (entrada.piezas && entrada.piezas !== 'No')) ? 'si' : 'no',
+            entrada: entrada.entrada !== undefined ? !!entrada.entrada : true,
+            pausa: entrada.pausa !== undefined ? !!entrada.pausa : true,
+            salida: entrada.salida !== undefined ? !!entrada.salida : true,
+            conteo: entrada.conteo !== undefined ? !!entrada.conteo : true,
+            indicaciones: String(entrada.indicaciones || entrada.plan_postoperatorio || '').trim(),
+            cirujano: limpiarEspacios(entrada.cirujano),
+            ayudante: limpiarEspacios(entrada.ayudante),
+            instrumentista: limpiarEspacios(entrada.instrumentista),
+            anestesiologo: limpiarEspacios(entrada.anestesiologo),
+            circulante: limpiarEspacios(entrada.circulante),
+            pediatra: limpiarEspacios(entrada.pediatra)
         };
         const errores = {};
         if (!v.entrada || !v.pausa || !v.salida || !v.conteo) errores.segura = 'Marque entrada, pausa, salida y el conteo completo.';
@@ -2957,7 +3344,7 @@
         if (!Number.isInteger(v.sangrado_ml) || v.sangrado_ml < 0 || v.sangrado_ml > 20000) errores.sangrado_ml = 'Indique el sangrado en mililitros.';
         if (v.patologia !== 'si' && v.patologia !== 'no') errores.patologia = 'Indique si se envió pieza a patología.';
         if (contarLetrasTxt(v.pronostico) < 3) errores.pronostico = 'Escriba el pronóstico.';
-        const cargarBiopsia = v.patologia === 'si' && entrada.cargar_biopsia !== false && entrada.cargar_biopsia !== 'false' && entrada.cargar_biopsia !== '0';
+        const cargarBiopsia = v.patologia === 'si' && !!entrada.estudio_biopsia_id && entrada.cargar_biopsia !== false && entrada.cargar_biopsia !== 'false' && entrada.cargar_biopsia !== '0';
         const estudioBx = cargarBiopsia ? (estudioPorId(entrada.estudio_biopsia_id) || estudioPorCodigo(entrada.estudio_biopsia_id)) : null;
         if (cargarBiopsia && (!estudioBx || (estudioBx.categoria !== 'PATOLOGIA' && estudioBx.categoria !== 'LABORATORIO'))) errores.estudio_biopsia = 'Seleccione el estudio de biopsia del catálogo.';
         if (Object.keys(errores).length) return { ok: false, motivo: 'Revise los campos marcados.', errores: errores };
@@ -3287,6 +3674,12 @@
         'FIS-1000': { forma_farmaceutica: 'FRASCO', concentracion: '1000 ml', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
         'PAR-1G': { forma_farmaceutica: 'SOLUCION_INYECTABLE', concentracion: '1 g', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
         'FEN-50': { nombre_comercial: 'Fenodid', forma_farmaceutica: 'SOLUCION_INYECTABLE', concentracion: '0.5 mg / 10 ml', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'MID-5': { nombre_comercial: 'Relacum', forma_farmaceutica: 'SOLUCION_INYECTABLE', concentracion: '5 mg / 5 ml', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'PRO-200': { nombre_comercial: 'Diprivan', forma_farmaceutica: 'SOLUCION_INYECTABLE', concentracion: '200 mg / 20 ml', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'BUP-05': { nombre_comercial: 'Buvacaína', forma_farmaceutica: 'SOLUCION_INYECTABLE', concentracion: '15 mg / 3 ml (0.5%)', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'PROP-40': { nombre_comercial: 'Inderalici', forma_farmaceutica: 'TABLETA', concentracion: '40 mg / 1 mg IV', via_administracion: 'VO', conservacion: 'AMBIENTE', proveedor: 'Nadro' },
+        'KET-30': { nombre_comercial: 'Dolac', forma_farmaceutica: 'SOLUCION_INYECTABLE', concentracion: '30 mg / 1 ml', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
+        'OND-8': { nombre_comercial: 'Zofran', forma_farmaceutica: 'SOLUCION_INYECTABLE', concentracion: '8 mg / 4 ml', via_administracion: 'IV', conservacion: 'AMBIENTE', proveedor: 'Casa Saba' },
         'DIA-10': { nombre_comercial: 'Valium', forma_farmaceutica: 'TABLETA', concentracion: '10 mg', via_administracion: 'VO', conservacion: 'AMBIENTE', proveedor: 'Nadro' },
         'GUA-M': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Dimsa' },
         'JER-10': { forma_farmaceutica: 'MATERIAL', via_administracion: 'NA', conservacion: 'AMBIENTE', proveedor: 'Dimsa' },
@@ -3304,10 +3697,13 @@
         'CUR-01': { laboratorio: 'Genérico', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
         'MAT-01': { laboratorio: 'Genérico', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
         'SUT-01': { laboratorio: 'Ethicon', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
-        'FEN-50': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'I', piezas_por_caja: 5, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'IV' },
+        'FEN-50': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'I', piezas_por_caja: 10, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'IV' },
         'MID-5': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'II', piezas_por_caja: 1, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'IV' },
         'PRO-200': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'IV', piezas_por_caja: 1, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'IV' },
-        'BUP-05': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'VI', piezas_por_caja: 1, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'NA' },
+        'BUP-05': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'IV', piezas_por_caja: 1, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'IV' },
+        'PROP-40': { laboratorio: 'AstraZeneca', categoria: 'MEDICAMENTO', fraccion_cofepris: 'IV', piezas_por_caja: 1, aplica_iva: false, forma_farmaceutica: 'TABLETA', via_administracion: 'VO' },
+        'KET-30': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'IV', piezas_por_caja: 1, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'IV' },
+        'OND-8': { laboratorio: 'Pisa', categoria: 'MEDICAMENTO', fraccion_cofepris: 'IV', piezas_por_caja: 1, aplica_iva: false, forma_farmaceutica: 'SOLUCION_INYECTABLE', via_administracion: 'IV' },
         'DIA-10': { laboratorio: 'Roche', categoria: 'MEDICAMENTO', fraccion_cofepris: 'II', piezas_por_caja: 1, aplica_iva: false },
         'GUA-M': { laboratorio: 'Ambiderm', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
         'JER-10': { laboratorio: 'BD', categoria: 'MATERIAL_CURACION', fraccion_cofepris: 'NA', piezas_por_caja: 1, aplica_iva: true },
@@ -4680,8 +5076,34 @@
         return { ok: true, nota: nota, internamiento: obtenerInternamiento(i.internamiento_id) };
     }
     function guardarNotaPreanestesica(turnoId, entrada, s) {
-        const e = entrada || {};
+        const e = Object.assign({}, entrada || {});
         if (contarLetrasTxt(String(e.valoracion || e.plan || '')) < 10) return { ok: false, errores: { valoracion: 'Escriba la valoración preanestésica (mínimo 10 letras).' }, motivo: 'Escriba la valoración preanestésica.' };
+        const crudosMeds = e.medicamentos_solicitados || e.medicamentos_estimados || e.medicamentos || [];
+        const medsSolicitados = [];
+        crudosMeds.forEach(m => {
+            if (!m || !m.sku) return;
+            const cant = parseInt(m.cantidad_estimada != null ? m.cantidad_estimada : m.cantidad, 10);
+            if (!Number.isInteger(cant) || cant < 1) return;
+            const cat = MEDS_ANESTESIA.find(x => x.sku === m.sku) || productoPorSku(m.sku) || { sku: m.sku, nombre: m.nombre || m.sku, fraccion: m.fraccion || 'IV' };
+            medsSolicitados.push({
+                sku: cat.sku,
+                nombre: cat.nombre,
+                fraccion: cat.fraccion || cat.fraccion_cofepris || 'IV',
+                cantidad_estimada: cant,
+                via: limpiarEspacios(m.via || 'IV'),
+                nota: limpiarEspacios(m.nota || 'Estimado preoperatorio (no descontado de caja hasta conciliación postanestésica)'),
+                descontado_en_caja: false
+            });
+        });
+        e.asa = limpiarEspacios(e.asa || 'ASA II');
+        e.mallampati = limpiarEspacios(e.mallampati || 'Clase II');
+        e.ayuno_horas = e.ayuno_horas != null ? e.ayuno_horas : 8;
+        e.tecnica_planeada = limpiarEspacios(e.tecnica_planeada || e.tecnica_texto || e.plan || 'Sedación consciente + anestesia balanceada');
+        e.medicamentos_solicitados = medsSolicitados;
+        e.descontado_en_caja = false;
+        const medObj = (s && USUARIOS[s.usuario_id]) || s || {};
+        e.autor_especialidad = especialidadImpresaMedico(medObj) || 'Anestesiología';
+        e.cedulas_impresas = textoCedulasFirma(medObj);
         return guardarHojaAnestesia('notas_preanestesicas', 'PRE', turnoId, e, s);
     }
     function guardarRegistroTransanestesico(turnoId, entrada, s) {
@@ -5331,8 +5753,8 @@
             paciente_nacionalidad: p.nacionalidad || 'Mexicana',
             paciente_telefono: p.telefono || '',
             paciente_direccion: p.direccion || '',
-            paciente_peso: ex.peso != null && ex.peso !== '' ? ex.peso : (sv.peso_kg != null && sv.peso_kg !== '' ? sv.peso_kg : ''),
-            paciente_talla: ex.talla != null && ex.talla !== '' ? ex.talla : (sv.talla_m != null && sv.talla_m !== '' ? sv.talla_m : ''),
+            paciente_peso: ex.peso != null && ex.peso !== '' ? ex.peso : (sv.peso_kg != null && sv.peso_kg !== '' ? sv.peso_kg : (sv.peso != null && sv.peso !== '' ? sv.peso : '')),
+            paciente_talla: ex.talla != null && ex.talla !== '' ? ex.talla : (sv.talla_m != null && sv.talla_m !== '' ? sv.talla_m : (sv.talla != null && sv.talla !== '' ? sv.talla : '')),
             paciente_alergias: alergiaLimpia
         };
     }
@@ -5403,9 +5825,10 @@
         const items = [];
         for (let k = 0; k < (crudos || []).length; k++) {
             const crudo = crudos[k] || {};
-            const prod = crudo.sku ? productoPorSku(crudo.sku) : null;
-            if (tipo === 'RECETA_CASA' && !prod) {
-                const nombre = limpiarEspacios(crudo.nombre);
+            const textoBusq = limpiarEspacios(crudo.nombre || crudo.nombre_libre || "");
+            const prod = (crudo.sku ? productoPorSku(crudo.sku) : null) || (textoBusq ? (buscarMedicamentosReceta(textoBusq) || [])[0] : null);
+            if ((tipo === 'RECETA_CASA' || tipo === 'APLICACION_CONSULTA') && !prod) {
+                const nombre = limpiarEspacios(crudo.nombre || crudo.nombre_libre);
                 if (nombre.length < 2) return { ok: false, motivo: 'Escriba el medicamento de la receta para casa.' };
                 const cantidad = parseInt(crudo.cantidad, 10);
                 items.push({
@@ -6023,11 +6446,12 @@
         const sv = (turno && turno.signos_vitales) || {};
         const fn = (pac && pac.fecha_nacimiento) || (turno && turno.fecha_nacimiento) || receta.paciente_fecha_nacimiento || '';
         const edadN = (receta.paciente_edad !== null && receta.paciente_edad !== undefined && receta.paciente_edad !== '') ? receta.paciente_edad : (fn ? calcularEdad(fn) : null);
-        const peso = (receta.paciente_peso !== '' && receta.paciente_peso != null) ? receta.paciente_peso : (sv.peso_kg != null ? sv.peso_kg : '');
-        const talla = (receta.paciente_talla !== '' && receta.paciente_talla != null) ? receta.paciente_talla : (sv.talla_m != null ? sv.talla_m : '');
+        const peso = (receta.paciente_peso !== '' && receta.paciente_peso != null) ? receta.paciente_peso : (sv.peso_kg != null ? sv.peso_kg : (sv.peso != null ? sv.peso : ''));
+        const talla = (receta.paciente_talla !== '' && receta.paciente_talla != null) ? receta.paciente_talla : (sv.talla_m != null ? sv.talla_m : (sv.talla != null ? sv.talla : ''));
         const espImpresa = especialidadImpresaMedico(medico) || receta.medico_especialidad || (esp && esp.nombre) || (medico && medico.cargo) || '';
         return {
             folio: receta.folio || '',
+            subtitulo_normativo: receta.subtitulo_normativo || '',
             expediente: receta.paciente_id || (turno && turno.paciente_id) || '',
             medico: receta.medico_nombre || (medico && medico.nombre) || '',
             especialidad: espImpresa,
@@ -6088,10 +6512,13 @@
             { lote_id: 'LOT-SOL-1', sku: 'SOL-1000', nombre: 'Solución salina 1000 ml', lote: 'L-SOL-26B', caducidad: isoMasDias(18), stock: 30, precio_unitario: 85 },
             { lote_id: 'LOT-FIS-1', sku: 'FIS-1000', nombre: 'Solución fisiológica 1000 ml', lote: 'L-FIS-26H', caducidad: isoMasDias(18), stock: 24, precio_unitario: 85 },
             { lote_id: 'LOT-PAR-1', sku: 'PAR-1G', nombre: 'Paracetamol 1g IV', lote: 'L-PAR-26C', caducidad: isoMasDias(200), stock: 3, precio_unitario: 45 },
-            { lote_id: 'LOT-FEN-1', sku: 'FEN-50', nombre: 'Fentanilo 0.5 mg / 10 ml', lote: 'L-FEN-26A', caducidad: isoMasDias(500), stock: 5, precio_unitario: 180 },
-            { lote_id: 'LOT-MID-1', sku: 'MID-5', nombre: 'Midazolam 5 mg', lote: 'L-MID-26A', caducidad: isoMasDias(400), stock: 20, precio_unitario: 40 },
-            { lote_id: 'LOT-PRO-1', sku: 'PRO-200', nombre: 'Propofol 200 mg / 20 ml', lote: 'L-PRO-26A', caducidad: isoMasDias(300), stock: 20, precio_unitario: 95 },
-            { lote_id: 'LOT-BUP-1', sku: 'BUP-05', nombre: 'Bupivacaína 0.5%', lote: 'L-BUP-26A', caducidad: isoMasDias(400), stock: 20, precio_unitario: 55 },
+            { lote_id: 'LOT-FEN-1', sku: 'FEN-50', nombre: 'Fentanilo 0.5 mg / 10 ml (Fracción I)', lote: 'L-FEN-26A', caducidad: isoMasDias(500), stock: 5, precio_unitario: 180, piezas_por_caja: 10 },
+            { lote_id: 'LOT-MID-1', sku: 'MID-5', nombre: 'Midazolam 5 mg / 5 ml (Fracción II)', lote: 'L-MID-26A', caducidad: isoMasDias(400), stock: 24, precio_unitario: 40 },
+            { lote_id: 'LOT-PRO-1', sku: 'PRO-200', nombre: 'Propofol 200 mg / 20 ml (Fracción IV)', lote: 'L-PRO-26A', caducidad: isoMasDias(300), stock: 20, precio_unitario: 95 },
+            { lote_id: 'LOT-BUP-1', sku: 'BUP-05', nombre: 'Bupivacaína pesada 0.5% 15 mg / 3 ml (Fracción IV)', lote: 'L-BUP-26A', caducidad: isoMasDias(400), stock: 20, precio_unitario: 55 },
+            { lote_id: 'LOT-PROP-1', sku: 'PROP-40', nombre: 'Propranolol 40 mg / 1 mg IV (Fracción IV)', lote: 'L-PRP-26A', caducidad: isoMasDias(450), stock: 25, precio_unitario: 65 },
+            { lote_id: 'LOT-KET-1', sku: 'KET-30', nombre: 'Ketorolaco 30 mg / 1 ml IV (Fracción IV)', lote: 'L-KET-26A', caducidad: isoMasDias(450), stock: 30, precio_unitario: 55 },
+            { lote_id: 'LOT-OND-1', sku: 'OND-8', nombre: 'Ondansetrón 8 mg / 4 ml IV (Fracción IV)', lote: 'L-OND-26A', caducidad: isoMasDias(450), stock: 25, precio_unitario: 75 },
             { lote_id: 'LOT-DIA-1', sku: 'DIA-10', nombre: 'Diazepam 10 mg', lote: 'L-DIA-26A', caducidad: isoMasDias(300), stock: 12, precio_unitario: 35 },
             { lote_id: 'LOT-GUA-1', sku: 'GUA-M', nombre: 'Guantes de látex talla M', lote: 'L-GUA-26A', caducidad: isoMasDias(700), stock: 40, precio_unitario: 8 },
             { lote_id: 'LOT-JER-1', sku: 'JER-10', nombre: 'Jeringa 10 ml', lote: 'L-JER-26A', caducidad: isoMasDias(700), stock: 50, precio_unitario: 6 },
@@ -6129,7 +6556,7 @@
         if (!lote) return [];
         return [{
             caja_id: 'CAJA-FEN-1', sku: lote.sku, nombre: lote.nombre, lote_id: lote.lote_id, lote: lote.lote,
-            piezas_por_caja: lote.piezas_por_caja || 5, usadas: 0, folio_receta_especial: 'RE-2026-0142',
+            piezas_por_caja: lote.piezas_por_caja || 10, usadas: 0, folio_receta_especial: 'RE-2026-0142',
             area_destino: 'QUIROFANO', caducidad: lote.caducidad,
             responsable_id: 'dra_elena', responsable_nombre: (USUARIOS.dra_elena || {}).nombre || 'Dra. Elena Ríos',
             creada_en: new Date().toISOString(), usos: []
@@ -6137,9 +6564,12 @@
     }
     function asegurarMedsAnestesia() {
         const extras = [
-            { lote_id: 'LOT-MID-1', sku: 'MID-5', nombre: 'Midazolam 5 mg', lote: 'L-MID-26A', caducidad: isoMasDias(400), stock: 20, precio_unitario: 40 },
-            { lote_id: 'LOT-PRO-1', sku: 'PRO-200', nombre: 'Propofol 200 mg / 20 ml', lote: 'L-PRO-26A', caducidad: isoMasDias(300), stock: 20, precio_unitario: 95 },
-            { lote_id: 'LOT-BUP-1', sku: 'BUP-05', nombre: 'Bupivacaína 0.5%', lote: 'L-BUP-26A', caducidad: isoMasDias(400), stock: 20, precio_unitario: 55 }
+            { lote_id: 'LOT-MID-1', sku: 'MID-5', nombre: 'Midazolam 5 mg / 5 ml (Fracción II)', lote: 'L-MID-26A', caducidad: isoMasDias(400), stock: 24, precio_unitario: 40 },
+            { lote_id: 'LOT-PRO-1', sku: 'PRO-200', nombre: 'Propofol 200 mg / 20 ml (Fracción IV)', lote: 'L-PRO-26A', caducidad: isoMasDias(300), stock: 20, precio_unitario: 95 },
+            { lote_id: 'LOT-BUP-1', sku: 'BUP-05', nombre: 'Bupivacaína pesada 0.5% 15 mg / 3 ml (Fracción IV)', lote: 'L-BUP-26A', caducidad: isoMasDias(400), stock: 20, precio_unitario: 55 },
+            { lote_id: 'LOT-PROP-1', sku: 'PROP-40', nombre: 'Propranolol 40 mg / 1 mg IV (Fracción IV)', lote: 'L-PRP-26A', caducidad: isoMasDias(450), stock: 25, precio_unitario: 65 },
+            { lote_id: 'LOT-KET-1', sku: 'KET-30', nombre: 'Ketorolaco 30 mg / 1 ml IV (Fracción IV)', lote: 'L-KET-26A', caducidad: isoMasDias(450), stock: 30, precio_unitario: 55 },
+            { lote_id: 'LOT-OND-1', sku: 'OND-8', nombre: 'Ondansetrón 8 mg / 4 ml IV (Fracción IV)', lote: 'L-OND-26A', caducidad: isoMasDias(450), stock: 25, precio_unitario: 75 }
         ].map(completarLote);
         const lista = listarFarmacia();
         let cambio = false;
@@ -6563,7 +6993,7 @@
         sembrarUsuariosSiHaceFalta();
         completarAnestesiologoCirugias();
         sembrarFarmaciaSiHaceFalta();
-        if (localStorage.getItem("belen_seed_v18") === "1" && localStorage.getItem(CLAVES.catalogo) !== null) {
+        if (localStorage.getItem("belen_seed_v19") === "1" && localStorage.getItem(CLAVES.catalogo) !== null) {
             return false;
         }
         if (localStorage.getItem(CLAVES.catalogo) !== null || localStorage.getItem(CLAVES.visitas) !== null) {
@@ -6572,7 +7002,7 @@
             migrarCirugiasFase1();
             sembrarPacienteQuirofanoDemo();
             sembrarPacientesHospitalizadosDemo();
-            localStorage.setItem("belen_seed_v18", "1");
+            localStorage.setItem("belen_seed_v19", "1");
             return false;
         }
         const carlos = { paciente_id: 'PAC-000001', nombre_completo: 'Carlos Ruiz Herrera', fecha_nacimiento: '1979-03-14', sexo: 'M', estado_civil: 'Casado(a)', telefono: '3221110001', ocupacion: 'Contador', direccion: 'Calle Morelos 120, Col. Centro', creado_en: '2026-03-12T09:00:00.000Z' };
@@ -6611,7 +7041,7 @@
         migrarCirugiasFase1();
         sembrarPacienteQuirofanoDemo();
         sembrarPacientesHospitalizadosDemo();
-        localStorage.setItem("belen_seed_v18", "1");
+        localStorage.setItem("belen_seed_v19", "1");
         return true;
     }
     function sembrarPacienteQuirofanoDemo() {
@@ -6981,11 +7411,18 @@
             servicio: (i && (i.area_destino || nombreAreaEstancia(i.area_codigo))) || t.area_destino || '',
             cama: cama || '',
             fecha_programacion: cir.fecha ? fechaLegibleISO(cir.fecha) : (cir.fecha_hora ? fechaHoraLegible(cir.fecha_hora) : ''),
-            dx_pre: (i && (i.diagnostico_ingreso || i.diagnostico_actual)) || t.dx_principal || '',
+            dx_pre: (i && (i.diagnostico_ingreso || i.diagnostico_actual)) || t.dx_principal || cir.procedimiento || '',
+            preoperatorio: (i && (i.diagnostico_ingreso || i.diagnostico_actual)) || t.dx_principal || cir.procedimiento || '',
             operacion: cir.procedimiento || '',
+            operacion_planeada: cir.procedimiento || '',
             fecha_hora_quirurgica: cir.fecha_hora ? fechaHoraLegible(cir.fecha_hora) : '',
             cirujano: cir.medico_cirujano_nombre || (i && i.medico_tratante_nombre) || t.medico_nombre || '',
             anestesiologo: cir.anestesiologo_nombre || '',
+            ayudante: cir.ayudante_nombre || '',
+            instrumentista: cir.instrumentista_nombre || '',
+            circulante: cir.circulante_nombre || '',
+            pediatra: cir.pediatra_nombre || '',
+            tipo_anestesia: (i && i.nota_preanestesica && i.nota_preanestesica.tecnica_planeada) || (i && i.registro_transanestesico && i.registro_transanestesico.tecnica) || cir.tipo_anestesia || '',
             medico: (i && i.medico_tratante_nombre) || t.medico_nombre || ''
         };
     }
@@ -7045,11 +7482,11 @@
             + '<div>' + lab('Dx Postoperatorio', 'po-dxpost') + '<input id="po-dxpost" class="' + cls + '"></div>'
             + '<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">'
             + '<div>' + lab('Cirujana/o', 'po-cirujano') + '<input id="po-cirujano" class="' + cls + '" value="' + e(p.cirujano || '') + '"></div>'
-            + '<div>' + lab('Ayudante', 'po-ayudante') + '<input id="po-ayudante" class="' + cls + '"></div>'
+            + '<div>' + lab('1er Ayudante (Pre-llenado por Administración)', 'po-ayudante') + '<input id="po-ayudante" class="' + cls + '" value="' + e(p.ayudante || '') + '"></div>'
             + '<div>' + lab('Anestesióloga/o', 'po-anestesiologo') + '<input id="po-anestesiologo" class="' + cls + '" value="' + e(p.anestesiologo || '') + '"></div>'
-            + '<div>' + lab('Instrumentista', 'po-instrumentista') + '<input id="po-instrumentista" class="' + cls + '"></div>'
-            + '<div>' + lab('Circulante', 'po-circulante') + '<input id="po-circulante" class="' + cls + '"></div>'
-            + '<div>' + lab('Otra/o', 'po-otro') + '<input id="po-otro" class="' + cls + '"></div></div>'
+            + '<div>' + lab('Instrumentista (Pre-llenado por Administración)', 'po-instrumentista') + '<input id="po-instrumentista" class="' + cls + '" value="' + e(p.instrumentista || '') + '"></div>'
+            + '<div>' + lab('Circulante (Pre-llenado por Administración)', 'po-circulante') + '<input id="po-circulante" class="' + cls + '" value="' + e(p.circulante || '') + '"></div>'
+            + '<div>' + lab('Otra/o', 'po-otro') + '<input id="po-otro" class="' + cls + '" value="' + e(p.pediatra || '') + '"></div></div>'
             + '<div class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">'
             + '<p class="text-[11px] font-bold uppercase text-slate-500">Registro electrónico complementario</p>'
             + '<div>' + lab('Pronóstico', 'po-pronostico') + '<input id="po-pronostico" class="' + cls + '" placeholder="Reservado a evolución"></div>'
@@ -7090,10 +7527,10 @@
             + linea('Tipo de Anestesia', txt(n.tipo_anestesia, ''))
             + linea('Dx Postoperatorio', txt(n.dx_post, ''))
             + linea('Cirujana/o', txt(firm.cirujano, f.cirujano))
-            + linea('Ayudante', txt(firm.ayudante, ''))
+            + linea('Ayudante', txt(firm.ayudante, f.ayudante))
             + linea('Anestesióloga/o', txt(firm.anestesiologo, f.anestesiologo))
-            + linea('Instrumentista', txt(firm.instrumentista, ''))
-            + linea('Circulante', txt(firm.circulante, ''))
+            + linea('Instrumentista', txt(firm.instrumentista, f.instrumentista))
+            + linea('Circulante', txt(firm.circulante, f.circulante))
             + linea('Otra/o', txt(firm.otro, ''))
             + '<div style="display:flex;flex-wrap:wrap;justify-content:space-between;">'
             + firma('Firma del Cirujana/o', '')
@@ -7220,9 +7657,9 @@
         if (s.rol !== 'admin' && (s.rol !== 'medico' || (ic.medico_id !== s.medico_id && i.medico_tratante_id !== s.medico_id))) {
             return { ok: false, motivo: 'Solo el médico interconsultado o Dirección pueden emitir la Nota de Interconsulta.' };
         }
-        const hallazgos = limpiarEspacios(entrada.hallazgos_exploracion || '');
-        const criterio = limpiarEspacios(entrada.criterio_diagnostico || '');
-        const plan = limpiarEspacios(entrada.sugerencias_terapeuticas || '');
+        const hallazgos = limpiarEspacios(entrada.hallazgos_exploracion || entrada.hallazgos || '');
+        const criterio = limpiarEspacios(entrada.criterio_diagnostico || entrada.diagnostico_interconsulta || entrada.diagnostico || '');
+        const plan = limpiarEspacios(entrada.sugerencias_terapeuticas || entrada.plan_sugerencias || entrada.plan_recomendaciones || entrada.plan || '');
         const errores = {};
         if (hallazgos.length < 5) errores.hallazgos_exploracion = 'Describa los hallazgos clínicos relevantes (mínimo 5 caracteres).';
         if (criterio.length < 5) errores.criterio_diagnostico = 'Escriba el criterio diagnóstico o impresión diagnóstica.';
@@ -7238,6 +7675,9 @@
         ic.criterio_diagnostico = criterio;
         ic.sugerencias_terapeuticas = expandirAbreviaturasMedicas(plan);
         ic.pronostico = limpiarEspacios(entrada.pronostico || 'Reservado a evolución');
+        ic.estatus = 'RESPONDIDA';
+        ic.fecha_respuesta = ic.respondida_en;
+        ic.nota_respuesta = ic.sugerencias_terapeuticas;
         ic.folio_respuesta = ic.folio_respuesta || ('NIC-' + String((i.interconsultas || []).length).padStart(2, '0'));
         return guardarInternamiento(i) ? { ok: true, interconsulta: ic, internamiento: obtenerInternamiento(i.internamiento_id) } : { ok: false, motivo: 'No se pudo guardar la Nota de Interconsulta.' };
     }
@@ -7273,9 +7713,9 @@
     function guardarValoracionPreoperatoria(turnoId, entrada, s) {
         const i = asegurarInternamiento(turnoId);
         if (!i || !s || (s.rol !== 'medico' && s.rol !== 'admin')) return { ok: false, motivo: 'Solo el médico o Dirección pueden registrar la Valoración Preoperatoria.' };
-        const cirugia = limpiarEspacios(entrada.cirugia_planeada || '');
-        const ekg = limpiarEspacios(entrada.hallazgos_ekg_rx || '');
-        const recomendaciones = limpiarEspacios(entrada.recomendaciones_perioperatorias || '');
+        const cirugia = limpiarEspacios(entrada.cirugia_planeada || entrada.cirugia_proyectada || entrada.cirugia_programada || '');
+        const ekg = limpiarEspacios(entrada.hallazgos_ekg_rx || entrada.laboratorios_previos || entrada.diagnostico_preoperatorio || 'EKG y laboratorios preoperatorios revisados');
+        const recomendaciones = limpiarEspacios(entrada.recomendaciones_perioperatorias || entrada.recomendaciones || entrada.plan_preoperatorio || '');
         const errores = {};
         if (cirugia.length < 3) errores.cirugia_planeada = 'Indique el procedimiento quirúrgico planeado.';
         if (ekg.length < 4) errores.hallazgos_ekg_rx = 'Describa los hallazgos de EKG, tele de tórax y laboratorios.';
@@ -7290,19 +7730,28 @@
             medico_nombre: u.nombre || s.nombre,
             medico_especialidad: especialidadImpresaMedico(u),
             cedulas_impresas: textoCedulasFirma(u) || '',
+            diagnostico_preoperatorio: limpiarEspacios(entrada.diagnostico_preoperatorio || i.diagnostico_actual || ''),
             cirugia_planeada: cirugia,
+            cirugia_proyectada: cirugia,
             tipo_cirugia: limpiarEspacios(entrada.tipo_cirugia || 'Electiva'),
-            clase_asa: limpiarEspacios(entrada.clase_asa || 'ASA II'),
-            goldman_clase: limpiarEspacios(entrada.goldman_clase || 'Clase I (<1% riesgo de complicación cardiovascular mayor)'),
+            clase_asa: limpiarEspacios(entrada.clase_asa || entrada.asa || 'ASA II'),
+            asa: limpiarEspacios(entrada.clase_asa || entrada.asa || 'ASA II'),
+            goldman_clase: limpiarEspacios(entrada.goldman_clase || entrada.goldman || 'Clase I (<1% riesgo de complicación cardiovascular mayor)'),
+            goldman: limpiarEspacios(entrada.goldman_clase || entrada.goldman || 'Clase I (<1% riesgo de complicación cardiovascular mayor)'),
             lee_rcri: limpiarEspacios(entrada.lee_rcri || '0 puntos (Riesgo muy bajo 0.4%)'),
-            caprini_trombo: limpiarEspacios(entrada.caprini_trombo || 'Riesgo moderado (2-4 pts) · Medias compresivas + movilización temprana'),
+            caprini_trombo: limpiarEspacios(entrada.caprini_trombo || entrada.riesgo_tromboembolico || 'Riesgo moderado (2-4 pts) · Medias compresivas + movilización temprana'),
+            riesgo_tromboembolico: limpiarEspacios(entrada.caprini_trombo || entrada.riesgo_tromboembolico || 'Riesgo moderado (2-4 pts) · Medias compresivas + movilización temprana'),
+            horas_ayuno: limpiarEspacios(entrada.horas_ayuno || 'Ayuno >= 8 horas cumplido'),
             nyha_funcional: limpiarEspacios(entrada.nyha_funcional || 'NYHA I (>4 METs)'),
             hallazgos_ekg_rx: ekg,
-            laboratorios_preop: limpiarEspacios(entrada.laboratorios_preop || ''),
+            laboratorios_previos: ekg,
+            laboratorios_preop: limpiarEspacios(entrada.laboratorios_preop || ekg || ''),
             recomendaciones_perioperatorias: expandirAbreviaturasMedicas(recomendaciones),
+            recomendaciones: expandirAbreviaturasMedicas(recomendaciones),
             conclusion_aptitud: limpiarEspacios(entrada.conclusion_aptitud || 'APTO PARA PROCEDIMIENTO QUIRÚRGICO CON RIESGO DESCRITO')
         };
         i.valoraciones_preoperatorias = (i.valoraciones_preoperatorias || []).concat([val]);
+        i.valoracion_preoperatoria = val;
         return guardarInternamiento(i) ? { ok: true, valoracion: val, internamiento: obtenerInternamiento(i.internamiento_id) } : { ok: false, motivo: 'No se pudo guardar la Valoración Preoperatoria.' };
     }
 
@@ -7338,12 +7787,15 @@
     function guardarHojaRecienNacido(turnoId, entrada, s) {
         const i = asegurarInternamiento(turnoId);
         if (!i || !s || (s.rol !== 'medico' && s.rol !== 'admin' && !esEnfermeria(s.rol))) return { ok: false, motivo: 'Sin permiso para registrar la Hoja de Recién Nacido.' };
-        const pesoG = parseInt(entrada.peso_gramos, 10);
-        const tallaCm = parseFloat(entrada.talla_cm);
+        const pesoG = parseInt(String(entrada.peso_gramos || entrada.peso_g || '3200').replace(/[^0-9]/g, ''), 10);
+        const tallaCm = parseFloat(String(entrada.talla_cm || '50').replace(/[^0-9.]/g, ''));
+        const apgarSplit = String(entrada.apgar || '').split('/');
+        const ap1 = limpiarEspacios(entrada.apgar_1 || apgarSplit[0] || '8');
+        const ap5 = limpiarEspacios(entrada.apgar_5 || apgarSplit[1] || '9');
         const errores = {};
         if (!Number.isFinite(pesoG) || pesoG < 300 || pesoG > 6500) errores.peso_gramos = 'Indique el peso al nacer en gramos (300 a 6,500 g).';
         if (!Number.isFinite(tallaCm) || tallaCm < 20 || tallaCm > 65) errores.talla_cm = 'Indique la talla en cm (20 a 65 cm).';
-        if (!entrada.apgar_1 || !entrada.apgar_5) errores.apgar_1 = 'Indique la calificación de Apgar al minuto 1 y al minuto 5.';
+        if (!ap1 || !ap5) errores.apgar_1 = 'Indique la calificación de Apgar al minuto 1 y al minuto 5.';
         if (Object.keys(errores).length) return { ok: false, motivo: 'Revise los datos antropométricos y Apgar del recién nacido.', errores: errores };
         const u = USUARIOS[s.usuario_id] || {};
         const rn = {
@@ -7363,8 +7815,12 @@
             pt_cm: entrada.pt_cm || '33',
             pa_cm: entrada.pa_cm || '31',
             pie_cm: entrada.pie_cm || '7.5',
-            apgar_1: entrada.apgar_1 || '8',
-            apgar_5: entrada.apgar_5 || '9',
+            peso_g: pesoG + ' g',
+            apgar_1: ap1,
+            apgar_5: ap5,
+            apgar: ap1 + ' / ' + ap5,
+            fecha_hora: entrada.fecha_hora_nacimiento || new Date().toISOString(),
+            pediatra_nombre: u.nombre || s.nombre,
             silverman: entrada.silverman || '0 (Sin dificultad respiratoria)',
             capurro_sdg: entrada.capurro_sdg || '39 SDG (Recién nacido de término / Peso adecuado EGE)',
             reanimacion: limpiarEspacios(entrada.reanimacion || 'Pasos iniciales de reanimación neonatal (calor radiante, secado, aspiración de secreciones, estimulación táctil). Llanto vigoroso inmediato.'),
@@ -7375,6 +7831,7 @@
             destino_rn: limpiarEspacios(entrada.destino_rn || 'Alojamiento conjunto / Cunero fisiológico con lactancia materna exclusiva a libre demanda.')
         };
         i.hojas_recien_nacido = (i.hojas_recien_nacido || []).concat([rn]);
+        i.hoja_recien_nacido = rn;
         return guardarInternamiento(i) ? { ok: true, recien_nacido: rn, internamiento: obtenerInternamiento(i.internamiento_id) } : { ok: false, motivo: 'No se pudo guardar la Hoja del Recién Nacido.' };
     }
 
@@ -7462,9 +7919,574 @@
             + '<footer style="margin-top:18px;text-align:center;page-break-inside:avoid;"><div style="display:inline-block;min-width:260px;border-top:1px solid #0f172a;padding-top:4px;font-size:10.5px;"><strong>' + e(d.anestesiologo || 'Médico Anestesiólogo Responsable') + '</strong><br><span>' + e(d.cedulas_anestesiologo || 'Nombre, Cédula Profesional / Especialidad y Firma') + '</span></div></footer></article>';
     }
 
+
+    // ---------------------------------------------------------------- Nota de Atención de Parto Eutócico y Alumbramiento (NOM-007-SSA2-2016)
+    function guardarNotaParto(turnoId, entrada, s) {
+        const i = asegurarInternamiento(turnoId);
+        const t = obtenerTurno(turnoId);
+        if (!i || !t) return { ok: false, motivo: 'No se encontró el internamiento activo.' };
+        if (!s || (s.rol !== 'medico' && s.rol !== 'admin')) return { ok: false, motivo: 'Solo el médico tratante / Gineco-Obstetra o Dirección pueden registrar la Nota de Parto.' };
+        const e = Object.assign({}, entrada || {});
+        const u = USUARIOS[s.usuario_id] || {};
+        const lista = i.notas_parto || [];
+        const parto = {
+            parto_id: uid('PARTO'),
+            folio: 'PARTO-' + pad3(lista.length + 1),
+            fecha_hora: e.fecha_hora || new Date().toISOString(),
+            hora_ingreso_labor: e.hora_ingreso_labor || '06:30 hrs',
+            hora_expulsion: e.hora_expulsion || '11:15 hrs',
+            hora_alumbramiento: e.hora_alumbramiento || '11:22 hrs',
+            autor_id: s.usuario_id,
+            autor_nombre: u.nombre || s.nombre,
+            autor_especialidad: especialidadImpresaMedico(u) || 'Ginecología y Obstetricia',
+            cedulas_impresas: textoCedulasFirma(u) || '',
+            formula_obstetrica: limpiarEspacios(e.formula_obstetrica || 'G2 P1 C0 A0'),
+            sdg: limpiarEspacios(e.sdg || '39.5 SDG'),
+            exploracion_obstetrica: limpiarEspacios(e.exploracion_obstetrica || 'AFU 33 cm · Maniobras de Leopold: producto único vivo, longitudinal, cefálico, dorso izquierdo · FCF 148 lpm · Dinámica uterina: 4 contracciones en 10 min de 45 s (+++) · Tacto vaginal: dilatación 10 cm, borramiento 100%, DeLee +2, pelvis ginecoide suficiente, membranas rotas con líquido amniótico claro.'),
+            tipo_parto: limpiarEspacios(e.tipo_parto || 'Parto Eutócico Cefalovaginal'),
+            conduccion_oxitocina: limpiarEspacios(e.conduccion_oxitocina || 'Conducción con Oxitocina 5 UI en 500 ml Sol. Glucosada 5% + Manejo activo del 3er periodo (10 UI IM)'),
+            analgesia_obstetrica: limpiarEspacios(e.analgesia_obstetrica || 'Bloqueo peridural obstétrico + Infiltración perineal con Lidocaína 2% simple'),
+            episiotomia: limpiarEspacios(e.episiotomia || 'Mediolateral derecha con episiorrafia por planos con Catgut Crómico 2-0 (sin desgarros adicionales)'),
+            tipo_alumbramiento: limpiarEspacios(e.tipo_alumbramiento || 'Dirigido mecanismo de Schultze (completo a los 7 min)'),
+            placenta_membranas: limpiarEspacios(e.placenta_membranas || 'Placenta completa (cotiledones íntegros) y membranas corioamnióticas completas · Cordón con 2 arterias y 1 vena'),
+            tono_uterino_cavidad: limpiarEspacios(e.tono_uterino_cavidad || 'Útero bien contraído (Globo de seguridad de Pinard presente), canal vaginal y cérvix revisados sin laceraciones activas'),
+            sangrado_ml: parseInt(e.sangrado_ml, 10) || 250,
+            rn_sexo: limpiarEspacios(e.rn_sexo || 'Masculino'),
+            rn_peso_gramos: parseInt(String(e.rn_peso_gramos || e.peso_gramos || '3410').replace(/[^0-9]/g, ''), 10) || 3410,
+            rn_talla_cm: parseFloat(String(e.rn_talla_cm || e.talla_cm || '51').replace(/[^0-9.]/g, '')) || 51,
+            rn_apgar: limpiarEspacios(e.rn_apgar || '9 / 9'),
+            rn_silverman: limpiarEspacios(e.rn_silverman || '0 (Sin dificultad respiratoria)'),
+            rn_capurro: limpiarEspacios(e.rn_capurro || '39.5 SDG'),
+            pinzamiento_apego: limpiarEspacios(e.pinzamiento_apego || 'Pinzamiento tardío de cordón umbilical (60 s), apego inmediato piel con piel e inicio de lactancia materna en la primera hora'),
+            plan_puerperio: expandirAbreviaturasMedicas(limpiarEspacios(e.plan_puerperio || 'Pasa a piso de Maternidad en alojamiento conjunto. Vigilancia estrecha de involución uterina, sangrado transvaginal y signos vitales cada 30 min por 2 horas. Dieta normal con abundantes líquidos, deambulación asistida, analgesia con Paracetamol 1 g IV c/8h + Ketorolaco 30 mg IV c/8h.')),
+            pronostico: limpiarEspacios(e.pronostico || 'Bueno para el binomio madre-hijo')
+        };
+        i.notas_parto = lista.concat([parto]);
+        i.nota_parto = parto;
+        guardarInternamiento(i);
+        let rnRes = null;
+        if (e.generar_hoja_rn !== false) {
+            const ap = String(parto.rn_apgar).split('/');
+            rnRes = guardarHojaRecienNacido(turnoId, {
+                sexo_rn: parto.rn_sexo,
+                via_nacimiento: parto.tipo_parto,
+                fecha_hora_nacimiento: parto.fecha_hora,
+                peso_gramos: parto.rn_peso_gramos,
+                talla_cm: parto.rn_talla_cm,
+                apgar_1: limpiarEspacios(ap[0] || '9'),
+                apgar_5: limpiarEspacios(ap[1] || '9'),
+                silverman: parto.rn_silverman,
+                capurro_sdg: parto.rn_capurro,
+                reanimacion: parto.pinzamiento_apego,
+                destino_rn: 'Alojamiento conjunto con la madre · Lactancia materna exclusiva a libre demanda.'
+            }, USUARIOS.dr_carlos_ped ? Object.assign({}, USUARIOS.dr_carlos_ped, { usuario_id: 'dr_carlos_ped', medico_id: 'dr_carlos_ped' }) : s);
+        }
+        return { ok: true, parto: parto, recien_nacido: rnRes && rnRes.recien_nacido, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+
+    function htmlImpresionNotaParto(parto, turnoId) {
+        const e = escHtmlCuenta;
+        const t = obtenerTurno(turnoId) || {};
+        const i = internamientoDeTurno(turnoId) || {};
+        const p = (t.paciente_id && buscarPacientePorId(t.paciente_id)) || {};
+        const nombrePac = p.nombre_completo || t.paciente_nombre || 'Paciente';
+        const edadTxt = formatearEdad(p.fecha_nacimiento || t.fecha_nacimiento, calcularEdad(p.fecha_nacimiento || t.fecha_nacimiento));
+        const cedulas = e((parto && parto.cedulas_impresas) || '').replace(/\n/g, '<br>');
+        return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;page-break-inside:avoid;">'
+            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
+            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:50px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, Puerto Vallarta, Jal.</div></div></div>'
+            + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#be185d;text-transform:uppercase;">NOTA DE ATENCIÓN DE PARTO Y ALUMBRAMIENTO</div><div style="font-size:10px;color:#475569;">NOM-007-SSA2-2016 / NOM-004 · Folio: <strong>' + e((parto && parto.folio) || 'PARTO-001') + '</strong></div></div></header>'
+            + '<div style="background:#fdf2f8;border:1px solid #f9a8d4;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
+            + '<div><strong>Paciente (Madre):</strong> ' + e(nombrePac) + '</div><div><strong>Edad:</strong> ' + e(edadTxt) + '</div><div><strong>Expediente:</strong> ' + e(t.paciente_id || 'S/N') + '</div>'
+            + '<div><strong>Fórmula Obstétrica:</strong> ' + e((parto && parto.formula_obstetrica) || 'G2 P1 C0 A0') + ' · <strong>SDG:</strong> ' + e((parto && parto.sdg) || '39.5 SDG') + '</div>'
+            + '<div><strong>Cama:</strong> ' + e(i.cama || 'Maternidad') + '</div><div><strong>Fecha:</strong> ' + e(fechaHoraLegible(parto && parto.fecha_hora)) + '</div>'
+            + '<div style="grid-column:span 3;"><strong>Cronometría Obstétrica:</strong> Ingreso a labor: <strong>' + e((parto && parto.hora_ingreso_labor) || '06:30 hrs') + '</strong> · Hora de Nacimiento (Expulsión): <strong>' + e((parto && parto.hora_expulsion) || '11:15 hrs') + '</strong> · Hora de Alumbramiento: <strong>' + e((parto && parto.hora_alumbramiento) || '11:22 hrs') + '</strong></div></div>'
+            + '<div style="margin-bottom:8px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin-bottom:3px;">1. Exploración Obstétrica y Trabajo de Parto (Leopold, FCF, Dinámica Uterina y Tacto Vaginal)</div><div style="white-space:pre-wrap;">' + e((parto && parto.exploracion_obstetrica) || '') + '</div></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">'
+            + '<div style="border:1px solid #cbd5e1;border-radius:6px;padding:6px 8px;"><strong>Tipo de Parto:</strong> ' + e((parto && parto.tipo_parto) || 'Parto Eutócico') + '<br><strong>Analgesia Obstétrica:</strong> ' + e((parto && parto.analgesia_obstetrica) || '') + '</div>'
+            + '<div style="border:1px solid #cbd5e1;border-radius:6px;padding:6px 8px;"><strong>Conducción / Oxitócicos:</strong> ' + e((parto && parto.conduccion_oxitocina) || '') + '<br><strong>Episiotomía / Periné:</strong> ' + e((parto && parto.episiotomia) || '') + '</div></div>'
+            + '<div style="margin-bottom:8px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin-bottom:3px;">2. Tercer Periodo del Parto (Alumbramiento, Placenta y Sangrado)</div>'
+            + '<div><strong>Mecanismo de Alumbramiento:</strong> ' + e((parto && parto.tipo_alumbramiento) || 'Schultze') + ' · <strong>Sangrado Estimado:</strong> ' + e((parto && parto.sangrado_ml) || 250) + ' ml</div>'
+            + '<div><strong>Placenta y Membranas:</strong> ' + e((parto && parto.placenta_membranas) || '') + '</div>'
+            + '<div><strong>Tono Uterino y Revisión del Canal del Parto:</strong> ' + e((parto && parto.tono_uterino_cavidad) || '') + '</div></div>'
+            + '<div style="margin-bottom:8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:7px 10px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;margin-bottom:4px;">3. Datos del Recién Nacido y Apego Inmediato</div>'
+            + '<div><strong>Sexo:</strong> ' + e((parto && parto.rn_sexo) || '') + ' · <strong>Peso:</strong> ' + e((parto && parto.rn_peso_gramos) || '') + ' g · <strong>Talla:</strong> ' + e((parto && parto.rn_talla_cm) || '') + ' cm · <strong>Apgar (1 min / 5 min):</strong> ' + e((parto && parto.rn_apgar) || '') + ' · <strong>Silverman:</strong> ' + e((parto && parto.rn_silverman) || '') + ' · <strong>Capurro:</strong> ' + e((parto && parto.rn_capurro) || '') + '</div>'
+            + '<div><strong>Pinzamiento y Lactancia:</strong> ' + e((parto && parto.pinzamiento_apego) || '') + '</div></div>'
+            + '<div style="margin-bottom:12px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin-bottom:3px;">4. Indicaciones de Puerperio Inmediato y Pronóstico</div><div style="white-space:pre-wrap;">' + e((parto && parto.plan_puerperio) || '') + '</div><div style="margin-top:4px;"><strong>Pronóstico:</strong> ' + e((parto && parto.pronostico) || 'Bueno para el binomio') + '</div></div>'
+            + '<footer style="margin-top:20px;text-align:center;page-break-inside:avoid;"><div style="display:inline-block;min-width:260px;border-top:1px solid #0f172a;padding-top:4px;font-size:10.5px;"><strong>' + e((parto && parto.autor_nombre) || '') + '</strong><br><span>' + e((parto && parto.autor_especialidad) || 'Ginecología y Obstetricia') + '</span><br>' + cedulas + '</div></footer></article>';
+    }
+
+    // ---------------------------------------------------------------- Formatos Imprimibles de Anestesiología (Pre, Trans y Postanestésica con Recetas)
+    function htmlImpresionNotaPreanestesica(nota, turnoId) {
+        const e = escHtmlCuenta;
+        const d = datosHojaTransanestesica(turnoId) || {};
+        const n = nota || {};
+        const meds = n.medicamentos_solicitados || [];
+        return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;page-break-inside:avoid;">'
+            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
+            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:50px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, Puerto Vallarta, Jal.</div></div></div>'
+            + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#4c1d95;text-transform:uppercase;">NOTA DE VALORACIÓN PREANESTÉSICA</div><div style="font-size:10px;color:#475569;">NOM-006-SSA3-2011 · Folio: <strong>' + e(n.folio || 'PRE-001') + '</strong></div></div></header>'
+            + '<div style="background:#f5f3ff;border:1px solid #c4b5fd;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
+            + '<div><strong>Paciente:</strong> ' + e(d.nombre || d.paciente) + ' (' + e(d.edad_texto || d.edad) + ', ' + e(d.sexo) + ')</div><div><strong>Expediente:</strong> ' + e(d.expediente) + '</div><div><strong>Cama:</strong> ' + e(d.cama) + '</div>'
+            + '<div><strong>Diagnóstico Preoperatorio:</strong> ' + e(d.diagnostico) + '</div><div><strong>Peso / Talla / IMC:</strong> ' + e(d.peso) + ' kg · ' + e(d.talla) + ' m (IMC ' + e(d.imc) + ')</div><div><strong>Grupo / Alergias:</strong> ' + e(d.grupo_rh) + ' · ' + e(d.alergias) + '</div>'
+            + '<div style="grid-column:span 2;"><strong>Procedimiento Proyectado:</strong> ' + e(d.procedimiento) + ' · <strong>Cirujano:</strong> ' + e(d.cirujano) + '</div><div><strong>Fecha:</strong> ' + e(fechaHoraLegible(n.fecha_hora)) + '</div></div>'
+            + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;">'
+            + '<div style="border:1px solid #cbd5e1;border-radius:5px;padding:6px;"><strong>Riesgo ASA:</strong><br>' + e(n.asa || d.asa || 'ASA II') + '</div>'
+            + '<div style="border:1px solid #cbd5e1;border-radius:5px;padding:6px;"><strong>Vía Aérea (Mallampati):</strong><br>' + e(n.mallampati || d.mallampati || 'Clase II') + '</div>'
+            + '<div style="border:1px solid #cbd5e1;border-radius:5px;padding:6px;"><strong>Horas de Ayuno:</strong><br>' + e(n.ayuno_horas || d.ayuno_horas || '8 horas') + '</div>'
+            + '<div style="border:1px solid #cbd5e1;border-radius:5px;padding:6px;"><strong>Técnica Planeada:</strong><br>' + e(n.tecnica_planeada || d.tecnica_planeada || 'General balanceada') + '</div></div>'
+            + '<div style="margin-bottom:8px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin-bottom:3px;">1. Valoración Clínica Preanestésica, Signos Vitales Basales y Plan Anestésico</div>'
+            + '<div style="margin-bottom:4px;font-size:10.5px;color:#334155;"><strong>Signos Basales:</strong> TA ' + e(d.ta) + ' · FC ' + e(d.fc) + ' · FR ' + e(d.fr) + ' · Temp ' + e(d.temp) + ' · SpO2 ' + e(d.spo2) + '</div>'
+            + '<div style="white-space:pre-wrap;">' + e(n.valoracion || n.plan || '') + '</div></div>'
+            + '<div style="margin-bottom:12px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#4c1d95;border-bottom:1px solid #c4b5fd;margin-bottom:4px;">2. Solicitud Estimada de Medicamentos Anestésicos y Controlados para Quirófano (Sin descuento en caja hasta conciliación postanestésica)</div>'
+            + (meds.length ? '<table style="width:100%;border-collapse:collapse;font-size:10.5px;"><thead><tr style="background:#f1f5f9;"><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:left;">Clave / Medicamento</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;">Fracción COFEPRIS</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;">Ámpulas Estimadas</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:left;">Vía / Nota</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;">Estado en Caja</th></tr></thead><tbody>'
+                + meds.map(m => '<tr><td style="border:1px solid #cbd5e1;padding:4px 6px;"><strong>' + e(m.sku) + '</strong> — ' + e(m.nombre) + '</td><td style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;">Fracción ' + e(m.fraccion) + '</td><td style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;font-weight:bold;">' + e(m.cantidad_estimada) + '</td><td style="border:1px solid #cbd5e1;padding:4px 6px;">' + e(m.dosis_planeada || m.via || 'IV · Dosis respuesta') + '</td><td style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;color:#b45309;">Solicitud previa (No descontado)</td></tr>').join('')
+                + '</tbody></table>' : '<div>Sin medicamentos controlados estimados.</div>')
+            + '</div>'
+            + '<footer style="margin-top:20px;text-align:center;page-break-inside:avoid;"><div style="display:inline-block;min-width:260px;border-top:1px solid #0f172a;padding-top:4px;font-size:10.5px;"><strong>' + e(n.autor_nombre || d.anestesiologo) + '</strong><br><span>Médico Anestesiólogo · ' + e(n.cedulas_impresas || d.cedulas_anestesiologo) + '</span></div></footer></article>';
+    }
+
+    function htmlImpresionRegistroTransanestesico(reg, turnoId) {
+        const e = escHtmlCuenta;
+        const d = datosHojaTransanestesica(turnoId) || {};
+        const r = reg || {};
+        const mon = r.monitoreo_15min || r.signos_trans || [
+            { hora: '09:00', ta: '124/78', fc: '76', fr: '14', spo2: '99%', etco2: '35', evento: 'Inducción anestésica / Sedación + Inicio de procedimiento sin incidentes' },
+            { hora: '09:15', ta: '118/74', fc: '72', fr: '14', spo2: '99%', etco2: '34', evento: 'Incisión quirúrgica / Mantenimiento anestésico estable' },
+            { hora: '09:30', ta: '120/76', fc: '74', fr: '14', spo2: '99%', etco2: '34', evento: 'Transoperatorio hemodinámicamente estable' },
+            { hora: '09:45', ta: '116/72', fc: '70', fr: '14', spo2: '99%', etco2: '35', evento: 'Hemostasia y cierre por planos' },
+            { hora: '10:00', ta: '120/75', fc: '74', fr: '16', spo2: '99%', etco2: '36', evento: 'Emersión anestésica / Pase a Recuperación' }
+        ];
+        return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:10.5px;line-height:1.35;page-break-inside:avoid;">'
+            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:6px;margin-bottom:8px;">'
+            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:46px;width:auto;"><div><div style="font-size:14px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9px;color:#475569;">Registro Clínico de Anestesiología · NOM-006-SSA3-2011</div></div></div>'
+            + '<div style="text-align:right;"><div style="font-size:12.5px;font-weight:900;color:#0b3a5b;text-transform:uppercase;">HOJA DE REGISTRO TRANSANESTÉSICO</div><div style="font-size:9.5px;color:#475569;">Folio: <strong>' + e(r.folio || 'TRA-001') + '</strong> · Fecha: <strong>' + e(fechaHoraLegible(r.fecha_hora || d.fecha)) + '</strong></div></div></header>'
+            + '<div style="background:#f8fafc;border:1px solid #94a3b8;border-radius:5px;padding:6px 8px;margin-bottom:8px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:4px;">'
+            + '<div><strong>Paciente:</strong> ' + e(d.nombre || d.paciente) + '</div><div><strong>Edad/Sexo:</strong> ' + e(d.edad_texto || d.edad) + ' · ' + e(d.sexo) + '</div><div><strong>Exp:</strong> ' + e(d.expediente) + '</div><div><strong>Cama/Sala:</strong> ' + e(d.cama) + ' / ' + e(d.sala) + '</div>'
+            + '<div><strong>Peso/Talla/IMC:</strong> ' + e(d.peso) + ' kg · ' + e(d.talla) + ' m · IMC ' + e(d.imc) + '</div><div><strong>Grupo/Rh:</strong> ' + e(d.grupo_rh) + '</div><div style="grid-column:span 2;"><strong>Alergias:</strong> <span style="color:#b91c1c;font-weight:bold;">' + e(d.alergias) + '</span></div>'
+            + '<div style="grid-column:span 2;"><strong>Diagnóstico:</strong> ' + e(d.diagnostico) + '</div><div style="grid-column:span 2;"><strong>Cirugía:</strong> ' + e(d.procedimiento) + '</div>'
+            + '<div style="grid-column:span 2;"><strong>Cirujano:</strong> ' + e(d.cirujano) + '</div><div style="grid-column:span 2;"><strong>Anestesiólogo:</strong> ' + e(r.autor_nombre || d.anestesiologo) + ' (' + e(d.cedulas_anestesiologo) + ')</div>'
+            + '<div style="grid-column:span 4;"><strong>Signos Basales:</strong> TA ' + e(d.ta) + ' · FC ' + e(d.fc) + ' · FR ' + e(d.fr) + ' · Temp ' + e(d.temp) + ' · SpO2 ' + e(d.spo2) + ' · <strong>ASA:</strong> ' + e(d.asa) + ' · <strong>Técnica:</strong> ' + e(r.tecnica || d.tecnica_planeada) + '</div></div>'
+            + '<div style="margin-bottom:8px;"><div style="font-weight:bold;font-size:10px;text-transform:uppercase;color:#0b3a5b;margin-bottom:3px;">1. Monitoreo Hemodinámico y Ventilatorio Transanestésico (Cada 15 min)</div>'
+            + '<table style="width:100%;border-collapse:collapse;font-size:10px;"><thead><tr style="background:#e2e8f0;"><th style="border:1px solid #94a3b8;padding:3px 5px;">Hora</th><th style="border:1px solid #94a3b8;padding:3px 5px;">TA (mmHg)</th><th style="border:1px solid #94a3b8;padding:3px 5px;">FC (lpm)</th><th style="border:1px solid #94a3b8;padding:3px 5px;">FR (rpm)</th><th style="border:1px solid #94a3b8;padding:3px 5px;">SpO2</th><th style="border:1px solid #94a3b8;padding:3px 5px;">EtCO2</th><th style="border:1px solid #94a3b8;padding:3px 5px;text-align:left;">Evento Quirúrgico / Fármacos Administrados</th></tr></thead><tbody>'
+            + mon.map(m => '<tr><td style="border:1px solid #94a3b8;padding:3px 5px;text-align:center;font-weight:bold;">' + e(m.hora) + '</td><td style="border:1px solid #94a3b8;padding:3px 5px;text-align:center;">' + e(m.ta) + '</td><td style="border:1px solid #94a3b8;padding:3px 5px;text-align:center;">' + e(m.fc) + '</td><td style="border:1px solid #94a3b8;padding:3px 5px;text-align:center;">' + e(m.fr) + '</td><td style="border:1px solid #94a3b8;padding:3px 5px;text-align:center;">' + e(m.spo2) + '</td><td style="border:1px solid #94a3b8;padding:3px 5px;text-align:center;">' + e(m.etco2 || '35') + '</td><td style="border:1px solid #94a3b8;padding:3px 5px;">' + e(m.evento) + '</td></tr>').join('')
+            + '</tbody></table></div>'
+            + '<div style="margin-bottom:10px;"><div style="font-weight:bold;font-size:10px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin-bottom:3px;">2. Balance Hídrico, Medicación Transanestésica y Observaciones</div>'
+            + '<div style="white-space:pre-wrap;">' + e(r.registros || r.notas || r.texto || r.balance_hidrico || 'Ingresos: Sol. Hartmann 1,000 ml IV · Egresos: Uresis 250 ml, Sangrado estimado 80 ml · Balance positivo +670 ml. Sin incidentes transanestésicos.') + '</div></div>'
+            + '<footer style="margin-top:16px;text-align:center;page-break-inside:avoid;"><div style="display:inline-block;min-width:260px;border-top:1px solid #0f172a;padding-top:4px;font-size:10px;"><strong>' + e(r.autor_nombre || d.anestesiologo) + '</strong><br><span>Médico Anestesiólogo · ' + e(d.cedulas_anestesiologo) + '</span></div></footer></article>';
+    }
+
+    function htmlImpresionNotaPostanestesica(nota, turnoId) {
+        const e = escHtmlCuenta;
+        const d = datosHojaTransanestesica(turnoId) || {};
+        const n = nota || {};
+        const conc = n.conciliacion_medicamentos || [];
+        const recs = n.recetas_foliadas || [];
+        const sig = n.signos_egreso_qx || {};
+        return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;page-break-inside:avoid;">'
+            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
+            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:50px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, Puerto Vallarta, Jal.</div></div></div>'
+            + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0b3a5b;text-transform:uppercase;">NOTA POSTANESTÉSICA Y CONCILIACIÓN DE CONTROLADOS</div><div style="font-size:10px;color:#475569;">NOM-006-SSA3-2011 · Folio: <strong>' + e(n.folio || 'PA-001') + '</strong></div></div></header>'
+            + '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
+            + '<div><strong>Paciente:</strong> ' + e(d.nombre || d.paciente) + ' (' + e(d.edad_texto || d.edad) + ', ' + e(d.sexo) + ')</div><div><strong>Expediente:</strong> ' + e(d.expediente) + '</div><div><strong>Cama:</strong> ' + e(d.cama) + '</div>'
+            + '<div><strong>Procedimiento Realizado:</strong> ' + e(d.procedimiento) + '</div><div><strong>Técnica Anestésica:</strong> ' + e(n.tecnica_texto || n.tecnica || 'General balanceada') + '</div><div><strong>Fecha:</strong> ' + e(fechaHoraLegible(n.fecha_hora)) + '</div>'
+            + '<div><strong>Escala de Aldrete al Egreso:</strong> <strong>' + e(n.aldrete != null ? n.aldrete : 9) + ' / 10 pts</strong></div><div><strong>Sangrado:</strong> ' + e(n.sangrado != null ? n.sangrado : '80 ml') + '</div><div><strong>Signos Egreso Qx:</strong> TA ' + e(sig.ta || '118/74') + ' · FC ' + e(sig.fc || '74') + ' · SpO2 ' + e(sig.spo2 || '98') + '%</div></div>'
+            + '<div style="margin-bottom:10px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin-bottom:4px;">1. Conciliación de Medicamentos y Ámpulas Realmente Utilizadas en Quirófano (COFEPRIS)</div>'
+            + (conc.length ? '<table style="width:100%;border-collapse:collapse;font-size:10px;"><thead><tr style="background:#e2e8f0;"><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:left;">Medicamento</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;">Fracción</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;">Estimadas (Pre)</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;">Usadas Reales</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:left;">Dosis / Merma / Lote</th><th style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;">Folio Receta Generada</th></tr></thead><tbody>'
+                + conc.map(c => '<tr><td style="border:1px solid #cbd5e1;padding:4px 6px;"><strong>' + e(c.sku) + '</strong> — ' + e(c.nombre) + '</td><td style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;font-weight:bold;">Fracción ' + e(c.fraccion) + '</td><td style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;">' + e(c.cantidad_estimada) + '</td><td style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;font-weight:bold;color:#047857;">' + e(c.cantidad_real) + '</td><td style="border:1px solid #cbd5e1;padding:4px 6px;">' + e(c.dosis_administrada || '') + ' · Merma: ' + e(c.merma || '0 ml') + ' · Lote: ' + e(c.lote || 'S/L') + '</td><td style="border:1px solid #cbd5e1;padding:4px 6px;text-align:center;font-weight:bold;color:#4c1d95;">' + e(c.folio_receta || '—') + '</td></tr>').join('')
+                + '</tbody></table>' : '<div>Sin medicamentos conciliados.</div>')
+            + (recs.length ? '<div style="margin-top:6px;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:5px;padding:5px 8px;font-size:10px;color:#065f46;"><strong>Recetas Oficiales Generadas Automáticamente:</strong> ' + recs.map(r => 'Folio <strong>' + e(r.folio) + '</strong> (Fracción ' + e(r.fraccion) + ')').join(' · ') + '</div>' : '')
+            + '</div>'
+            + '<div style="margin-bottom:8px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin-bottom:3px;">2. Incidentes Transanestésicos</div><div style="white-space:pre-wrap;">' + e(n.incidentes || 'Sin incidentes ni accidentes anestésicos.') + '</div></div>'
+            + '<div style="margin-bottom:14px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0b3a5b;border-bottom:1px solid #cbd5e1;margin-bottom:3px;">3. Evolución Postanestésica e Indicaciones de Recuperación</div><div style="white-space:pre-wrap;">' + e(n.evolucion || '') + '</div></div>'
+            + '<footer style="margin-top:20px;text-align:center;page-break-inside:avoid;"><div style="display:inline-block;min-width:260px;border-top:1px solid #0f172a;padding-top:4px;font-size:10.5px;"><strong>' + e(n.autor_nombre || d.anestesiologo) + '</strong><br><span>' + e(n.autor_especialidad || 'Anestesiología') + ' · ' + e(n.cedulas_impresas || d.cedulas_anestesiologo) + '</span></div></footer></article>';
+    }
+
+
+    // ---------------------------------------------------------------- Solicitud de Estudios (Laboratorio y Gabinete) en Hospitalización y Confirmación por Enfermería
+    function solicitarEstudiosHospital(turnoId, entrada, s) {
+        const i = obtenerInternamiento(turnoId) || asegurarInternamiento(turnoId);
+        const t = obtenerTurno((i && i.turno_id) || turnoId);
+        if (!i || !t) return { ok: false, motivo: 'No se encontró el internamiento.' };
+        if (!s || (s.rol !== 'medico' && s.rol !== 'admin')) return { ok: false, motivo: 'Solo el personal médico puede solicitar estudios.' };
+        const items = Array.isArray(entrada && entrada.estudios) ? entrada.estudios : [];
+        if (!items.length) return { ok: false, motivo: 'Seleccione al menos un estudio de laboratorio o gabinete.' };
+        const ahora = new Date();
+        const modoProg = (entrada && entrada.modo_programacion) || 'AHORA'; // AHORA | EN_HORAS | MANANA | HORA_ESPECIFICA
+        let fechaProgTxt = 'Inmediato / Ahora mismo';
+        let fechaObjetivoIso = ahora.toISOString();
+        if (modoProg === 'EN_HORAS') {
+            const hrs = Math.max(1, Number(entrada.horas || 2));
+            const dt = new Date(ahora.getTime() + hrs * 3600000);
+            fechaObjetivoIso = dt.toISOString();
+            fechaProgTxt = 'En ' + hrs + ' hora(s) (' + dt.toTimeString().slice(0, 5) + ' hrs)';
+        } else if (modoProg === 'MANANA') {
+            const dt = new Date(ahora.getTime() + 24 * 3600000);
+            const horaM = limpiarEspacios(entrada.hora_especifica || '07:00');
+            fechaProgTxt = 'Mañana a las ' + horaM + ' hrs';
+            fechaObjetivoIso = dt.toISOString().slice(0, 10) + 'T' + horaM + ':00';
+        } else if (modoProg === 'HORA_ESPECIFICA') {
+            const hEsp = limpiarEspacios(entrada.hora_especifica || '08:00');
+            fechaProgTxt = 'Programado a las ' + hEsp + ' hrs';
+        }
+        const catalogo = listarEstudios();
+        const ordenId = uid('ORD-EST');
+        const estudiosCreados = items.map(it => {
+            const codigo = typeof it === 'string' ? it : (it.estudio_id || it.codigo || '');
+            const cat = catalogo.find(x => x.estudio_id === codigo || normalizar(x.nombre) === normalizar(it.nombre || codigo)) || {};
+            return {
+                item_id: uid('EST-IT'),
+                orden_id: ordenId,
+                estudio_id: cat.estudio_id || codigo || 'EST-LIBRE',
+                nombre: cat.nombre || it.nombre || codigo,
+                categoria: cat.categoria || it.categoria || (/tomograf|tac|rayos|rx|ultrasonido|usg|electro|ekg|ecg/i.test(cat.nombre || it.nombre || '') ? 'IMAGEN' : 'LABORATORIO'),
+                recipiente: cat.recipiente || it.recipiente || '',
+                precio_unitario: Number(cat.precio_unitario != null ? cat.precio_unitario : (it.precio_unitario || 450)),
+                indicacion_clinica: limpiarEspacios((it && it.indicacion) || (entrada && entrada.indicacion_clinica) || ''),
+                modo_programacion: modoProg,
+                programado_para_texto: fechaProgTxt,
+                fecha_objetivo_iso: fechaObjetivoIso,
+                solicitado_en: ahora.toISOString(),
+                solicitado_por_id: s.usuario_id,
+                solicitado_por_nombre: s.nombre,
+                estatus: 'PENDIENTE_TOMA',
+                confirmado_en: null,
+                confirmado_por_id: null,
+                confirmado_por_nombre: null,
+                resultado_resumen: ''
+            };
+        });
+        i.ordenes_estudios = (i.ordenes_estudios || []).concat(estudiosCreados);
+        guardarInternamiento(i);
+        return { ok: true, orden_id: ordenId, estudios: estudiosCreados, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+
+    function confirmarEstudioEnfermeria(turnoId, itemId, datosConfirmacion, s) {
+        const i = obtenerInternamiento(turnoId) || asegurarInternamiento(turnoId);
+        const t = obtenerTurno((i && i.turno_id) || turnoId);
+        if (!i || !t) return { ok: false, motivo: 'No se encontró el internamiento.' };
+        if (!s || (!esEnfermeria(s.rol) && s.rol !== 'admin' && s.rol !== 'medico')) {
+            return { ok: false, motivo: 'Solo Enfermería, el médico o Dirección pueden confirmar la realización del estudio.' };
+        }
+        const lista = i.ordenes_estudios || [];
+        const est = lista.find(x => x.item_id === itemId || x.estudio_id === itemId);
+        if (!est) return { ok: false, motivo: 'No se encontró el estudio pendiente.' };
+        if (est.estatus === 'REALIZADO') return { ok: true, estudio: est, ya_confirmado: true, internamiento: i };
+        const ahora = new Date().toISOString();
+        est.estatus = 'REALIZADO';
+        est.confirmado_en = ahora;
+        est.confirmado_por_id = s.usuario_id;
+        est.confirmado_por_nombre = s.nombre;
+        est.resultado_resumen = limpiarEspacios((datosConfirmacion && datosConfirmacion.resultado_resumen) || 'Muestra tomada / Estudio realizado y verificado por Enfermería.');
+        // Cargar automáticamente a la cuenta del paciente al confirmar Enfermería
+        const precio = redondearMoneda(est.precio_unitario || 450);
+        i.cargos = (i.cargos || []).concat([{
+            cargo_id: uid('CG'),
+            concepto: (est.categoria === 'IMAGEN' ? 'Gabinete / Imagen: ' : 'Laboratorio: ') + est.nombre,
+            categoria: est.categoria === 'IMAGEN' ? 'GABINETE' : 'LABORATORIO',
+            origen: 'estudio_confirmado_enfermeria',
+            estudio_item_id: est.item_id,
+            cantidad: 1,
+            precio_unitario: precio,
+            subtotal: precio,
+            aplica_iva: true,
+            fecha_hora: ahora,
+            cargado_en: ahora,
+            cargado_por_id: s.usuario_id,
+            cargado_por_nombre: s.nombre
+        }]);
+        i.cuenta_actual = totalCargos(i.cargos);
+        i.cuenta_actual_total = i.cuenta_actual;
+        // También lo registramos en la Hoja de Enfermería automáticamente
+        const he = obtenerHojaEnfermeria(t.turno_id);
+        guardarHojaEnfermeria(t.turno_id, {
+            kardex: [{ turno: 'Matutino', medicamento: '[ESTUDIO CONFIRMADO] ' + est.nombre + ' — ' + est.resultado_resumen, texto: '[ESTUDIO CONFIRMADO] ' + est.nombre }]
+        }, s);
+        guardarInternamiento(i);
+        actualizarTurno(t.turno_id, { cuenta_actual: i.cuenta_actual, cuenta_actual_total: i.cuenta_actual });
+        return { ok: true, estudio: est, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+
+    function htmlImpresionOrdenesEstudios(turnoId) {
+        const e = escHtmlCuenta;
+        const t = obtenerTurno(turnoId) || {};
+        const i = internamientoDeTurno(turnoId) || {};
+        const p = (t.paciente_id && buscarPacientePorId(t.paciente_id)) || {};
+        const nombrePac = p.nombre_completo || t.paciente_nombre || 'Paciente';
+        const edadTxt = formatearEdad(p.fecha_nacimiento || t.fecha_nacimiento, calcularEdad(p.fecha_nacimiento || t.fecha_nacimiento));
+        const lista = (i.ordenes_estudios || []);
+        const tubos = resumenTubosEstudios(lista.map(x => x.estudio_id));
+        return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.4;">'
+            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
+            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:48px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Órdenes de Estudios de Laboratorio y Gabinete · Control de Enfermería</div></div></div>'
+            + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0b3a5b;">SOLICITUD Y CONTROL DE ESTUDIOS</div><div style="font-size:10px;color:#475569;">Expediente: <strong>' + e(t.paciente_id || 'S/N') + '</strong> · Cama: <strong>' + e(i.cama || 'Piso') + '</strong></div></div></header>'
+            + '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
+            + '<div><strong>Paciente:</strong> ' + e(nombrePac) + '</div><div><strong>Edad:</strong> ' + e(edadTxt) + '</div><div><strong>Diagnóstico:</strong> ' + e(i.diagnostico_actual || t.dx_principal || '') + '</div></div>'
+            + (tubos && tubos.recipientes && tubos.recipientes.length ? '<div style="margin-bottom:8px;background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;padding:6px 10px;font-size:10.5px;"><strong>Tubos/Recipientes consolidados para toma de muestra (sin duplicar):</strong> ' + tubos.recipientes.map(r => e(r.etiqueta || r.codigo)).join(' · ') + '</div>' : '')
+            + '<table style="width:100%;border-collapse:collapse;font-size:10.5px;"><thead><tr style="background:#e2e8f0;"><th style="border:1px solid #cbd5e1;padding:5px;text-align:left;">Estudio / Gabinete</th><th style="border:1px solid #cbd5e1;padding:5px;text-align:center;">Tipo</th><th style="border:1px solid #cbd5e1;padding:5px;text-align:left;">Programación</th><th style="border:1px solid #cbd5e1;padding:5px;text-align:left;">Solicitó</th><th style="border:1px solid #cbd5e1;padding:5px;text-align:center;">Estatus Enfermería</th><th style="border:1px solid #cbd5e1;padding:5px;text-align:left;">Confirmación / Hallazgos</th></tr></thead><tbody>'
+            + (lista.length ? lista.map(x => '<tr><td style="border:1px solid #cbd5e1;padding:5px;"><strong>' + e(x.nombre) + '</strong>' + (x.indicacion_clinica ? '<br><span style="font-size:9.5px;color:#475569;">' + e(x.indicacion_clinica) + '</span>' : '') + '</td><td style="border:1px solid #cbd5e1;padding:5px;text-align:center;">' + e(x.categoria) + '</td><td style="border:1px solid #cbd5e1;padding:5px;font-weight:bold;">' + e(x.programado_para_texto || 'Ahora') + '</td><td style="border:1px solid #cbd5e1;padding:5px;">' + e(x.solicitado_por_nombre || '') + '</td><td style="border:1px solid #cbd5e1;padding:5px;text-align:center;font-weight:bold;color:' + (x.estatus === 'REALIZADO' ? '#047857' : '#b45309') + ';">' + (x.estatus === 'REALIZADO' ? '✓ REALIZADO Y CARGADO' : '⏳ PENDIENTE ENFERMERÍA') + '</td><td style="border:1px solid #cbd5e1;padding:5px;">' + (x.estatus === 'REALIZADO' ? e(x.confirmado_por_nombre + ' (' + fechaHoraLegible(x.confirmado_en) + ') · ' + (x.resultado_resumen || '')) : 'Pendiente de toma/confirmación') + '</td></tr>').join('') : '<tr><td colspan="6" style="border:1px solid #cbd5e1;padding:10px;text-align:center;">Sin estudios solicitados.</td></tr>')
+            + '</tbody></table></article>';
+    }
+
+    // ---------------------------------------------------------------- Hoja de Enfermería Imprimible para el Portafolio Digital
+    function htmlImpresionHojaEnfermeria(turnoId) {
+        const e = escHtmlCuenta;
+        const t = obtenerTurno(turnoId) || {};
+        const i = internamientoDeTurno(turnoId) || {};
+        const p = (t.paciente_id && buscarPacientePorId(t.paciente_id)) || {};
+        const h = obtenerHojaEnfermeria(turnoId) || { signos: [], kardex: [], balance: { ingresos: [], egresos: [], total_ingresos: 0, total_egresos: 0, balance: 0 }, observaciones: [] };
+        const nombrePac = p.nombre_completo || t.paciente_nombre || 'Paciente';
+        const edadTxt = formatearEdad(p.fecha_nacimiento || t.fecha_nacimiento, calcularEdad(p.fecha_nacimiento || t.fecha_nacimiento));
+        return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;">'
+            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0d9488;padding-bottom:8px;margin-bottom:10px;">'
+            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:48px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Hoja de Registros Clínicos de Enfermería, Kardex y Balance Hídrico (NOM-004-SSA3-2012)</div></div></div>'
+            + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0f766e;">HOJA CLÍNICA DE ENFERMERÍA</div><div style="font-size:10px;color:#475569;">Exp: <strong>' + e(t.paciente_id || 'S/N') + '</strong> · Cama: <strong>' + e(i.cama || t.cama || 'Por asignar') + '</strong></div></div></header>'
+            + '<div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
+            + '<div><strong>Paciente:</strong> ' + e(nombrePac) + ' (' + e(edadTxt) + ')</div><div><strong>Alergias:</strong> <span style="color:#b91c1c;font-weight:bold;">' + e(i.alergias || 'NEGADAS') + '</span></div><div><strong>Médico Tratante:</strong> ' + e(i.medico_tratante_nombre || t.medico_nombre || '') + '</div></div>'
+            + '<div style="margin-bottom:10px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0f766e;border-bottom:1px solid #cbd5e1;margin-bottom:4px;">1. somatometría y Signos Vitales por Turno</div>'
+            + ((h.signos || []).length ? '<table style="width:100%;border-collapse:collapse;font-size:10px;"><thead><tr style="background:#f1f5f9;"><th style="border:1px solid #cbd5e1;padding:4px;">Turno</th><th style="border:1px solid #cbd5e1;padding:4px;text-align:left;">Parámetros Registrados (TA, FC, FR, Temp, SpO2, Dextrostix)</th><th style="border:1px solid #cbd5e1;padding:4px;">Enfermera(o)</th><th style="border:1px solid #cbd5e1;padding:4px;">Fecha/Hora</th></tr></thead><tbody>'
+                + (h.signos || []).map(s => '<tr><td style="border:1px solid #cbd5e1;padding:4px;text-align:center;font-weight:bold;">' + e(s.turno || 'Matutino') + '</td><td style="border:1px solid #cbd5e1;padding:4px;">' + e(s.texto || s.ta || '') + (s.glucosa_mg_dl ? ' · Dxtx: ' + e(s.glucosa_mg_dl) + ' mg/dL' : '') + '</td><td style="border:1px solid #cbd5e1;padding:4px;text-align:center;">' + e(s.autor_nombre || 'Enfermería') + '</td><td style="border:1px solid #cbd5e1;padding:4px;text-align:center;">' + e(fechaHoraLegible(s.fecha_hora)) + '</td></tr>').join('') + '</tbody></table>' : '<div>Sin signos por turno adicionales registrados.</div>')
+            + '</div>'
+            + '<div style="margin-bottom:10px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0f766e;border-bottom:1px solid #cbd5e1;margin-bottom:4px;">2. Kardex de Medicamentos Administrados y Procedimientos</div>'
+            + ((h.kardex || []).length ? '<table style="width:100%;border-collapse:collapse;font-size:10px;"><thead><tr style="background:#f1f5f9;"><th style="border:1px solid #cbd5e1;padding:4px;">Turno</th><th style="border:1px solid #cbd5e1;padding:4px;text-align:left;">Medicamento / Indicación Administrada</th><th style="border:1px solid #cbd5e1;padding:4px;">Administró</th><th style="border:1px solid #cbd5e1;padding:4px;">Fecha/Hora</th></tr></thead><tbody>'
+                + (h.kardex || []).map(k => '<tr><td style="border:1px solid #cbd5e1;padding:4px;text-align:center;font-weight:bold;">' + e(k.turno || 'Matutino') + '</td><td style="border:1px solid #cbd5e1;padding:4px;">' + e(k.medicamento || k.texto || '') + '</td><td style="border:1px solid #cbd5e1;padding:4px;text-align:center;">' + e(k.autor_nombre || 'Enfermería') + '</td><td style="border:1px solid #cbd5e1;padding:4px;text-align:center;">' + e(fechaHoraLegible(k.fecha_hora)) + '</td></tr>').join('') + '</tbody></table>' : '<div>Sin medicamentos en kardex.</div>')
+            + '</div>'
+            + '<div style="margin-bottom:10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:6px 10px;">'
+            + '<div><strong>Total Ingresos Hídricos:</strong> ' + e(h.balance && h.balance.total_ingresos || 0) + ' ml</div>'
+            + '<div><strong>Total Egresos (Uresis/Evac):</strong> ' + e(h.balance && h.balance.total_egresos || 0) + ' ml</div>'
+            + '<div><strong>Balance Hídrico Total:</strong> <strong>' + e(h.balance && h.balance.balance || 0) + ' ml</strong></div></div>'
+            + '<div style="margin-bottom:10px;"><div style="font-weight:bold;font-size:10.5px;text-transform:uppercase;color:#0f766e;border-bottom:1px solid #cbd5e1;margin-bottom:4px;">3. Notas y Observaciones de Enfermería</div>'
+            + ((h.observaciones || []).length ? '<ul style="margin:0;padding-left:16px;">' + (h.observaciones || []).map(o => '<li>' + e(typeof o === 'string' ? o : (o.texto || '')) + '</li>').join('') + '</ul>' : '<div>Paciente consciente, orientado, catéter venoso periférico permeable sin datos de flebitis.</div>')
+            + '</div></article>';
+    }
+
+    // ---------------------------------------------------------------- Alta por Servicio (Pre-Alta Quirúrgica / Especialidad) para Manejo Conjunto
+    function registrarAltaPorServicio(internamientoId, entrada, s) {
+        const i = obtenerInternamiento(internamientoId) || resolverInternamiento(internamientoId);
+        if (!i || !s) return { ok: false, motivo: 'No se encontró el internamiento.' };
+        if (s.rol !== 'medico' && s.rol !== 'admin') return { ok: false, motivo: 'Solo el médico especialista puede otorgar el alta de su servicio.' };
+        const u = USUARIOS[s.usuario_id] || {};
+        const espNombre = especialidadImpresaMedico(u) || u.cargo || s.especialidad || 'Especialidad';
+        const resumen = limpiarEspacios((entrada && entrada.resumen_servicio) || 'Por parte de nuestro servicio se otorga pre-alta / alta de especialidad; paciente en condiciones de continuar manejo y egreso definitivo por médico coordinador.');
+        const indicaciones = expandirAbreviaturasMedicas(limpiarEspacios((entrada && entrada.indicaciones_alta_servicio) || 'Continuar vigilancia de herida quirúrgica y cita abierta a urgencias.'));
+        const registro = {
+            alta_servicio_id: uid('ASV'),
+            fecha_hora: new Date().toISOString(),
+            medico_id: s.usuario_id,
+            medico_nombre: u.nombre || s.nombre,
+            especialidad: espNombre,
+            cedulas_impresas: textoCedulasFirma(u) || '',
+            resumen_servicio: resumen,
+            indicaciones_alta_servicio: indicaciones
+        };
+        i.altas_por_servicio = (i.altas_por_servicio || []).concat([registro]);
+        // También agrega una Nota de Evolución automática dejando constancia legal del Alta por Servicio
+        i.notas_evolucion = (i.notas_evolucion || []).concat([{
+            nota_id: uid('EV'),
+            folio: 'EV-' + String((i.notas_evolucion || []).length + 1).padStart(3, '0'),
+            tipo: 'nota_evolucion',
+            formato: 'SOAP',
+            fecha_hora: registro.fecha_hora,
+            autor_id: s.usuario_id,
+            autor_nombre: u.nombre || s.nombre,
+            autor_especialidad: espNombre,
+            relacion: esCirujanoDelInternamiento(i, s) ? 'cirujano' : 'interconsultante',
+            subjetivo: 'Valoración para alta por el servicio de ' + espNombre + '. Paciente asintomático desde el punto de vista de la especialidad.',
+            objetivo: 'Estable hemodinámicamente, evolución favorable post-procedimiento.',
+            analisis: '[ALTA POR SERVICIO DE ' + espNombre.toUpperCase() + '] ' + resumen,
+            plan: indicaciones,
+            pronostico: 'Bueno para la vida y la función'
+        }]);
+        guardarInternamiento(i);
+        return { ok: true, alta_servicio: registro, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+
+    // ---------------------------------------------------------------- Hoja de Egreso Voluntario Blindada Médico-Legalmente (18_EGRESO_VOLUNTARIO.docx + NOM-004 + Art. 79 RLGSPSAM)
+    function prefillAltaVoluntaria(turnoId) {
+        const t = obtenerTurno(turnoId) || {};
+        const i = internamientoDeTurno(turnoId) || {};
+        const p = (t.paciente_id && buscarPacientePorId(t.paciente_id)) || {};
+        const snap = (i.captura_inicial && i.captura_inicial.campos) || {};
+        const fn = p.fecha_nacimiento || t.fecha_nacimiento || '';
+        const edad = fn ? calcularEdad(fn) : '';
+        const sv = i.signos_vitales || t.signos_vitales || {};
+        const u = (i.medico_tratante_id && USUARIOS[i.medico_tratante_id]) || (t.medico_id && USUARIOS[t.medico_id]) || {};
+        return {
+            turno_id: t.turno_id || turnoId,
+            internamiento_id: i.internamiento_id || '',
+            expediente: t.paciente_id || p.paciente_id || 'S/N',
+            paciente_nombre: p.nombre_completo || t.paciente_nombre || '',
+            edad: formatearEdad(fn, edad) || (edad ? edad + ' años' : ''),
+            sexo: (p.sexo || t.sexo) === 'F' ? 'Femenino' : 'Masculino',
+            domicilio: p.direccion || snap['comp-dir'] || 'Conocido en Puerto Vallarta, Jalisco',
+            telefono: p.telefono || snap['comp-tel'] || '3220000000',
+            ocupacion: p.ocupacion || snap['comp-ocupacion'] || 'Empleado(a)',
+            servicio_cama: (i.area_destino || 'Observación') + ' · ' + (i.cama || t.cama || 'OBS-1'),
+            diagnostico_ingreso: i.diagnostico_actual || i.diagnostico_ingreso || t.dx_principal || t.motivo || '',
+            medico_nombre: i.medico_tratante_nombre || t.medico_nombre || u.nombre || 'Dr. Juan Pérez',
+            medico_cedulas: textoCedulasFirma(u) || u.cedula_profesional || 'MG-11021',
+            solicitante_nombre: snap['val-responsable'] || p.nombre_completo || t.paciente_nombre || '',
+            solicitante_parentesco: snap['val-parentesco'] || 'Mismo paciente / Familiar responsable',
+            motivo_egreso_voluntario: 'Decisión personal y económica del paciente y/o familiar responsable de no continuar con el internamiento hospitalario indicado, pese a haber sido informado ampliamente de los riesgos médicos.',
+            riesgos_explicados: 'Complicación aguda del padecimiento actual, descompensación hemodinámica, neurológica o metabólica, progresión de la enfermedad, secuelas funcionales permanentes e incluso riesgo de muerte fuera de vigilancia médica hospitalaria.',
+            medidas_recomendadas: 'Acudir de inmediato a un servicio de Urgencias Hospitalarias en caso de dolor intenso, disnea, alteración del estado de conciencia, fiebre, sangrado o deterioro clínico; continuar vigilancia médica estrecha.',
+            signos_egreso: {
+                ta: (sv.ta_sistolica && sv.ta_diastolica) ? (sv.ta_sistolica + '/' + sv.ta_diastolica + ' mmHg') : '130/85 mmHg',
+                fc: (sv.fc || sv.frecuencia_cardiaca || 82) + ' lpm',
+                fr: (sv.fr || sv.frecuencia_respiratoria || 18) + ' rpm',
+                temp: (sv.temp || sv.temperatura_c || 36.8) + ' °C',
+                spo2: (sv.spo2 || sv.spo2_porcentaje || 97) + '%',
+                glasgow: '15/15 (Consciente, orientado y en pleno uso de sus facultades mentales)'
+            },
+            testigo_1_nombre: 'C. Testigo Familiar / Acompañante',
+            testigo_1_domicilio: 'Puerto Vallarta, Jalisco',
+            testigo_2_nombre: 'Enf. Lupita (Personal de Enfermería Sanatorio Belén)',
+            testigo_2_domicilio: 'Josefa Ortiz de Domínguez #189, Col. Pitillal Centro, Puerto Vallarta, Jal.'
+        };
+    }
+
+    function registrarAltaVoluntaria(turnoId, entrada, s) {
+        const i = obtenerInternamiento(turnoId) || asegurarInternamiento(turnoId);
+        const t = obtenerTurno((i && i.turno_id) || turnoId);
+        if (!i || !t) return { ok: false, motivo: 'No se encontró el episodio clínico.' };
+        const pre = prefillAltaVoluntaria(t.turno_id);
+        const datos = Object.assign({}, pre, entrada || {}, {
+            folio: 'EGV-001',
+            fecha_hora: new Date().toISOString(),
+            registrado_por_id: (s && s.usuario_id) || 'dr_juan',
+            registrado_por_nombre: (s && s.nombre) || pre.medico_nombre
+        });
+        // Si el paciente estaba en Observación y se había preparado papelería para Hospitalización pero pidió Alta Voluntaria antes de subir a piso,
+        // eliminamos cualquier cargo de cama de Hospitalización para que solo pague Consulta + Observación + medicamentos aplicados:
+        const cancelarSubidaPiso = !!(entrada && entrada.cancelo_pase_hospitalizacion) || i.area_codigo === 'OBSERVACION';
+        if (cancelarSubidaPiso) {
+            i.cargos = (i.cargos || []).filter(c => !/habitaci[oó]n|hospitalizaci[oó]n/i.test(c.concepto || ''));
+            t.cargos = (t.cargos || []).filter(c => !/habitaci[oó]n|hospitalizaci[oó]n/i.test(c.concepto || ''));
+            i.area_codigo = 'OBSERVACION';
+            i.area_destino = 'Observación (Alta Voluntaria antes de pasar a Hospitalización)';
+        }
+        i.alta_voluntaria = datos;
+        i.nota_egreso = {
+            nota_id: uid('EGV'),
+            folio: 'EGV-001',
+            tipo: 'alta_voluntaria',
+            es_alta_voluntaria: true,
+            fecha_hora: datos.fecha_hora,
+            autor_id: datos.registrado_por_id,
+            autor_nombre: datos.medico_nombre,
+            motivo_egreso: 'Alta Voluntaria solicitada por el paciente/familiar en contra de indicación médica',
+            diagnostico_ingreso: datos.diagnostico_ingreso,
+            diagnostico_final: datos.diagnostico_ingreso + ' (Egreso Voluntario contra indicación médica)',
+            resumen_evolucion: 'Paciente que ingresó a ' + datos.servicio_cama + '. Se indicó manejo intrahospitalario; sin embargo, el paciente y su familiar responsable solicitan egreso voluntario asumiendo los riesgos explicados y firmando la Hoja de Egreso Voluntario y Responsiva Médico-Legal conforme a la NOM-004-SSA3-2012 (numeral 10.2) y Art. 79 del RLGSPSAM.',
+            manejo_hospitalario: 'Valoración médica, vigilancia en observación y administración de medicamentos iniciales.',
+            problemas_pendientes: datos.riesgos_explicados,
+            plan_alta: datos.medidas_recomendadas,
+            pronostico: 'Reservado por retiro voluntario contra indicación médica'
+        };
+        i.estatus = ESTATUS.ALTA_PENDIENTE_PAGO;
+        i.egreso_en = datos.fecha_hora;
+        i.cuenta_actual = totalCargos(cargosDeEpisodio(t));
+        i.cuenta_actual_total = i.cuenta_actual;
+        guardarInternamiento(i);
+        actualizarTurno(t.turno_id, {
+            estatus: ESTATUS.ALTA_PENDIENTE_PAGO,
+            cuenta_actual: i.cuenta_actual,
+            cuenta_actual_total: i.cuenta_actual
+        });
+        return { ok: true, alta_voluntaria: datos, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+
+    function htmlImpresionCartaAltaVoluntaria(datos, turnoId) {
+        const e = escHtmlCuenta;
+        const d = Object.assign({}, prefillAltaVoluntaria(turnoId), datos || {});
+        const sv = d.signos_egreso || {};
+        return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:10.5px;line-height:1.36;page-break-inside:avoid;">'
+            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #991b1b;padding-bottom:6px;margin-bottom:8px;">'
+            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:48px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9px;color:#334155;">Josefa Ortiz de Domínguez #189, Col. Centro Pitillal, C.P. 48290, Puerto Vallarta, Jalisco · Tel. (322) 224 0564</div></div></div>'
+            + '<div style="text-align:right;"><div style="font-size:12.5px;font-weight:900;color:#991b1b;text-transform:uppercase;">HOJA DE EGRESO VOLUNTARIO Y RESPONSIVA MÉDICO-LEGAL</div><div style="font-size:9.5px;color:#475569;">NOM-004-SSA3-2012 (Num. 10.2) · Art. 79 RLGSPSAM · Folio: <strong>' + e(d.folio || 'EGV-001') + '</strong></div></div></header>'
+            + '<div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:7px 9px;margin-bottom:8px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:5px;">'
+            + '<div><strong>Nombre del Paciente:</strong> ' + e(d.paciente_nombre) + '</div><div><strong>Edad / Sexo:</strong> ' + e(d.edad) + ' · ' + e(d.sexo) + '</div><div><strong>No. Expediente:</strong> ' + e(d.expediente) + '</div>'
+            + '<div><strong>Domicilio:</strong> ' + e(d.domicilio) + '</div><div><strong>Teléfono:</strong> ' + e(d.telefono) + '</div><div><strong>Área / Cama:</strong> ' + e(d.servicio_cama) + '</div>'
+            + '<div style="grid-column:span 2;"><strong>Diagnóstico Médico Actual:</strong> ' + e(d.diagnostico_ingreso) + '</div><div><strong>Fecha y Hora:</strong> ' + e(fechaHoraLegible(d.fecha_hora || new Date().toISOString())) + '</div></div>'
+            + '<div style="border:1px solid #94a3b8;border-radius:5px;padding:7px 9px;margin-bottom:8px;text-align:justify;">'
+            + '<strong>1. DECLARATORIA EXPRESA DE SOLICITUD DE ALTA VOLUNTARIA Y EXONERACIÓN DE RESPONSABILIDAD CIVIL, PENAL Y ADMINISTRATIVA:</strong><br>'
+            + 'En Puerto Vallarta, Jalisco, quien suscribe <strong>' + e(d.solicitante_nombre) + '</strong> (en calidad de <strong>' + e(d.solicitante_parentesco) + '</strong>), en pleno uso de mis facultades mentales, libre de toda coacción física o moral, por mi propio derecho solicito a <strong>SANATORIO BELÉN S.A. DE C.V.</strong> y al Médico Tratante <strong>' + e(d.medico_nombre) + ' (' + e(d.medico_cedulas) + ')</strong> el <strong>EGRESO VOLUNTARIO INMEDIATO</strong> del paciente arriba citado, <strong>EN CONTRA DE LA INDICACIÓN MÉDICA EXPRESA</strong> de permanecer internado bajo vigilancia y tratamiento hospitalario.<br>'
+            + 'Hago constar que el Médico Tratante y el personal de Sanatorio Belén <strong>NO negaron la atención médica en ningún momento</strong>, sino que me explicaron de forma clara, verbal y por escrito la gravedad del padecimiento y la necesidad de continuar el manejo hospitalario. Por lo anterior, <strong>libero y eximo de toda responsabilidad médica, legal, civil, penal o administrativa</strong> a <strong>SANATORIO BELÉN S.A. DE C.V.</strong>, a su cuerpo médico, personal de enfermería y directivos por cualquier deterioro, complicación, secuela o fallecimiento derivado de interrumpir la atención hospitalaria.'
+            + '</div>'
+            + '<div style="margin-bottom:7px;"><strong>2. Motivo expresado por el paciente/familiar para el retiro voluntario:</strong><div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 7px;background:#f8fafc;">' + e(d.motivo_egreso_voluntario) + '</div></div>'
+            + '<div style="margin-bottom:7px;"><strong>3. Estado clínico y Signos Vitales verificados al momento de retirarse del hospital:</strong><div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 7px;background:#f8fafc;">TA: <strong>' + e(sv.ta || '130/85 mmHg') + '</strong> · FC: <strong>' + e(sv.fc || '82 lpm') + '</strong> · FR: <strong>' + e(sv.fr || '18 rpm') + '</strong> · Temp: <strong>' + e(sv.temp || '36.8 °C') + '</strong> · SpO2: <strong>' + e(sv.spo2 || '97%') + '</strong> · Estado neurológico: <strong>' + e(sv.glasgow || 'Glasgow 15/15, consciente y orientado') + '</strong></div></div>'
+            + '<div style="margin-bottom:7px;"><strong>4. Resumen de Riesgos Médicos Específicos advertidos en caso de egreso voluntario (NOM-004 num. 10.2.4):</strong><div style="border:1px solid #fca5a5;border-radius:4px;padding:4px 7px;background:#fff1f2;color:#881337;">' + e(d.riesgos_explicados) + '</div></div>'
+            + '<div style="margin-bottom:10px;"><strong>5. Medidas recomendadas y Signos de Alarma explicados para acudir de inmediato a Urgencias (NOM-004 num. 10.2.5):</strong><div style="border:1px solid #cbd5e1;border-radius:4px;padding:4px 7px;background:#f8fafc;">' + e(d.medidas_recomendadas) + '</div></div>'
+            + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;text-align:center;font-size:9.5px;">'
+            + '<div style="border-top:1px solid #0f172a;padding-top:4px;"><strong>' + e(d.solicitante_nombre) + '</strong><br>Nombre y Firma del Paciente o Familiar que solicita el Egreso Voluntario<br>Parentesco: ' + e(d.solicitante_parentesco) + ' · Tel: ' + e(d.telefono) + '</div>'
+            + '<div style="border-top:1px solid #0f172a;padding-top:4px;"><strong>' + e(d.medico_nombre) + '</strong><br>' + e(d.medico_cedulas) + '<br>Médico que informó riesgos y emite la Hoja de Egreso Voluntario</div>'
+            + '<div style="border-top:1px solid #0f172a;padding-top:4px;margin-top:14px;"><strong>' + e(d.testigo_1_nombre) + '</strong><br>Nombre, Domicilio y Firma del Testigo 1 (Art. 79 RLGSPSAM)<br>' + e(d.testigo_1_domicilio) + '</div>'
+            + '<div style="border-top:1px solid #0f172a;padding-top:4px;margin-top:14px;"><strong>' + e(d.testigo_2_nombre) + '</strong><br>Nombre, Domicilio y Firma del Testigo 2 (Personal de la Institución)<br>' + e(d.testigo_2_domicilio) + '</div>'
+            + '</div></article>';
+    }
+
+    // ---------------------------------------------------------------- Completar Nota de Ingreso e Historia Clínica cuando la paciente entró directo a Parto/Quirófano sin consulta previa
+    function guardarNotaIngresoDirectoHospital(turnoId, entrada, s) {
+        const i = obtenerInternamiento(turnoId) || asegurarInternamiento(turnoId);
+        const t = obtenerTurno((i && i.turno_id) || turnoId);
+        if (!i || !t) return { ok: false, motivo: 'No se encontró el internamiento.' };
+        if (!s || (s.rol !== 'medico' && s.rol !== 'admin')) return { ok: false, motivo: 'Solo el médico puede elaborar la Nota de Ingreso e Historia Clínica.' };
+        const ahora = new Date().toISOString();
+        const u = USUARIOS[s.usuario_id] || {};
+        const datos = {
+            folio: 'NI-DIR-001',
+            fecha_hora: ahora,
+            autor_id: s.usuario_id,
+            autor_nombre: u.nombre || s.nombre,
+            autor_especialidad: especialidadImpresaMedico(u) || u.cargo || '',
+            cedulas_impresas: textoCedulasFirma(u) || '',
+            motivo_ingreso: limpiarEspacios(entrada.motivo_ingreso || t.motivo || 'Ingreso directo para atención obstétrica / quirúrgica'),
+            padecimiento_actual: limpiarEspacios(entrada.padecimiento_actual || ''),
+            antecedentes_heredofamiliares: limpiarEspacios(entrada.antecedentes_heredofamiliares || 'Interrogados y negados de relevancia.'),
+            antecedentes_personales_no_patologicos: limpiarEspacios(entrada.antecedentes_personales_no_patologicos || 'Habitación con todos los servicios, toxicomanías negadas.'),
+            antecedentes_personales_patologicos: limpiarEspacios(entrada.antecedentes_personales_patologicos || 'Crónico-degenerativos, quirúrgicos y transfusionales interrogados.'),
+            antecedentes_gineco_obstetricos: limpiarEspacios(entrada.antecedentes_gineco_obstetricos || ''),
+            exploracion_fisica: limpiarEspacios(entrada.exploracion_fisica || ''),
+            diagnostico_ingreso: limpiarEspacios(entrada.diagnostico_ingreso || i.diagnostico_actual || t.dx_principal || ''),
+            plan_manejo: expandirAbreviaturasMedicas(limpiarEspacios(entrada.plan_manejo || '')),
+            pronostico: limpiarEspacios(entrada.pronostico || 'Bueno para la vida y la función')
+        };
+        i.nota_ingreso_directo = datos;
+        i.sin_nota_consulta = false;
+        if (datos.diagnostico_ingreso) i.diagnostico_actual = datos.diagnostico_ingreso;
+        guardarInternamiento(i);
+        return { ok: true, nota_ingreso_directo: datos, internamiento: obtenerInternamiento(i.internamiento_id) };
+    }
+
+    function htmlImpresionNotaIngresoDirecto(datos, turnoId) {
+        const e = escHtmlCuenta;
+        const t = obtenerTurno(turnoId) || {};
+        const i = internamientoDeTurno(turnoId) || {};
+        const p = (t.paciente_id && buscarPacientePorId(t.paciente_id)) || {};
+        const d = datos || i.nota_ingreso_directo || {};
+        const nombrePac = p.nombre_completo || t.paciente_nombre || 'Paciente';
+        const edadTxt = formatearEdad(p.fecha_nacimiento || t.fecha_nacimiento, calcularEdad(p.fecha_nacimiento || t.fecha_nacimiento));
+        const sv = i.signos_vitales || t.signos_vitales || {};
+        return '<article style="font-family:Arial,sans-serif;color:#0f172a;max-width:19.5cm;margin:0 auto;font-size:11px;line-height:1.38;">'
+            + '<header style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #0b3a5b;padding-bottom:8px;margin-bottom:10px;">'
+            + '<div style="display:flex;align-items:center;gap:10px;"><img src="assets/logo-belen.png" onerror="this.src=\'logo-belen.png\'" style="height:48px;width:auto;"><div><div style="font-size:15px;font-weight:900;color:#0b3a5b;">SANATORIO BELÉN S.A. DE C.V.</div><div style="font-size:9.5px;color:#475569;">Nota de Ingreso Hospitalario e Historia Clínica (NOM-004-SSA3-2012)</div></div></div>'
+            + '<div style="text-align:right;"><div style="font-size:13px;font-weight:900;color:#0b3a5b;">NOTA DE INGRESO E HISTORIA CLÍNICA</div><div style="font-size:10px;color:#475569;">Exp: <strong>' + e(t.paciente_id || 'S/N') + '</strong> · Cama: <strong>' + e(i.cama || 'Piso') + '</strong></div></div></header>'
+            + '<div style="background:#f8fafc;border:1px solid #cbd5e1;border-radius:6px;padding:8px 10px;margin-bottom:10px;display:grid;grid-template-columns:2fr 1fr 1fr;gap:6px;">'
+            + '<div><strong>Paciente:</strong> ' + e(nombrePac) + ' (' + e(edadTxt) + ')</div><div><strong>Alergias:</strong> <span style="color:#b91c1c;font-weight:bold;">' + e(i.alergias || 'NEGADAS') + '</span></div><div><strong>Fecha/Hora:</strong> ' + e(fechaHoraLegible(d.fecha_hora || i.fecha_ingreso)) + '</div>'
+            + '<div style="grid-column:span 3;"><strong>Signos Vitales al Ingreso:</strong> TA ' + e((sv.ta_sistolica || 115) + '/' + (sv.ta_diastolica || 75)) + ' mmHg · FC ' + e(sv.fc || sv.frecuencia_cardiaca || 80) + ' lpm · FR ' + e(sv.fr || sv.frecuencia_respiratoria || 18) + ' rpm · Temp ' + e(sv.temp || sv.temperatura_c || 36.6) + ' °C · SpO2 ' + e(sv.spo2 || sv.spo2_porcentaje || 98) + '%</div></div>'
+            + '<div style="margin-bottom:8px;"><strong>1. Motivo de Ingreso y Padecimiento Actual:</strong><div style="white-space:pre-wrap;border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;margin-top:2px;">' + e((d.motivo_ingreso ? d.motivo_ingreso + '\n' : '') + (d.padecimiento_actual || '')) + '</div></div>'
+            + '<div style="margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+            + '<div style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;"><strong>2. Antecedentes Heredofamiliares y No Patológicos:</strong><br>' + e(d.antecedentes_heredofamiliares) + '<br>' + e(d.antecedentes_personales_no_patologicos) + '</div>'
+            + '<div style="border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;"><strong>3. Antecedentes Personales Patológicos y Gineco-Obstétricos:</strong><br>' + e(d.antecedentes_personales_patologicos) + (d.antecedentes_gineco_obstetricos ? '<br><strong>AGO:</strong> ' + e(d.antecedentes_gineco_obstetricos) : '') + '</div></div>'
+            + '<div style="margin-bottom:8px;"><strong>4. Exploración Física Completa / Obstétrica:</strong><div style="white-space:pre-wrap;border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;margin-top:2px;">' + e(d.exploracion_fisica || '') + '</div></div>'
+            + '<div style="margin-bottom:8px;"><strong>5. Impresión Diagnóstica de Ingreso:</strong><div style="font-weight:bold;border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;margin-top:2px;">' + e(d.diagnostico_ingreso || '') + '</div></div>'
+            + '<div style="margin-bottom:14px;"><strong>6. Plan de Manejo y Pronóstico:</strong><div style="white-space:pre-wrap;border:1px solid #cbd5e1;border-radius:5px;padding:6px 8px;margin-top:2px;">' + e(d.plan_manejo || '') + '<br><strong>Pronóstico:</strong> ' + e(d.pronostico || '') + '</div></div>'
+            + '<footer style="margin-top:20px;text-align:center;"><div style="display:inline-block;min-width:260px;border-top:1px solid #0f172a;padding-top:4px;"><strong>' + e(d.autor_nombre || i.medico_tratante_nombre || '') + '</strong><br>' + e(d.autor_especialidad || '') + '<br>' + e(d.cedulas_impresas || '').replace(/\n/g, '<br>') + '</div></footer></article>';
+    }
+
     // Borra TODA la información operativa del demo (no toca los machotes) y vuelve a sembrar
     function restablecerDemo() {
-        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.estudios, CLAVES.estudiosV3, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.recetasFoliadas, CLAVES.recetas, CLAVES.folioRecetaSeq, CLAVES.folioExternoSeq, CLAVES.demoQxActivo, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo, 'belen_seed_v18'].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
+        [CLAVES.catalogo, CLAVES.turnos, CLAVES.visitas, CLAVES.borradores, CLAVES.hospitalizados, CLAVES.internamientos, CLAVES.correcciones, CLAVES.cirugias, CLAVES.farmacia, CLAVES.estudios, CLAVES.estudiosV3, CLAVES.surtido, CLAVES.paquetes, CLAVES.cajasEstupefacientes, CLAVES.salidasFarmacia, CLAVES.movimientosFarmacia, CLAVES.recetasFoliadas, CLAVES.recetas, CLAVES.folioRecetaSeq, CLAVES.folioExternoSeq, CLAVES.demoQxActivo, CLAVES.ivaDiferido, CLAVES.farmaciaAmpliada, CLAVES.demo, 'belen_seed_v18', 'belen_seed_v19'].forEach(k => localStorage.removeItem(k));   // los interruptores de personal se conservan
         return sembrarDemoSiHaceFalta();
     }
 
@@ -7519,7 +8541,13 @@
         responderInterconsulta, htmlImpresionNotaInterconsulta,
         guardarValoracionPreoperatoria, htmlImpresionValoracionPreoperatoria,
         guardarHojaRecienNacido, htmlImpresionHojaRecienNacido,
-        htmlHojaTransanestesicaBlanco
+        guardarNotaParto, htmlImpresionNotaParto,
+        htmlImpresionNotaPreanestesica, htmlImpresionRegistroTransanestesico, htmlImpresionNotaPostanestesica,
+        htmlHojaTransanestesicaBlanco,
+        solicitarEstudiosHospital, confirmarEstudioEnfermeria, htmlImpresionOrdenesEstudios,
+        htmlImpresionHojaEnfermeria, registrarAltaPorServicio,
+        prefillAltaVoluntaria, registrarAltaVoluntaria, htmlImpresionCartaAltaVoluntaria,
+        guardarNotaIngresoDirectoHospital, htmlImpresionNotaIngresoDirecto
     };
     sembrarUsuariosSiHaceFalta();
     completarAnestesiologoCirugias();
