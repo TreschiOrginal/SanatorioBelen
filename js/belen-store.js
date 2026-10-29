@@ -3842,10 +3842,45 @@
         return listarFarmacia().filter(p => esInsumoFisico(p) && p.stock > 0 && String(p.caducidad) >= hoyLocal() && (normalizar(p.sku).indexOf(n) >= 0 || normalizar(p.nombre).indexOf(n) >= 0 || normalizar(p.nombre_comercial).indexOf(n) >= 0 || normalizar(p.lote).indexOf(n) >= 0))
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es') || String(a.caducidad).localeCompare(String(b.caducidad))).slice(0, 12);
     }
+    // Lector de códigos: acepta EAN/UPC, códigos internos y GS1 DataMatrix/QR de medicamentos.
+    // Corrige el cruce de teclado (pistola en inglés con Windows en español: "(" llega como ")" y ")" como "=").
+    function interpretarCodigoBarras(crudo) {
+        let t = String(crudo || '').replace(/[\u001d\s]+/g, ' ').trim();
+        if (!t) return { sku: '', lote: '', caducidad: '' };
+        if (/^\)\d{2,4}=/.test(t)) t = t.replace(/\)/g, '(').replace(/=/g, ')');
+        const out = { sku: '', lote: '', caducidad: '' };
+        const ais = {};
+        if (/^\(\d{2,4}\)/.test(t)) {
+            const re = /\((\d{2,4})\)\s*([^(]*)/g; let m;
+            while ((m = re.exec(t))) ais[m[1]] = m[2].trim();
+        } else if (/^01\d{14}/.test(t.replace(/ /g, ''))) {
+            let r = t.replace(/ /g, '');
+            while (r.length) {
+                const ai = r.slice(0, 2);
+                if (ai === '01') { ais['01'] = r.slice(2, 16); r = r.slice(16); }
+                else if (ai === '17' || ai === '11') { ais[ai] = r.slice(2, 8); r = r.slice(8); }
+                else if (ai === '10' || ai === '21') { ais[ai] = r.slice(2, 22); r = ''; }
+                else break;
+            }
+        }
+        if (Object.keys(ais).length) {
+            out.sku = String(ais['01'] || ais['02'] || '').toUpperCase().replace(/[^A-Z0-9-]/g, '');
+            out.lote = String(ais['10'] || '').toUpperCase().replace(/[^A-Z0-9-\/]/g, '');
+            const f = ais['17'];
+            if (f && /^\d{6}$/.test(f)) {
+                const dd = f.slice(4, 6) === '00' ? '28' : f.slice(4, 6);
+                out.caducidad = '20' + f.slice(0, 2) + '-' + f.slice(2, 4) + '-' + dd;
+            }
+            if (out.sku) return out;
+        }
+        out.sku = t.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 40);
+        return out;
+    }
+
     function validarIngresoFarmacia(entrada) {
         const categoria = String(entrada.categoria || '').trim();
         const material = categoria === 'MATERIAL_CURACION';
-        let sku = limpiarEspacios(entrada.sku).toUpperCase();
+        let sku = interpretarCodigoBarras(entrada.sku).sku;
         if (material && !sku) sku = ('MAT-' + Date.now().toString(36).toUpperCase()).replace(/[^A-Z0-9-]/g, '').slice(0, 20);
         const nombre = limpiarEspacios(entrada.nombre);
         const nombreComercial = material ? '' : limpiarEspacios(entrada.nombre_comercial);
@@ -3869,7 +3904,7 @@
         const precio = redondearMoneda(precioCrudo);
         const aplica = entrada.aplica_iva === true || entrada.aplica_iva === '1' || entrada.aplica_iva === 'true';
         const errores = {};
-        if (!/^[A-Z0-9][A-Z0-9-]{1,19}$/.test(sku)) errores.sku = 'Use un código de 2 a 20 letras, números o guiones.';
+        if (!/^[A-Z0-9][A-Z0-9-]{1,39}$/.test(sku)) errores.sku = 'Escanee de nuevo o escriba un código de 2 a 40 letras o números.';
         if (nombre.length < 2 || nombre.length > 80) errores.nombre = material ? 'Escriba el nombre del insumo (2 a 80 caracteres).' : 'Escriba el principio activo (2 a 80 caracteres).';
         if (nombreComercial.length > 80) errores.nombre_comercial = 'El nombre comercial admite hasta 80 caracteres.';
         if (laboratorio.length < 2 || laboratorio.length > 40) errores.laboratorio = 'Escriba el laboratorio (2 a 40 caracteres).';
@@ -9114,7 +9149,7 @@
         CONCEPTOS_HOSPITAL, CONCEPTOS_AMBULATORIO, formatoMoneda, validarCargo, puedeCargarConsumos, desgloseFiscal, sugerirIvaConcepto,
         agregarCargoInternamiento, agregarCargoTurno, validarNotaEgreso, registrarEgreso,
         cargosDeEpisodio, cuentasPorCobrar, fichaCuenta, cerrarExpedientePagado,
-        listarInventarioFarmacia, productoPorSku, buscarLotesFarmacia, validarIngresoFarmacia, ingresarInsumo, actualizarInsumo, fichasSurtidoPendiente, surtirLinea, parsearLineasSurtido,
+        listarInventarioFarmacia, productoPorSku, interpretarCodigoBarras, buscarLotesFarmacia, validarIngresoFarmacia, ingresarInsumo, actualizarInsumo, fichasSurtidoPendiente, surtirLinea, parsearLineasSurtido,
         CATEGORIAS_FARMACIA, CATEGORIAS_ALMACEN, FRACCIONES_COFEPRIS, CLASIFICACION_AWARE, FORMAS_FARMACEUTICAS, VIAS_ADMINISTRACION, CONSERVACIONES, LABORATORIOS_FRECUENTES, TIPOS_ESTUDIO, RECIPIENTES_MUESTRA, MODOS_IVA,
         nombreCategoriaFarmacia, nombreFraccionCofepris, nombreFormaFarmaceutica, nombreConservacion, textoStockFarmacia, denominacionProducto, etiquetaNormativa, badgeRecetaMedica, puedeEmitirRecetaMedica,
         listarEstudios, estudiosPorCategoria, estudioPorCodigo, guardarEstudio, eliminarEstudio, cargarEstudioACuenta, cargarEstudiosACuenta, nombreTipoEstudio,

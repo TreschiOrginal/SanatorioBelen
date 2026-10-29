@@ -2447,7 +2447,7 @@ const AdminController = {
             titulo: editando ? 'Editar insumo' : 'Nuevo ingreso de insumo', subtitulo: editando ? 'El stock no cambia. AWaRe se pide solo en Fracción IV Antibiótico.' : 'Medicamento o material de curación. Los estudios viven en su propio catálogo.', icono: 'fa-barcode', ancho: 'xl',
             html: `${labs}<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 ${sel('far-categoria', 'Categoría', S.CATEGORIAS_ALMACEN.map(c => `<option value="${c.codigo}">${c.nombre}</option>`).join(''))}
-                ${campo('far-sku', 'Código de barras / SKU', 'text', 'data-autofoco maxlength="20" placeholder="Escanee el código. En material es opcional."')}
+                ${campo('far-sku', 'Código de barras / SKU', 'text', 'data-autofoco maxlength="80" placeholder="Escanee el código. En material es opcional."')}
                 ${campo('far-nombre', 'Principio activo / denominación genérica', 'text', 'maxlength="80" placeholder="Ej. Dapagliflozina"')}
                 ${campo('far-comercial', 'Nombre comercial / distintivo', 'text', 'maxlength="80" placeholder="Opcional. Ej. Daposar"')}
                 ${sel('far-forma', 'Forma farmacéutica', S.FORMAS_FARMACEUTICAS.filter(f => f.codigo !== 'ESTUDIO').map(f => `<option value="${f.codigo}">${f.nombre}</option>`).join(''))}
@@ -2548,9 +2548,15 @@ const AdminController = {
                     clearTimeout(esperaSku);
                     const codigo = q('far-sku').value.trim();
                     esperaSku = setTimeout(() => {
-                        const prod = S.productoPorSku(codigo);
+                        const lec = S.interpretarCodigoBarras(codigo);
+                        if (lec.sku && lec.sku !== codigo) q('far-sku').value = lec.sku;
+                        if (lec.lote && !q('far-lote').value) q('far-lote').value = lec.lote;
+                        if (lec.caducidad && !q('far-caducidad').value) q('far-caducidad').value = lec.caducidad;
+                        const prod = S.productoPorSku(lec.sku || codigo);
                         if (prod) llenar(prod);
                     }, 140);
+                });
+                q('far-sku').addEventListener('keydown', ev => { if (ev.key === 'Enter') ev.preventDefault();
                 });
                 ['far-modo', 'far-piezas', 'far-cajas', 'far-stock'].forEach(id => q(id).addEventListener('input', pintarStock));
                 q('far-modo').addEventListener('change', pintarStock);
