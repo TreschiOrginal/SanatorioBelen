@@ -2466,7 +2466,7 @@ const AdminController = {
                 ${campo('far-cajas', 'Número de cajas que ingresan', 'number', 'min="1" step="1"')}
                 ${campo('far-stock', 'Piezas individuales', 'number', 'min="1" step="1"')}
                 ${campo('far-lote', 'Lote', 'text', 'maxlength="30"')}
-                ${campo('far-caducidad', 'Caducidad', 'date', '')}
+                ${campo('far-caducidad', 'Caducidad (AAAA/MM o AAAA/MM/DD)', 'text', 'inputmode="numeric" maxlength="10" placeholder="2028/01"')}
                 ${campo('far-precio', 'Precio unitario (sin IVA)', 'number', 'min="0.01" step="0.01"')}
             </div>
             <p id="far-total" class="mt-3 text-sm font-bold text-teal-800">Total que se sumará al inventario: 0 piezas (unidades individuales).</p>
@@ -2550,7 +2550,7 @@ const AdminController = {
                     esperaSku = setTimeout(() => {
                         const lec = S.interpretarCodigoBarras(codigo);
                         if (lec.lote && !q('far-lote').value) q('far-lote').value = lec.lote;
-                        if (lec.caducidad && !q('far-caducidad').value) q('far-caducidad').value = lec.caducidad;
+                        if (lec.caducidad && !q('far-caducidad').value) q('far-caducidad').value = lec.caducidad.replace(/-/g, '/');
                         const prod = S.productoPorSku(lec.sku || codigo);
                         if (prod && !editando) llenar(prod);
                     }, 140);
@@ -2570,7 +2570,7 @@ const AdminController = {
                     if (q('far-total')) q('far-total').classList.add('hidden');
                     llenar(editando);
                     q('far-lote').value = editando.lote || '';
-                    q('far-caducidad').value = editando.caducidad || '';
+                    q('far-caducidad').value = String(editando.caducidad || '').replace(/-/g, '/');
                     q('far-factura').value = editando.numero_factura || '';
                 }
                 q('far-lote').addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); q('far-caducidad').focus(); } });

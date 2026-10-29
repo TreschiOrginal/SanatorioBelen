@@ -3843,6 +3843,21 @@
         return listarFarmacia().filter(p => esInsumoFisico(p) && p.stock > 0 && String(p.caducidad) >= hoyLocal() && (normalizar(p.sku).indexOf(n) >= 0 || normalizar(p.nombre).indexOf(n) >= 0 || normalizar(p.nombre_comercial).indexOf(n) >= 0 || normalizar(p.lote).indexOf(n) >= 0))
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es') || String(a.caducidad).localeCompare(String(b.caducidad))).slice(0, 12);
     }
+    // Caducidad: acepta AAAA-MM-DD, AAAA/MM/DD, DD/MM/AAAA, AAAA/MM o MM/AAAA. Sin día = último día del mes.
+    function normalizarCaducidad(t) {
+        const v = String(t || '').trim().replace(/[.\s]/g, '/').replace(/-/g, '/');
+        let a, m, d, r;
+        if ((r = v.match(/^(\d{4})\/(\d{1,2})(?:\/(\d{1,2}))?$/))) { a = +r[1]; m = +r[2]; d = r[3] ? +r[3] : 0; }
+        else if ((r = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) { d = +r[1]; m = +r[2]; a = +r[3]; }
+        else if ((r = v.match(/^(\d{1,2})\/(\d{4})$/))) { m = +r[1]; a = +r[2]; d = 0; }
+        else if ((r = v.match(/^(\d{1,2})\/(\d{2})$/))) { m = +r[1]; a = 2000 + +r[2]; d = 0; }
+        else return String(t || '').trim();
+        if (m < 1 || m > 12) return String(t || '').trim();
+        const ultimo = new Date(a, m, 0).getDate();
+        if (!d) d = ultimo;
+        if (d > ultimo) return String(t || '').trim();
+        return a + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    }
     // Lector de códigos: acepta EAN/UPC, códigos internos y GS1 DataMatrix/QR de medicamentos.
     // Corrige el cruce de teclado (pistola en inglés con Windows en español: "(" llega como ")" y ")" como "=").
     function interpretarCodigoBarras(crudo) {
@@ -3869,8 +3884,7 @@
             out.lote = String(ais['10'] || '').toUpperCase().replace(/[^A-Z0-9-\/]/g, '');
             const f = ais['17'];
             if (f && /^\d{6}$/.test(f)) {
-                const dd = f.slice(4, 6) === '00' ? '28' : f.slice(4, 6);
-                out.caducidad = '20' + f.slice(0, 2) + '-' + f.slice(2, 4) + '-' + dd;
+                out.caducidad = normalizarCaducidad('20' + f.slice(0, 2) + '/' + f.slice(2, 4) + (f.slice(4, 6) === '00' ? '' : '/' + f.slice(4, 6)));
             }
             if (out.sku) return out;
         }
@@ -3896,7 +3910,7 @@
         const aware = (!material && fraccion === 'IV_ANTIBIOTICO') ? String(entrada.clasificacion_aware || '').trim() : '';
         const piezas = parseInt(String(entrada.piezas_por_caja || '1').trim(), 10);
         const lote = limpiarEspacios(entrada.lote).toUpperCase();
-        const caducidad = String(entrada.caducidad || '').trim();
+        const caducidad = normalizarCaducidad(entrada.caducidad);
         const modoCajas = entrada.modo_stock === 'cajas';
         const cajas = parseInt(String(entrada.numero_cajas || '').trim(), 10);
         const piezasSueltas = parseInt(String(entrada.stock || '').trim(), 10);
@@ -3921,7 +3935,7 @@
         if (!Number.isInteger(piezas) || piezas < 1 || piezas > 100) errores.piezas_por_caja = 'Indique de 1 a 100 piezas por caja.';
         if (modoCajas && (!Number.isInteger(cajas) || cajas < 1 || cajas > 9999)) errores.numero_cajas = 'Indique de 1 a 9,999 cajas.';
         if (!/^[A-Z0-9][A-Z0-9-]{0,29}$/.test(lote)) errores.lote = 'Escriba el lote (letras, números o guiones).';
-        if (!parseFechaISO(caducidad)) errores.caducidad = 'Indique una fecha de caducidad válida.';
+        if (!parseFechaISO(caducidad)) errores.caducidad = 'Escriba la caducidad como 2028/01 o 2028/01/31.';
         if (!Number.isInteger(stock) || stock < 1 || stock > 99999) errores.stock = 'El total de piezas debe quedar entre 1 y 99,999.';
         if (!Number.isFinite(precio) || precio < 0.01 || precio > 999999.99) errores.precio_unitario = 'Indique un precio entre $0.01 y $999,999.99.';
         const valores = completarLote({
@@ -9151,7 +9165,7 @@
         CONCEPTOS_HOSPITAL, CONCEPTOS_AMBULATORIO, formatoMoneda, validarCargo, puedeCargarConsumos, desgloseFiscal, sugerirIvaConcepto,
         agregarCargoInternamiento, agregarCargoTurno, validarNotaEgreso, registrarEgreso,
         cargosDeEpisodio, cuentasPorCobrar, fichaCuenta, cerrarExpedientePagado,
-        listarInventarioFarmacia, productoPorSku, interpretarCodigoBarras, buscarLotesFarmacia, validarIngresoFarmacia, ingresarInsumo, actualizarInsumo, fichasSurtidoPendiente, surtirLinea, parsearLineasSurtido,
+        listarInventarioFarmacia, productoPorSku, interpretarCodigoBarras, normalizarCaducidad, buscarLotesFarmacia, validarIngresoFarmacia, ingresarInsumo, actualizarInsumo, fichasSurtidoPendiente, surtirLinea, parsearLineasSurtido,
         CATEGORIAS_FARMACIA, CATEGORIAS_ALMACEN, FRACCIONES_COFEPRIS, CLASIFICACION_AWARE, FORMAS_FARMACEUTICAS, VIAS_ADMINISTRACION, CONSERVACIONES, LABORATORIOS_FRECUENTES, TIPOS_ESTUDIO, RECIPIENTES_MUESTRA, MODOS_IVA,
         nombreCategoriaFarmacia, nombreFraccionCofepris, nombreFormaFarmaceutica, nombreConservacion, textoStockFarmacia, denominacionProducto, etiquetaNormativa, badgeRecetaMedica, puedeEmitirRecetaMedica,
         listarEstudios, estudiosPorCategoria, estudioPorCodigo, guardarEstudio, eliminarEstudio, cargarEstudioACuenta, cargarEstudiosACuenta, nombreTipoEstudio,
