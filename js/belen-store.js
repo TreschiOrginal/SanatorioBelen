@@ -3960,7 +3960,7 @@
         const lista = listarFarmacia();
         const ya = lista.find(p => p.lote_id === loteId);
         if (!ya || !esInsumoFisico(ya)) return { ok: false, motivo: 'No se encontró el insumo.' };
-        const r = validarIngresoFarmacia(Object.assign({}, entrada, { modo_stock: 'piezas', stock: Math.max(1, ya.stock), sku: ya.sku, lote: entrada.lote || ya.lote }));
+        const r = validarIngresoFarmacia(Object.assign({}, entrada, { modo_stock: 'piezas', stock: Math.max(1, ya.stock), sku: (entrada.sku && String(entrada.sku).trim()) || ya.sku, lote: entrada.lote || ya.lote }));
         if (!r.ok) return { ok: false, motivo: 'Revise los campos marcados.', errores: r.errores };
         if (lista.some(p => p !== ya && normalizar(p.sku) === normalizar(r.valores.sku) && normalizar(p.lote) === normalizar(r.valores.lote))) return { ok: false, motivo: 'Ya existe otro lote con ese código y número de lote.' };
         Object.assign(ya, r.valores, { lote_id: ya.lote_id, stock: ya.stock });

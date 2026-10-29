@@ -2552,7 +2552,7 @@ const AdminController = {
                         if (lec.lote && !q('far-lote').value) q('far-lote').value = lec.lote;
                         if (lec.caducidad && !q('far-caducidad').value) q('far-caducidad').value = lec.caducidad;
                         const prod = S.productoPorSku(lec.sku || codigo);
-                        if (prod) llenar(prod);
+                        if (prod && !editando) llenar(prod);
                     }, 140);
                 });
                 q('far-sku').addEventListener('keydown', ev => { if (ev.key === 'Enter') ev.preventDefault();
@@ -2568,7 +2568,6 @@ const AdminController = {
                 if (editando) {
                     ['caja-far-modo', 'caja-far-cajas', 'caja-far-stock'].forEach(id => { const n = c.el.querySelector('#' + id); if (n) n.classList.add('hidden'); });
                     if (q('far-total')) q('far-total').classList.add('hidden');
-                    q('far-sku').readOnly = true;
                     llenar(editando);
                     q('far-lote').value = editando.lote || '';
                     q('far-caducidad').value = editando.caducidad || '';
