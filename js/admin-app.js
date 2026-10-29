@@ -2549,7 +2549,6 @@ const AdminController = {
                     const codigo = q('far-sku').value.trim();
                     esperaSku = setTimeout(() => {
                         const lec = S.interpretarCodigoBarras(codigo);
-                        if (lec.sku && lec.sku !== codigo) q('far-sku').value = lec.sku;
                         if (lec.lote && !q('far-lote').value) q('far-lote').value = lec.lote;
                         if (lec.caducidad && !q('far-caducidad').value) q('far-caducidad').value = lec.caducidad;
                         const prod = S.productoPorSku(lec.sku || codigo);

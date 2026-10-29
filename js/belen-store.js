@@ -3830,9 +3830,10 @@
             return Object.assign({}, p, { dias_caducidad: dias, alerta: p.stock < 5 || (dias !== null && dias < 30) });
         }).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es') || String(a.caducidad).localeCompare(String(b.caducidad)));
     }
+    function claveCodigo(c) { return normalizar(interpretarCodigoBarras(c).sku); }
     function productoPorSku(codigo) {
-        const n = normalizar(codigo);
-        const lotes = listarFarmacia().filter(p => normalizar(p.sku) === n);
+        const n = normalizar(codigo), k = claveCodigo(codigo);
+        const lotes = listarFarmacia().filter(p => normalizar(p.sku) === n || (k && claveCodigo(p.sku) === k));
         if (!lotes.length) return null;
         return lotes.slice().sort((a, b) => b.stock - a.stock || String(a.caducidad).localeCompare(String(b.caducidad)))[0];
     }
@@ -3880,7 +3881,7 @@
     function validarIngresoFarmacia(entrada) {
         const categoria = String(entrada.categoria || '').trim();
         const material = categoria === 'MATERIAL_CURACION';
-        let sku = interpretarCodigoBarras(entrada.sku).sku;
+        let sku = limpiarEspacios(entrada.sku).toUpperCase().slice(0, 80);
         if (material && !sku) sku = ('MAT-' + Date.now().toString(36).toUpperCase()).replace(/[^A-Z0-9-]/g, '').slice(0, 20);
         const nombre = limpiarEspacios(entrada.nombre);
         const nombreComercial = material ? '' : limpiarEspacios(entrada.nombre_comercial);
@@ -3904,7 +3905,7 @@
         const precio = redondearMoneda(precioCrudo);
         const aplica = entrada.aplica_iva === true || entrada.aplica_iva === '1' || entrada.aplica_iva === 'true';
         const errores = {};
-        if (!/^[A-Z0-9][A-Z0-9-]{1,39}$/.test(sku)) errores.sku = 'Escanee de nuevo o escriba un código de 2 a 40 letras o números.';
+        if (sku.length < 2 || !/[A-Z0-9]/.test(sku)) errores.sku = 'Escanee de nuevo o escriba un código de al menos 2 caracteres.';
         if (nombre.length < 2 || nombre.length > 80) errores.nombre = material ? 'Escriba el nombre del insumo (2 a 80 caracteres).' : 'Escriba el principio activo (2 a 80 caracteres).';
         if (nombreComercial.length > 80) errores.nombre_comercial = 'El nombre comercial admite hasta 80 caracteres.';
         if (laboratorio.length < 2 || laboratorio.length > 40) errores.laboratorio = 'Escriba el laboratorio (2 a 40 caracteres).';
@@ -3971,7 +3972,8 @@
         const todos = listarFarmacia();
         const porLote = todos.filter(p => normalizar(p.lote) === n || normalizar(p.lote_id) === n);
         if (porLote.length === 1) return { ok: true, modo: 'lote', producto: porLote[0] };
-        const porSku = todos.filter(p => normalizar(p.sku) === n);
+        const k = claveCodigo(codigo);
+        const porSku = todos.filter(p => normalizar(p.sku) === n || (k && claveCodigo(p.sku) === k));
         const base = porSku.length ? porSku : porLote;
         if (!base.length) return { ok: false, motivo: 'Ese código no está en el inventario.' };
         const hoy = hoyLocal();
